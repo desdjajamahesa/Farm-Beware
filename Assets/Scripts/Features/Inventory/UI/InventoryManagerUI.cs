@@ -75,6 +75,10 @@ public class InventoryManagerUI : MonoBehaviour
 
     void Update()
     {
+        // Guard: Trophy Mode = panel Kabinet<Rak modal, jangan auto-close oleh jarak
+        if (TrophySystemManager.Instance != null && TrophySystemManager.Instance.IsInTrophyMode)
+            return;
+
         // Auto-close storage ketika pemain menjauh (anchor = storage / rak).
         Transform anchor = currentStorageInventory != null ? currentStorageInventory.transform : null;
         if (storagePanel != null && storagePanel.activeSelf && anchor != null)
