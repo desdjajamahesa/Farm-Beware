@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using FeaturesWardrobe;
 using UnityEngine.Serialization;
 
 public class InventoryManagerUI : MonoBehaviour
@@ -75,10 +76,6 @@ public class InventoryManagerUI : MonoBehaviour
 
     void Update()
     {
-        // Guard: Trophy Mode = panel Kabinet<Rak modal, jangan auto-close oleh jarak
-        if (TrophySystemManager.Instance != null && TrophySystemManager.Instance.IsInTrophyMode)
-            return;
-
         // Auto-close storage ketika pemain menjauh (anchor = storage / rak).
         Transform anchor = currentStorageInventory != null ? currentStorageInventory.transform : null;
         if (storagePanel != null && storagePanel.activeSelf && anchor != null)
@@ -134,6 +131,10 @@ public class InventoryManagerUI : MonoBehaviour
     {
         // Guard: jangan buka inventory jika sedang Trophy Mode
         if (TrophySystemManager.Instance != null && TrophySystemManager.Instance.IsInTrophyMode)
+            return;
+
+        // Guard: jangan buka inventory jika sedang Wardrobe Mode
+        if (WardrobeManager.Instance != null && WardrobeManager.Instance.IsInWardrobeMode)
             return;
 
         if (currentStorageInventory != null)
