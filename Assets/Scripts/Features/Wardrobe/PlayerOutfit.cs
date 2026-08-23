@@ -146,6 +146,9 @@ namespace FeaturesWardrobe
                 var mats = r.sharedMaterials;
                 for (int i = 0; i < mats.Length; i++)
                 {
+                    // FIX: Null-check material before creating instance
+                    if (mats[i] == null) continue;
+                    
                     var mat = new Material(mats[i]);
                     if (mat.HasProperty("_BaseColor"))
                     {

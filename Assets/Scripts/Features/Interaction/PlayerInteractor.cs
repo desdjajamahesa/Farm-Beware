@@ -18,6 +18,8 @@ namespace FeaturesInteraction
             currentInteractable = FindClosestInteractable();
         }
 
+        private InteractionZone currentZone;
+
         private IInteractable FindClosestInteractable()
         {
             Collider[] hits = Physics.OverlapSphere(transform.position, interactRadius, interactableLayer.value);
@@ -30,6 +32,10 @@ namespace FeaturesInteraction
                 IInteractable interactable = hit.GetComponent<IInteractable>();
                 if (interactable == null) continue;
 
+                // ZONE CHECK: If interactable is in a zone, player must be in same zone
+                if (!IsInSameZone(hit.transform))
+                    continue;
+
                 float dist = (hit.transform.position - transform.position).sqrMagnitude;
                 if (dist < bestDist)
                 {
@@ -39,6 +45,28 @@ namespace FeaturesInteraction
             }
 
             return best;
+        }
+
+        private bool IsInSameZone(Transform target)
+        {
+            // Find zone of target
+            var targetZone = target.GetComponentInParent<InteractionZone>();
+            if (targetZone == null) return true; // No zone = always accessible
+
+            // Check if player is in same zone
+            return currentZone == targetZone;
+        }
+
+        private void OnTriggerEnter(Collider other)
+        {
+            if (other.TryGetComponent<InteractionZone>(out var zone))
+                currentZone = zone;
+        }
+
+        private void OnTriggerExit(Collider other)
+        {
+            if (other.TryGetComponent<InteractionZone>(out var zone) && currentZone == zone)
+                currentZone = null;
         }
 
         public void OnInteractInput()

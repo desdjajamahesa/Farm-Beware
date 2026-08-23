@@ -114,8 +114,35 @@ public class PlayerControl : MonoBehaviour
         if (inputVector.magnitude >= 0.1f)
         {
             Vector3 moveDirection = Quaternion.Euler(0, 45f, 0) * inputVector;
-
-            Vector3 newPosition = rb.position + moveDirection * moveSpeed * Time.fixedDeltaTime;
+            float moveDistance = moveSpeed * Time.fixedDeltaTime;
+            
+            // SWEEP TEST: Check for collisions before moving using CapsuleCast
+            CapsuleCollider capsuleCollider = GetComponent<CapsuleCollider>();
+            float capsuleRadius = capsuleCollider != null ? capsuleCollider.radius : 0.5f;
+            float capsuleHeight = capsuleCollider != null ? capsuleCollider.height : 2.0f;
+            Vector3 capsuleCenter = rb.position + Vector3.up * (capsuleHeight * 0.5f);
+            float capsuleHalfHeight = (capsuleHeight - capsuleRadius * 2f) * 0.5f;
+            float skinWidth = 0.05f; // Small margin
+            
+            // CapsuleCast to check for collisions along movement path
+            RaycastHit sweepHit;
+            bool hasHit = Physics.CapsuleCast(
+                capsuleCenter + Vector3.down * capsuleHalfHeight - moveDirection * 0.01f, // Start slightly behind
+                capsuleCenter + Vector3.up * capsuleHalfHeight - moveDirection * 0.01f,
+                capsuleRadius - 0.01f, // Slightly smaller radius for safety
+                moveDirection,
+                out sweepHit,
+                moveDistance + 0.05f, // Distance + skin width
+                ~0, // All layers
+                QueryTriggerInteraction.Ignore);
+            
+            if (hasHit)
+            {
+                // Hit something - move only to contact point minus skin width
+                moveDistance = Mathf.Max(0, sweepHit.distance - 0.05f);
+            }
+            
+            Vector3 newPosition = rb.position + moveDirection * moveDistance;
             rb.MovePosition(newPosition);
 
             Quaternion targetRotation = Quaternion.LookRotation(moveDirection);

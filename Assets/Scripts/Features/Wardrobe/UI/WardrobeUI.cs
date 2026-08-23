@@ -62,6 +62,7 @@ namespace FeaturesWardrobe
         }
 
         /// <summary>Set texture RawImage dari sumber cermin (null-safe). Tanpa ini RawImage render putih.</summary>
+        /// <summary>Set texture RawImage dari sumber cermin (null-safe). Tanpa ini RawImage render putih.</summary>
         private void RefreshMirrorTexture()
         {
             if (mirrorRawImage == null)
@@ -85,9 +86,12 @@ namespace FeaturesWardrobe
                 return;
             }
 
-            mirrorRawImage.texture = MirrorTextureSource;
+            // DIRECT ASSIGN: Bypass property getter, assign directly to RawImage
+            mirrorRawImage.texture = mirrorCamera.MirrorTexture;
+            Debug.Log("[WardrobeUI] MirrorRawImage texture assigned: " + mirrorCamera.MirrorTexture.name);
         }
 
+        /// <summary>Panggil ulang assign texture kapan pun (mis. dari WardrobeManager setelah blend selesai).</summary>
         /// <summary>Panggil ulang assign texture kapan pun (mis. dari WardrobeManager setelah blend selesai).</summary>
         public void ForceRefreshMirror()
         {
@@ -102,11 +106,14 @@ namespace FeaturesWardrobe
         {
             // Self-heal: selama panel aktif, pastikan texture mirror selalu terpasang.
             // Menangani kasus MirrorCamera meng-recreate/me-release RT setelah OnEnable.
-            if (mirrorRawImage != null)
+            if (mirrorRawImage != null && mirrorRawImage.texture != MirrorTextureSource)
             {
                 Texture current = MirrorTextureSource;
-                if (current != null && mirrorRawImage.texture != current)
+                if (current != null)
+                {
                     mirrorRawImage.texture = current;
+                    Debug.Log("[WardrobeUI] Update: Re-assigned mirror texture: " + current.name);
+                }
             }
         }
 

@@ -1,8 +1,8 @@
 using UnityEngine;
+using UnityEngine.Rendering.Universal;
 
 namespace FeaturesWardrobe
 {
-    [RequireComponent(typeof(Camera))]
     public class MirrorCamera : MonoBehaviour
     {
         [Header("Setup")]
@@ -21,19 +21,59 @@ namespace FeaturesWardrobe
         [SerializeField] private float verticalOffset = 0.1f;
         [Tooltip("Tinggi bidikan minimal di atas titik target (agar tidak membidik kaki).")]
         [SerializeField] private float aimHeightOffset = 1.25f;
+        [Tooltip("Transform permukaan cermin (static) - kamera diposisikan relatif ke ini")]
+        [SerializeField] private Transform mirrorSurface;
 
         public RenderTexture MirrorTexture => mirrorTexture;
-        public Camera Camera => mirrorCamera;
+        public Camera MirrorCameraComponent => mirrorCamera ? mirrorCamera : GetComponent<Camera>();
+        public Transform MirrorSurface => mirrorSurface;
 
-        private Transform mirrorTransform;
         private bool isInitialized;
+        private bool _textureCreatedByScript = false;
 
         private void Awake()
         {
-            mirrorTransform = transform;
-
+            // Ambil kamera dari child (MirrorInnerCam) jika di Inspector kosong
             if (mirrorCamera == null)
-                mirrorCamera = GetComponent<Camera>();
+            {
+                mirrorCamera = GetComponentInChildren<Camera>();
+            }
+
+            // Pastikan mirrorSurface memiliki nilai agar kamera bisa dikalkulasi posisinya
+            if (mirrorSurface == null)
+            {
+                mirrorSurface = this.transform;
+            }
+
+            // Matikan komponen kamera di objek Induk (jika tersisa dari bug sebelumnya)
+            Camera parentCam = GetComponent<Camera>();
+            if (parentCam != null && parentCam != mirrorCamera)
+            {
+                parentCam.enabled = false;
+            }
+
+            if (mirrorCamera != null)
+            {
+                mirrorCamera.depth = -100;                    // Always render last
+                mirrorCamera.clearFlags = CameraClearFlags.SolidColor;
+                mirrorCamera.backgroundColor = new Color(0.1f, 0.12f, 0.15f, 1f);
+                mirrorCamera.fieldOfView = 60f;
+                mirrorCamera.nearClipPlane = 0.1f;
+                mirrorCamera.farClipPlane = 100f;
+                mirrorCamera.useOcclusionCulling = true;
+                mirrorCamera.allowHDR = false;
+                mirrorCamera.allowMSAA = true;
+
+                var uacd = mirrorCamera.GetComponent<UniversalAdditionalCameraData>();
+                if (uacd != null)
+                {
+                    uacd.renderType = CameraRenderType.Base;  // Never overlay
+                    if (uacd.cameraStack != null && uacd.cameraStack.Count > 0)
+                    {
+                        uacd.cameraStack.Clear();
+                    }
+                }
+            }
 
             InitializeRenderTexture();
             ConfigureCamera();
@@ -51,6 +91,11 @@ namespace FeaturesWardrobe
                 mirrorTexture.filterMode = FilterMode.Bilinear;
                 mirrorTexture.wrapMode = TextureWrapMode.Clamp;
                 mirrorTexture.Create();
+                _textureCreatedByScript = true;  // We created it
+            }
+            else
+            {
+                _textureCreatedByScript = false; // Inspector-assigned
             }
 
             if (mirrorCamera != null)
@@ -61,17 +106,9 @@ namespace FeaturesWardrobe
         {
             if (mirrorCamera == null) return;
 
-            // FIX layar putih: gunakan solid gelap, bukan Skybox (RT cermin jadi gelap
-            // walau belum ada konten, bukan keputih-putihan).
-            mirrorCamera.clearFlags = CameraClearFlags.SolidColor;
-            mirrorCamera.backgroundColor = new Color(0.1f, 0.12f, 0.15f, 1f);
-            mirrorCamera.fieldOfView = 60f;
-            mirrorCamera.nearClipPlane = 0.1f;
-            mirrorCamera.farClipPlane = 100f;
-            mirrorCamera.useOcclusionCulling = true;
-            mirrorCamera.allowHDR = false;
-            mirrorCamera.allowMSAA = true;
-            mirrorCamera.enabled = true;
+            // Properties already set in Awake() for early initialization
+            // DO NOT enable camera here - WardrobeManager controls when to enable
+            // mirrorCamera.enabled = true; // REMOVED: causes auto-enable at startup
         }
 
         /// <summary>Pastikan RenderTexture + targetTexture siap (idempoten). Dipanggil dari WardrobeManager saat Enter.</summary>
@@ -80,7 +117,6 @@ namespace FeaturesWardrobe
             if (mirrorTexture == null)
             {
                 InitializeRenderTexture();
-                return;
             }
             if (mirrorCamera != null && mirrorCamera.targetTexture != mirrorTexture)
                 mirrorCamera.targetTexture = mirrorTexture;
@@ -96,12 +132,38 @@ namespace FeaturesWardrobe
 
         private void LateUpdate()
         {
-            if (!isInitialized || mirrorCamera == null || playerTarget == null)
+            // SAFETY: If camera is enabled but has no targetTexture, disable it IMMEDIATELY
+            if (mirrorCamera != null && mirrorCamera.enabled && mirrorCamera.targetTexture == null)
+            {
+                if (mirrorTexture != null)
+                {
+                    mirrorCamera.targetTexture = mirrorTexture;
+                    Debug.LogWarning("[MirrorCamera] LateUpdate: Camera was enabled without targetTexture! Re-bound and keeping enabled.");
+                }
+                else
+                {
+                    // No texture available at all - HARD DISABLE
+                    mirrorCamera.enabled = false;
+                    Debug.LogError("[MirrorCamera] LateUpdate: No targetTexture available! Disabling camera to prevent screen rendering.");
+                    return;
+                }
+            }
+            
+            // Additional safety: if somehow targetTexture was set to null externally
+            if (mirrorCamera != null && mirrorCamera.enabled && mirrorCamera.targetTexture == null)
+            {
+                mirrorCamera.enabled = false;
+                Debug.LogError("[MirrorCamera] LateUpdate: targetTexture became null! Disabling camera.");
+                return;
+            }
+
+            if (!isInitialized || mirrorCamera == null || playerTarget == null || mirrorSurface == null)
                 return;
 
             // Position camera at mirror surface, facing player
-            Vector3 mirrorForward = -mirrorTransform.forward; // Cermin face ke player
-            Vector3 cameraPosition = mirrorTransform.position + mirrorForward * distanceFromMirror;
+            // mirrorSurface is the static mirror surface Transform (NOT this camera's transform)
+            Vector3 mirrorForward = -mirrorSurface.forward; // Cermin face ke player
+            Vector3 cameraPosition = mirrorSurface.position + mirrorForward * distanceFromMirror;
 
             mirrorCamera.transform.position = cameraPosition;
 
@@ -130,7 +192,7 @@ namespace FeaturesWardrobe
 
         private void OnDestroy()
         {
-            if (mirrorTexture != null)
+            if (mirrorTexture != null && _textureCreatedByScript)
             {
                 mirrorTexture.Release();
                 mirrorTexture = null;
@@ -141,7 +203,7 @@ namespace FeaturesWardrobe
         private void OnValidate()
         {
             if (mirrorCamera == null)
-                mirrorCamera = GetComponent<Camera>();
+                mirrorCamera = GetComponentInChildren<Camera>();
         }
 #endif
     }

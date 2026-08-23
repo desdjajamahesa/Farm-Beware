@@ -1281,7 +1281,7 @@ BoxCollider:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 4895548859270506428}
-  m_Material: {fileID: 881662288}
+  m_Material: {fileID: 1793628006}
   m_IncludeLayers:
     serializedVersion: 2
     m_Bits: 0
@@ -5119,19 +5119,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::TrophySnapPoint
   slotIndex: 1
---- !u!134 &881662288
-PhysicsMaterial:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_Name: ' (Instance) (Instance) (Instance) (Instance) (Instance) (Instance) (Instance)'
-  serializedVersion: 2
-  m_DynamicFriction: 0.6
-  m_StaticFriction: 0.6
-  m_Bounciness: 0
-  m_FrictionCombine: 0
-  m_BounceCombine: 0
 --- !u!1 &914407102
 GameObject:
   m_ObjectHideFlags: 0
@@ -5546,13 +5533,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 962206081}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.051429864, y: 0.67394453, z: -0.047126785, w: 0.73548144}
-  m_LocalPosition: {x: -2.5, y: 1.6, z: -2}
+  m_LocalRotation: {x: 0.060410872, y: 0.49878204, z: -0.034878235, w: 0.8639158}
+  m_LocalPosition: {x: -2.76, y: 1.655, z: -2.62}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 9098951824941862069}
-  m_LocalEulerAnglesHint: {x: -5, y: -9, z: 0}
+  m_LocalEulerAnglesHint: {x: 8, y: 60, z: 0}
 --- !u!114 &962206083
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -6500,7 +6487,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::FeaturesWardrobe.WardrobeUI
   mirrorRawImage: {fileID: 468244509}
-  mirrorCamera: {fileID: 0}
+  mirrorCamera: {fileID: 1770518222}
   mirrorRenderTexture: {fileID: 8400000, guid: 3283b4b7bedd4a84f8cdd2a5f79e1d37, type: 2}
   outfitGrid: {fileID: 232469998}
   outfitButtonPrefab: {fileID: 1033781838}
@@ -11080,7 +11067,7 @@ MonoBehaviour:
   mirrorTexture: {fileID: 8400000, guid: 3283b4b7bedd4a84f8cdd2a5f79e1d37, type: 2}
   surfaceRenderer: {fileID: 1405766426}
   textureSize: 1024
-  playerTarget: {fileID: 0}
+  playerTarget: {fileID: 1592894892}
   distanceFromMirror: 1.8
   verticalOffset: 0.1
   aimHeightOffset: 1.25
@@ -11092,10 +11079,10 @@ Camera:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1770518219}
-  m_Enabled: 1
+  m_Enabled: 0
   serializedVersion: 2
   m_ClearFlags: 1
-  m_BackGroundColor: {r: 0.19215687, g: 0.3019608, b: 0.4745098, a: 0}
+  m_BackGroundColor: {r: 0.1, g: 0.12, b: 0.15, a: 1}
   m_projectionMatrixMode: 1
   m_GateFitMode: 2
   m_FOVAxisMode: 0
@@ -11121,7 +11108,7 @@ Camera:
   field of view: 60
   orthographic: 0
   orthographic size: 5
-  m_Depth: 0
+  m_Depth: -100
   m_CullingMask:
     serializedVersion: 2
     m_Bits: 4294967295
@@ -11314,6 +11301,20 @@ Mesh:
       - serializedVersion: 1
         m_IndexStart: 0
         m_IndexCount: 0
+--- !u!134 &1793628006
+PhysicsMaterial:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: ' (Instance) (Instance) (Instance) (Instance) (Instance) (Instance) (Instance)
+    (Instance)'
+  serializedVersion: 2
+  m_DynamicFriction: 0.6
+  m_StaticFriction: 0.6
+  m_Bounciness: 0
+  m_FrictionCombine: 0
+  m_BounceCombine: 0
 --- !u!1 &1800209606
 GameObject:
   m_ObjectHideFlags: 0
