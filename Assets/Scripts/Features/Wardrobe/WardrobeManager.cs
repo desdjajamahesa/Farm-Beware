@@ -1,10 +1,18 @@
+using FeaturesCamera;
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.Rendering.Universal;
+using UnityEngine.UI;
+using FarmBeware.Logic;
 
 namespace FeaturesWardrobe
 {
+    /// <summary>
+    /// Wardrobe manager - delegates camera switching to CameraManager.
+    /// Handles UI fading, player positioning, outfit changes, and mirror coordination.
+    /// </summary>
     public class WardrobeManager : MonoBehaviour
     {
         #region Singleton
@@ -25,36 +33,34 @@ namespace FeaturesWardrobe
         }
         #endregion
 
-        [Header("Cameras")]
-        [Tooltip("Main player camera (isometric).")]
-        [SerializeField] private Camera mainPlayerCamera;
-        
-        [Tooltip("Dedicated wardrobe camera (child of wardrobeRoot).")]
-        [SerializeField] private Camera wardrobeCamera;
-        
+        [Header("Wardrobe System")]
+        [Tooltip("Parent container (WardrobeRoot).")]
+        [SerializeField] private Transform wardrobeRoot;
+
         [Tooltip("MirrorCamera component on the Mirror GameObject.")]
         [SerializeField] private MirrorCamera mirrorCamera;
 
-        [Header("Positioning (Relative to WardrobeRoot)")]
-        [Tooltip("Parent container (WardrobeRoot). Camera & Mirror should be children.")]
-        [SerializeField] private Transform wardrobeRoot;
-        
-        [Tooltip("Local position offset of wardrobeCamera relative to wardrobeRoot.")]
-        [SerializeField] private Vector3 cameraLocalOffset = new Vector3(-2.76f, 1.655f, -2.62f);
-        
-        [Tooltip("Local rotation offset (Euler) of wardrobeCamera relative to wardrobeRoot.")]
-        [SerializeField] private Vector3 cameraLocalRotation = new Vector3(8f, 60f, 0f);
+        [Header("Fallback Camera (if CameraManager not available)")]
+        [Tooltip("Main gameplay camera (untuk fallback disable).")]
+        [SerializeField] private Camera mainCamera;
+
+        [Tooltip("Wardrobe screen camera (untuk fallback enable/disable saja — pose diatur di scene).")]
+        [SerializeField] private Camera wardrobeCamera;
 
         [Header("Mirror Positioning")]
         [Tooltip("Jarak player dari permukaan cermin saat buka wardrobe.")]
-        [SerializeField] private float playerMirrorDistance = 5.0f;
+        [SerializeField] private float playerMirrorDistance = 3.5f;
+
+        [Tooltip("Geser lateral player ke kiri dari sumbu cermin (meter).")]
+        [SerializeField] private float lateralShift = 0.8f;
 
         [Header("Animation")]
-        [Tooltip("Durasi camera blend (detik).")]
-        [SerializeField] private float cameraBlendDuration = 0.6f;
-        
         [Tooltip("Durasi UI fade in/out (detik).")]
         [SerializeField] private float uiFadeDuration = 0.3f;
+
+        [Header("Mirror Fallback")]
+        [Tooltip("Fallback anchor untuk posisi player jika MirrorCamera/MirrorSurface tidak ada.")]
+        [SerializeField] private Transform mirrorFallbackAnchor;
 
         [Header("Player & Outfit")]
         [SerializeField] private PlayerControl playerControl;
@@ -69,16 +75,21 @@ namespace FeaturesWardrobe
         [SerializeField] private CanvasGroup uiCanvasGroup;
         [SerializeField] private WardrobeUI wardrobeUI;
 
+        [Header("Wardrobe Items Data")]
+        [Tooltip("All available wardrobe items organized by category.")]
+        [SerializeField] private List<FarmBeware.Logic.WardrobeItemData> allWardrobeItems = new List<FarmBeware.Logic.WardrobeItemData>();
+
+        [Header("Preview System")]
+        [Tooltip("Reference to the PreviewController for 3D avatar preview.")]
+        [SerializeField] private PreviewController previewController;
+
         [Header("Debug")]
-        [SerializeField] private bool debugCameraAudit = true;
+        [SerializeField] private bool debugCameraAudit = false;
 
         private bool isInWardrobeMode;
-        private Coroutine blendCoroutine;
+        private Coroutine fadeCoroutine;
         private Vector3 playerOriginalPosition;
         private Quaternion playerOriginalRotation;
-        private bool mainCameraWasEnabled;
-        private bool wardrobeCameraWasEnabled;
-        private bool isometricCameraWasEnabled;
 
         #region Public API
 
@@ -87,61 +98,97 @@ namespace FeaturesWardrobe
         public void EnterWardrobeMode()
         {
             if (isInWardrobeMode) return;
-            
+
             isInWardrobeMode = true;
-            
+
+            // --- FIX: Initialize currentOutfit sebelum UI dibangun ---
+            if (playerOutfit != null && playerOutfit.currentOutfit == null && playerOutfit.unlockedOutfits.Count > 0)
+            {
+                // Ambil outfit pertama sebagai currentOutfit default
+                playerOutfit.currentOutfit = Instantiate(playerOutfit.unlockedOutfits[0]);
+                Debug.Log($"[WardrobeManager] currentOutfit initialized from unlockedOutfits[0]: {playerOutfit.currentOutfit.outfitName}");
+            }
+            if (playerOutfit != null && playerOutfit.currentOutfit == null)
+            {
+                // Fallback: outfit baru dengan variant 0 semua
+                var defaultOutfit = ScriptableObject.CreateInstance<OutfitData>();
+                defaultOutfit.topVariant = 0;
+                defaultOutfit.bottomVariant = 0;
+                defaultOutfit.shoesVariant = 0;
+                defaultOutfit.hatVariant = 0;
+                playerOutfit.currentOutfit = defaultOutfit;
+                Debug.Log("[WardrobeManager] currentOutfit initialized as default (all variants 0)");
+            }
+
+            // Initialize wardrobe items data if not already done
+            InitializeWardrobeItems();
+
             playerOriginalPosition = playerControl.transform.position;
             playerOriginalRotation = playerControl.transform.rotation;
-            mainCameraWasEnabled = mainPlayerCamera.enabled;
-            wardrobeCameraWasEnabled = wardrobeCamera.enabled;
-            
-            // FIX B: Disable IsometricCamera to prevent it from re-enabling Main Camera
-            var isoCam = mainPlayerCamera.GetComponent<IsometricCamera>();
-            if (isoCam != null)
-            {
-                isometricCameraWasEnabled = isoCam.enabled;
-                isoCam.enabled = false;
-                Debug.Log("[WardrobeManager] IsometricCamera disabled during wardrobe mode");
-            }
-            
-            playerControl.isInputLocked = true;
-            
-            SetupWardrobeCamera();
-            
-            // Ensure MirrorInnerCam is disabled BEFORE any camera switch
-            if (mirrorCamera != null && mirrorCamera.MirrorCameraComponent != null)
-            {
-                mirrorCamera.MirrorCameraComponent.enabled = false;
-                Debug.Log("[WardrobeManager] MirrorInnerCam disabled before Enter sequence");
-            }
-            
-            // CRITICAL FIX: Initialize MirrorCamera BEFORE starting coroutine
-            // This ensures targetTexture is bound before MirrorInnerCam gets enabled in the coroutine
+
+            // Position player in front of mirror
+            PositionPlayerToMirror();
+
+            // Initialize MirrorCamera BEFORE camera mode switch
             if (mirrorCamera != null)
             {
                 mirrorCamera.EnsureInitialized();
                 if (playerHead != null)
                     mirrorCamera.SetPlayerTarget(playerHead);
             }
-            
-            if (blendCoroutine != null) StopCoroutine(blendCoroutine);
-            blendCoroutine = StartCoroutine(BlendCamerasAndUI(true));
-            
-            PositionPlayerToMirror();
-            
-            // FIX D: Start camera audit if debug enabled
-            if (debugCameraAudit)
+
+            // Delegate camera switching to CameraManager (preferred)
+            if (CameraManager.Instance != null)
             {
-                StartCoroutine(AuditCamerasDuringBlend());
+                CameraManager.Instance.SetMode(CameraManager.CameraMode.WardrobeMode, wardrobeRoot);
             }
-            
+            else
+            {
+                Debug.LogWarning("[WardrobeManager] CameraManager not found! Using fallback camera control.");
+
+                // FALLBACK: Manual camera control
+                if (mainCamera != null)
+                    mainCamera.enabled = false;
+
+                // Camera pose is authored in the scene — fallback only toggles enabled state.
+                if (wardrobeCamera != null)
+                    wardrobeCamera.enabled = true;
+
+                // Lock input and cursor manually
+                if (playerControl != null)
+                    playerControl.isInputLocked = true;
+
+                Cursor.lockState = CursorLockMode.None;
+                Cursor.visible = true;
+            }
+
+            // Enable MirrorInnerCam (renders to RawImage texture)
+            if (mirrorCamera != null && mirrorCamera.MirrorCameraComponent != null)
+            {
+                mirrorCamera.MirrorCameraComponent.enabled = true;
+                Debug.Log("[WardrobeManager] MirrorInnerCam enabled");
+            }
+
+            // UI fade in
+            if (fadeCoroutine != null) StopCoroutine(fadeCoroutine);
+            fadeCoroutine = StartCoroutine(FadeUI(true));
+
             if (wardrobeUIPanel != null)
                 wardrobeUIPanel.SetActive(true);
 
             SetUIRaycastBlocking(true);
-            SetCursorFree(true);
 
-            if (wardrobeUI != null) wardrobeUI.ForceRefreshMirror();
+            // Hide hotbar while in wardrobe (same pattern as trophy cabinet mode)
+            if (InventoryManagerUI.Instance != null && InventoryManagerUI.Instance.playerHotbarContainer != null)
+                InventoryManagerUI.Instance.playerHotbarContainer.gameObject.SetActive(false);
+
+            if (wardrobeUI != null && previewController != null)
+            {
+                // Refresh preview camera texture binding
+                var previewRawImage = wardrobeUI.GetComponentInChildren<UnityEngine.UI.RawImage>(true);
+                if (previewRawImage != null)
+                    previewController.BindToRawImage(previewRawImage);
+            }
             LogMirrorDiagnostics();
 
             Debug.Log("[WardrobeManager] Entered Wardrobe Mode");
@@ -150,32 +197,68 @@ namespace FeaturesWardrobe
         public void ExitWardrobeMode()
         {
             if (!isInWardrobeMode) return;
-            
+
             if (playerOutfit != null && playerOutfit.IsPreviewing)
                 playerOutfit.Revert();
-            
+
             isInWardrobeMode = false;
-            
-            if (playerControl != null)
-                playerControl.isInputLocked = false;
-            
-            if (blendCoroutine != null) StopCoroutine(blendCoroutine);
-            blendCoroutine = StartCoroutine(BlendCamerasAndUI(false));
-            
+
+            // Disable MirrorInnerCam before camera switch
+            if (mirrorCamera != null && mirrorCamera.MirrorCameraComponent != null)
+            {
+                mirrorCamera.MirrorCameraComponent.enabled = false;
+                Debug.Log("[WardrobeManager] MirrorInnerCam disabled");
+            }
+
+            // Delegate camera switching to CameraManager (preferred)
+            if (CameraManager.Instance != null)
+            {
+                CameraManager.Instance.SetMode(CameraManager.CameraMode.Gameplay);
+            }
+            else
+            {
+                // FALLBACK: Manual camera control
+                if (wardrobeCamera != null)
+                    wardrobeCamera.enabled = false;
+
+                if (mainCamera != null)
+                    mainCamera.enabled = true;
+
+                // Unlock input, keep cursor free
+                if (playerControl != null)
+                    playerControl.isInputLocked = false;
+
+                Cursor.lockState = CursorLockMode.None;
+                Cursor.visible = true;
+
+                Debug.Log("[WardrobeManager] Fallback: Restored main camera");
+            }
+
+            // Re-enable MirrorInnerCam for mirror surface (gameplay)
+            if (mirrorCamera != null && mirrorCamera.MirrorTexture != null && mirrorCamera.MirrorCameraComponent != null)
+            {
+                mirrorCamera.MirrorCameraComponent.targetTexture = mirrorCamera.MirrorTexture;
+                mirrorCamera.MirrorCameraComponent.enabled = true;
+                Debug.Log("[WardrobeManager] MirrorInnerCam re-enabled for mirror surface");
+            }
+
+            // UI fade out
+            if (fadeCoroutine != null) StopCoroutine(fadeCoroutine);
+            fadeCoroutine = StartCoroutine(FadeUI(false));
+
             if (uiCanvasGroup != null) uiCanvasGroup.alpha = 0f;
             if (wardrobeUIPanel != null) wardrobeUIPanel.SetActive(false);
 
             SetUIRaycastBlocking(false);
-            SetCursorFree(false);
-            
-            // Restore IsometricCamera
-            var isoCam = mainPlayerCamera.GetComponent<IsometricCamera>();
-            if (isoCam != null)
-            {
-                isoCam.enabled = isometricCameraWasEnabled;
-                Debug.Log($"[WardrobeManager] IsometricCamera restored: {isometricCameraWasEnabled}");
-            }
-            
+
+            // Restore hotbar (unless trophy cabinet mode owns it — it hides hotbar itself)
+            bool trophyOwnsHotbar = InventoryManagerUI.Instance != null &&
+                InventoryManagerUI.Instance.currentStorageInventory != null &&
+                TrophySystemManager.Instance != null && TrophySystemManager.Instance.IsInTrophyMode;
+            if (!trophyOwnsHotbar && InventoryManagerUI.Instance != null &&
+                InventoryManagerUI.Instance.playerHotbarContainer != null)
+                InventoryManagerUI.Instance.playerHotbarContainer.gameObject.SetActive(true);
+
             Debug.Log("[WardrobeManager] Exited Wardrobe Mode");
         }
 
@@ -210,15 +293,11 @@ namespace FeaturesWardrobe
             uiCanvasGroup.blocksRaycasts = enabled;
         }
 
-        private void SetCursorFree(bool free)
-        {
-            Cursor.visible = free;
-            Cursor.lockState = free ? CursorLockMode.None : CursorLockMode.Locked;
-        }
-
         private void LogMirrorDiagnostics()
         {
-            Texture rt = wardrobeUI != null ? wardrobeUI.MirrorTextureSource : null;
+            Texture rt = wardrobeUI != null && wardrobeUI.previewController != null
+                ? wardrobeUI.previewController.PreviewRenderTexture
+                : null;
             bool mirrorReady = mirrorCamera != null && mirrorCamera.MirrorTexture != null;
             bool innerCamOn = mirrorCamera != null && mirrorCamera.MirrorCameraComponent != null && mirrorCamera.MirrorCameraComponent.enabled;
             bool targetOk = mirrorCamera != null && mirrorCamera.MirrorCameraComponent != null &&
@@ -231,150 +310,120 @@ namespace FeaturesWardrobe
 
         #endregion
 
-        #region Camera & UI Blend
+        #region Wardrobe Items Initialization
 
-        private void SetupWardrobeCamera()
+        private void InitializeWardrobeItems()
         {
-            if (wardrobeCamera == null || wardrobeRoot == null) return;
-            
-            wardrobeCamera.transform.SetParent(wardrobeRoot, false);
-            wardrobeCamera.transform.localPosition = cameraLocalOffset;
-            wardrobeCamera.transform.localRotation = Quaternion.Euler(cameraLocalRotation);
-            wardrobeCamera.enabled = false;
-        }
+            if (wardrobeUI == null) return;
 
-        private IEnumerator BlendCamerasAndUI(bool entering)
-        {
-            float startUIAlpha = entering ? 0f : 1f;
-            float targetUIAlpha = entering ? 1f : 0f;
-            float elapsed = 0f;
-
-            if (entering)
+            // If we have items assigned in the inspector, organize them by category
+            if (allWardrobeItems != null && allWardrobeItems.Count > 0)
             {
-                // CRITICAL FIX: Bind targetTexture FIRST before any camera switching
-                if (mirrorCamera != null && mirrorCamera.MirrorTexture != null)
+                var itemsByCategory = new Dictionary<FarmBeware.Logic.OutfitPartResolver.Category, List<FarmBeware.Logic.WardrobeItemData>>();
+
+                foreach (var item in allWardrobeItems)
                 {
-                    mirrorCamera.MirrorCameraComponent.targetTexture = mirrorCamera.MirrorTexture;
-                    Debug.Log("[WardrobeManager] MirrorInnerCam targetTexture bound: " + mirrorCamera.MirrorTexture.name);
+                    if (item == null) continue;
+
+                    var cat = item.category;
+                    if (!itemsByCategory.ContainsKey(cat))
+                        itemsByCategory[cat] = new List<FarmBeware.Logic.WardrobeItemData>();
+
+                    itemsByCategory[cat].Add(item);
                 }
 
-                // Verify texture is bound BEFORE proceeding
-                if (mirrorCamera != null && mirrorCamera.MirrorCameraComponent != null && mirrorCamera.MirrorCameraComponent.targetTexture == null)
+                // Register with UI
+                foreach (var kvp in itemsByCategory)
                 {
-                    Debug.LogError("[WardrobeManager] Mirror camera has no targetTexture! Aborting blend.");
-                    yield break; // Abort - don't proceed without valid targetTexture
+                    wardrobeUI.RegisterCategoryItems(kvp.Key, kvp.Value);
                 }
-
-                // NOW disable main camera and enable wardrobe/mirror cameras
-                mainPlayerCamera.enabled = false;
-                
-                var isoCam = mainPlayerCamera.GetComponent<IsometricCamera>();
-                if (isoCam != null)
-                {
-                    isoCam.enabled = false;
-                    Debug.Log("[WardrobeManager] IsometricCamera disabled (blend start)");
-                }
-                
-                // Enable WardrobeCamera (screen)
-                wardrobeCamera.enabled = true;
-                Debug.Log("[WardrobeManager] WardrobeCamera enabled (screen)");
-                
-                // NOW enable MirrorInnerCam (renders to texture) - texture already bound
-                if (mirrorCamera != null && mirrorCamera.MirrorCameraComponent != null)
-                {
-                    mirrorCamera.MirrorCameraComponent.enabled = true;
-                    Debug.Log("[WardrobeManager] MirrorInnerCam enabled (renders to RT)");
-                }
-                
-                if (uiCanvasGroup != null) uiCanvasGroup.alpha = 0f;
-                
-                // Force UI RawImage update after cameras are set
-                if (wardrobeUI != null) wardrobeUI.ForceRefreshMirror();
             }
             else
             {
-                // EXIT ORDER: Disable MirrorInnerCam FIRST
-                if (mirrorCamera != null && mirrorCamera.MirrorCameraComponent != null)
+                // Fallback: auto-populate from PlayerOutfit's unlockedOutfits
+                if (playerOutfit != null && playerOutfit.unlockedOutfits != null && playerOutfit.unlockedOutfits.Count > 0)
                 {
-                    mirrorCamera.MirrorCameraComponent.enabled = false;
-                    Debug.Log("[WardrobeManager] MirrorInnerCam disabled before exit");
-                }
-                
-                // Disable WardrobeCamera
-                wardrobeCamera.enabled = false;
-                
-                // Enable Main Camera
-                mainPlayerCamera.enabled = true;
-                
-                var isoCam = mainPlayerCamera.GetComponent<IsometricCamera>();
-                if (isoCam != null)
-                {
-                    isoCam.enabled = true;
-                    Debug.Log("[WardrobeManager] IsometricCamera re-enabled (blend end)");
-                }
-                
-                // Re-enable MirrorInnerCam for mirror surface (gameplay)
-                if (mirrorCamera != null && mirrorCamera.MirrorTexture != null)
-                {
-                    mirrorCamera.MirrorCameraComponent.targetTexture = mirrorCamera.MirrorTexture;
-                    mirrorCamera.MirrorCameraComponent.enabled = true;
-                    Debug.Log("[WardrobeManager] MirrorInnerCam re-enabled for mirror surface");
+                    PopulateItemsFromUnlockedOutfits();
                 }
             }
 
-            // FIX D: Start camera audit if debug enabled
-            Coroutine auditCoroutine = null;
-            if (debugCameraAudit)
+            // Bind preview controller if available
+            if (previewController != null && wardrobeUI != null)
             {
-                auditCoroutine = StartCoroutine(AuditCamerasDuringBlend());
+                var previewRawImage = wardrobeUI.GetComponentInChildren<UnityEngine.UI.RawImage>(true);
+                if (previewRawImage != null)
+                    previewController.BindToRawImage(previewRawImage);
+            }
+        }
+
+        private void PopulateItemsFromUnlockedOutfits()
+        {
+            if (playerOutfit == null || playerOutfit.unlockedOutfits == null) return;
+
+            var itemsByCategory = new Dictionary<FarmBeware.Logic.OutfitPartResolver.Category, List<FarmBeware.Logic.WardrobeItemData>>();
+
+            foreach (var outfit in playerOutfit.unlockedOutfits)
+            {
+                if (outfit == null) continue;
+
+                // Create WardrobeItemData from each OutfitData
+                // This is a simplified mapping - in production you'd have proper item definitions
+                CreateItemFromOutfit(outfit, itemsByCategory);
             }
 
-            while (elapsed < cameraBlendDuration)
+            foreach (var kvp in itemsByCategory)
+            {
+                wardrobeUI.RegisterCategoryItems(kvp.Key, kvp.Value);
+            }
+        }
+
+        private void CreateItemFromOutfit(OutfitData outfit, Dictionary<FarmBeware.Logic.OutfitPartResolver.Category, List<FarmBeware.Logic.WardrobeItemData>> itemsByCategory)
+        {
+            // Map OutfitData variants to individual WardrobeItemData
+            var categories = System.Enum.GetValues(typeof(FarmBeware.Logic.OutfitPartResolver.Category));
+            foreach (FarmBeware.Logic.OutfitPartResolver.Category cat in categories)
+            {
+                if (!itemsByCategory.ContainsKey(cat))
+                    itemsByCategory[cat] = new List<FarmBeware.Logic.WardrobeItemData>();
+
+                int variantCount = FarmBeware.Logic.OutfitPartResolver.GetVariantCount(cat);
+                for (int i = 0; i < variantCount; i++)
+                {
+                    var itemData = ScriptableObject.CreateInstance<FarmBeware.Logic.WardrobeItemData>();
+                    itemData.itemId = $"{outfit.outfitName}_{cat}_{i}";
+                    itemData.displayName = $"{cat} {FarmBeware.Logic.OutfitPartResolver.GetVariantLabel(cat, i)}";
+                    itemData.icon = outfit.icon;
+                    itemData.category = cat;
+                    itemData.description = $"From outfit: {outfit.outfitName}";
+
+                    itemsByCategory[cat].Add(itemData);
+                }
+            }
+        }
+
+        #endregion
+
+        #region Camera & UI Fade
+
+        private IEnumerator FadeUI(bool fadeIn)
+        {
+            if (uiCanvasGroup == null) yield break;
+
+            float startAlpha = fadeIn ? 0f : 1f;
+            float targetAlpha = fadeIn ? 1f : 0f;
+            float elapsed = 0f;
+
+            while (elapsed < uiFadeDuration)
             {
                 elapsed += Time.unscaledDeltaTime;
-                float t = Mathf.Clamp01(elapsed / cameraBlendDuration);
-                float easedT = EaseInOutCubic(t);
-
-                // Camera state stays FIXED during blend (no mid-blend toggles)
-                // Only UI fades smoothly
-                if (uiCanvasGroup != null)
-                    uiCanvasGroup.alpha = Mathf.Lerp(startUIAlpha, targetUIAlpha, EaseInOutCubic(t));
-
+                float t = Mathf.Clamp01(elapsed / uiFadeDuration);
+                uiCanvasGroup.alpha = Mathf.Lerp(startAlpha, targetAlpha, EaseInOutCubic(t));
                 yield return null;
             }
 
-            mainPlayerCamera.enabled = !entering;
-            wardrobeCamera.enabled = entering;
-            
-            if (uiCanvasGroup != null)
-                uiCanvasGroup.alpha = entering ? 1f : 0f;
-            
-            if (!entering && wardrobeUIPanel != null)
-                wardrobeUIPanel.SetActive(false);
+            uiCanvasGroup.alpha = targetAlpha;
 
-            if (entering && wardrobeUI != null)
-                wardrobeUI.ForceRefreshMirror();
-
-            blendCoroutine = null;
-        }
-
-        private IEnumerator AuditCamerasDuringBlend()
-        {
-            for (int i = 0; i < 20; i++)  // Audit for ~1 second
-            {
-                int enabledCount = 0;
-                foreach (var cam in Camera.allCameras)
-                {
-                    if (cam.enabled)
-                    {
-                        enabledCount++;
-                        var uacd = cam.GetComponent<UniversalAdditionalCameraData>();
-                        Debug.Log($"[AUDIT] Active Camera: {cam.name}, depth={cam.depth}, targetTexture={cam.targetTexture?.name ?? "screen"}, renderType={cam.GetComponent<UniversalAdditionalCameraData>()?.renderType}");
-                    }
-                }
-                Debug.Log($"[AUDIT] Total enabled cameras: {enabledCount} (expected: 2 during wardrobe - WardrobeCamera + MirrorInnerCam)");
-                yield return new WaitForSeconds(0.05f);
-            }
+            fadeCoroutine = null;
         }
 
         private static float EaseInOutCubic(float t)
@@ -384,37 +433,11 @@ namespace FeaturesWardrobe
 
         private void PositionPlayerToMirror()
         {
-            if (playerControl == null || mirrorCamera == null) return;
+            if (playerControl == null) return;
 
-            // Use MirrorSurface from MirrorCamera (static mirror surface)
-            Transform mirrorSurface = mirrorCamera.MirrorSurface;
-            if (mirrorSurface == null)
-            {
-                Debug.LogError("[WardrobeManager] MirrorSurface is null on MirrorCamera!");
-                return;
-            }
-            
-            Vector3 faceNormal = mirrorSurface.forward;
-            Vector3 target = mirrorSurface.position + faceNormal * playerMirrorDistance;
-
-            // Raycast to find floor height - cast from higher up to ensure we hit floor
-            Vector3 rayOrigin = target + Vector3.up * 3f;
-            bool hitFloor = Physics.Raycast(rayOrigin, Vector3.down, out RaycastHit hit, 10f);
-            
-            if (hitFloor)
-            {
-                target.y = hit.point.y + 0.5f;
-                Debug.Log($"[WardrobeManager] PositionPlayerToMirror: Floor hit at Y={hit.point.y}, placing player at Y={target.y}");
-            }
-            else
-            {
-                // FALLBACK: Use known bedroom floor Y (0) + offset
-                // Bedroom floor is at Y=0, place player at 0.5f above
-                target.y = 0.5f;
-                Debug.LogWarning("[WardrobeManager] PositionPlayerToMirror: Raycast failed! Using fallback Y=0.5f. Ray origin: " + rayOrigin);
-            }
-
-            Quaternion facingMirror = Quaternion.LookRotation(-faceNormal, Vector3.up);
+            // Fixed pose authored per user spec — no runtime math.
+            Vector3 target = new Vector3(17.5f, 0.1f, 17.5f);
+            Quaternion facingMirror = Quaternion.Euler(0f, -90f, 0f);
 
             Rigidbody rb = playerControl.GetComponent<Rigidbody>();
             if (rb != null)
@@ -422,6 +445,9 @@ namespace FeaturesWardrobe
                 rb.linearVelocity = Vector3.zero;
                 rb.position = target;
                 rb.rotation = facingMirror;
+                // Sync transform immediately (required in Edit Mode / non-simulated contexts)
+                playerControl.transform.position = target;
+                playerControl.transform.rotation = facingMirror;
             }
             else
             {
@@ -442,14 +468,18 @@ namespace FeaturesWardrobe
                 return;
             }
             Instance = this;
+
+            // Enforce initial state: UI hidden, mirror cam bound to RT only.
+            // Scene files can persist stale active-states from a previous session.
+            if (wardrobeUIPanel != null)
+                wardrobeUIPanel.SetActive(false);
+            if (uiCanvasGroup != null)
+                uiCanvasGroup.alpha = 0f;
         }
 
         private void Update()
         {
             if (!isInWardrobeMode) return;
-
-            Cursor.visible = true;
-            Cursor.lockState = CursorLockMode.None;
 
             if (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame)
                 ExitWardrobeMode();

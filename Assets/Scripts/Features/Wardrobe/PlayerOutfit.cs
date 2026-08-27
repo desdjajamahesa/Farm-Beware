@@ -1,50 +1,56 @@
 using UnityEngine;
 using System.Collections.Generic;
+using FarmBeware.Logic;
 
 namespace FeaturesWardrobe
 {
     public class PlayerOutfit : MonoBehaviour
     {
         [Header("Setup")]
-        [Tooltip("Root transform untuk spawn model outfit (child of Player, posisi relatif ke body).")]
-        [SerializeField] private Transform outfitRoot;
-        
+        [Tooltip("Reference to the character model (Player/character) with SkinnedMeshRenderer parts.")]
+        [SerializeField] private GameObject characterModel;
+
         [Header("Runtime State")]
         [Tooltip("Outfit yang sedang dipakai (persisted).")]
         public OutfitData currentOutfit;
-        
+
         [Tooltip("Koleksi outfit yang sudah di-unlock (cosmetic wardrobe).")]
         public List<OutfitData> unlockedOutfits = new List<OutfitData>();
-        
-        // Preview state (tidak di-commit ke currentOutfit sampai Save)
+
+        // Preview state
         private OutfitData previewOutfit;
-        private GameObject previewModel;
-        private GameObject currentModel;
         private bool previewingDefault;
-        
+
+        // Cached character renderers
+        private SkinnedMeshRenderer[] characterRenderers;
+
         // Events untuk UI sync
-        public event System.Action<OutfitData> OnOutfitChanged;      // currentOutfit changed
-        public event System.Action<OutfitData> OnPreviewChanged;     // previewOutfit changed
-        
+        public event System.Action<OutfitData> OnOutfitChanged;
+        public event System.Action<OutfitData> OnPreviewChanged;
+
         // Properties
         public OutfitData CurrentOutfit => currentOutfit;
         public OutfitData PreviewOutfit => previewOutfit;
         public bool IsPreviewing => previewOutfit != null && previewOutfit != currentOutfit;
-        public Transform OutfitRoot => outfitRoot;
+        public bool IsPreviewingDefault => previewingDefault;
 
         private void Awake()
         {
-            if (outfitRoot == null)
-            {
-                // Auto-create outfitRoot as child if not assigned
-                outfitRoot = new GameObject("OutfitRoot").transform;
-                outfitRoot.SetParent(transform, false);
-                outfitRoot.localPosition = Vector3.zero;
-                outfitRoot.localRotation = Quaternion.identity;
-            }
+            if (characterModel == null)
+                characterModel = GameObject.Find("Player/character"); // fallback
 
-            // FIX: TIDAK auto-equip di Awake -> player tetap model aslinya di luar lemari.
-            // Outfit hanya diterapkan saat player memilih di wardrobe (TryOn/Commit).
+            CacheCharacterRenderers();
+        }
+
+        private void CacheCharacterRenderers()
+        {
+            if (characterModel != null)
+                characterRenderers = characterModel.GetComponentsInChildren<SkinnedMeshRenderer>(true);
+        }
+
+        private void OnValidate()
+        {
+            CacheCharacterRenderers();
         }
 
         /// <summary>Preview outfit tanpa commit (real-time di mirror).</summary>
@@ -52,144 +58,106 @@ namespace FeaturesWardrobe
         {
             if (outfit == null || !unlockedOutfits.Contains(outfit))
                 return;
-            
+
             previewingDefault = false;
             previewOutfit = outfit;
-            RefreshPreview();
-            OnPreviewChanged?.Invoke(outfit);
+            ApplyOutfitPreview(previewOutfit);
+            OnPreviewChanged?.Invoke(previewOutfit);
         }
 
-        /// <summary>Preview Default: lepas preview, kembali ke model player asli (tanpa outfit).</summary>
+        /// <summary>Preview Default: lepas preview, kembali ke currentOutfit atau default (semua varian 0).</summary>
         public void PreviewDefault()
         {
-            DestroyPreviewModel();
             previewOutfit = null;
             previewingDefault = true;
+            ApplyDefaultPreview();
             OnPreviewChanged?.Invoke(currentOutfit);
         }
 
         /// <summary>Commit preview ke currentOutfit (Save).</summary>
         public void Commit()
         {
-            if (previewOutfit != null && previewOutfit != currentOutfit)
-            {
-                currentOutfit = previewOutfit;
-                ApplyOutfit(currentOutfit);
-                previewOutfit = null;
-                previewModel = null;
-                previewingDefault = false;
-                OnOutfitChanged?.Invoke(currentOutfit);
-                return;
-            }
+            previewOutfit = null;
+            previewingDefault = false;
 
-            // Pilihan Default di-commit: lepas outfit aktif yang sedang dipakai.
-            if (previewingDefault && currentOutfit != null)
-            {
-                currentOutfit = null;
-                DestroyCurrentModel();
-                previewingDefault = false;
-                OnOutfitChanged?.Invoke(null);
-            }
+            // Ensure character renderers reflect currentOutfit.
+            ApplyOutfit(currentOutfit);
+            OnOutfitChanged?.Invoke(currentOutfit);
         }
 
         /// <summary>Batal preview, kembali ke currentOutfit.</summary>
         public void Revert()
         {
-            if (previewOutfit == null)
+            if (previewOutfit == null && !previewingDefault)
                 return;
-            
+
             previewOutfit = null;
-            DestroyPreviewModel();
+            previewingDefault = false;
+            ApplyOutfit(currentOutfit);
             OnPreviewChanged?.Invoke(currentOutfit);
         }
 
-        /// <summary>Apply outfit permanen (destroy old, spawn new).</summary>
-        private void ApplyOutfit(OutfitData outfit)
+        /// <summary>Apply outfit ke character renderers (toggle parts).</summary>
+        public void ApplyOutfit(OutfitData outfit)
         {
-            if (outfit == null || outfit.fullBodyPrefab == null)
+            if (outfit == null)
             {
-                Debug.LogWarning($"[PlayerOutfit] OutfitData atau fullBodyPrefab null: {outfit?.outfitName}");
+                ApplyDefaultOutfit();
                 return;
             }
 
-            DestroyCurrentModel();
-            
-            GameObject spawned = Instantiate(outfit.fullBodyPrefab, outfitRoot);
-            spawned.transform.localPosition = Vector3.zero;
-            spawned.transform.localRotation = Quaternion.identity;
-            
-            // Preserve prefab scale (pattern from PlayerEquipment.cs:62)
-            spawned.transform.localScale = outfit.fullBodyPrefab.transform.localScale;
-            
-            currentModel = spawned;
+            if (characterRenderers == null || characterRenderers.Length == 0)
+                CacheCharacterRenderers();
+
+            outfit.ApplyToCharacter(characterModel);
         }
 
-        private void RefreshPreview()
+        public void ApplyOutfitPreview(OutfitData outfit)
         {
-            if (previewOutfit == null || previewOutfit.fullBodyPrefab == null)
+            if (outfit == null)
             {
-                DestroyPreviewModel();
+                ApplyDefaultPreview();
                 return;
             }
 
-            DestroyPreviewModel();
-            
-            GameObject spawned = Instantiate(previewOutfit.fullBodyPrefab, outfitRoot);
-            spawned.transform.localPosition = Vector3.zero;
-            spawned.transform.localRotation = Quaternion.identity;
-            spawned.transform.localScale = previewOutfit.fullBodyPrefab.transform.localScale;
-            
-            // Visual indicator: slight transparency untuk preview
-            var renderers = spawned.GetComponentsInChildren<Renderer>(true);
-            foreach (var r in renderers)
-            {
-                var mats = r.sharedMaterials;
-                for (int i = 0; i < mats.Length; i++)
-                {
-                    // FIX: Null-check material before creating instance
-                    if (mats[i] == null) continue;
-                    
-                    var mat = new Material(mats[i]);
-                    if (mat.HasProperty("_BaseColor"))
-                    {
-                        var c = mat.GetColor("_BaseColor");
-                        mat.SetColor("_BaseColor", new Color(c.r, c.g, c.b, 0.9f));
-                    }
-                    if (mat.HasProperty("_Color"))
-                    {
-                        var c = mat.GetColor("_Color");
-                        mat.SetColor("_Color", new Color(c.r, c.g, c.b, 0.9f));
-                    }
-                    mats[i] = mat;
-                }
-                r.materials = mats;
-            }
-            
-            previewModel = spawned;
+            if (characterRenderers == null || characterRenderers.Length == 0)
+                CacheCharacterRenderers();
+
+            outfit.ApplyToCharacter(characterModel);
         }
 
-        private void DestroyCurrentModel()
+        private void ApplyDefaultPreview()
         {
-            if (currentModel != null)
+            if (characterRenderers == null || characterRenderers.Length == 0)
+                CacheCharacterRenderers();
+
+            // Default = all variant 0
+            foreach (var r in characterRenderers)
             {
-                Destroy(currentModel);
-                currentModel = null;
+                if (r.name == "body" || r.name == "hair1" || r.name == "hair2")
+                    r.enabled = true;
+                else if (r.name == "cloth1" || r.name == "pants1" || r.name == "shoes1_left" || r.name == "shoes1_right")
+                    r.enabled = true;
+                else
+                    r.enabled = false;
             }
         }
 
-        private void DestroyPreviewModel()
+        private void ApplyDefaultOutfit()
         {
-            if (previewModel != null)
-            {
-                Destroy(previewModel);
-                previewModel = null;
-            }
-        }
+            if (characterRenderers == null || characterRenderers.Length == 0)
+                CacheCharacterRenderers();
 
-        private void OnDestroy()
-        {
-            DestroyCurrentModel();
-            DestroyPreviewModel();
+            // Same as default preview but persistent
+            foreach (var r in characterRenderers)
+            {
+                if (r.name == "body" || r.name == "hair1" || r.name == "hair2")
+                    r.enabled = true;
+                else if (r.name == "cloth1" || r.name == "pants1" || r.name == "shoes1_left" || r.name == "shoes1_right")
+                    r.enabled = true;
+                else
+                    r.enabled = false;
+            }
         }
     }
 }

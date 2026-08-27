@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace FeaturesCamera
@@ -31,7 +32,13 @@ namespace FeaturesCamera
             Initialize();
         }
 
-        private void Initialize()
+        
+        [Header("Linked Renderers (for attached objects like mirrors)")]
+        [SerializeField] private List<Renderer> additionalRenderers = new List<Renderer>();
+
+        private List<Material> additionalOriginalMaterials = new List<Material>();
+        private List<Material> additionalTransparentMaterials = new List<Material>();
+private void Initialize()
         {
             if (isInitialized) return;
 
@@ -88,6 +95,26 @@ namespace FeaturesCamera
             }
 
             this.transparentMaterial = transparentMat;
+
+            // Create transparent materials for additional renderers
+            for (int i = 0; i < additionalRenderers.Count; i++) {
+                var rend = additionalRenderers[i];
+                if (rend == null) {
+                    additionalOriginalMaterials.Add(null);
+                    additionalTransparentMaterials.Add(null);
+                    continue;
+                }
+
+                Material origMat = rend.sharedMaterial;
+                additionalOriginalMaterials.Add(origMat);
+
+                Material addTransMat = null;
+                if (transparentMat != null) {
+                    addTransMat = new Material(transparentMat);
+                    addTransMat.name = "Mat_Wall_Transparent_Instance_Additional_" + i;
+                }
+                additionalTransparentMaterials.Add(addTransMat);
+            }
         }
 
         private void Update()
@@ -105,26 +132,52 @@ namespace FeaturesCamera
             isOccluding = occluding;
         }
 
-        private void FadeAlpha()
+                private void FadeAlpha()
         {
-            if (meshRenderer == null || transparentMaterial == null) return;
+            if (!isInitialized) Initialize();
+
+            if (meshRenderer == null && (additionalRenderers == null || additionalRenderers.Count == 0)) return;
 
             float targetAlpha = isOccluding ? transparentAlpha : 1f;
-            
+
             // Smooth fade using MoveTowards for consistent speed
             currentAlpha = Mathf.MoveTowards(currentAlpha, targetAlpha, fadeSpeed * Time.deltaTime);
-            
-            // Apply alpha to material
-            Color c = transparentMaterial.color;
-            c.a = currentAlpha;
-            transparentMaterial.color = c;
-            
-            // Ensure we're using the transparent material when fading
-            if (currentAlpha < 1f && meshRenderer.sharedMaterial != transparentMaterial) {
-                meshRenderer.material = transparentMaterial;
+
+            // Apply alpha to main material
+            if (meshRenderer != null && transparentMaterial != null) {
+                Color c = transparentMaterial.color;
+                c.a = currentAlpha;
+                transparentMaterial.color = c;
+
+                // Ensure we're using the transparent material when fading
+                if (currentAlpha < 1f && meshRenderer.sharedMaterial != transparentMaterial) {
+                    meshRenderer.material = transparentMaterial;
+                }
+                else if (currentAlpha >= 1f && meshRenderer.sharedMaterial != originalMaterial) {
+                    meshRenderer.sharedMaterial = originalMaterial;
+                }
             }
-            else if (currentAlpha >= 1f && meshRenderer.sharedMaterial != originalMaterial) {
-                meshRenderer.sharedMaterial = originalMaterial;
+
+            // Apply alpha to additional renderers
+            if (additionalRenderers != null) {
+                for (int i = 0; i < additionalRenderers.Count; i++) {
+                    var rend = additionalRenderers[i];
+                    var transMat = i < additionalTransparentMaterials.Count ? additionalTransparentMaterials[i] : null;
+                    var origMat = i < additionalOriginalMaterials.Count ? additionalOriginalMaterials[i] : null;
+
+                    if (rend == null || transMat == null) continue;
+
+                    Color c = transMat.color;
+                    c.a = currentAlpha;
+                    transMat.color = c;
+
+                    if (currentAlpha < 1f && rend.sharedMaterial != transMat) {
+                        rend.material = transMat;
+                    }
+                    else if (currentAlpha >= 1f && rend.sharedMaterial != origMat) {
+                        rend.sharedMaterial = origMat;
+                    }
+                }
             }
         }
 
@@ -134,7 +187,18 @@ namespace FeaturesCamera
             if (meshRenderer != null && originalMaterial != null) {
                 meshRenderer.sharedMaterial = originalMaterial;
             }
+        
+        // Restore additional renderers
+        if (additionalRenderers != null) {
+            for (int i = 0; i < additionalRenderers.Count; i++) {
+                var rend = additionalRenderers[i];
+                var origMat = i < additionalOriginalMaterials.Count ? additionalOriginalMaterials[i] : null;
+                if (rend != null && origMat != null) {
+                    rend.sharedMaterial = origMat;
+                }
+            }
         }
+}
 
         private void OnValidate()
         {

@@ -257,8 +257,10 @@ public class InventoryManagerUI : MonoBehaviour
 
     private void SetCursorFree(bool free)
     {
-        Cursor.visible = free;
-        Cursor.lockState = free ? CursorLockMode.None : CursorLockMode.Locked;
+        // Keep cursor always visible and unlocked (user preference)
+        Cursor.visible = true;
+        Cursor.lockState = CursorLockMode.None;
+        _ = free;
     }
 
     private void BuildPlayerSlots()

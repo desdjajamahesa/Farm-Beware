@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.Rendering.Universal;
+using FeaturesCamera;
 
 namespace FeaturesWardrobe
 {
@@ -23,6 +24,10 @@ namespace FeaturesWardrobe
         [SerializeField] private float aimHeightOffset = 1.25f;
         [Tooltip("Transform permukaan cermin (static) - kamera diposisikan relatif ke ini")]
         [SerializeField] private Transform mirrorSurface;
+
+        [Header("Manual Control")]
+        [Tooltip("If true, LateUpdate will NOT auto-position camera. Use this to manually set camera transform in Scene view. Default TRUE for full manual control.")]
+        [SerializeField] private bool manualPositioning = true;
 
         public RenderTexture MirrorTexture => mirrorTexture;
         public Camera MirrorCameraComponent => mirrorCamera ? mirrorCamera : GetComponent<Camera>();
@@ -156,6 +161,14 @@ namespace FeaturesWardrobe
                 Debug.LogError("[MirrorCamera] LateUpdate: targetTexture became null! Disabling camera.");
                 return;
             }
+
+            // Skip auto-positioning if manual mode enabled
+            if (manualPositioning)
+                return;
+
+            // Only auto-position when CameraManager exists AND we're in WardrobeMode
+            if (CameraManager.Instance == null || CameraManager.Instance.CurrentMode != CameraManager.CameraMode.WardrobeMode)
+                return;
 
             if (!isInitialized || mirrorCamera == null || playerTarget == null || mirrorSurface == null)
                 return;

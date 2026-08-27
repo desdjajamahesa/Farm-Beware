@@ -67,6 +67,16 @@ namespace FeaturesCamera
 
         private void LateUpdate()
         {
+            // Occlusion only applies to the isometric gameplay view.
+            // In Wardrobe/Trophy mode restore all walls and skip checks.
+            if (CameraManager.Instance != null &&
+                CameraManager.Instance.CurrentMode != CameraManager.CameraMode.Gameplay)
+            {
+                if (currentlyOccluding.Count > 0)
+                    UpdateOcclusionState(new HashSet<WallOccluder>());
+                return;
+            }
+
             if (mainCamera == null || player == null) return;
 
             if (Time.time - lastCheckTime >= checkInterval)

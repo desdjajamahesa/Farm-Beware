@@ -1,242 +1,403 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.EventSystems;
+using FarmBeware.Logic;
 
 namespace FeaturesWardrobe
 {
+    /// <summary>
+    /// Main Wardrobe UI controller with modular layout:
+    /// - Left: Category Buttons (Upper Body, Lower Body, Accessories)
+    /// - Center-Left: Item Grid (ScrollView with GridLayoutGroup)
+    /// - Center-Right: 3D Live Preview (RawImage + PreviewCamera)
+    /// - Right: Save/Exit Buttons
+    /// </summary>
     public class WardrobeUI : MonoBehaviour
     {
-        [Header("Mirror Display")]
-        [SerializeField] private RawImage mirrorRawImage; // Full screen background
-        [SerializeField] private MirrorCamera mirrorCamera; // Sumber RenderTexture cermin
-        [SerializeField] private RenderTexture mirrorRenderTexture; // Referensi langsung ke RT asset
+        [Header("Canvas & Panel")]
+        [SerializeField] private Canvas wardrobeCanvas;
+        [SerializeField] private GameObject wardrobePanel;
 
-        [Header("Outfit Grid")]
-        [SerializeField] private Transform outfitGrid; // GridLayoutGroup
-        [SerializeField] private GameObject outfitButtonPrefab;
+        [Header("Category Section (Left)")]
+        [SerializeField] private Transform categoryContainer;
+        [SerializeField] private GameObject categoryButtonPrefab;
+        [SerializeField] private Color categorySelectedColor = new Color(1f, 0.85f, 0.2f, 1f);
+        [SerializeField] private Color categoryNormalColor = Color.white;
 
-        [Header("Current Preview")]
-        [SerializeField] private Image currentPreviewImage; // Outfit saat ini
+        [Header("Item Grid (Center-Left)")]
+        [SerializeField] private ScrollRect itemGridScrollRect;
+        [SerializeField] private Transform itemGridContent;
+        [SerializeField] private GameObject itemSlotPrefab;
+        [SerializeField] private Vector2 gridCellSize = new Vector2(80f, 80f);
+        [SerializeField] private int gridColumns = 4;
 
-        [Header("Actions")]
+        [Header("Live 3D Preview (Center-Right)")]
+        [SerializeField] public PreviewController previewController;
+        [SerializeField] private RawImage previewRawImage;
+
+        [Header("Action Buttons (Right)")]
         [SerializeField] private Button saveButton;
+        [SerializeField] private Button exitButton;
         [SerializeField] private Button cancelButton;
 
-        [Header("Visual")]
-        [SerializeField] private Color selectedColor = new Color(1f, 0.85f, 0.2f, 1f);
-        [SerializeField] private Color normalColor = Color.white;
+        // State tracking
+        private OutfitPartResolver.Category currentCategory = OutfitPartResolver.Category.Top;
+        private WardrobeItemData currentPreviewOutfitData;
+        private ItemSlot currentlySelectedSlot;
+        private Dictionary<OutfitPartResolver.Category, List<WardrobeItemData>> categoryItems = new Dictionary<OutfitPartResolver.Category, List<WardrobeItemData>>();
 
-        private List<Button> outfitButtons = new List<Button>();
-        private List<OutfitData> outfitSlotData = new List<OutfitData>(); // null = slot Default
-        private OutfitData currentlySelectedOutfit;
+        // UI component references
+        private List<Button> categoryButtons = new List<Button>();
+        private List<ItemSlot> itemSlots = new List<ItemSlot>();
+
+        // Callbacks
+        public System.Action<WardrobeItemData> OnItemSelected;
+        public System.Action OnWardrobeClosed;
 
         private void Awake()
         {
+            // Initialize UI references
+            InitializeReferences();
+
+            // Setup button listeners
+            SetupButtonListeners();
+
+            // Build initial state
+            BuildCategoryButtons();
+            RefreshItemGrid(currentCategory);
+        }
+
+        private void InitializeReferences()
+        {
+            // Try to find references if not assigned
+            if (wardrobePanel == null)
+                wardrobePanel = gameObject?.transform?.Find("WardrobePanel")?.gameObject;
+
+            if (categoryContainer == null)
+                categoryContainer = transform.Find("CategoryContainer");
+
+            if (itemGridContent == null)
+                itemGridContent = transform.Find("ItemGrid/Content");
+
+            if (previewController == null)
+                previewController = GetComponentInChildren<PreviewController>(true);
+
+            if (saveButton == null)
+                saveButton = transform.Find("ActionButtons/SaveButton")?.GetComponent<Button>();
+
+            if (exitButton == null)
+                exitButton = transform.Find("ActionButtons/ExitButton")?.GetComponent<Button>();
+
+            if (cancelButton == null)
+                cancelButton = transform.Find("ActionButtons/CancelButton")?.GetComponent<Button>();
+        }
+
+        private void SetupButtonListeners()
+        {
             if (saveButton != null)
                 saveButton.onClick.AddListener(OnSaveClicked);
+
+            if (exitButton != null)
+                exitButton.onClick.AddListener(OnExitClicked);
+
             if (cancelButton != null)
                 cancelButton.onClick.AddListener(OnCancelClicked);
         }
 
-        private void OnEnable()
+        private void BuildCategoryButtons()
         {
-            // FIX BUG layar putih: assign RenderTexture cermin tiap panel diaktifkan.
-            RefreshMirrorTexture();
-        }
+            if (categoryContainer == null || categoryButtonPrefab == null) return;
 
-        private void Start()
-        {
-            // FIX BUG layar putih: assign RenderTexture juga di Start (first activation).
-            RefreshMirrorTexture();
+            // Clear existing buttons
+            foreach (var btn in categoryButtons)
+                if (btn != null) Destroy(btn.gameObject);
+            categoryButtons.Clear();
 
-            // Subscribe to PlayerOutfit events
-            if (WardrobeManager.Instance != null && WardrobeManager.Instance.PlayerOutfitProp != null)
+            // Get all available categories from OutfitPartResolver
+            var categories = System.Enum.GetValues(typeof(OutfitPartResolver.Category));
+
+            for (int i = 0; i < categories.Length; i++)
             {
-                var outfit = WardrobeManager.Instance.PlayerOutfitProp;
-                outfit.OnOutfitChanged += OnOutfitChanged;
-                outfit.OnPreviewChanged += OnPreviewChanged;
+                var cat = (OutfitPartResolver.Category)categories.GetValue(i);
+                var btnGO = Instantiate(categoryButtonPrefab, categoryContainer);
+                btnGO.name = $"CategoryButton_{cat}";
+                btnGO.SetActive(true);
+
+                var btn = btnGO.GetComponent<Button>();
+                var txt = btnGO.GetComponentInChildren<Text>();
+                if (txt != null) txt.text = cat.ToString();
+
+                var capturedCat = cat;
+                btn.onClick.AddListener(() => OnCategorySelected(capturedCat));
+                categoryButtons.Add(btn);
+
+                // Initialize category item list
+                if (!categoryItems.ContainsKey(cat))
+                    categoryItems[cat] = new List<WardrobeItemData>();
             }
 
-            BuildOutfitGrid();
-            UpdateCurrentPreview();
+            // Select the default category
+            SelectCategoryButton(currentCategory);
         }
 
-        /// <summary>Set texture RawImage dari sumber cermin (null-safe). Tanpa ini RawImage render putih.</summary>
-        /// <summary>Set texture RawImage dari sumber cermin (null-safe). Tanpa ini RawImage render putih.</summary>
-        private void RefreshMirrorTexture()
+        private void OnCategorySelected(OutfitPartResolver.Category cat)
         {
-            if (mirrorRawImage == null)
-            {
-                Debug.LogWarning("[WardrobeUI] mirrorRawImage null, tidak bisa assign texture.");
-                return;
-            }
-
-            if (mirrorCamera == null)
-                mirrorCamera = FindFirstObjectByType<MirrorCamera>(FindObjectsInactive.Include);
-
-            if (mirrorCamera == null)
-            {
-                Debug.LogWarning("[WardrobeUI] MirrorCamera tidak ditemukan -> RawImage tetap putih. Wire field 'mirrorCamera' di scene.");
-                return;
-            }
-
-            if (mirrorCamera.MirrorTexture == null)
-            {
-                Debug.LogWarning("[WardrobeUI] MirrorCamera.MirrorTexture masih null -> RawImage tetap putih.");
-                return;
-            }
-
-            // DIRECT ASSIGN: Bypass property getter, assign directly to RawImage
-            mirrorRawImage.texture = mirrorCamera.MirrorTexture;
-            Debug.Log("[WardrobeUI] MirrorRawImage texture assigned: " + mirrorCamera.MirrorTexture.name);
+            currentCategory = cat;
+            SelectCategoryButton(cat);
+            RefreshItemGrid(cat);
+            if (previewController != null)
+                previewController.CenterView();
         }
 
-        /// <summary>Panggil ulang assign texture kapan pun (mis. dari WardrobeManager setelah blend selesai).</summary>
-        /// <summary>Panggil ulang assign texture kapan pun (mis. dari WardrobeManager setelah blend selesai).</summary>
-        public void ForceRefreshMirror()
+        private void SelectCategoryButton(OutfitPartResolver.Category cat)
         {
-            RefreshMirrorTexture();
+            for (int i = 0; i < categoryButtons.Count; i++)
+            {
+                var img = categoryButtons[i].GetComponentInChildren<Image>();
+                if (img == null) continue;
+
+                bool isSelected = (OutfitPartResolver.Category)i == cat;
+                img.color = isSelected ? categorySelectedColor : categoryNormalColor;
+            }
         }
 
-        /// <summary>Sumber texture: preferensi referensi RT langsung, fallback ke MirrorCamera.MirrorTexture.</summary>
-        public Texture MirrorTextureSource =>
-            mirrorRenderTexture != null ? mirrorRenderTexture : (mirrorCamera != null ? mirrorCamera.MirrorTexture : null);
-
-        private void Update()
+        private void RefreshItemGrid(OutfitPartResolver.Category category)
         {
-            // Self-heal: selama panel aktif, pastikan texture mirror selalu terpasang.
-            // Menangani kasus MirrorCamera meng-recreate/me-release RT setelah OnEnable.
-            if (mirrorRawImage != null && mirrorRawImage.texture != MirrorTextureSource)
+            if (itemGridContent == null || itemSlotPrefab == null || previewController == null) return;
+
+            // Get items for this category
+            List<WardrobeItemData> items = null;
+            if (categoryItems.ContainsKey(category))
             {
-                Texture current = MirrorTextureSource;
-                if (current != null)
+                items = categoryItems[category];
+            }
+            else
+            {
+                // Try to load items from somewhere - for now, create some default test items
+                items = LoadDefaultItemsForCategory(category);
+                categoryItems[category] = items;
+            }
+
+            // Clear existing slots
+            foreach (var slot in itemSlots)
+                if (slot != null) Destroy(slot.gameObject);
+            itemSlots.Clear();
+
+            // Calculate grid layout
+            int rowCount = Mathf.CeilToInt((float)items.Count / gridColumns);
+
+            // Setup GridLayoutGroup
+            GridLayoutGroup gridLayout = itemGridContent.GetComponent<GridLayoutGroup>();
+            if (gridLayout == null) gridLayout = itemGridContent.gameObject.AddComponent<GridLayoutGroup>();
+
+            gridLayout.cellSize = gridCellSize;
+            gridLayout.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
+            gridLayout.constraintCount = gridColumns;
+            gridLayout.startAxis = GridLayoutGroup.Axis.Vertical;
+            gridLayout.childAlignment = TextAnchor.UpperCenter;
+
+            // Instantiate slots for each item
+            for (int i = 0; i < items.Count; i++)
+            {
+                var slotGO = Instantiate(itemSlotPrefab, itemGridContent);
+                slotGO.name = $"ItemSlot_{items[i].displayName}";
+
+                var slot = slotGO.GetComponent<ItemSlot>();
+                if (slot == null)
+                    slot = slotGO.AddComponent<ItemSlot>();
+
+                // Configure the slot
+                slot.Setup(items[i], OnItemSlotClicked);
+                slot.transform.localScale = Vector3.one;
+
+                itemSlots.Add(slot);
+            }
+
+            // Ensure content size fits
+            if (itemGridScrollRect != null)
+            {
+                // Recalculate layout
+                var rectTransform = itemGridContent.GetComponent<RectTransform>();
+                if (rectTransform != null)
                 {
-                    mirrorRawImage.texture = current;
-                    Debug.Log("[WardrobeUI] Update: Re-assigned mirror texture: " + current.name);
+                    LayoutRebuilder.ForceRebuildLayoutImmediate(rectTransform);
+                    itemGridScrollRect.content = rectTransform;
                 }
+            }
+        }
+
+        private List<WardrobeItemData> LoadDefaultItemsForCategory(OutfitPartResolver.Category category)
+        {
+            var items = new List<WardrobeItemData>();
+
+            // Create default wardrobe items based on category
+            // These would normally come from ScriptableObjects or JSON config
+            int variantCount = OutfitPartResolver.GetVariantCount(category);
+
+            for (int i = 0; i < variantCount; i++)
+            {
+                var itemData = ScriptableObject.CreateInstance<WardrobeItemData>();
+                itemData.itemId = $"item_{category}_{i}";
+                itemData.displayName = $"{category} Variant {i + 1}";
+                itemData.icon = Resources.Load<Sprite>($"Icons/Wardrobe/{category}_{i}");
+
+                // Map category to appropriate variant names
+                string variantName = category switch
+                {
+                    OutfitPartResolver.Category.Top => i == 0 ? "cloth1" : "cloth2",
+                    OutfitPartResolver.Category.Bottom => i == 0 ? "pants1" : "pants2",
+                    OutfitPartResolver.Category.Shoes => i == 0 ? "shoes1_left" : "shoes2_left",
+                    OutfitPartResolver.Category.Hat => i == 0 ? "hat" : "",
+                    _ => "body"
+                };
+
+                itemData.previewPrefab = Resources.Load<GameObject>($"Prefabs/Wardrobe/{variantName}");
+                itemData.category = category;
+
+                items.Add(itemData);
+            }
+
+            return items;
+        }
+
+        private void OnItemSlotClicked(WardrobeItemData itemData)
+        {
+            if (itemData == null) return;
+
+            // Update currently selected slot highlight - find the slot component for this item
+            ItemSlot selectedSlot = null;
+            foreach (var slot in itemSlots)
+            {
+                if (slot != null && slot.GetItemData() == itemData)
+                {
+                    selectedSlot = slot;
+                    break;
+                }
+            }
+
+            if (currentlySelectedSlot != null)
+                currentlySelectedSlot.SetSelected(false);
+
+            currentlySelectedSlot = selectedSlot;
+            if (currentlySelectedSlot != null)
+                currentlySelectedSlot.SetSelected(true);
+
+            // Pass to callback if registered
+            OnItemSelected?.Invoke(itemData);
+
+            // Update the 3D preview
+            if (previewController != null)
+            {
+                previewController.SetAvatarAppearance(itemData);
+            }
+        }
+
+        private void OnSaveClicked()
+        {
+            // Save the current preview outfit data
+            if (currentPreviewOutfitData != null)
+            {
+                // TODO: Persist the selected outfit - could save to PlayerPrefs, JSON, or database
+                Debug.Log($"[WardrobeUI] Outfit saved: {currentPreviewOutfitData.displayName}");
+
+                // Optionally commit to the PlayerOutfit system
+                if (WardrobeManager.Instance != null && WardrobeManager.Instance.PlayerOutfitProp != null)
+                {
+                    // Create a new OutfitData from the selected item
+                    var outfitData = new OutfitData();
+                    outfitData.outfitName = currentPreviewOutfitData.displayName;
+                    outfitData.icon = currentPreviewOutfitData.icon;
+                    outfitData.topVariant = currentPreviewOutfitData.category == OutfitPartResolver.Category.Top ? 1 : 0;
+                    outfitData.bottomVariant = currentPreviewOutfitData.category == OutfitPartResolver.Category.Bottom ? 1 : 0;
+                    outfitData.shoesVariant = currentPreviewOutfitData.category == OutfitPartResolver.Category.Shoes ? 1 : 0;
+                    outfitData.hatVariant = currentPreviewOutfitData.category == OutfitPartResolver.Category.Hat ? 1 : 0;
+                    outfitData.description = $"Custom outfit: {currentPreviewOutfitData.displayName}";
+
+                    // Apply to player
+                    WardrobeManager.Instance.PlayerOutfitProp.TryOn(outfitData);
+                    WardrobeManager.Instance.PlayerOutfitProp.Commit();
+                }
+            }
+
+            // Close wardrobe
+            OnWardrobeClosed?.Invoke();
+        }
+
+        private void OnExitClicked()
+        {
+            // Revert any changes and close
+            OnCancelClicked();
+        }
+
+        private void OnCancelClicked()
+        {
+            // Reset to previous state
+            if (currentlySelectedSlot != null)
+                currentlySelectedSlot.SetSelected(false);
+            currentlySelectedSlot = null;
+
+            // Reset preview to default
+            if (previewController != null)
+                previewController.CenterView();
+
+            OnWardrobeClosed?.Invoke();
+        }
+
+        // Public methods for external use
+
+        /// <summary>
+        /// Register category items from external source (e.g., WardrobeManager)
+        /// </summary>
+        public void RegisterCategoryItems(OutfitPartResolver.Category category, List<WardrobeItemData> items)
+        {
+            if (!categoryItems.ContainsKey(category))
+                categoryItems[category] = new List<WardrobeItemData>();
+
+            categoryItems[category].Clear();
+            categoryItems[category].AddRange(items);
+
+            // If this is the currently selected category, refresh the grid
+            if (currentCategory == category)
+                RefreshItemGrid(category);
+        }
+
+        /// <summary>
+        /// Set the current preview outfit data (called from PreviewController or other systems)
+        /// </summary>
+        public void SetCurrentPreviewOutfit(WardrobeItemData outfitData)
+        {
+            currentPreviewOutfitData = outfitData;
+
+            // Update the preview image if we have an icon
+            if (previewRawImage != null && outfitData != null && outfitData.icon != null)
+            {
+                // Note: RawImage.sprite works with Sprite, but we store Texture in WardrobeItemData
+                // This would need conversion or we use a different approach
+                // For now, just log
+                Debug.Log($"[WardrobeUI] Preview set: {outfitData?.displayName}");
             }
         }
 
         private void OnDestroy()
         {
-            if (WardrobeManager.Instance != null && WardrobeManager.Instance.PlayerOutfitProp != null)
+            // Clean up button listeners
+            if (saveButton != null)
+                saveButton.onClick.RemoveListener(OnSaveClicked);
+
+            if (exitButton != null)
+                exitButton.onClick.RemoveListener(OnExitClicked);
+
+            if (cancelButton != null)
+                cancelButton.onClick.RemoveListener(OnCancelClicked);
+
+            // Clear category button listeners
+            foreach (var btn in categoryButtons)
             {
-                var outfit = WardrobeManager.Instance.PlayerOutfitProp;
-                outfit.OnOutfitChanged -= OnOutfitChanged;
-                outfit.OnPreviewChanged -= OnPreviewChanged;
+                if (btn != null)
+                    btn.onClick.RemoveAllListeners();
             }
-        }
-
-        private void BuildOutfitGrid()
-        {
-            if (outfitGrid == null || outfitButtonPrefab == null) return;
-
-            // Clear existing
-            foreach (var btn in outfitButtons)
-            {
-                if (btn != null) Destroy(btn.gameObject);
-            }
-            outfitButtons.Clear();
-            outfitSlotData.Clear();
-
-            var outfit = WardrobeManager.Instance?.PlayerOutfitProp;
-            if (outfit == null) return;
-
-            // Slot 0 (kiri-atas) = Default: tanpa outfit -> model player asli.
-            outfitButtons.Add(CreateOutfitButton(null, "Default", outfit));
-            outfitSlotData.Add(null);
-
-            for (int i = 0; i < outfit.unlockedOutfits.Count; i++)
-            {
-                var data = outfit.unlockedOutfits[i];
-                if (data == null) continue;
-                outfitButtons.Add(CreateOutfitButton(data, data.outfitName, outfit));
-                outfitSlotData.Add(data);
-            }
-
-            SelectOutfitButton(outfit.currentOutfit);
-        }
-
-        private Button CreateOutfitButton(OutfitData data, string label, PlayerOutfit outfit)
-        {
-            var btnGO = Instantiate(outfitButtonPrefab, outfitGrid);
-            // FIX BUG layar putih: prefab tombol dibuat SetActive(false) di setup,
-            // jadi wajib aktifkan kembali agar grid tampil.
-            btnGO.SetActive(true);
-            var btn = btnGO.GetComponent<Button>();
-            var img = btnGO.GetComponentInChildren<Image>();
-            var txt = btnGO.GetComponentInChildren<Text>();
-
-            if (img != null && data != null && data.icon != null)
-                img.sprite = data.icon;
-
-            if (txt != null)
-                txt.text = label;
-
-            OutfitData captured = data; // null untuk Default
-            btn.onClick.AddListener(() =>
-            {
-                if (captured == null)
-                    WardrobeManager.Instance.PreviewDefault();
-                else
-                    WardrobeManager.Instance.TryOnOutfit(captured);
-                SelectOutfitButton(captured);
-            });
-
-            return btn;
-        }
-
-        private void SelectOutfitButton(OutfitData outfit)
-        {
-            currentlySelectedOutfit = outfit;
-
-            for (int i = 0; i < outfitButtons.Count; i++)
-            {
-                var btn = outfitButtons[i];
-                var img = btn.GetComponentInChildren<Image>();
-                if (img == null) continue;
-
-                // Identitas objek: null == Default, sisanya kecocokan referensi OutfitData.
-                bool isSelected = i < outfitSlotData.Count && outfitSlotData[i] == outfit;
-                img.color = isSelected ? selectedColor : normalColor;
-            }
-        }
-
-        private void OnOutfitChanged(OutfitData outfit)
-        {
-            UpdateCurrentPreview();
-            // Update button highlight
-            SelectOutfitButton(outfit);
-        }
-
-        private void OnPreviewChanged(OutfitData outfit)
-        {
-            // Update mirror raw image if needed (handled by MirrorCamera)
-            // But we can update a small preview thumbnail here
-            if (currentPreviewImage != null && outfit != null && outfit.icon != null)
-                currentPreviewImage.sprite = outfit.icon;
-
-            // Sinkronkan highlight tombol (termasuk pilihan Default/null).
-            SelectOutfitButton(outfit);
-        }
-
-        private void UpdateCurrentPreview()
-        {
-            var outfit = WardrobeManager.Instance?.PlayerOutfitProp?.currentOutfit;
-            if (currentPreviewImage != null && outfit != null && outfit.icon != null)
-                currentPreviewImage.sprite = outfit.icon;
-        }
-
-        private void OnSaveClicked()
-        {
-            WardrobeManager.Instance.CommitOutfit();
-            WardrobeManager.Instance.ExitWardrobeMode();
-        }
-
-        private void OnCancelClicked()
-        {
-            WardrobeManager.Instance.RevertOutfit();
-            WardrobeManager.Instance.ExitWardrobeMode();
+            categoryButtons.Clear();
         }
     }
 }
