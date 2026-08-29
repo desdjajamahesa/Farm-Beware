@@ -1,4 +1,5 @@
 using FeaturesInteraction;
+using FeaturesWardrobe;
 using UnityEngine;
 
 /// <summary>
@@ -18,6 +19,11 @@ public class HoverLabelController : MonoBehaviour
 
     private GameObject lastTarget;
     private Highlightable lastHighlight;
+
+    private void Awake()
+    {
+        this.enabled = true;
+    }
 
     private void OnEnable()
     {
@@ -43,6 +49,13 @@ public class HoverLabelController : MonoBehaviour
 
         // Sembunyikan saat Trophy Mode (mode khusus rak piala).
         if (TrophySystemManager.Instance != null && TrophySystemManager.Instance.IsInTrophyMode)
+        {
+            ClearAll();
+            return;
+        }
+
+        // Sembunyikan saat Wardrobe Mode
+        if (WardrobeManager.IsInWardrobeMode)
         {
             ClearAll();
             return;
@@ -93,13 +106,13 @@ public class HoverLabelController : MonoBehaviour
         }
     }
 
-    private void ClearAll()
+    public void ClearAll()
     {
         ClearHighlight();
         HideIfShowing();
     }
 
-    private void ClearHighlight()
+    public void ClearHighlight()
     {
         if (lastHighlight != null)
         {
@@ -109,7 +122,7 @@ public class HoverLabelController : MonoBehaviour
         lastTarget = null;
     }
 
-    private void HideIfShowing()
+    public void HideIfShowing()
     {
         if (!isShowing)
             return;

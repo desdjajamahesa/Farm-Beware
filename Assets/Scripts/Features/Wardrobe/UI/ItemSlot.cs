@@ -47,6 +47,15 @@ namespace FeaturesWardrobe
             itemData = data;
             onClickCallback = clickCallback;
 
+            // Ensure button listener is set up (in case Awake didn't run)
+            if (button == null)
+                button = GetComponent<Button>();
+            if (button != null && onClickCallback != null)
+            {
+                button.onClick.RemoveAllListeners();
+                button.onClick.AddListener(OnSlotClicked);
+            }
+
             if (iconImage != null && data != null && data.icon != null)
             {
                 iconImage.sprite = data.icon;

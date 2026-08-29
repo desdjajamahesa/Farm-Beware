@@ -1,3 +1,4 @@
+using FeaturesWardrobe;
 using UnityEngine;
 
 namespace FeaturesInteraction
@@ -13,8 +14,16 @@ namespace FeaturesInteraction
 
         private IInteractable currentInteractable;
 
+        private void Awake()
+        {
+            this.enabled = true;
+        }
+
         void Update()
         {
+            // Early exit if in Wardrobe Mode (prevents interaction detection)
+            if (WardrobeManager.IsInWardrobeMode) return;
+
             currentInteractable = FindClosestInteractable();
         }
 
@@ -71,8 +80,11 @@ namespace FeaturesInteraction
 
         public void OnInteractInput()
         {
-            if (currentInteractable != null)
-                currentInteractable.Interact(gameObject);
+            if (WardrobeManager.IsInWardrobeMode) return;
+
+            if (currentInteractable == null) return;
+
+            currentInteractable.Interact(gameObject);
         }
 
         // Target interaktif terdekat (untuk hover UI). Null bila tidak ada objek interaktif.

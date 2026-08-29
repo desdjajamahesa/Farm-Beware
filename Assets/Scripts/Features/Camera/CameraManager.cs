@@ -178,8 +178,17 @@ namespace FeaturesCamera
                 wardrobeCamera.enabled = false;
 
             // Unlock input, keep cursor free
+            if (playerControl == null)
+                playerControl = FindObjectOfType<PlayerControl>();
             if (playerControl != null)
+            {
                 playerControl.isInputLocked = false;
+                Debug.Log("[DEBUG] CameraManager successfully unlocked PlayerControl.");
+            }
+            else
+            {
+                Debug.LogWarning("[DEBUG] CameraManager could not find PlayerControl to unlock!");
+            }
 
             Cursor.lockState = CursorLockMode.None;
             Cursor.visible = true;
@@ -250,6 +259,8 @@ namespace FeaturesCamera
             wardrobeCamera.enabled = true;
 
             // Lock input, free cursor
+            if (playerControl == null)
+                playerControl = FindObjectOfType<PlayerControl>();
             if (playerControl != null)
                 playerControl.isInputLocked = true;
 

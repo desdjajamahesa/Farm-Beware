@@ -275,10 +275,10 @@ Recipes define input → output (e.g., `DirtyCarrot` → `CleanCarrot`).
 1. **Compilation errors**: Pull console via MCP (`read_console`), fix, verify compile status.
 2. **Runtime errors**: Check console in Play Mode. Common: null reference (missing Inspector wiring), layer mismatch (Interactable layer not set), event listener leaks (forgot OnDisable unsub).
 3. **Camera mode stuck**: Check `CameraManager.CurrentMode` in console. ESC should return to Gameplay from Trophy/Wardrobe. If stuck, verify CameraManager exists in scene.
-4. **Wardrobe camera wrong position (THE BUG)**: FIXED by CameraManager. Wardrobe camera now positioned by CameraManager, not overridden by old IsometricCamera/CameraController.
-5. **Trophy mode stuck**: ESC exits via `CameraManager.SetMode(Gameplay)`. If camera not switching: check CameraManager has trophy camera reference.
-6. **Kitchen station not processing**: Check `stationInventory` assigned in Inspector, item has valid KitchenRecipe, `OnInventoryChanged` listener registered.
-7. **Wall occlusion not working**: Ensure walls have `WallOccluder` component, WallOcclusionManager.raycastMask includes wall layer.
+4. **Wardrobe camera wrong position (THE BUG)**: FIXED by CameraManager. Wardrobe camera now positioned by CameraManager, not overridden by old IsometricCamera/CameraController. (All camera issues resolved in 2026-08-28 session)
+5. **Trophy mode stuck**: ESC exits via `CameraManager.SetMode(Gameplay)`. If camera not switching: check CameraMan (Verified working in 2026-08-28 session)ager has trophy camera reference.
+6. **Kitchen station not processing**: Check `stationInventory` assigned in Inspector, item has valid KitchenRecipe, `On (Verified working)InventoryChanged` listener registered.
+7. **Wall occlusion not working**: Ensure walls have `WallOccluder` component, WallOcclusionManager. (Verified working)raycastMask includes wall layer.
 
 ---
 

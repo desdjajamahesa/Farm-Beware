@@ -35,13 +35,20 @@ namespace FeaturesWardrobe
 
         private bool isInitialized;
         private bool _textureCreatedByScript = false;
+        private AudioListener _mirrorAudioListener;
 
         private void Awake()
         {
+            // Cache AudioListener
+            if (mirrorCamera != null)
+                _mirrorAudioListener = mirrorCamera.GetComponent<AudioListener>();
+
             // Ambil kamera dari child (MirrorInnerCam) jika di Inspector kosong
             if (mirrorCamera == null)
             {
                 mirrorCamera = GetComponentInChildren<Camera>();
+                if (mirrorCamera != null)
+                    _mirrorAudioListener = mirrorCamera.GetComponent<AudioListener>();
             }
 
             // Pastikan mirrorSurface memiliki nilai agar kamera bisa dikalkulasi posisinya
@@ -56,6 +63,10 @@ namespace FeaturesWardrobe
             {
                 parentCam.enabled = false;
             }
+
+            // Disable AudioListener by default to avoid "2 audio listeners" warning
+            if (_mirrorAudioListener != null)
+                _mirrorAudioListener.enabled = false;
 
             if (mirrorCamera != null)
             {

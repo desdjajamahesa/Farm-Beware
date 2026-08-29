@@ -134,7 +134,7 @@ public class InventoryManagerUI : MonoBehaviour
             return;
 
         // Guard: jangan buka inventory jika sedang Wardrobe Mode
-        if (WardrobeManager.Instance != null && WardrobeManager.Instance.IsInWardrobeMode)
+        if (WardrobeManager.IsInWardrobeMode)
             return;
 
         if (currentStorageInventory != null)

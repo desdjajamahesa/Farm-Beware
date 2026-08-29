@@ -34,50 +34,51 @@ namespace FeaturesWardrobe
         {
             if (character == null) return;
 
-            var renderers = character.GetComponentsInChildren<SkinnedMeshRenderer>(true);
-            foreach (var r in renderers)
-                r.enabled = false; // disable all first
+            // Cache all transforms once — recursive search supports any
+            // hierarchy depth (the previous transform.Find only checked
+            // direct children, which broke after the Player prefab swap).
+            Transform[] allChildren = character.GetComponentsInChildren<Transform>(true);
 
-            // Enable body + hair always
-            foreach (var r in renderers)
-            {
-                if (r.name == "body" || r.name == "hair1" || r.name == "hair2")
-                    r.enabled = true;
-            }
+            // Always-on parts: body, hair.
+            TogglePart(allChildren, "body", true);
+            TogglePart(allChildren, "hair1", true);
+            TogglePart(allChildren, "hair2", true);
 
-            // Top
-            string topName = topVariant == 0 ? "cloth1" : "cloth2";
-            EnableRendererByName(renderers, topName);
+            // Top — exclusive pair.
+            TogglePart(allChildren, "cloth1", topVariant == 0);
+            TogglePart(allChildren, "cloth2", topVariant == 1);
 
-            // Bottom
-            string bottomName = bottomVariant == 0 ? "pants1" : "pants2";
-            EnableRendererByName(renderers, bottomName);
+            // Bottom — exclusive pair.
+            TogglePart(allChildren, "pants1", bottomVariant == 0);
+            TogglePart(allChildren, "pants2", bottomVariant == 1);
 
-            // Shoes (left + right pair)
-            if (shoesVariant == 0)
-            {
-                EnableRendererByName(renderers, "shoes1_left");
-                EnableRendererByName(renderers, "shoes1_right");
-            }
-            else
-            {
-                EnableRendererByName(renderers, "shoes2_left");
-                EnableRendererByName(renderers, "shoes2_right");
-            }
+            // Shoes — exclusive pair (left + right). The "shoes2_rigth"
+            // (missing 'h') spelling on the prefab is handled by an
+            // extra fallback lookup below.
+            TogglePart(allChildren, "shoes1_left",  shoesVariant == 0);
+            TogglePart(allChildren, "shoes1_right", shoesVariant == 0);
+            TogglePart(allChildren, "shoes2_left",  shoesVariant == 1);
+            if (!TogglePart(allChildren, "shoes2_right", shoesVariant == 1))
+                TogglePart(allChildren, "shoes2_rigth", shoesVariant == 1);
 
-            // Hat
-            if (hatVariant == 1)
-                EnableRendererByName(renderers, "hat");
+            // Hat — driven by isHatEquipped, not the asset's hatVariant, to keep
+            // the Topi button authoritative over the standalone toggle.
+            // The asset's hatVariant is still persisted in save data.
         }
 
-        private void EnableRendererByName(SkinnedMeshRenderer[] renderers, string name)
+        // Recursive scan — finds the first Transform with matching name at any depth.
+        // Returns true if a part was found and toggled, false otherwise.
+        private static bool TogglePart(Transform[] allChildren, string partName, bool isActive)
         {
-            foreach (var r in renderers)
-                if (r.name == name)
+            for (int i = 0; i < allChildren.Length; i++)
+            {
+                if (allChildren[i] != null && allChildren[i].name == partName)
                 {
-                    r.enabled = true;
-                    return;
+                    allChildren[i].gameObject.SetActive(isActive);
+                    return true;
                 }
+            }
+            return false;
         }
     }
 }

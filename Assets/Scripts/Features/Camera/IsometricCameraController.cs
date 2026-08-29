@@ -94,13 +94,12 @@ namespace FeaturesCamera
             if (target == null)
                 return;
 
-            // Handle orbit input
+            // Handle orbit input (new Input System only)
             bool isOrbiting = false;
             float deltaX = 0f;
             float deltaY = 0f;
             float scrollDelta = 0f;
 
-            #if ENABLE_INPUT_SYSTEM
             if (Mouse.current != null)
             {
                 isOrbiting = Mouse.current.rightButton.isPressed;
@@ -111,27 +110,6 @@ namespace FeaturesCamera
                 Vector2 scroll = Mouse.current.scroll.ReadValue();
                 scrollDelta = scroll.y * 0.005f;
             }
-            #endif
-
-            #if ENABLE_LEGACY_INPUT_MANAGER
-            if (!isOrbiting)
-            {
-                try
-                {
-                    if (Input.GetMouseButton(1))
-                    {
-                        isOrbiting = true;
-                        deltaX = Input.GetAxis("Mouse X") * 4f;
-                        deltaY = Input.GetAxis("Mouse Y") * 4f;
-                    }
-                    scrollDelta = Input.GetAxis("Mouse ScrollWheel") * zoomSpeed;
-                }
-                catch
-                {
-                    // Ignore legacy input exception
-                }
-            }
-            #endif
 
             // Apply orbit
             if (allowMouseOrbit && isOrbiting)

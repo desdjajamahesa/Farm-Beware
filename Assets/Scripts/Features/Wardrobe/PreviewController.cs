@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.InputSystem;
 using System.Collections;
 using FarmBeware.Logic;
 
@@ -50,11 +51,31 @@ namespace FeaturesWardrobe
 
         private void Awake()
         {
+            // Idempotent: if already initialized, skip
+            if (previewCamera != null && previewRenderTexture != null && previewRenderTexture.IsCreated() && avatarClone != null)
+                return;
+
+            InitializeInternal();
+        }
+
+        /// <summary>
+        /// Public initialization method - can be called manually if Awake didn't run.
+        /// </summary>
+        public void Initialize()
+        {
+            InitializeInternal();
+        }
+
+        private void InitializeInternal()
+        {
             // Ensure we have a render texture if not assigned
             if (previewRenderTexture == null)
+            {
                 previewRenderTexture = new RenderTexture(512, 512, 24);
-            previewRenderTexture.name = "WardrobePreviewRT";
-            previewRenderTexture.Create();
+                previewRenderTexture.name = "WardrobePreviewRT";
+            }
+            if (!previewRenderTexture.IsCreated())
+                previewRenderTexture.Create();
 
             // Ensure we have a preview camera if not assigned
             if (previewCamera == null)
@@ -70,6 +91,18 @@ namespace FeaturesWardrobe
 
             // Initialize avatar
             InitializeAvatar();
+        }
+
+        private void OnValidate()
+        {
+            // Editor-only: warn if refs missing
+#if UNITY_EDITOR
+            if (!Application.isPlaying)
+            {
+                if (defaultAvatarPrefab == null)
+                    Debug.LogWarning($"[PreviewController] {name}: defaultAvatarPrefab not assigned in Inspector");
+            }
+#endif
         }
 
         private void OnEnable()
@@ -97,6 +130,11 @@ namespace FeaturesWardrobe
             previewCamera.cullingMask = previewLayer; // Only render preview layer
             previewCamera.depth = -10f; // Lower priority than main camera
             previewCamera.useOcclusionCulling = false;
+
+            // Disable AudioListener to avoid "2 audio listeners" warning
+            var audioListener = previewCamera.GetComponent<AudioListener>();
+            if (audioListener != null)
+                audioListener.enabled = false;
 
             // Position camera
             previewCamera.transform.localPosition = new Vector3(0f, 3f, 8f);
@@ -159,26 +197,27 @@ namespace FeaturesWardrobe
         private void HandleDragRotate()
         {
             // Check if mouse is over the RawImage
+            var mousePos = Mouse.current != null ? Mouse.current.position.ReadValue() : Vector2.zero;
             if (!RectTransformUtility.RectangleContainsScreenPoint(
-                previewRawImage.rectTransform, Input.mousePosition))
+                previewRawImage.rectTransform, mousePos))
             {
                 isRotating = false;
                 return;
             }
 
-            if (Input.GetMouseButtonDown(0))
+            if (Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame)
             {
                 isRotating = true;
-                lastMousePos = Input.mousePosition;
+                lastMousePos = mousePos;
             }
-            else if (Input.GetMouseButtonUp(0))
+            else if (Mouse.current != null && Mouse.current.leftButton.wasReleasedThisFrame)
             {
                 isRotating = false;
             }
 
             if (!isRotating) return;
 
-            Vector2 currentMousePos = Input.mousePosition;
+            Vector2 currentMousePos = mousePos;
             Vector2 delta = currentMousePos - lastMousePos;
             lastMousePos = currentMousePos;
 

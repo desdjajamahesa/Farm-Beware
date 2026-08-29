@@ -3,6 +3,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
 using FarmBeware.Logic;
+using FeaturesWardrobe;
 
 namespace FeaturesWardrobe
 {
@@ -29,17 +30,20 @@ namespace FeaturesWardrobe
         [SerializeField] private ScrollRect itemGridScrollRect;
         [SerializeField] private Transform itemGridContent;
         [SerializeField] private GameObject itemSlotPrefab;
-        [SerializeField] private Vector2 gridCellSize = new Vector2(80f, 80f);
-        [SerializeField] private int gridColumns = 4;
+        [SerializeField] private Vector2 gridCellSize = new Vector2(160f, 240f);
+        [SerializeField] private int gridColumns = 3;
 
         [Header("Live 3D Preview (Center-Right)")]
-        [SerializeField] public PreviewController previewController;
         [SerializeField] private RawImage previewRawImage;
 
         [Header("Action Buttons (Right)")]
         [SerializeField] private Button saveButton;
         [SerializeField] private Button exitButton;
         [SerializeField] private Button cancelButton;
+        [SerializeField] private Button toggleHatButton;
+
+        [Header("Outfit Mesh Swapper")]
+        [SerializeField] private OutfitMeshSwapper outfitMeshSwapper;
 
         // State tracking
         private OutfitPartResolver.Category currentCategory = OutfitPartResolver.Category.Top;
@@ -57,87 +61,148 @@ namespace FeaturesWardrobe
 
         private void Awake()
         {
-            // Initialize UI references
             InitializeReferences();
-
-            // Setup button listeners
-            SetupButtonListeners();
-
-            // Build initial state
             BuildCategoryButtons();
             RefreshItemGrid(currentCategory);
         }
 
-        private void InitializeReferences()
+        private void Start()
         {
-            // Try to find references if not assigned
-            if (wardrobePanel == null)
-                wardrobePanel = gameObject?.transform?.Find("WardrobePanel")?.gameObject;
-
-            if (categoryContainer == null)
-                categoryContainer = transform.Find("CategoryContainer");
-
-            if (itemGridContent == null)
-                itemGridContent = transform.Find("ItemGrid/Content");
-
-            if (previewController == null)
-                previewController = GetComponentInChildren<PreviewController>(true);
-
-            if (saveButton == null)
-                saveButton = transform.Find("ActionButtons/SaveButton")?.GetComponent<Button>();
-
-            if (exitButton == null)
-                exitButton = transform.Find("ActionButtons/ExitButton")?.GetComponent<Button>();
-
-            if (cancelButton == null)
-                cancelButton = transform.Find("ActionButtons/CancelButton")?.GetComponent<Button>();
+            WireActionButtons();
+            CreateToggleHatButtonIfMissing();
         }
 
-        private void SetupButtonListeners()
+        private void CreateToggleHatButtonIfMissing()
         {
-            if (saveButton != null)
-                saveButton.onClick.AddListener(OnSaveClicked);
+            if (toggleHatButton != null) return;
+            var toggleHatBtnTransform = transform.Find("ToggleHatButton");
+            if (toggleHatBtnTransform == null)
+            {
+                var cancelBtnTransform = transform.Find("CancelButton");
+                if (cancelBtnTransform != null)
+                {
+                    var toggleHatBtnGO = Instantiate(cancelBtnTransform.gameObject, cancelBtnTransform.parent);
+                    toggleHatBtnGO.name = "ToggleHatButton";
+                    var cancelBtnRect = cancelBtnTransform.GetComponent<RectTransform>();
+                    var toggleHatBtnRect = toggleHatBtnGO.GetComponent<RectTransform>();
+                    if (cancelBtnRect != null && toggleHatBtnRect != null)
+                    {
+                        toggleHatBtnRect.anchorMin = cancelBtnRect.anchorMin;
+                        toggleHatBtnRect.anchorMax = cancelBtnRect.anchorMax;
+                        toggleHatBtnRect.pivot = cancelBtnRect.pivot;
+                        toggleHatBtnRect.anchoredPosition = cancelBtnRect.anchoredPosition + new Vector2(0, -60);
+                        toggleHatBtnRect.sizeDelta = cancelBtnRect.sizeDelta;
+                    }
+                    var txt = toggleHatBtnGO.GetComponentInChildren<Text>();
+                    if (txt != null) txt.text = "Topi";
+                    var btn = toggleHatBtnGO.GetComponent<Button>();
+                    if (btn != null)
+                    {
+                        btn.onClick.RemoveAllListeners();
+                        btn.onClick.AddListener(OnToggleHatClicked);
+                        toggleHatButton = btn;
+                    }
+                }
+            }
+        }
 
-            if (exitButton != null)
-                exitButton.onClick.AddListener(OnExitClicked);
+        private void OnEnable()
+        {
+            WireActionButtons();
+        }
 
-            if (cancelButton != null)
-                cancelButton.onClick.AddListener(OnCancelClicked);
+        private void InitializeReferences()
+        {
+            if (wardrobePanel == null)
+                wardrobePanel = gameObject?.transform?.Find("WardrobePanel")?.gameObject;
+            if (categoryContainer == null)
+                categoryContainer = transform.Find("CategoryContainer");
+            if (itemGridContent == null)
+                itemGridContent = transform.Find("ItemGrid/Content");
+        }
+
+        private void WireActionButtons()
+        {
+            var saveBtnTransform = transform.Find("SaveButton");
+            if (saveBtnTransform != null)
+            {
+                var btn = saveBtnTransform.GetComponent<Button>();
+                if (btn != null)
+                {
+                    btn.onClick.RemoveAllListeners();
+                    btn.onClick.AddListener(() =>
+                    {
+                        OnSaveClicked();
+                        if (PlayerOutfit.Instance != null) PlayerOutfit.Instance.SaveWardrobe();
+                        if (WardrobeManager.Instance != null) WardrobeManager.Instance.ExitWardrobeMode();
+                    });
+                    saveButton = btn;
+                }
+            }
+            var exitBtnTransform = transform.Find("ExitButton");
+            if (exitBtnTransform != null)
+            {
+                var btn = exitBtnTransform.GetComponent<Button>();
+                if (btn != null)
+                {
+                    btn.onClick.RemoveAllListeners();
+                    btn.onClick.AddListener(() =>
+                    {
+                        OnExitClicked();
+                        if (WardrobeManager.Instance != null) WardrobeManager.Instance.ExitWardrobeMode();
+                    });
+                    exitButton = btn;
+                }
+            }
+            var cancelBtnTransform = transform.Find("CancelButton");
+            if (cancelBtnTransform != null)
+            {
+                var btn = cancelBtnTransform.GetComponent<Button>();
+                if (btn != null)
+                {
+                    btn.onClick.RemoveAllListeners();
+                    btn.onClick.AddListener(() =>
+                    {
+                        if (WardrobeManager.Instance != null) WardrobeManager.Instance.ExitWardrobeMode();
+                    });
+                    cancelButton = btn;
+                }
+            }
+            var toggleHatBtnTransform = transform.Find("ToggleHatButton");
+            if (toggleHatBtnTransform != null)
+            {
+                var btn = toggleHatBtnTransform.GetComponent<Button>();
+                if (btn != null)
+                {
+                    btn.onClick.RemoveAllListeners();
+                    btn.onClick.AddListener(OnToggleHatClicked);
+                    toggleHatButton = btn;
+                }
+            }
         }
 
         private void BuildCategoryButtons()
         {
             if (categoryContainer == null || categoryButtonPrefab == null) return;
-
-            // Clear existing buttons
             foreach (var btn in categoryButtons)
                 if (btn != null) Destroy(btn.gameObject);
             categoryButtons.Clear();
-
-            // Get all available categories from OutfitPartResolver
             var categories = System.Enum.GetValues(typeof(OutfitPartResolver.Category));
-
             for (int i = 0; i < categories.Length; i++)
             {
                 var cat = (OutfitPartResolver.Category)categories.GetValue(i);
                 var btnGO = Instantiate(categoryButtonPrefab, categoryContainer);
                 btnGO.name = $"CategoryButton_{cat}";
                 btnGO.SetActive(true);
-
                 var btn = btnGO.GetComponent<Button>();
                 var txt = btnGO.GetComponentInChildren<Text>();
                 if (txt != null) txt.text = cat.ToString();
-
                 var capturedCat = cat;
                 btn.onClick.AddListener(() => OnCategorySelected(capturedCat));
                 categoryButtons.Add(btn);
-
-                // Initialize category item list
                 if (!categoryItems.ContainsKey(cat))
                     categoryItems[cat] = new List<WardrobeItemData>();
             }
-
-            // Select the default category
             SelectCategoryButton(currentCategory);
         }
 
@@ -146,8 +211,6 @@ namespace FeaturesWardrobe
             currentCategory = cat;
             SelectCategoryButton(cat);
             RefreshItemGrid(cat);
-            if (previewController != null)
-                previewController.CenterView();
         }
 
         private void SelectCategoryButton(OutfitPartResolver.Category cat)
@@ -156,68 +219,74 @@ namespace FeaturesWardrobe
             {
                 var img = categoryButtons[i].GetComponentInChildren<Image>();
                 if (img == null) continue;
-
                 bool isSelected = (OutfitPartResolver.Category)i == cat;
                 img.color = isSelected ? categorySelectedColor : categoryNormalColor;
             }
         }
 
-        private void RefreshItemGrid(OutfitPartResolver.Category category)
+        public void RefreshItemGrid(OutfitPartResolver.Category category)
         {
-            if (itemGridContent == null || itemSlotPrefab == null || previewController == null) return;
+            var playerOutfit = WardrobeManager.Instance?.PlayerOutfitProp;
+            if (itemGridContent == null || itemSlotPrefab == null || playerOutfit == null) return;
 
-            // Get items for this category
-            List<WardrobeItemData> items = null;
-            if (categoryItems.ContainsKey(category))
-            {
-                items = categoryItems[category];
-            }
-            else
-            {
-                // Try to load items from somewhere - for now, create some default test items
-                items = LoadDefaultItemsForCategory(category);
-                categoryItems[category] = items;
-            }
+            List<OutfitData> outfits = playerOutfit.unlockedOutfits;
+            if (outfits == null || outfits.Count == 0) return;
 
-            // Clear existing slots
             foreach (var slot in itemSlots)
                 if (slot != null) Destroy(slot.gameObject);
             itemSlots.Clear();
 
-            // Calculate grid layout
-            int rowCount = Mathf.CeilToInt((float)items.Count / gridColumns);
+            int rowCount = Mathf.CeilToInt((float)outfits.Count / gridColumns);
 
-            // Setup GridLayoutGroup
             GridLayoutGroup gridLayout = itemGridContent.GetComponent<GridLayoutGroup>();
-            if (gridLayout == null) gridLayout = itemGridContent.gameObject.AddComponent<GridLayoutGroup>();
-
-            gridLayout.cellSize = gridCellSize;
-            gridLayout.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
-            gridLayout.constraintCount = gridColumns;
-            gridLayout.startAxis = GridLayoutGroup.Axis.Vertical;
-            gridLayout.childAlignment = TextAnchor.UpperCenter;
-
-            // Instantiate slots for each item
-            for (int i = 0; i < items.Count; i++)
+            if (gridLayout == null)
             {
+                gridLayout = itemGridContent.gameObject.AddComponent<GridLayoutGroup>();
+                gridLayout.cellSize = gridCellSize;
+                gridLayout.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
+                gridLayout.constraintCount = gridColumns;
+                gridLayout.startAxis = GridLayoutGroup.Axis.Vertical;
+                gridLayout.childAlignment = TextAnchor.UpperCenter;
+            }
+
+            if (outfitMeshSwapper == null)
+                outfitMeshSwapper = GameObject.FindObjectOfType<OutfitMeshSwapper>();
+
+            for (int i = 0; i < outfits.Count; i++)
+            {
+                var outfit = outfits[i];
                 var slotGO = Instantiate(itemSlotPrefab, itemGridContent);
-                slotGO.name = $"ItemSlot_{items[i].displayName}";
+                slotGO.name = $"ItemSlot_{outfit.name}";
 
                 var slot = slotGO.GetComponent<ItemSlot>();
                 if (slot == null)
                     slot = slotGO.AddComponent<ItemSlot>();
 
-                // Configure the slot
-                slot.Setup(items[i], OnItemSlotClicked);
+                var itemData = CreateWardrobeItemDataFromOutfit(outfit);
+                slot.Setup(itemData, OnItemSlotClicked);
                 slot.transform.localScale = Vector3.one;
+
+                var btn = slotGO.GetComponent<Button>();
+                if (btn != null)
+                {
+                    OutfitData capturedOutfit = outfit;
+                    btn.onClick.RemoveAllListeners();
+                    btn.onClick.AddListener(() =>
+                    {
+                        var po = PlayerOutfit.Instance;
+                        if (po != null)
+                        {
+                            po.EquipOutfit(capturedOutfit);
+                            po.SaveWardrobe();
+                        }
+                    });
+                }
 
                 itemSlots.Add(slot);
             }
 
-            // Ensure content size fits
             if (itemGridScrollRect != null)
             {
-                // Recalculate layout
                 var rectTransform = itemGridContent.GetComponent<RectTransform>();
                 if (rectTransform != null)
                 {
@@ -227,22 +296,28 @@ namespace FeaturesWardrobe
             }
         }
 
+        private WardrobeItemData CreateWardrobeItemDataFromOutfit(OutfitData outfit)
+        {
+            var itemData = ScriptableObject.CreateInstance<WardrobeItemData>();
+            itemData.itemId = $"outfit_{outfit.name}";
+            itemData.displayName = outfit.outfitName;
+            itemData.icon = outfit.icon;
+            itemData.previewPrefab = outfit.fullBodyPrefab;
+            itemData.category = OutfitPartResolver.Category.Top;
+            itemData.description = outfit.description;
+            return itemData;
+        }
+
         private List<WardrobeItemData> LoadDefaultItemsForCategory(OutfitPartResolver.Category category)
         {
             var items = new List<WardrobeItemData>();
-
-            // Create default wardrobe items based on category
-            // These would normally come from ScriptableObjects or JSON config
             int variantCount = OutfitPartResolver.GetVariantCount(category);
-
             for (int i = 0; i < variantCount; i++)
             {
                 var itemData = ScriptableObject.CreateInstance<WardrobeItemData>();
                 itemData.itemId = $"item_{category}_{i}";
                 itemData.displayName = $"{category} Variant {i + 1}";
                 itemData.icon = Resources.Load<Sprite>($"Icons/Wardrobe/{category}_{i}");
-
-                // Map category to appropriate variant names
                 string variantName = category switch
                 {
                     OutfitPartResolver.Category.Top => i == 0 ? "cloth1" : "cloth2",
@@ -251,60 +326,52 @@ namespace FeaturesWardrobe
                     OutfitPartResolver.Category.Hat => i == 0 ? "hat" : "",
                     _ => "body"
                 };
-
                 itemData.previewPrefab = Resources.Load<GameObject>($"Prefabs/Wardrobe/{variantName}");
                 itemData.category = category;
-
                 items.Add(itemData);
             }
-
             return items;
         }
 
         private void OnItemSlotClicked(WardrobeItemData itemData)
         {
             if (itemData == null) return;
-
-            // Update currently selected slot highlight - find the slot component for this item
             ItemSlot selectedSlot = null;
             foreach (var slot in itemSlots)
             {
-                if (slot != null && slot.GetItemData() == itemData)
+                if (slot != null && slot.GetItemData() != null && slot.GetItemData().itemId == itemData.itemId)
                 {
                     selectedSlot = slot;
                     break;
                 }
             }
-
+            if (selectedSlot == null && itemGridContent != null)
+            {
+                var slotsInGrid = itemGridContent.GetComponentsInChildren<ItemSlot>(true);
+                foreach (var slot in slotsInGrid)
+                {
+                    if (slot != null && slot.GetItemData() != null && slot.GetItemData().itemId == itemData.itemId)
+                    {
+                        selectedSlot = slot;
+                        break;
+                    }
+                }
+            }
             if (currentlySelectedSlot != null)
                 currentlySelectedSlot.SetSelected(false);
-
             currentlySelectedSlot = selectedSlot;
             if (currentlySelectedSlot != null)
                 currentlySelectedSlot.SetSelected(true);
-
-            // Pass to callback if registered
             OnItemSelected?.Invoke(itemData);
-
-            // Update the 3D preview
-            if (previewController != null)
-            {
-                previewController.SetAvatarAppearance(itemData);
-            }
         }
 
         private void OnSaveClicked()
         {
-            // Save the current preview outfit data
             if (currentPreviewOutfitData != null)
             {
-                // TODO: Persist the selected outfit - could save to PlayerPrefs, JSON, or database
                 Debug.Log($"[WardrobeUI] Outfit saved: {currentPreviewOutfitData.displayName}");
-
-                // Optionally commit to the PlayerOutfit system
                 if (WardrobeManager.Instance != null && WardrobeManager.Instance.PlayerOutfitProp != null)
                 {
-                    // Create a new OutfitData from the selected item
                     var outfitData = new OutfitData();
                     outfitData.outfitName = currentPreviewOutfitData.displayName;
                     outfitData.icon = currentPreviewOutfitData.icon;
@@ -313,85 +380,60 @@ namespace FeaturesWardrobe
                     outfitData.shoesVariant = currentPreviewOutfitData.category == OutfitPartResolver.Category.Shoes ? 1 : 0;
                     outfitData.hatVariant = currentPreviewOutfitData.category == OutfitPartResolver.Category.Hat ? 1 : 0;
                     outfitData.description = $"Custom outfit: {currentPreviewOutfitData.displayName}";
-
-                    // Apply to player
                     WardrobeManager.Instance.PlayerOutfitProp.TryOn(outfitData);
                     WardrobeManager.Instance.PlayerOutfitProp.Commit();
                 }
             }
-
-            // Close wardrobe
             OnWardrobeClosed?.Invoke();
         }
 
         private void OnExitClicked()
         {
-            // Revert any changes and close
             OnCancelClicked();
         }
 
         private void OnCancelClicked()
         {
-            // Reset to previous state
             if (currentlySelectedSlot != null)
                 currentlySelectedSlot.SetSelected(false);
             currentlySelectedSlot = null;
-
-            // Reset preview to default
-            if (previewController != null)
-                previewController.CenterView();
-
             OnWardrobeClosed?.Invoke();
         }
 
-        // Public methods for external use
+        private void OnToggleHatClicked()
+        {
+            var playerOutfit = PlayerOutfit.Instance;
+            if (playerOutfit == null) return;
+            playerOutfit.ToggleHat();
+        }
 
-        /// <summary>
-        /// Register category items from external source (e.g., WardrobeManager)
-        /// </summary>
         public void RegisterCategoryItems(OutfitPartResolver.Category category, List<WardrobeItemData> items)
         {
             if (!categoryItems.ContainsKey(category))
                 categoryItems[category] = new List<WardrobeItemData>();
-
             categoryItems[category].Clear();
             categoryItems[category].AddRange(items);
-
-            // If this is the currently selected category, refresh the grid
             if (currentCategory == category)
                 RefreshItemGrid(category);
         }
 
-        /// <summary>
-        /// Set the current preview outfit data (called from PreviewController or other systems)
-        /// </summary>
         public void SetCurrentPreviewOutfit(WardrobeItemData outfitData)
         {
             currentPreviewOutfitData = outfitData;
-
-            // Update the preview image if we have an icon
             if (previewRawImage != null && outfitData != null && outfitData.icon != null)
             {
-                // Note: RawImage.sprite works with Sprite, but we store Texture in WardrobeItemData
-                // This would need conversion or we use a different approach
-                // For now, just log
                 Debug.Log($"[WardrobeUI] Preview set: {outfitData?.displayName}");
             }
         }
 
         private void OnDestroy()
         {
-            // Clean up button listeners
             if (saveButton != null)
                 saveButton.onClick.RemoveListener(OnSaveClicked);
-
             if (exitButton != null)
                 exitButton.onClick.RemoveListener(OnExitClicked);
-
             if (cancelButton != null)
                 cancelButton.onClick.RemoveListener(OnCancelClicked);
-
-            // Clear category button listeners
             foreach (var btn in categoryButtons)
             {
                 if (btn != null)

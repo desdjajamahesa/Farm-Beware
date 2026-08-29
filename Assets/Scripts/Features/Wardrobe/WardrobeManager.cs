@@ -1,4 +1,5 @@
 using FeaturesCamera;
+using FeaturesInteraction;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -6,6 +7,7 @@ using UnityEngine.InputSystem;
 using UnityEngine.Rendering.Universal;
 using UnityEngine.UI;
 using FarmBeware.Logic;
+using FeaturesWardrobe;
 
 namespace FeaturesWardrobe
 {
@@ -67,6 +69,10 @@ namespace FeaturesWardrobe
         
         [SerializeField] private PlayerOutfit playerOutfit;
         
+        [SerializeField] private HoverLabelController hoverLabelController;
+        
+        [SerializeField] private PlayerInteractor playerInteractor;
+        
         public PlayerOutfit PlayerOutfitProp => playerOutfit;
         [SerializeField] private Transform playerHead;
 
@@ -79,27 +85,35 @@ namespace FeaturesWardrobe
         [Tooltip("All available wardrobe items organized by category.")]
         [SerializeField] private List<FarmBeware.Logic.WardrobeItemData> allWardrobeItems = new List<FarmBeware.Logic.WardrobeItemData>();
 
-        [Header("Preview System")]
-        [Tooltip("Reference to the PreviewController for 3D avatar preview.")]
-        [SerializeField] private PreviewController previewController;
-
         [Header("Debug")]
         [SerializeField] private bool debugCameraAudit = false;
 
         private bool isInWardrobeMode;
+        public static bool IsInWardrobeMode { get; private set; }
         private Coroutine fadeCoroutine;
         private Vector3 playerOriginalPosition;
         private Quaternion playerOriginalRotation;
 
         #region Public API
 
-        public bool IsInWardrobeMode => isInWardrobeMode;
+        public bool IsInWardrobeModeInstance => isInWardrobeMode;
 
         public void EnterWardrobeMode()
         {
+            Debug.Log("[WardrobeManager] EnterWardrobeMode CALLED");
+
             if (isInWardrobeMode) return;
 
             isInWardrobeMode = true;
+            IsInWardrobeMode = true;
+
+            // Resync live player + mirror with persisted outfit state on entry.
+            if (playerOutfit != null && playerOutfit.currentOutfit != null)
+            {
+                playerOutfit.ApplyOutfit(playerOutfit.currentOutfit);
+                var swapper = FindObjectOfType<OutfitMeshSwapper>();
+                if (swapper != null) swapper.SetHatState(playerOutfit.isHatEquipped);
+            }
 
             // --- FIX: Initialize currentOutfit sebelum UI dibangun ---
             if (playerOutfit != null && playerOutfit.currentOutfit == null && playerOutfit.unlockedOutfits.Count > 0)
@@ -123,72 +137,174 @@ namespace FeaturesWardrobe
             // Initialize wardrobe items data if not already done
             InitializeWardrobeItems();
 
-            playerOriginalPosition = playerControl.transform.position;
-            playerOriginalRotation = playerControl.transform.rotation;
+            // Re-resolve in case a prefab swap invalidated earlier lookups.
+            if (playerControl == null) playerControl = FindObjectOfType<PlayerControl>();
+
+            if (playerControl != null)
+            {
+                playerOriginalPosition = playerControl.transform.position;
+                playerOriginalRotation = playerControl.transform.rotation;
+            }
+            else
+            {
+                Debug.LogError("[WardrobeManager] playerControl still null at EnterWardrobeMode line 140 — wardrobe entry aborted gracefully.");
+                return;
+            }
 
             // Position player in front of mirror
             PositionPlayerToMirror();
 
             // Initialize MirrorCamera BEFORE camera mode switch
-            if (mirrorCamera != null)
+            try
             {
-                mirrorCamera.EnsureInitialized();
-                if (playerHead != null)
-                    mirrorCamera.SetPlayerTarget(playerHead);
+                if (mirrorCamera != null)
+                {
+                    mirrorCamera.EnsureInitialized();
+                    if (playerHead != null)
+                        mirrorCamera.SetPlayerTarget(playerHead);
+                }
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogWarning($"[WardrobeManager] MirrorCamera init failed: {e.Message}");
             }
 
             // Delegate camera switching to CameraManager (preferred)
-            if (CameraManager.Instance != null)
+            try
             {
-                CameraManager.Instance.SetMode(CameraManager.CameraMode.WardrobeMode, wardrobeRoot);
+                if (CameraManager.Instance != null)
+                {
+                    CameraManager.Instance.SetMode(CameraManager.CameraMode.WardrobeMode, wardrobeRoot);
+                }
+                else
+                {
+                    Debug.LogWarning("[WardrobeManager] CameraManager not found! Using fallback camera control.");
+
+                    // FALLBACK: Manual camera control
+                    if (mainCamera != null)
+                        mainCamera.enabled = false;
+
+                    // Camera pose is authored in the scene — fallback only toggles enabled state.
+                    if (wardrobeCamera != null)
+                        wardrobeCamera.enabled = true;
+
+                    // Lock input and cursor manually
+                    if (playerControl != null)
+                        playerControl.isInputLocked = true;
+
+                    Cursor.lockState = CursorLockMode.None;
+                    Cursor.visible = true;
+                }
             }
-            else
+            catch (System.Exception e)
             {
-                Debug.LogWarning("[WardrobeManager] CameraManager not found! Using fallback camera control.");
-
-                // FALLBACK: Manual camera control
-                if (mainCamera != null)
-                    mainCamera.enabled = false;
-
-                // Camera pose is authored in the scene — fallback only toggles enabled state.
-                if (wardrobeCamera != null)
-                    wardrobeCamera.enabled = true;
-
-                // Lock input and cursor manually
-                if (playerControl != null)
-                    playerControl.isInputLocked = true;
-
-                Cursor.lockState = CursorLockMode.None;
-                Cursor.visible = true;
+                Debug.LogWarning($"[WardrobeManager] Camera switching failed: {e.Message}");
             }
 
             // Enable MirrorInnerCam (renders to RawImage texture)
-            if (mirrorCamera != null && mirrorCamera.MirrorCameraComponent != null)
+            try
             {
-                mirrorCamera.MirrorCameraComponent.enabled = true;
-                Debug.Log("[WardrobeManager] MirrorInnerCam enabled");
+                if (mirrorCamera != null && mirrorCamera.MirrorCameraComponent != null)
+                {
+                    mirrorCamera.MirrorCameraComponent.enabled = true;
+                    Debug.Log("[WardrobeManager] MirrorInnerCam enabled");
+                }
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogWarning($"[WardrobeManager] MirrorInnerCam enable failed: {e.Message}");
             }
 
             // UI fade in
-            if (fadeCoroutine != null) StopCoroutine(fadeCoroutine);
-            fadeCoroutine = StartCoroutine(FadeUI(true));
+            try
+            {
+                if (fadeCoroutine != null) StopCoroutine(fadeCoroutine);
+                
+                if (wardrobeUIPanel != null)
+                    wardrobeUIPanel.SetActive(true);
+                
+                // Ensure WardrobeUI component's GameObject is also active (safeguard)
+                if (wardrobeUI != null && wardrobeUI.gameObject != null)
+                    wardrobeUI.gameObject.SetActive(true);
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogWarning($"[WardrobeManager] UI panel activate failed: {e.Message}");
+            }
+            
+            // Regenerate item grid slots to ensure button listeners are wired up
+            try
+            {
+                if (wardrobeUI != null)
+                    wardrobeUI.RefreshItemGrid(OutfitPartResolver.Category.Top);
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogWarning($"[WardrobeManager] RefreshItemGrid failed: {e.Message}");
+            }
+            
+            // Force-hide interaction tooltip before disabling systems (with null-safe guards)
+            try
+            {
+                if (ItemDisplayUI.Instance != null)
+                {
+                    ItemDisplayUI.Instance.HideInteractPrompt();
+                    ItemDisplayUI.Instance.HideWorldHover();
+                }
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogWarning($"[WardrobeManager] ItemDisplayUI hide failed: {e.Message}");
+            }
+            
+            try
+            {
+                if (hoverLabelController != null)
+                {
+                    hoverLabelController.HideIfShowing();
+                    hoverLabelController.ClearAll();
+                }
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogWarning($"[WardrobeManager] HoverLabelController clear failed: {e.Message}");
+            }
+            
+            try
+            {
+                fadeCoroutine = StartCoroutine(FadeUI(true));
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogWarning($"[WardrobeManager] FadeUI start failed: {e.Message}");
+            }
 
-            if (wardrobeUIPanel != null)
-                wardrobeUIPanel.SetActive(true);
-
-            SetUIRaycastBlocking(true);
+            try
+            {
+                SetUIRaycastBlocking(true);
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogWarning($"[WardrobeManager] SetUIRaycastBlocking failed: {e.Message}");
+            }
 
             // Hide hotbar while in wardrobe (same pattern as trophy cabinet mode)
-            if (InventoryManagerUI.Instance != null && InventoryManagerUI.Instance.playerHotbarContainer != null)
-                InventoryManagerUI.Instance.playerHotbarContainer.gameObject.SetActive(false);
-
-            if (wardrobeUI != null && previewController != null)
+            try
             {
-                // Refresh preview camera texture binding
-                var previewRawImage = wardrobeUI.GetComponentInChildren<UnityEngine.UI.RawImage>(true);
-                if (previewRawImage != null)
-                    previewController.BindToRawImage(previewRawImage);
+                if (InventoryManagerUI.Instance != null && InventoryManagerUI.Instance.playerHotbarContainer != null)
+                    InventoryManagerUI.Instance.playerHotbarContainer.gameObject.SetActive(false);
             }
+            catch (System.Exception e)
+            {
+                Debug.LogWarning($"[WardrobeManager] Hotbar hide failed: {e.Message}");
+            }
+
+            // PreviewController binding removed: the in-world MirrorCamera handles all preview rendering.
+
+            // Subscribe to UI close event
+            if (wardrobeUI != null)
+                wardrobeUI.OnWardrobeClosed += ExitWardrobeMode;
+
             LogMirrorDiagnostics();
 
             Debug.Log("[WardrobeManager] Entered Wardrobe Mode");
@@ -196,70 +312,161 @@ namespace FeaturesWardrobe
 
         public void ExitWardrobeMode()
         {
-            if (!isInWardrobeMode) return;
+            Debug.Log("[DEBUG] ExitWardrobeMode CALLED.");
 
-            if (playerOutfit != null && playerOutfit.IsPreviewing)
-                playerOutfit.Revert();
+            // 1. TRUE Idempotency check at the VERY TOP — only short-circuit
+            //    if BOTH the static and instance flags say we are NOT in wardrobe.
+            if (!IsInWardrobeMode && !isInWardrobeMode) return;
 
-            isInWardrobeMode = false;
+            // 2. Camera transition (delegate to CameraManager; it now auto-resolves
+            //    PlayerControl if its serialized field is null).
+            try
+            {
+                if (CameraManager.Instance != null)
+                {
+                    CameraManager.Instance.SetMode(CameraManager.CameraMode.Gameplay, null);
+                }
+            }
+            catch (System.Exception e)
+            {
+                UnityEngine.Debug.LogError("Camera reset error: " + e.Message);
+            }
+
+            // 3. Brute-force unlock (backup) — uses FindObjectOfType so it works
+            //    even when CameraManager's serialized playerControl ref is null.
+            try
+            {
+                var player = UnityEngine.Object.FindObjectOfType<PlayerControl>();
+                if (player != null)
+                {
+                    var t = player.GetType();
+                    var field = t.GetField("isInputLocked", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                    if (field != null)
+                    {
+                        field.SetValue(player, false);
+                    }
+                    else
+                    {
+                        var prop = t.GetProperty("isInputLocked", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                        if (prop != null && prop.CanWrite) prop.SetValue(player, false);
+                    }
+                    UnityEngine.Debug.Log("[DEBUG] Forcefully unlocked PlayerControl.isInputLocked.");
+                }
+                else
+                {
+                    UnityEngine.Debug.LogWarning("[DEBUG] Brute-force unlock found no PlayerControl in scene.");
+                }
+            }
+            catch (System.Exception e)
+            {
+                UnityEngine.Debug.LogError("Brute-force unlock error: " + e.Message);
+            }
+
+            // 4. Cleanup UI & interaction systems.
+            if (wardrobeUI != null && wardrobeUI.gameObject != null) wardrobeUI.gameObject.SetActive(false);
+            try { if (playerInteractor != null) playerInteractor.enabled = true; } catch { }
+            try { if (hoverLabelController != null) hoverLabelController.enabled = true; } catch { }
 
             // Disable MirrorInnerCam before camera switch
-            if (mirrorCamera != null && mirrorCamera.MirrorCameraComponent != null)
+            try
             {
-                mirrorCamera.MirrorCameraComponent.enabled = false;
-                Debug.Log("[WardrobeManager] MirrorInnerCam disabled");
+                if (mirrorCamera != null && mirrorCamera.MirrorCameraComponent != null)
+                {
+                    mirrorCamera.MirrorCameraComponent.enabled = false;
+                    Debug.Log("[WardrobeManager] MirrorInnerCam disabled");
+                }
             }
-
-            // Delegate camera switching to CameraManager (preferred)
-            if (CameraManager.Instance != null)
+            catch (System.Exception e)
             {
-                CameraManager.Instance.SetMode(CameraManager.CameraMode.Gameplay);
-            }
-            else
-            {
-                // FALLBACK: Manual camera control
-                if (wardrobeCamera != null)
-                    wardrobeCamera.enabled = false;
-
-                if (mainCamera != null)
-                    mainCamera.enabled = true;
-
-                // Unlock input, keep cursor free
-                if (playerControl != null)
-                    playerControl.isInputLocked = false;
-
-                Cursor.lockState = CursorLockMode.None;
-                Cursor.visible = true;
-
-                Debug.Log("[WardrobeManager] Fallback: Restored main camera");
+                Debug.LogWarning($"[WardrobeManager] MirrorInnerCam disable failed: {e.Message}");
             }
 
             // Re-enable MirrorInnerCam for mirror surface (gameplay)
-            if (mirrorCamera != null && mirrorCamera.MirrorTexture != null && mirrorCamera.MirrorCameraComponent != null)
+            try
             {
-                mirrorCamera.MirrorCameraComponent.targetTexture = mirrorCamera.MirrorTexture;
-                mirrorCamera.MirrorCameraComponent.enabled = true;
-                Debug.Log("[WardrobeManager] MirrorInnerCam re-enabled for mirror surface");
+                if (mirrorCamera != null && mirrorCamera.MirrorTexture != null && mirrorCamera.MirrorCameraComponent != null)
+                {
+                    mirrorCamera.MirrorCameraComponent.targetTexture = mirrorCamera.MirrorTexture;
+                    mirrorCamera.MirrorCameraComponent.enabled = true;
+                    Debug.Log("[WardrobeManager] MirrorInnerCam re-enabled for mirror surface");
+                }
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogWarning($"[WardrobeManager] MirrorInnerCam re-enable failed: {e.Message}");
             }
 
             // UI fade out
-            if (fadeCoroutine != null) StopCoroutine(fadeCoroutine);
-            fadeCoroutine = StartCoroutine(FadeUI(false));
+            try
+            {
+                if (fadeCoroutine != null) StopCoroutine(fadeCoroutine);
+                fadeCoroutine = StartCoroutine(FadeUI(false));
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogWarning($"[WardrobeManager] FadeUI failed: {e.Message}");
+            }
 
-            if (uiCanvasGroup != null) uiCanvasGroup.alpha = 0f;
-            if (wardrobeUIPanel != null) wardrobeUIPanel.SetActive(false);
+            try
+            {
+                if (uiCanvasGroup != null) uiCanvasGroup.alpha = 0f;
+                if (wardrobeUIPanel != null) wardrobeUIPanel.SetActive(false);
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogWarning($"[WardrobeManager] UI panel deactivate failed: {e.Message}");
+            }
 
-            SetUIRaycastBlocking(false);
+            try { SetUIRaycastBlocking(false); }
+            catch (System.Exception e)
+            {
+                Debug.LogWarning($"[WardrobeManager] SetUIRaycastBlocking failed: {e.Message}");
+            }
 
-            // Restore hotbar (unless trophy cabinet mode owns it — it hides hotbar itself)
-            bool trophyOwnsHotbar = InventoryManagerUI.Instance != null &&
-                InventoryManagerUI.Instance.currentStorageInventory != null &&
-                TrophySystemManager.Instance != null && TrophySystemManager.Instance.IsInTrophyMode;
-            if (!trophyOwnsHotbar && InventoryManagerUI.Instance != null &&
-                InventoryManagerUI.Instance.playerHotbarContainer != null)
-                InventoryManagerUI.Instance.playerHotbarContainer.gameObject.SetActive(true);
+            // Force the Wardrobe UI CanvasGroup to not block raycasts
+            try
+            {
+                var cg = wardrobeUI != null ? wardrobeUI.GetComponent<CanvasGroup>() : null;
+                if (cg != null)
+                {
+                    cg.alpha = 0f;
+                    cg.blocksRaycasts = false;
+                    cg.interactable = false;
+                    Debug.Log("[WardrobeManager] Forced WardrobeUI CanvasGroup to not block raycasts");
+                }
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogWarning($"[WardrobeManager] CanvasGroup cleanup failed: {e.Message}");
+            }
 
-            Debug.Log("[WardrobeManager] Exited Wardrobe Mode");
+            // Restore hotbar
+            try
+            {
+                bool trophyOwnsHotbar = InventoryManagerUI.Instance != null &&
+                    InventoryManagerUI.Instance.currentStorageInventory != null &&
+                    TrophySystemManager.Instance != null && TrophySystemManager.Instance.IsInTrophyMode;
+                if (!trophyOwnsHotbar && InventoryManagerUI.Instance != null &&
+                    InventoryManagerUI.Instance.playerHotbarContainer != null)
+                    InventoryManagerUI.Instance.playerHotbarContainer.gameObject.SetActive(true);
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogWarning($"[WardrobeManager] Hotbar restore failed: {e.Message}");
+            }
+
+            // Unsubscribe from UI close event
+            if (wardrobeUI != null)
+                wardrobeUI.OnWardrobeClosed -= ExitWardrobeMode;
+
+            // Revert preview if a preview is in flight
+            if (playerOutfit != null && playerOutfit.IsPreviewing)
+                playerOutfit.Revert();
+
+            // 5. Update state LAST.
+            isInWardrobeMode = false;
+            IsInWardrobeMode = false;
+            UnityEngine.Debug.Log("[DEBUG] ExitWardrobeMode FULLY EXECUTED.");
         }
 
         public void TryOnOutfit(OutfitData outfit)
@@ -295,15 +502,11 @@ namespace FeaturesWardrobe
 
         private void LogMirrorDiagnostics()
         {
-            Texture rt = wardrobeUI != null && wardrobeUI.previewController != null
-                ? wardrobeUI.previewController.PreviewRenderTexture
-                : null;
             bool mirrorReady = mirrorCamera != null && mirrorCamera.MirrorTexture != null;
             bool innerCamOn = mirrorCamera != null && mirrorCamera.MirrorCameraComponent != null && mirrorCamera.MirrorCameraComponent.enabled;
             bool targetOk = mirrorCamera != null && mirrorCamera.MirrorCameraComponent != null &&
                             mirrorCamera.MirrorCameraComponent.targetTexture == mirrorCamera.MirrorTexture;
-            Debug.Log($"[Wardrobe] diag -> RawImage.texture={(rt != null ? rt.name : "NULL")} " +
-                      $"| MirrorTexture={(mirrorReady ? "OK" : "NULL")} " +
+            Debug.Log($"[Wardrobe] diag -> MirrorTexture={(mirrorReady ? "OK" : "NULL")} " +
                       $"| InnerCam.enabled={innerCamOn} " +
                       $"| targetTexture==RT={targetOk}");
         }
@@ -345,14 +548,6 @@ namespace FeaturesWardrobe
                 {
                     PopulateItemsFromUnlockedOutfits();
                 }
-            }
-
-            // Bind preview controller if available
-            if (previewController != null && wardrobeUI != null)
-            {
-                var previewRawImage = wardrobeUI.GetComponentInChildren<UnityEngine.UI.RawImage>(true);
-                if (previewRawImage != null)
-                    previewController.BindToRawImage(previewRawImage);
             }
         }
 
@@ -469,12 +664,26 @@ namespace FeaturesWardrobe
             }
             Instance = this;
 
+            // Self-healing: if the Player prefab was replaced and serialized
+            // references were lost, resolve them dynamically.
+            if (playerControl == null) playerControl = FindObjectOfType<PlayerControl>();
+            if (playerOutfit == null) playerOutfit = FindObjectOfType<PlayerOutfit>();
+            if (playerInteractor == null) playerInteractor = FindObjectOfType<PlayerInteractor>();
+            if (hoverLabelController == null) hoverLabelController = FindObjectOfType<HoverLabelController>();
+            if (wardrobeUI == null) wardrobeUI = FindObjectOfType<WardrobeUI>();
+            if (mainCamera == null && Camera.main != null) mainCamera = Camera.main;
+            if (mirrorCamera == null) mirrorCamera = FindObjectOfType<MirrorCamera>();
+
             // Enforce initial state: UI hidden, mirror cam bound to RT only.
             // Scene files can persist stale active-states from a previous session.
             if (wardrobeUIPanel != null)
                 wardrobeUIPanel.SetActive(false);
             if (uiCanvasGroup != null)
+            {
                 uiCanvasGroup.alpha = 0f;
+                uiCanvasGroup.interactable = false;
+                uiCanvasGroup.blocksRaycasts = false;
+            }
         }
 
         private void Update()
