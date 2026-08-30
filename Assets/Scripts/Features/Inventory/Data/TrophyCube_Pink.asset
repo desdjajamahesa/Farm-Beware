@@ -1,0 +1,22 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ae5c125112b5be549a05d6bb0b7bba92, type: 3}
+  m_Name: TrophyCube_Pink
+  m_EditorClassIdentifier: Assembly-CSharp::ItemData
+  itemName: Trophy Cube Pink
+  itemIcon: {fileID: -1576598903, guid: 3dc1d22cf1644cc4da26d0bc4f0f1fdc, type: 3}
+  maxStack: 1
+  type: 3
+  healAmount: 0
+  foodCategory: 0
+  equipPrefab: {fileID: 0}
+  placeablePrefab: {fileID: 8591763939536325642, guid: 3449656022ca42b478491b5c6c39299f, type: 3}
