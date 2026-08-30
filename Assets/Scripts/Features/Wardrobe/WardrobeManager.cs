@@ -111,8 +111,19 @@ namespace FeaturesWardrobe
             if (playerOutfit != null && playerOutfit.currentOutfit != null)
             {
                 playerOutfit.ApplyOutfit(playerOutfit.currentOutfit);
-                var swapper = FindObjectOfType<OutfitMeshSwapper>();
-                if (swapper != null) swapper.SetHatState(playerOutfit.isHatEquipped);
+                // Direct hat toggle — no OutfitMeshSwapper dependency.
+                var player = GameObject.Find("Player");
+                if (player != null)
+                {
+                    foreach (var t in player.GetComponentsInChildren<Transform>(true))
+                    {
+                        if (t.name == "hat")
+                        {
+                            t.gameObject.SetActive(playerOutfit.isHatEquipped);
+                            break;
+                        }
+                    }
+                }
             }
 
             // --- FIX: Initialize currentOutfit sebelum UI dibangun ---
@@ -236,7 +247,7 @@ namespace FeaturesWardrobe
             try
             {
                 if (wardrobeUI != null)
-                    wardrobeUI.RefreshItemGrid(OutfitPartResolver.Category.Top);
+                    wardrobeUI.RefreshItemGrid();
             }
             catch (System.Exception e)
             {
@@ -518,82 +529,7 @@ namespace FeaturesWardrobe
         private void InitializeWardrobeItems()
         {
             if (wardrobeUI == null) return;
-
-            // If we have items assigned in the inspector, organize them by category
-            if (allWardrobeItems != null && allWardrobeItems.Count > 0)
-            {
-                var itemsByCategory = new Dictionary<FarmBeware.Logic.OutfitPartResolver.Category, List<FarmBeware.Logic.WardrobeItemData>>();
-
-                foreach (var item in allWardrobeItems)
-                {
-                    if (item == null) continue;
-
-                    var cat = item.category;
-                    if (!itemsByCategory.ContainsKey(cat))
-                        itemsByCategory[cat] = new List<FarmBeware.Logic.WardrobeItemData>();
-
-                    itemsByCategory[cat].Add(item);
-                }
-
-                // Register with UI
-                foreach (var kvp in itemsByCategory)
-                {
-                    wardrobeUI.RegisterCategoryItems(kvp.Key, kvp.Value);
-                }
-            }
-            else
-            {
-                // Fallback: auto-populate from PlayerOutfit's unlockedOutfits
-                if (playerOutfit != null && playerOutfit.unlockedOutfits != null && playerOutfit.unlockedOutfits.Count > 0)
-                {
-                    PopulateItemsFromUnlockedOutfits();
-                }
-            }
-        }
-
-        private void PopulateItemsFromUnlockedOutfits()
-        {
-            if (playerOutfit == null || playerOutfit.unlockedOutfits == null) return;
-
-            var itemsByCategory = new Dictionary<FarmBeware.Logic.OutfitPartResolver.Category, List<FarmBeware.Logic.WardrobeItemData>>();
-
-            foreach (var outfit in playerOutfit.unlockedOutfits)
-            {
-                if (outfit == null) continue;
-
-                // Create WardrobeItemData from each OutfitData
-                // This is a simplified mapping - in production you'd have proper item definitions
-                CreateItemFromOutfit(outfit, itemsByCategory);
-            }
-
-            foreach (var kvp in itemsByCategory)
-            {
-                wardrobeUI.RegisterCategoryItems(kvp.Key, kvp.Value);
-            }
-        }
-
-        private void CreateItemFromOutfit(OutfitData outfit, Dictionary<FarmBeware.Logic.OutfitPartResolver.Category, List<FarmBeware.Logic.WardrobeItemData>> itemsByCategory)
-        {
-            // Map OutfitData variants to individual WardrobeItemData
-            var categories = System.Enum.GetValues(typeof(FarmBeware.Logic.OutfitPartResolver.Category));
-            foreach (FarmBeware.Logic.OutfitPartResolver.Category cat in categories)
-            {
-                if (!itemsByCategory.ContainsKey(cat))
-                    itemsByCategory[cat] = new List<FarmBeware.Logic.WardrobeItemData>();
-
-                int variantCount = FarmBeware.Logic.OutfitPartResolver.GetVariantCount(cat);
-                for (int i = 0; i < variantCount; i++)
-                {
-                    var itemData = ScriptableObject.CreateInstance<FarmBeware.Logic.WardrobeItemData>();
-                    itemData.itemId = $"{outfit.outfitName}_{cat}_{i}";
-                    itemData.displayName = $"{cat} {FarmBeware.Logic.OutfitPartResolver.GetVariantLabel(cat, i)}";
-                    itemData.icon = outfit.icon;
-                    itemData.category = cat;
-                    itemData.description = $"From outfit: {outfit.outfitName}";
-
-                    itemsByCategory[cat].Add(itemData);
-                }
-            }
+            wardrobeUI.RefreshItemGrid();
         }
 
         #endregion

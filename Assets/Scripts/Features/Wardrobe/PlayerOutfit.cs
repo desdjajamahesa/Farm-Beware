@@ -54,7 +54,7 @@ namespace FeaturesWardrobe
             Instance = this;
 
             if (characterModel == null)
-                characterModel = GameObject.Find("Player/character");
+                characterModel = FindCharacterModel();
 
             CacheCharacterRenderers();
 
@@ -142,12 +142,7 @@ namespace FeaturesWardrobe
             if (outfit == null) return;
             if (characterModel == null)
             {
-                characterModel = GameObject.Find("Player/character");
-                if (characterModel == null)
-                {
-                    var swapper = FindObjectOfType<OutfitMeshSwapper>();
-                    if (swapper != null) characterModel = GameObject.Find("Player/character");
-                }
+                characterModel = FindCharacterModel();
                 if (characterModel != null) CacheCharacterRenderers();
             }
             if (characterModel == null) return;
@@ -166,8 +161,7 @@ namespace FeaturesWardrobe
         public void ToggleHat()
         {
             isHatEquipped = !isHatEquipped;
-            var swapper = FindObjectOfType<OutfitMeshSwapper>();
-            if (swapper != null) swapper.SetHatState(isHatEquipped);
+            SetHatActive(isHatEquipped);
             SaveWardrobe();
         }
 
@@ -255,8 +249,7 @@ namespace FeaturesWardrobe
 
         private void ApplyHatState()
         {
-            var swapper = FindObjectOfType<OutfitMeshSwapper>();
-            if (swapper != null) swapper.SetHatState(isHatEquipped);
+            SetHatActive(isHatEquipped);
         }
 
         private void InitializeDefaultWardrobe()
@@ -282,6 +275,43 @@ namespace FeaturesWardrobe
             "Outfit_Set_E", "Outfit_Set_F", "Outfit_Set_G", "Outfit_Set_H",
             "Outfit_Set_I", "Outfit_Set_J", "Outfit_Set_K", "Outfit_Set_L"
         };
+
+        /// <summary>Finds the character mesh root under Player, handling
+        /// Unity duplicate suffixes like "character (1)".</summary>
+        private static GameObject FindCharacterModel()
+        {
+            // Fast path: exact path works for original prefab.
+            var go = GameObject.Find("Player/character");
+            if (go != null) return go;
+
+            // Fallback: recursive name match under Player (handles "character (1)").
+            var player = GameObject.Find("Player");
+            if (player == null) return null;
+
+            foreach (var t in player.GetComponentsInChildren<Transform>(true))
+            {
+                if (t != null && t.name.StartsWith("character"))
+                    return t.gameObject;
+            }
+            return null;
+        }
+
+        /// <summary>Finds the "hat" GameObject anywhere in the Player
+        /// hierarchy and toggles it. Replaces OutfitMeshSwapper dependency.</summary>
+        private void SetHatActive(bool active)
+        {
+            var root = characterModel != null ? characterModel : FindCharacterModel();
+            if (root == null) return;
+
+            foreach (var t in root.GetComponentsInChildren<Transform>(true))
+            {
+                if (t.name == "hat")
+                {
+                    t.gameObject.SetActive(active);
+                    return;
+                }
+            }
+        }
 
         #endregion
     }
