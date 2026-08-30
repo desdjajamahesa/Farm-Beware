@@ -106,6 +106,7 @@ public class TrophyRackVisuals : MonoBehaviour
             GameObject created = CreateModel(item.placeablePrefab, snapPoints[index]);
             _spawnedModels[index] = created;
             _spawnedItemAt[index] = item;
+            SetPlaceholder(index, false);
         }
         // Slot kosong atau item tanpa model placeable -> hapus model (jika ada).
         else if (hasModel)
@@ -135,6 +136,7 @@ public class TrophyRackVisuals : MonoBehaviour
                 Destroy(model);
             _spawnedModels.Remove(index);
             _spawnedItemAt.Remove(index);
+            SetPlaceholder(index, true);
         }
     }
 
@@ -147,7 +149,28 @@ public class TrophyRackVisuals : MonoBehaviour
         }
         _spawnedModels.Clear();
         _spawnedItemAt.Clear();
+        SetAllPlaceholders(true);
     }
 
     #endregion
+
+
+    private void SetPlaceholder(int index, bool visible)
+    {
+        if (snapPoints == null || index >= snapPoints.Length || snapPoints[index] == null)
+            return;
+
+        Transform ph = snapPoints[index].Find("PlaceholderCube");
+        if (ph != null)
+            ph.gameObject.SetActive(visible);
+    }
+
+    private void SetAllPlaceholders(bool visible)
+    {
+        if (snapPoints == null)
+            return;
+
+        for (int i = 0; i < snapPoints.Length; i++)
+            SetPlaceholder(i, visible);
+    }
 }
