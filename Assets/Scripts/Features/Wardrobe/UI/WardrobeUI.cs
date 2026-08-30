@@ -144,8 +144,9 @@ namespace FeaturesWardrobe
             List<OutfitData> outfits = playerOutfit.unlockedOutfits;
             if (outfits == null || outfits.Count == 0) return;
 
-            foreach (var slot in itemSlots)
-                if (slot != null) Destroy(slot.gameObject);
+            // Destroy ALL existing children (dummies + previously spawned slots)
+            foreach (Transform child in itemGridContent)
+                if (child != null) Destroy(child.gameObject);
             itemSlots.Clear();
 
             GridLayoutGroup gridLayout = itemGridContent.GetComponent<GridLayoutGroup>();
@@ -164,18 +165,49 @@ namespace FeaturesWardrobe
                 var outfit = outfits[i];
                 var slotGO = Instantiate(itemSlotPrefab, itemGridContent);
                 slotGO.name = $"ItemSlot_{outfit.name}";
+                slotGO.SetActive(true);
 
-                var slot = slotGO.GetComponent<ItemSlot>();
-                if (slot == null)
-                    slot = slotGO.AddComponent<ItemSlot>();
+                // Set text label so the user can distinguish slots
+                var txt = slotGO.GetComponentInChildren<Text>(true);
+                if (txt != null) txt.text = outfit.name.Replace("Outfit_", "");
 
-                var itemData = CreateWardrobeItemDataFromOutfit(outfit);
-                slot.Setup(itemData, null);
-                slot.transform.localScale = Vector3.one;
+                var tmp = slotGO.GetComponentInChildren<TMPro.TextMeshProUGUI>(true);
+                if (tmp != null) tmp.text = outfit.name.Replace("Outfit_", "");
+
+                // Icon image: find dedicated child or fallback to first non-button Image
+                Image iconImage = null;
+                Transform iconTransform = slotGO.transform.Find("Icon") ?? slotGO.transform.Find("ItemIcon");
+                if (iconTransform != null)
+                {
+                    iconImage = iconTransform.GetComponent<Image>();
+                }
+                else
+                {
+                    var images = slotGO.GetComponentsInChildren<Image>(true);
+                    foreach (var img in images)
+                    {
+                        if (img.gameObject != slotGO) { iconImage = img; break; }
+                    }
+                }
+                if (iconImage != null)
+                {
+                    if (outfit.icon != null)
+                    {
+                        iconImage.sprite = outfit.icon;
+                        iconImage.enabled = true;
+                        iconImage.color = Color.white;
+                    }
+                    else
+                    {
+                        iconImage.sprite = null;
+                        iconImage.color = new Color(1, 1, 1, 0.2f);
+                    }
+                }
 
                 var btn = slotGO.GetComponent<Button>();
                 if (btn != null)
                 {
+                    btn.interactable = true;
                     OutfitData capturedOutfit = outfit;
                     btn.onClick.RemoveAllListeners();
                     btn.onClick.AddListener(() =>
@@ -189,7 +221,7 @@ namespace FeaturesWardrobe
                     });
                 }
 
-                itemSlots.Add(slot);
+                itemSlots.Add(slotGO.GetComponent<ItemSlot>());
             }
 
             if (itemGridScrollRect != null)

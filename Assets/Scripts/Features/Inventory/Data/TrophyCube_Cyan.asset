@@ -10,13 +10,13 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: ae5c125112b5be549a05d6bb0b7bba92, type: 3}
-  m_Name: TrophyCapsule
+  m_Name: TrophyCube_Cyan
   m_EditorClassIdentifier: Assembly-CSharp::ItemData
-  itemName: Trophy Capsule
+  itemName: Trophy Cube Cyan
   itemIcon: {fileID: 10905, guid: 0000000000000000f000000000000000, type: 0}
   maxStack: 1
   type: 3
   healAmount: 0
   foodCategory: 0
   equipPrefab: {fileID: 0}
-  placeablePrefab: {fileID: 288256409107858469, guid: 57cffcbc5f9274e49b7d878cb7c71119, type: 3}
+  placeablePrefab: {fileID: 7476049928077858003, guid: 828118fd21c50b9469365582c64ace0a, type: 3}

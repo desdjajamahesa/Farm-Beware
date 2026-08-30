@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Outfit_Set_K
   m_EditorClassIdentifier: Assembly-CSharp::FeaturesWardrobe.OutfitData
   outfitName: Outfit K
-  icon: {fileID: 0}
+  icon: {fileID: 1449659986, guid: d4911286fe32d714b86272264c099343, type: 3}
   topVariant: 0
   bottomVariant: 1
   shoesVariant: 0
