@@ -14,17 +14,12 @@ namespace FeaturesInteraction
             if (TrophySystemManager.Instance != null)
                 TrophySystemManager.Instance.EnterTrophyMode();
 
-            // Buka UI KHUSUS Kabinet <-> Rak:
-            //   KIRI  = Inventory Kabinet (berisi trophy, siap di-drag keluar),
-            //   KANAN = Inventory Rak (4 slot).
-            // Panel Inventory Player TIDAK dibuka — trophy hanya boleh di Kabinet/Rak.
+            // Buka UI KHUSUS Kabinet (tanpa panel Rak):
+            // Rak ditempatkan/dikoleksi via interaksi 3D SnapPoints.
             if (InventoryManagerUI.Instance != null)
             {
                 InventoryComponent cabinetInv = GetComponent<InventoryComponent>();
-                InventoryComponent rackInv = TrophySystemManager.Instance != null
-                    ? TrophySystemManager.Instance.RackInventory
-                    : null;
-                InventoryManagerUI.Instance.OpenTrophyCabinetUI(cabinetInv, rackInv);
+                InventoryManagerUI.Instance.OpenTrophyCabinetUI(cabinetInv, null);
             }
         }
     }

@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using FeaturesWardrobe;
 using UnityEngine.Serialization;
 
 public class InventoryManagerUI : MonoBehaviour
@@ -132,6 +133,10 @@ public class InventoryManagerUI : MonoBehaviour
         if (TrophySystemManager.Instance != null && TrophySystemManager.Instance.IsInTrophyMode)
             return;
 
+        // Guard: jangan buka inventory jika sedang Wardrobe Mode
+        if (WardrobeManager.IsInWardrobeMode)
+            return;
+
         if (currentStorageInventory != null)
         {
             CloseAllUI();
@@ -193,10 +198,12 @@ public class InventoryManagerUI : MonoBehaviour
         UnsubscribeRight();
         UnsubscribeCabinet();
 
-        // Kiri = Kabinet, kanan = Rak.
-        currentStorageInventory = rackInv;
-        if (currentStorageInventory != null)
+        // Kabinet only — Rak placed via 3D SnapPoints, no UI panel.
+        if (rackInv != null)
+        {
+            currentStorageInventory = rackInv;
             currentStorageInventory.OnInventoryChanged += OnInventoryChanged;
+        }
 
         cabinetInventory = cabinetInv;
         if (cabinetInventory != null)
@@ -205,17 +212,16 @@ public class InventoryManagerUI : MonoBehaviour
         displayLeftInventory = cabinetInv;
         isTrophyCabinetMode = true;
 
-        // Bangun ulang kedua panel sesuai data backend (data-driven murni).
+        // Build cabinet panel only.
         BuildSlots(playerSlotsContainer, playerSlotUIs, cabinetInv);
-        BuildSlots(storageSlotsContainer, storageSlotUIs, rackInv);
 
-        // Sembunyikan hotbar Player selama trophy mode (tidak relevan).
+        // Sembunyikan hotbar Player selama trophy mode.
         if (playerHotbarContainer != null)
             playerHotbarContainer.gameObject.SetActive(false);
 
         isPlayerOpen = true;
         if (playerPanel != null) playerPanel.SetActive(true);
-        if (storagePanel != null) storagePanel.SetActive(true);
+        if (storagePanel != null) storagePanel.SetActive(false);
 
         SetCursorFree(true);
         UpdateUI();
@@ -252,8 +258,10 @@ public class InventoryManagerUI : MonoBehaviour
 
     private void SetCursorFree(bool free)
     {
-        Cursor.visible = free;
-        Cursor.lockState = free ? CursorLockMode.None : CursorLockMode.Locked;
+        // Keep cursor always visible and unlocked (user preference)
+        Cursor.visible = true;
+        Cursor.lockState = CursorLockMode.None;
+        _ = free;
     }
 
     private void BuildPlayerSlots()

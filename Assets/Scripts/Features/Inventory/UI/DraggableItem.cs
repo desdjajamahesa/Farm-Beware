@@ -11,6 +11,8 @@ public class DraggableItem : MonoBehaviour, IBeginDragHandler, IDragHandler, IEn
     public Transform parentAfterDrag;
 
     private bool dropped;
+    private Vector2 origAnchorMin, origAnchorMax, origOffsetMin, origOffsetMax, origSizeDelta;
+    private Vector3 origLocalScale;
 
     public InventorySlotUI OriginSlot { get; private set; }
 
@@ -26,9 +28,26 @@ public class DraggableItem : MonoBehaviour, IBeginDragHandler, IDragHandler, IEn
         parentAfterDrag = transform.parent;
         dropped = false;
 
-        // Pindah ke root canvas agar selalu di paling atas dan tidak menghalangi deteksi slot.
-        transform.SetParent(transform.root, true);
+        // Save original RectTransform state for restoration.
+        origAnchorMin = rectTransform.anchorMin;
+        origAnchorMax = rectTransform.anchorMax;
+        origOffsetMin = rectTransform.offsetMin;
+        origOffsetMax = rectTransform.offsetMax;
+        origSizeDelta = rectTransform.sizeDelta;
+        origLocalScale = rectTransform.localScale;
+
+        // Pindah ke Canvas agar tetap render tapi selalu di paling atas.
+        Canvas canvas = GetComponentInParent<Canvas>();
+        if (canvas != null)
+            transform.SetParent(canvas.transform, true);
         transform.SetAsLastSibling();
+
+        // Switch to center-anchored fixed-size so icon follows cursor.
+        rectTransform.anchorMin = new Vector2(0.5f, 0.5f);
+        rectTransform.anchorMax = new Vector2(0.5f, 0.5f);
+        rectTransform.pivot = new Vector2(0.5f, 0.5f);
+        rectTransform.sizeDelta = new Vector2(60f, 60f);
+        rectTransform.localScale = Vector3.one;
 
         // SANGAT KRUSIAL: matikan raycastTarget agar kursor menembus ke slot di bawahnya.
         if (image != null)
@@ -60,9 +79,14 @@ public class DraggableItem : MonoBehaviour, IBeginDragHandler, IDragHandler, IEn
         }
         else if (parentAfterDrag != null)
         {
-            // Tidak dijatuhkan ke slot valid: kembalikan ke posisi asal.
+            // Kembalikan ke posisi asal dengan anchor & ukuran original.
             transform.SetParent(parentAfterDrag, true);
-            CenterInSlot(rectTransform, parentAfterDrag as RectTransform);
+            rectTransform.anchorMin = origAnchorMin;
+            rectTransform.anchorMax = origAnchorMax;
+            rectTransform.offsetMin = origOffsetMin;
+            rectTransform.offsetMax = origOffsetMax;
+            rectTransform.sizeDelta = origSizeDelta;
+            rectTransform.localScale = origLocalScale;
         }
     }
 
@@ -77,6 +101,8 @@ public class DraggableItem : MonoBehaviour, IBeginDragHandler, IDragHandler, IEn
             return false;
 
         Camera cam = TrophySystemManager.Instance.TrophyFirstPersonCamera;
+        if (cam == null || !cam.enabled)
+            cam = Camera.main;
         if (cam == null || Mouse.current == null || OriginSlot == null)
             return false;
 
@@ -86,8 +112,15 @@ public class DraggableItem : MonoBehaviour, IBeginDragHandler, IDragHandler, IEn
 
         Vector2 mousePos = Mouse.current.position.ReadValue();
         Ray ray = cam.ScreenPointToRay(mousePos);
-        if (!Physics.Raycast(ray, out RaycastHit hit, 10f, LayerMask.GetMask("SnapPoint")))
+        Debug.Log($"[D&D] Shooting ray from {cam.name}. MousePos: {mousePos}");
+
+        if (!Physics.Raycast(ray, out RaycastHit hit, Mathf.Infinity, LayerMask.GetMask("SnapPoint")))
+        {
+            Debug.LogWarning("[D&D] FAIL: Raycast missed all SnapPoints on Layer 10!");
             return false;
+        }
+
+        Debug.Log($"[D&D] SUCCESS: Hit {hit.collider.name}");
 
         TrophySnapPoint snap = hit.collider != null ? hit.collider.GetComponent<TrophySnapPoint>() : null;
         if (snap == null || snap.slotIndex < 0)
