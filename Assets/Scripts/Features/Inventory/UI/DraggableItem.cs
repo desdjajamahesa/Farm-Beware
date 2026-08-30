@@ -77,6 +77,8 @@ public class DraggableItem : MonoBehaviour, IBeginDragHandler, IDragHandler, IEn
             return false;
 
         Camera cam = TrophySystemManager.Instance.TrophyFirstPersonCamera;
+        if (cam == null || !cam.enabled)
+            cam = Camera.main;
         if (cam == null || Mouse.current == null || OriginSlot == null)
             return false;
 
@@ -86,8 +88,15 @@ public class DraggableItem : MonoBehaviour, IBeginDragHandler, IDragHandler, IEn
 
         Vector2 mousePos = Mouse.current.position.ReadValue();
         Ray ray = cam.ScreenPointToRay(mousePos);
-        if (!Physics.Raycast(ray, out RaycastHit hit, 10f, LayerMask.GetMask("SnapPoint")))
+        Debug.Log($"[D&D] Shooting ray from {cam.name}. MousePos: {mousePos}");
+
+        if (!Physics.Raycast(ray, out RaycastHit hit, Mathf.Infinity, LayerMask.GetMask("SnapPoint")))
+        {
+            Debug.LogWarning("[D&D] FAIL: Raycast missed all SnapPoints on Layer 10!");
             return false;
+        }
+
+        Debug.Log($"[D&D] SUCCESS: Hit {hit.collider.name}");
 
         TrophySnapPoint snap = hit.collider != null ? hit.collider.GetComponent<TrophySnapPoint>() : null;
         if (snap == null || snap.slotIndex < 0)
