@@ -85,6 +85,10 @@ namespace FeaturesWardrobe
         [Tooltip("All available wardrobe items organized by category.")]
         [SerializeField] private List<FarmBeware.Logic.WardrobeItemData> allWardrobeItems = new List<FarmBeware.Logic.WardrobeItemData>();
 
+        [Header("Chest Animation")]
+        [Tooltip("Animator on the chest lid (child 'lid' of Wardrobe). Controls open/close animation via 'IsOpen' bool.")]
+        [SerializeField] private Animator chestLidAnimator;
+
         [Header("Debug")]
         [SerializeField] private bool debugCameraAudit = false;
 
@@ -226,6 +230,10 @@ namespace FeaturesWardrobe
                 Debug.LogWarning($"[WardrobeManager] MirrorInnerCam enable failed: {e.Message}");
             }
 
+            // Open chest lid animation
+            if (chestLidAnimator != null)
+                chestLidAnimator.SetBool("IsOpen", true);
+
             // UI fade in
             try
             {
@@ -328,6 +336,10 @@ namespace FeaturesWardrobe
             // 1. TRUE Idempotency check at the VERY TOP — only short-circuit
             //    if BOTH the static and instance flags say we are NOT in wardrobe.
             if (!IsInWardrobeMode && !isInWardrobeMode) return;
+
+            // Close chest lid animation
+            if (chestLidAnimator != null)
+                chestLidAnimator.SetBool("IsOpen", false);
 
             // 2. Camera transition (delegate to CameraManager; it now auto-resolves
             //    PlayerControl if its serialized field is null).

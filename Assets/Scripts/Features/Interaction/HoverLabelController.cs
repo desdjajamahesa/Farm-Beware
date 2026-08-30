@@ -22,6 +22,8 @@ public class HoverLabelController : MonoBehaviour
 
     private void Awake()
     {
+        if (interactor == null)
+            interactor = GetComponent<PlayerInteractor>();
         this.enabled = true;
     }
 

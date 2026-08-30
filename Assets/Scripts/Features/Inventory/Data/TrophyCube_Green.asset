@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: TrophyCube_Green
   m_EditorClassIdentifier: Assembly-CSharp::ItemData
   itemName: Trophy Cube Green
-  itemIcon: {fileID: 10905, guid: 0000000000000000f000000000000000, type: 0}
+  itemIcon: {fileID: 1912599462, guid: 3dc1d22cf1644cc4da26d0bc4f0f1fdc, type: 3}
   maxStack: 1
   type: 3
   healAmount: 0
