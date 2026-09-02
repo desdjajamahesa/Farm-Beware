@@ -280,6 +280,8 @@ Recipes define input → output (e.g., `DirtyCarrot` → `CleanCarrot`).
 6. **Kitchen station not processing**: Check `stationInventory` assigned in Inspector, item has valid KitchenRecipe, `On (Verified working)InventoryChanged` listener registered.
 7. **Wall occlusion not working**: Ensure walls have `WallOccluder` component, WallOcclusionManager. (Verified working)raycastMask includes wall layer.
 
+8. **Highlight system dead**: Check `HoverLabelController.interactor` reference. If null, `Update()` clears highlight every frame. Fix: auto-resolve in `Awake()` + re-wire in scene.
+
 ---
 
 ## ANTI-PATTERNS (DO NOT)
@@ -294,3 +296,4 @@ Recipes define input → output (e.g., `DirtyCarrot` → `CleanCarrot`).
 - ❌ **AddItem() without CanAcceptItem() pre-check** → Rule enforcement happens IN AddItem/MoveItemToSlot.
 - ❌ **Event subscription without OnDisable cleanup** → Memory leaks + double-invocation bugs.
 - ❌ **Prefab edits without Editor automation scripts** → Use TrophySystemWiring.cs, KitchenSetup.cs, etc.
+- ❌ **Don't rely solely on serialized references for same-GameObject components** — Add `Awake()` fallback: `if (ref == null) ref = GetComponent<Type>();`

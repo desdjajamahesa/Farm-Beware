@@ -48,6 +48,6 @@ public class RefrigeratorInteractable : MonoBehaviour, IInteractable
         ApplyRestriction(inventory);
 
         if (InventoryManagerUI.Instance != null)
-            InventoryManagerUI.Instance.OpenStorageUI(inventory);
+            InventoryManagerUI.Instance.OpenStorageUI(inventory, "Refrigerator", InventoryManagerUI.Instance.refrigeratorPanel);
     }
 }

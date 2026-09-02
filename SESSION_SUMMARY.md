@@ -47,6 +47,13 @@
 - **Problem**: 2 empty `AnimationEvents` with blank `functionName` in `ChestOpen.anim`.
 - **Fix**: Removed events (`m_Events: []`), forced asset reimport. 0 events confirmed.
 
+### 11. Highlight System — Lost Interactor Reference
+- **Problem**: `HoverLabelController.interactor` serialized reference was `null` (lost during prefab/scene edits). `Update()` called `ClearAll()` every frame → highlight completely dead.
+- **Fix**: 
+  - Code: Added auto-resolve in `HoverLabelController.Awake()`: `if (interactor == null) interactor = GetComponent<PlayerInteractor>()`
+  - Scene: Re-wired `interactor` field via SerializedObject to PlayerInteractor (instance -237706)
+- **Result**: Walk near Bed/Wardrobe/SmallDrawer → highlight works again.
+
 ---
 
 ## FEATURES IMPLEMENTED
@@ -193,3 +200,4 @@ Assets/Resources/Player/model/
 2. **Replace placeholder cube prefabs** — Swap TrophyCube prefabs with final 3D trophy models
 3. **Test chest animation timing** — Verify open/close feels right during gameplay
 4. **WardrobeItemData icons** — Currently unused (UI reads OutfitData.icon instead). Either populate or remove dead assets
+5. **Trophy Cabinet quantity display** — Remove quantity text for trophy slots (always 1). Edit `InventorySlotUI.SetSlotVisual()` to only create quantity text when `slot.quantity > 1`.

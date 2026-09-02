@@ -1,5 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
+using UnityEngine.InputSystem;
 using FeaturesWardrobe;
 using UnityEngine.Serialization;
 
@@ -32,6 +34,23 @@ public class InventoryManagerUI : MonoBehaviour
     [FormerlySerializedAs("chestPanel")]
     public GameObject storagePanel;
     public Transform playerHotbarContainer;
+    public RectTransform playerViewport;
+
+    [Header("Modular Storage Panels")]
+    public GameObject refrigeratorPanel;
+    public GameObject trophyPanel;
+
+    [Header("Item Details Toggle")]
+    public GameObject itemDetailsContainer;
+
+    [Header("Panel Titles")]
+    public Text leftPanelTitle;
+    public Text rightPanelTitle;
+
+    [Header("Item Details (Player Panel)")]
+    public Image detailItemIcon;
+    public Text detailItemName;
+    public Text detailItemDesc;
 
     private readonly List<InventorySlotUI> playerSlotUIs = new List<InventorySlotUI>();
     private readonly List<InventorySlotUI> storageSlotUIs = new List<InventorySlotUI>();
@@ -55,6 +74,13 @@ public class InventoryManagerUI : MonoBehaviour
     void Start()
     {
         if (playerInventory == null)
+        {
+            var playerControl = FindObjectOfType<PlayerControl>();
+            if (playerControl != null)
+                playerInventory = playerControl.GetComponent<InventoryComponent>();
+        }
+
+        if (playerInventory == null)
             playerInventory = GetComponent<InventoryComponent>();
 
         if (playerInventory != null)
@@ -63,6 +89,10 @@ public class InventoryManagerUI : MonoBehaviour
             playerInventory.OnHotbarSelected += OnHotbarSelected;
             playerTransform = playerInventory.transform;
         }
+
+        // Ensure hotbar is visible at start
+        if (playerHotbarContainer != null)
+            playerHotbarContainer.gameObject.SetActive(true);
 
         displayLeftInventory = playerInventory;
         BuildPlayerSlots();
@@ -86,6 +116,24 @@ public class InventoryManagerUI : MonoBehaviour
             float distance = Vector3.Distance(playerTransform.position, anchor.position);
             if (distance > maxInteractDistance)
                 CloseAllUI();
+        }
+
+        // Auto-close trophy cabinet jika jauh dari anchor
+        if (isTrophyCabinetMode && currentStorageInventory != null)
+        {
+            if (playerTransform == null) return;
+            float distance = Vector3.Distance(playerTransform.position, currentStorageInventory.transform.position);
+            if (distance > maxInteractDistance)
+                CloseAllUI();
+        }
+
+        // ESC key closes any open inventory/storage/trophy UI
+        if (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame)
+        {
+            if (isPlayerOpen || storagePanel != null && storagePanel.activeSelf || isTrophyCabinetMode)
+            {
+                CloseAllUI();
+            }
         }
     }
 
@@ -148,13 +196,41 @@ public class InventoryManagerUI : MonoBehaviour
         if (playerPanel != null)
             playerPanel.SetActive(isPlayerOpen);
 
+        // Ensure hotbar is visible when player inventory is open
+        if (isPlayerOpen && playerHotbarContainer != null)
+            playerHotbarContainer.gameObject.SetActive(true);
+
+        // Show/hide item details container
+        if (itemDetailsContainer != null)
+            itemDetailsContainer.SetActive(isPlayerOpen);
+
+        // Adjust viewport for item details area
+        if (playerViewport != null)
+        {
+            if (isPlayerOpen)
+                playerViewport.offsetMin = new Vector2(playerViewport.offsetMin.x, 150);
+            else
+                playerViewport.offsetMin = new Vector2(playerViewport.offsetMin.x, 0);
+        }
+
+        // Refresh player slots data when opening
+        if (isPlayerOpen)
+        {
+            BuildPlayerSlots();
+            UpdateUI();
+        }
+
+        // Set title when opening player-only inventory
+        if (isPlayerOpen && leftPanelTitle != null)
+            leftPanelTitle.text = "Inventory";
+
         SetCursorFree(isPlayerOpen);
     }
 
     /// <summary>
     /// Membuka UI storage generik: panel Player (kiri) + storage (kanan). Biar list Player tetap tampil.
     /// </summary>
-    public void OpenStorageUI(InventoryComponent storageInv)
+    public void OpenStorageUI(InventoryComponent storageInv, string storageTitle = "Storage", GameObject customPanel = null)
     {
         if (storageInv == null) return;
 
@@ -167,11 +243,54 @@ public class InventoryManagerUI : MonoBehaviour
         currentStorageInventory.OnInventoryChanged += OnInventoryChanged;
 
         displayLeftInventory = playerInventory;
-        BuildSlots(storageSlotsContainer, storageSlotUIs, storageInv);
+
+        GameObject activeStoragePanel;
+        RectTransform activeSlotsContainer;
+        List<InventorySlotUI> activeSlotList;
+
+        if (customPanel != null)
+        {
+            // Use custom panel
+            activeStoragePanel = customPanel;
+            activeSlotsContainer = customPanel.transform.Find("INV_StorageSlotsContainer")?.GetComponent<RectTransform>();
+            activeSlotList = storagePanel == customPanel ? storageSlotUIs : new List<InventorySlotUI>();
+            
+            // Ensure other panels are off
+            if (storagePanel != null) storagePanel.SetActive(false);
+            if (refrigeratorPanel != null && refrigeratorPanel != customPanel) refrigeratorPanel.SetActive(false);
+            if (trophyPanel != null && trophyPanel != customPanel) trophyPanel.SetActive(false);
+        }
+        else
+        {
+            // Use default panel
+            activeStoragePanel = storagePanel;
+            activeSlotsContainer = storageSlotsContainer;
+            activeSlotList = storageSlotUIs;
+            
+            if (refrigeratorPanel != null) refrigeratorPanel.SetActive(false);
+            if (trophyPanel != null) trophyPanel.SetActive(false);
+        }
+
+        if (activeSlotsContainer != null)
+            BuildSlots(activeSlotsContainer, activeSlotList, storageInv);
 
         isPlayerOpen = true;
         if (playerPanel != null) playerPanel.SetActive(true);
-        if (storagePanel != null) storagePanel.SetActive(true);
+        if (activeStoragePanel != null) activeStoragePanel.SetActive(true);
+
+        if (itemDetailsContainer != null)
+            itemDetailsContainer.SetActive(customPanel == null || customPanel == storagePanel);
+
+        if (playerViewport != null)
+            playerViewport.offsetMin = new Vector2(playerViewport.offsetMin.x, 
+                (customPanel == null || customPanel == storagePanel) ? 150 : 0);
+
+        // Set panel titles dynamically - find HeaderTitle in active panels
+        if (leftPanelTitle != null) leftPanelTitle.text = "Inventory";
+        
+        GameObject activeRightPanel = customPanel != null ? customPanel : storagePanel;
+        var rightTitleText = activeRightPanel?.transform.Find("HeaderTitle")?.GetComponent<Text>();
+        if (rightTitleText != null) rightTitleText.text = storageTitle;
 
         SetCursorFree(true);
         UpdateUI();
@@ -181,7 +300,7 @@ public class InventoryManagerUI : MonoBehaviour
     /// Buka UI KHUSUS Trophy Cabinet:
     /// KIRI  = Inventory Kabinet (berisi Trophy, siap di-drag keluar),
     /// KANAN = Inventory Rak (4 slot utama SnapPoint).
-    /// Panel Player TIDAK ikut terbuka — Trophy hanya boleh di Kabinet/Rak.
+    /// MENGGUNAKAN PANEL TROPHY SPESIFIK (trophyPanel).
     /// </summary>
     public void OpenTrophyCabinetUI(InventoryComponent cabinetInv, InventoryComponent rackInv)
     {
@@ -212,16 +331,43 @@ public class InventoryManagerUI : MonoBehaviour
         displayLeftInventory = cabinetInv;
         isTrophyCabinetMode = true;
 
-        // Build cabinet panel only.
+        // Build cabinet panel on STANDARD player panel (left).
         BuildSlots(playerSlotsContainer, playerSlotUIs, cabinetInv);
+
+        // Build rack panel on TROPHY panel (right).
+        GameObject rackPanel = trophyPanel != null ? trophyPanel : storagePanel;
+        RectTransform rackContainer = rackPanel?.transform.Find("INV_StorageSlotsContainer")?.GetComponent<RectTransform>();
+        List<InventorySlotUI> rackList = trophyPanel != null ? new List<InventorySlotUI>() : storageSlotUIs;
+
+        if (rackInv != null && rackContainer != null)
+            BuildSlots(rackContainer, rackList, rackInv);
 
         // Sembunyikan hotbar Player selama trophy mode.
         if (playerHotbarContainer != null)
             playerHotbarContainer.gameObject.SetActive(false);
 
         isPlayerOpen = true;
+
+        // Activate panels
         if (playerPanel != null) playerPanel.SetActive(true);
-        if (storagePanel != null) storagePanel.SetActive(false);
+        if (trophyPanel != null) trophyPanel.SetActive(true);
+        else if (storagePanel != null) storagePanel.SetActive(true);
+
+        if (refrigeratorPanel != null) refrigeratorPanel.SetActive(false);
+
+        // HIDE item details container for Trophy mode (no detail area)
+        if (itemDetailsContainer != null)
+            itemDetailsContainer.SetActive(false);
+
+        // Expand viewport to full height (no detail area for Trophy)
+        if (playerViewport != null)
+            playerViewport.offsetMin = new Vector2(playerViewport.offsetMin.x, 0);
+
+        // Set panel titles for Trophy Cabinet mode
+        if (leftPanelTitle != null) leftPanelTitle.text = "Kabinet Trophy";
+        
+        var rightTitleText = trophyPanel?.transform.Find("HeaderTitle")?.GetComponent<Text>();
+        if (rightTitleText != null) rightTitleText.text = "Rak Trophy";
 
         SetCursorFree(true);
         UpdateUI();
@@ -235,8 +381,15 @@ public class InventoryManagerUI : MonoBehaviour
     {
         isPlayerOpen = false;
 
+        // Close all panels
         if (playerPanel != null) playerPanel.SetActive(false);
         if (storagePanel != null) storagePanel.SetActive(false);
+        if (refrigeratorPanel != null) refrigeratorPanel.SetActive(false);
+        if (trophyPanel != null) trophyPanel.SetActive(false);
+
+        // ALWAYS ensure hotbar is visible when closing all UI
+        if (playerHotbarContainer != null)
+            playerHotbarContainer.gameObject.SetActive(true);
 
         UnsubscribeRight();
         UnsubscribeCabinet();
@@ -253,7 +406,43 @@ public class InventoryManagerUI : MonoBehaviour
             displayLeftInventory = playerInventory;
         }
 
+        // Restore player input (unlock movement/interaction)
+        var playerControl = FindObjectOfType<PlayerControl>();
+        if (playerControl != null)
+        {
+            playerControl.isInputLocked = false;
+        }
+
+        // Restore time scale in case it was paused
+        Time.timeScale = 1f;
+
         SetCursorFree(false);
+    }
+
+    /// <summary>
+    /// Update the item detail panel (bottom of player inventory).
+    /// </summary>
+    public void UpdateItemDetails(ItemData item)
+    {
+        if (item == null)
+        {
+            if (detailItemIcon != null)
+            {
+                detailItemIcon.sprite = null;
+                detailItemIcon.enabled = false;
+            }
+            if (detailItemName != null) detailItemName.text = "";
+            if (detailItemDesc != null) detailItemDesc.text = "";
+            return;
+        }
+
+        if (detailItemIcon != null)
+        {
+            detailItemIcon.sprite = item.itemIcon;
+            detailItemIcon.enabled = item.itemIcon != null;
+        }
+        if (detailItemName != null) detailItemName.text = item.itemName;
+        if (detailItemDesc != null) detailItemDesc.text = item.description ?? "";
     }
 
     private void SetCursorFree(bool free)

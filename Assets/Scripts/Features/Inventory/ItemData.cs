@@ -12,6 +12,7 @@ public class ItemData : ScriptableObject
     public string itemName;
     public Sprite itemIcon;
     public int maxStack;
+    public string description;
 
     public ItemType type;
     public int healAmount;

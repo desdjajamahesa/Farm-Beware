@@ -184,16 +184,28 @@ public class InventorySlotUI : MonoBehaviour, IDropHandler, IPointerClickHandler
         InventorySlot data = SlotIndex >= 0 && SlotIndex < ownerInventory.slots.Count
             ? ownerInventory.slots[SlotIndex]
             : null;
-        if (data == null || data.IsEmpty || ItemDisplayUI.Instance == null)
+        if (data == null || data.IsEmpty)
+        {
+            // Clear details if hovering empty slot
+            if (manager != null)
+                manager.UpdateItemDetails(null);
             return;
+        }
 
-        ItemDisplayUI.Instance.ShowHover(data.item.itemName);
+        ItemDisplayUI.Instance?.ShowHover(data.item.itemName);
+
+        // Update item details panel (only for player inventory panel)
+        if (manager != null && ownerInventory == manager.playerInventory)
+            manager.UpdateItemDetails(data.item);
     }
 
     public void OnPointerExit(PointerEventData eventData)
     {
-        if (ItemDisplayUI.Instance != null)
-            ItemDisplayUI.Instance.HideHover();
+        ItemDisplayUI.Instance?.HideHover();
+
+        // Clear item details panel when mouse leaves
+        if (manager != null && ownerInventory == manager.playerInventory)
+            manager.UpdateItemDetails(null);
     }
 
     /// <summary>

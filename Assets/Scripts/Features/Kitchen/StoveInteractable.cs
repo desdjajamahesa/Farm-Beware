@@ -31,6 +31,6 @@ public class StoveInteractable : KitchenStation, IInteractable
     public void Interact(GameObject interactor)
     {
         if (InventoryManagerUI.Instance != null && StationInventory != null)
-            InventoryManagerUI.Instance.OpenStorageUI(StationInventory);
+            InventoryManagerUI.Instance.OpenStorageUI(StationInventory, "Stove");
     }
 }
