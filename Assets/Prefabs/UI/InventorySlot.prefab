@@ -184,6 +184,7 @@ MonoBehaviour:
   iconImage: {fileID: 2410947314031592206}
   quantityText: {fileID: 1051867698878417396}
   backgroundImage: {fileID: 0}
+  progressFill: {fileID: 0}
   ownerInventory: {fileID: 0}
 --- !u!1 &7017391736784332491
 GameObject:
@@ -219,7 +220,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 1, y: 1}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: -4, y: 4}
+  m_AnchoredPosition: {x: -17.3, y: -2.7}
   m_SizeDelta: {x: 24, y: 18}
   m_Pivot: {x: 1, y: 1}
 --- !u!222 &5385345238939045268

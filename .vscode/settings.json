@@ -67,5 +67,10 @@
         "*.sln": "*.csproj",
         "*.slnx": "*.csproj"
     },
-    "dotnet.defaultSolution": "Farm-Beware.slnx"
+    "dotnet.defaultSolution": "Farm-Beware.slnx",
+    "csharp-dev-tools.solutionViewer.selectedWorkspaceSolutions": [
+        "Farm Beware.slnx",
+        "Farm-Beware.slnx",
+        "My project (7).slnx"
+    ]
 }

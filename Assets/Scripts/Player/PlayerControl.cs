@@ -7,7 +7,8 @@ using UnityEngine.InputSystem; // Pastikan ini tetap ada
 public class PlayerControl : MonoBehaviour
 {
     [Header("Pengaturan Pergerakan")]
-    public float moveSpeed = 7f;
+    public float walkSpeed = 5f;
+    public float runSpeed = 8f;
     public float turnSpeed = 15f;
 
     [Header("Pengaturan Aksi")]
@@ -22,10 +23,12 @@ public class PlayerControl : MonoBehaviour
     private PlayerInputActions inputActions;
     private PlayerInteractor interactor;
     private InventoryComponent playerInventory;
+    private PlayerStats playerStats;
 
     // Status internal
     private bool isGrounded;
     private bool isDashing;
+    private bool isRunning;
     private float lastDashTime = -100f;
 
     // Kunci input global: saat true, pemain tidak bisa bergerak, membuka
@@ -42,6 +45,7 @@ public class PlayerControl : MonoBehaviour
 
         interactor = GetComponent<PlayerInteractor>();  
         playerInventory = GetComponent<InventoryComponent>();  
+        playerStats = GetComponent<PlayerStats>();
     }
 
     void OnEnable()
@@ -54,7 +58,6 @@ public class PlayerControl : MonoBehaviour
 
         // Mendaftarkan event: Saat tombol ditekan, panggil fungsi yang sesuai
         inputActions.Player.Jump.performed += ctx => ExecuteJump();
-        inputActions.Player.Dash.performed += ctx => StartCoroutine(ExecuteDash());
         inputActions.Player.Interact.performed += OnInteractPressed;
     }
 
@@ -66,7 +69,6 @@ public class PlayerControl : MonoBehaviour
 
         // Mencabut pendaftaran event untuk mencegah memory leak
         inputActions.Player.Jump.performed -= ctx => ExecuteJump();
-        inputActions.Player.Dash.performed -= ctx => StartCoroutine(ExecuteDash());
 
         inputActions.Player.Disable();
 
@@ -91,15 +93,31 @@ public class PlayerControl : MonoBehaviour
         Vector2 moveInput = inputActions.Player.Move.ReadValue<Vector2>();
         inputVector = new Vector3(moveInput.x, 0f, moveInput.y).normalized;
 
-        // 3. Sinkronisasi Animator
+        // 3. Cek apakah pemain menahan tombol Shift untuk Lari (Sprint)
+        bool isMoving = inputVector.magnitude >= 0.1f;
+        bool wantsToRun = Keyboard.current != null && (Keyboard.current.leftShiftKey.isPressed || Keyboard.current.rightShiftKey.isPressed);
+
+        // Karakter hanya berlari jika bergerak, menekan shift, dan memiliki stamina
+        isRunning = isMoving && wantsToRun && (playerStats != null && !playerStats.IsExhausted);
+
+        // 4. Konsumsi Stamina HANYA saat Berlari (Sprint)
+        if (isRunning && playerStats != null)
+        {
+            playerStats.UseStamina(playerStats.staminaDrainRate * Time.deltaTime);
+        }
+
+        // 5. Sinkronisasi Animator
         if (animator != null)
         {
-            float speedValue = inputVector.magnitude;
-            animator.SetFloat("Vel", speedValue);
+            float speedValue = 0f;
+            if (isMoving)
+            {
+                speedValue = isRunning ? 1.0f : 0.5f;
+            }
 
-            // Mengirimkan status tanah SEBENARNYA ke Animator
+            animator.SetFloat("Vel", speedValue);
             animator.SetBool("Grounded", isGrounded);
-            animator.SetBool("Idle", speedValue < 0.1f);
+            animator.SetBool("Idle", !isMoving);
         }
     }
 
@@ -114,7 +132,10 @@ public class PlayerControl : MonoBehaviour
         if (inputVector.magnitude >= 0.1f)
         {
             Vector3 moveDirection = Quaternion.Euler(0, 45f, 0) * inputVector;
-            float moveDistance = moveSpeed * Time.fixedDeltaTime;
+            
+            // Tentukan kecepatan: runSpeed jika sedang lari (Shift), selain itu walkSpeed
+            float currentSpeed = isRunning ? runSpeed : walkSpeed;
+            float moveDistance = currentSpeed * Time.fixedDeltaTime;
             
             // SWEEP TEST: Check for collisions before moving using CapsuleCast
             CapsuleCollider capsuleCollider = GetComponent<CapsuleCollider>();

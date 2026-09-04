@@ -95,7 +95,6 @@ namespace FeaturesWardrobe
             mainCameraWasEnabled = mainPlayerCamera.enabled;
             wardrobeCameraWasEnabled = wardrobeCamera.enabled;
             
-            // FIX B: Disable IsometricCamera to prevent it from re-enabling Main Camera
             var isoCam = mainPlayerCamera.GetComponent<IsometricCamera>();
             if (isoCam != null)
             {
@@ -108,15 +107,12 @@ namespace FeaturesWardrobe
             
             SetupWardrobeCamera();
             
-            // Ensure MirrorInnerCam is disabled BEFORE any camera switch
             if (mirrorCamera != null && mirrorCamera.MirrorCameraComponent != null)
             {
                 mirrorCamera.MirrorCameraComponent.enabled = false;
                 Debug.Log("[WardrobeManager] MirrorInnerCam disabled before Enter sequence");
             }
             
-            // CRITICAL FIX: Initialize MirrorCamera BEFORE starting coroutine
-            // This ensures targetTexture is bound before MirrorInnerCam gets enabled in the coroutine
             if (mirrorCamera != null)
             {
                 mirrorCamera.EnsureInitialized();
@@ -129,7 +125,6 @@ namespace FeaturesWardrobe
             
             PositionPlayerToMirror();
             
-            // FIX D: Start camera audit if debug enabled
             if (debugCameraAudit)
             {
                 StartCoroutine(AuditCamerasDuringBlend());
@@ -168,7 +163,6 @@ namespace FeaturesWardrobe
             SetUIRaycastBlocking(false);
             SetCursorFree(false);
             
-            // Restore IsometricCamera
             var isoCam = mainPlayerCamera.GetComponent<IsometricCamera>();
             if (isoCam != null)
             {
@@ -251,21 +245,18 @@ namespace FeaturesWardrobe
 
             if (entering)
             {
-                // CRITICAL FIX: Bind targetTexture FIRST before any camera switching
                 if (mirrorCamera != null && mirrorCamera.MirrorTexture != null)
                 {
                     mirrorCamera.MirrorCameraComponent.targetTexture = mirrorCamera.MirrorTexture;
                     Debug.Log("[WardrobeManager] MirrorInnerCam targetTexture bound: " + mirrorCamera.MirrorTexture.name);
                 }
 
-                // Verify texture is bound BEFORE proceeding
                 if (mirrorCamera != null && mirrorCamera.MirrorCameraComponent != null && mirrorCamera.MirrorCameraComponent.targetTexture == null)
                 {
                     Debug.LogError("[WardrobeManager] Mirror camera has no targetTexture! Aborting blend.");
-                    yield break; // Abort - don't proceed without valid targetTexture
+                    yield break;
                 }
 
-                // NOW disable main camera and enable wardrobe/mirror cameras
                 mainPlayerCamera.enabled = false;
                 
                 var isoCam = mainPlayerCamera.GetComponent<IsometricCamera>();
@@ -275,11 +266,9 @@ namespace FeaturesWardrobe
                     Debug.Log("[WardrobeManager] IsometricCamera disabled (blend start)");
                 }
                 
-                // Enable WardrobeCamera (screen)
                 wardrobeCamera.enabled = true;
                 Debug.Log("[WardrobeManager] WardrobeCamera enabled (screen)");
                 
-                // NOW enable MirrorInnerCam (renders to texture) - texture already bound
                 if (mirrorCamera != null && mirrorCamera.MirrorCameraComponent != null)
                 {
                     mirrorCamera.MirrorCameraComponent.enabled = true;
@@ -288,22 +277,17 @@ namespace FeaturesWardrobe
                 
                 if (uiCanvasGroup != null) uiCanvasGroup.alpha = 0f;
                 
-                // Force UI RawImage update after cameras are set
                 if (wardrobeUI != null) wardrobeUI.ForceRefreshMirror();
             }
             else
             {
-                // EXIT ORDER: Disable MirrorInnerCam FIRST
                 if (mirrorCamera != null && mirrorCamera.MirrorCameraComponent != null)
                 {
                     mirrorCamera.MirrorCameraComponent.enabled = false;
                     Debug.Log("[WardrobeManager] MirrorInnerCam disabled before exit");
                 }
                 
-                // Disable WardrobeCamera
                 wardrobeCamera.enabled = false;
-                
-                // Enable Main Camera
                 mainPlayerCamera.enabled = true;
                 
                 var isoCam = mainPlayerCamera.GetComponent<IsometricCamera>();
@@ -313,7 +297,6 @@ namespace FeaturesWardrobe
                     Debug.Log("[WardrobeManager] IsometricCamera re-enabled (blend end)");
                 }
                 
-                // Re-enable MirrorInnerCam for mirror surface (gameplay)
                 if (mirrorCamera != null && mirrorCamera.MirrorTexture != null)
                 {
                     mirrorCamera.MirrorCameraComponent.targetTexture = mirrorCamera.MirrorTexture;
@@ -322,7 +305,6 @@ namespace FeaturesWardrobe
                 }
             }
 
-            // FIX D: Start camera audit if debug enabled
             Coroutine auditCoroutine = null;
             if (debugCameraAudit)
             {
@@ -333,10 +315,7 @@ namespace FeaturesWardrobe
             {
                 elapsed += Time.unscaledDeltaTime;
                 float t = Mathf.Clamp01(elapsed / cameraBlendDuration);
-                float easedT = EaseInOutCubic(t);
 
-                // Camera state stays FIXED during blend (no mid-blend toggles)
-                // Only UI fades smoothly
                 if (uiCanvasGroup != null)
                     uiCanvasGroup.alpha = Mathf.Lerp(startUIAlpha, targetUIAlpha, EaseInOutCubic(t));
 
@@ -360,7 +339,7 @@ namespace FeaturesWardrobe
 
         private IEnumerator AuditCamerasDuringBlend()
         {
-            for (int i = 0; i < 20; i++)  // Audit for ~1 second
+            for (int i = 0; i < 20; i++)
             {
                 int enabledCount = 0;
                 foreach (var cam in Camera.allCameras)
@@ -368,11 +347,10 @@ namespace FeaturesWardrobe
                     if (cam.enabled)
                     {
                         enabledCount++;
-                        var uacd = cam.GetComponent<UniversalAdditionalCameraData>();
-                        Debug.Log($"[AUDIT] Active Camera: {cam.name}, depth={cam.depth}, targetTexture={cam.targetTexture?.name ?? "screen"}, renderType={cam.GetComponent<UniversalAdditionalCameraData>()?.renderType}");
+                        Debug.Log($"[AUDIT] Active Camera: {cam.name}, depth={cam.depth}, targetTexture={cam.targetTexture?.name ?? "screen"}");
                     }
                 }
-                Debug.Log($"[AUDIT] Total enabled cameras: {enabledCount} (expected: 2 during wardrobe - WardrobeCamera + MirrorInnerCam)");
+                Debug.Log($"[AUDIT] Total enabled cameras: {enabledCount}");
                 yield return new WaitForSeconds(0.05f);
             }
         }
@@ -386,7 +364,6 @@ namespace FeaturesWardrobe
         {
             if (playerControl == null || mirrorCamera == null) return;
 
-            // Use MirrorSurface from MirrorCamera (static mirror surface)
             Transform mirrorSurface = mirrorCamera.MirrorSurface;
             if (mirrorSurface == null)
             {
@@ -397,7 +374,6 @@ namespace FeaturesWardrobe
             Vector3 faceNormal = mirrorSurface.forward;
             Vector3 target = mirrorSurface.position + faceNormal * playerMirrorDistance;
 
-            // Raycast to find floor height - cast from higher up to ensure we hit floor
             Vector3 rayOrigin = target + Vector3.up * 3f;
             bool hitFloor = Physics.Raycast(rayOrigin, Vector3.down, out RaycastHit hit, 10f);
             
@@ -408,10 +384,8 @@ namespace FeaturesWardrobe
             }
             else
             {
-                // FALLBACK: Use known bedroom floor Y (0) + offset
-                // Bedroom floor is at Y=0, place player at 0.5f above
                 target.y = 0.5f;
-                Debug.LogWarning("[WardrobeManager] PositionPlayerToMirror: Raycast failed! Using fallback Y=0.5f. Ray origin: " + rayOrigin);
+                Debug.LogWarning("[WardrobeManager] PositionPlayerToMirror: Raycast failed! Using fallback Y=0.5f.");
             }
 
             Quaternion facingMirror = Quaternion.LookRotation(-faceNormal, Vector3.up);
@@ -448,6 +422,14 @@ namespace FeaturesWardrobe
         {
             if (!isInWardrobeMode) return;
 
+            // 1. Update posisi/rotasi kamera wardrobe
+            if (wardrobeCamera != null && wardrobeRoot != null)
+            {
+                wardrobeCamera.transform.localPosition = cameraLocalOffset;
+                wardrobeCamera.transform.localRotation = Quaternion.Euler(cameraLocalRotation);
+            }
+
+            // 2. Lock/Unlock cursor & handle input tombol Escape
             Cursor.visible = true;
             Cursor.lockState = CursorLockMode.None;
 
