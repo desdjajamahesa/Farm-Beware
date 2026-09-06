@@ -67,17 +67,48 @@ public static class KitchenSetup
         ItemData data = AssetDatabase.LoadAssetAtPath<ItemData>(path);
         if (data == null)
         {
-            data = ScriptableObject.CreateInstance<ItemData>();
+            switch (type)
+            {
+                case ItemData.ItemType.Consumable:
+                    var food = ScriptableObject.CreateInstance<FoodItemData>();
+                    food.itemName = itemName;
+                    food.type = type;
+                    food.foodCategory = category;
+                    food.maxStack = maxStack;
+                    food.healAmount = 0;
+                    data = food;
+                    break;
+                case ItemData.ItemType.Material:
+                    var mat = ScriptableObject.CreateInstance<MaterialItemData>();
+                    mat.itemName = itemName;
+                    mat.type = type;
+                    mat.maxStack = maxStack;
+                    data = mat;
+                    break;
+                case ItemData.ItemType.Tool:
+                    var tool = ScriptableObject.CreateInstance<ToolItemData>();
+                    tool.itemName = itemName;
+                    tool.type = type;
+                    tool.maxStack = maxStack;
+                    data = tool;
+                    break;
+                case ItemData.ItemType.Trophy:
+                    var trophy = ScriptableObject.CreateInstance<TrophyItemData>();
+                    trophy.itemName = itemName;
+                    trophy.type = type;
+                    trophy.maxStack = maxStack;
+                    data = trophy;
+                    break;
+                default:
+                    var def = ScriptableObject.CreateInstance<ItemData>();
+                    def.itemName = itemName;
+                    def.type = type;
+                    def.maxStack = maxStack;
+                    data = def;
+                    break;
+            }
             AssetDatabase.CreateAsset(data, path);
         }
-
-        data.itemName = itemName;
-        data.type = type;
-        data.foodCategory = category;
-        data.maxStack = maxStack;
-        data.healAmount = 0;
-        data.equipPrefab = null;
-        data.placeablePrefab = null;
 
         if (data.itemIcon == null)
         {

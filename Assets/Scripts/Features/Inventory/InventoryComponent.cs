@@ -60,7 +60,7 @@ public class InventoryComponent : MonoBehaviour
             bool allowed = false;
             for (int i = 0; i < allowedFoodCategories.Count; i++)
             {
-                if (allowedFoodCategories[i] == item.foodCategory)
+                if (item is FoodItemData food && allowedFoodCategories[i] == food.foodCategory)
                 {
                     allowed = true;
                     break;
@@ -248,14 +248,14 @@ public class InventoryComponent : MonoBehaviour
 
         ItemData item = slot.item;
 
-        if (item.type == ItemData.ItemType.Consumable)
+        if (item.type == ItemData.ItemType.Consumable && item is FoodItemData food)
         {
             // Terapkan efek penyembuhan ke status pemain bila ada.
             PlayerStats playerStats = GetComponent<PlayerStats>();
             if (playerStats != null)
-                playerStats.Heal(item.healAmount);
+                playerStats.Heal(food.healAmount);
 
-            Debug.Log("Mengonsumsi " + item.itemName + " memulihkan " + item.healAmount + " HP");
+            Debug.Log("Mengonsumsi " + item.itemName + " memulihkan " + food.healAmount + " HP");
 
             // Kurangi quantity PADA SLOT yang diklik secara spesifik.
             slot.quantity -= 1;
