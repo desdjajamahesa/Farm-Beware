@@ -1,0 +1,18 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5335ef365cb29a940816d2e56467f4a9, type: 3}
+  m_Name: Cook_Fish
+  m_EditorClassIdentifier: Assembly-CSharp::KitchenRecipe
+  input: {fileID: 11400000, guid: 3b85d492a9b51f743be3bae49fc0070a, type: 2}
+  output: {fileID: 11400000, guid: d8d23ec8081bd454c8389d52caae64bc, type: 2}
+  outputCount: 1
+  processTime: 5

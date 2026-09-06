@@ -11,6 +11,14 @@ public class InventoryComponent : MonoBehaviour
     [Tooltip("Tidak mengizinkan item tipe Trophy masuk ke inventory ini (Contoh: inventory Player).")]
     [SerializeField] private bool blockTrophyItems;
 
+    private void Awake()
+    {
+        if (slots == null || slots.Count == 0)
+        {
+            ResetInventory(maxCapacity);
+        }
+    }
+
     // Pembatas kategori makanan yang boleh masuk (kosong = tanpa pembatasan).
     // Contoh: Kulkas = [Vegetable, Fruit]; Sink = hanya item yang bisa dicuci.
     [Tooltip("Pembatas kategori makanan (FoodCategory). Kosong = semua boleh masuk.")]
@@ -333,27 +341,28 @@ public class InventoryComponent : MonoBehaviour
 
     // Perpindahan presisi slot-ke-slot antar inventory (atau dalam inventory yang sama).
     // Menangani tiga kasus: pindah ke slot kosong, penumpukan item sama, dan pertukaran item berbeda.
-    public void MoveItemToSlot(int sourceIndex, InventoryComponent targetInventory, int targetIndex)
+    // Returns true if transfer succeeded, false if failed (bounds check, full capacity, or validation failed).
+    public bool MoveItemToSlot(int sourceIndex, InventoryComponent targetInventory, int targetIndex)
     {
         if (targetInventory == null)
-            return;
+            return false;
 
         if (sourceIndex < 0 || sourceIndex >= slots.Count)
-            return;
+            return false;
         if (targetIndex < 0 || targetIndex >= targetInventory.slots.Count)
-            return;
+            return false;
 
         InventorySlot sourceSlot = slots[sourceIndex];
         InventorySlot targetSlot = targetInventory.slots[targetIndex];
         if (sourceSlot == null || targetSlot == null)
-            return;
+            return false;
 
         if (sourceSlot.IsEmpty)
-            return;
+            return false;
 
         // Aturan backend terpusat: item yang tidak boleh masuk target (trophy/kategori) ditolak.
         if (sourceSlot.item != null && !targetInventory.CanAcceptItem(sourceSlot.item))
-            return;
+            return false;
 
         if (targetSlot.IsEmpty)
         {
@@ -378,6 +387,11 @@ public class InventoryComponent : MonoBehaviour
                     sourceSlot.quantity = 0;
                 }
             }
+            else
+            {
+                // Target slot full, cannot stack more
+                return false;
+            }
         }
         else
         {
@@ -399,6 +413,8 @@ public class InventoryComponent : MonoBehaviour
             OnHotbarSelected?.Invoke(selectedHotbarIndex);
         if (targetInventory.selectedHotbarIndex == targetIndex)
             targetInventory.OnHotbarSelected?.Invoke(targetInventory.selectedHotbarIndex);
+
+        return true;
     }
 
     public void SwapSlots(int indexA, int indexB)

@@ -4,6 +4,7 @@ using UnityEngine.UI;
 using UnityEngine.InputSystem;
 using FeaturesWardrobe;
 using UnityEngine.Serialization;
+using System.Linq;
 
 public class InventoryManagerUI : MonoBehaviour
 {
@@ -40,6 +41,9 @@ public class InventoryManagerUI : MonoBehaviour
     public GameObject refrigeratorPanel;
     public GameObject trophyPanel;
 
+    [Header("Modular Storage Slot Containers")]
+    [SerializeField] private RectTransform refrigeratorSlotsContainer;
+    [SerializeField] private RectTransform trophySlotsContainer;
     [Header("Item Details Toggle")]
     public GameObject itemDetailsContainer;
 
@@ -54,6 +58,8 @@ public class InventoryManagerUI : MonoBehaviour
 
     private readonly List<InventorySlotUI> playerSlotUIs = new List<InventorySlotUI>();
     private readonly List<InventorySlotUI> storageSlotUIs = new List<InventorySlotUI>();
+    private readonly List<InventorySlotUI> refrigeratorSlotUIs = new List<InventorySlotUI>();
+    private readonly List<InventorySlotUI> trophySlotUIs = new List<InventorySlotUI>();
     private bool isPlayerOpen;
 
     // Inventori yang sebenarnya dirender di panel KIRI (default = Player).
@@ -69,6 +75,29 @@ public class InventoryManagerUI : MonoBehaviour
 
         // Sembunyikan semua UI paling awal + kunci kursor untuk game action.
         CloseAllUI();
+    }
+
+    /// <summary>
+    /// Recursively finds a child Transform by name in the hierarchy.
+    /// Unity's Transform.Find only searches direct children, so this provides recursive search.
+    /// </summary>
+    private Transform FindDeepChild(Transform parent, string name)
+    {
+        if (parent == null) return null;
+        
+        // Check direct children first
+        for (int i = 0; i < parent.childCount; i++)
+        {
+            Transform child = parent.GetChild(i);
+            if (child.name == name)
+                return child;
+            
+            // Recursively search deeper
+            Transform result = FindDeepChild(child, name);
+            if (result != null)
+                return result;
+        }
+        return null;
     }
 
     void Start()
@@ -88,6 +117,9 @@ public class InventoryManagerUI : MonoBehaviour
             playerInventory.OnInventoryChanged += OnInventoryChanged;
             playerInventory.OnHotbarSelected += OnHotbarSelected;
             playerTransform = playerInventory.transform;
+
+            // Initialize player inventory slots (CRITICAL: ensures slots list is allocated)
+            playerInventory.ResetInventory(playerInventory.maxCapacity);
         }
 
         // Ensure hotbar is visible at start
@@ -246,16 +278,32 @@ public class InventoryManagerUI : MonoBehaviour
 
         GameObject activeStoragePanel;
         RectTransform activeSlotsContainer;
-        List<InventorySlotUI> activeSlotList;
+        List<InventorySlotUI> activeSlotList = storageSlotUIs; // Default
 
-        if (customPanel != null)
+if (customPanel != null)
         {
-            // Use custom panel
             activeStoragePanel = customPanel;
-            activeSlotsContainer = customPanel.transform.Find("INV_StorageSlotsContainer")?.GetComponent<RectTransform>();
-            activeSlotList = storagePanel == customPanel ? storageSlotUIs : new List<InventorySlotUI>();
-            
-            // Ensure other panels are off
+            RectTransform resolvedContainer = null;
+
+            if (customPanel == refrigeratorPanel && refrigeratorSlotsContainer != null)
+                resolvedContainer = refrigeratorSlotsContainer;
+            else if (customPanel == trophyPanel && trophySlotsContainer != null)
+                resolvedContainer = trophySlotsContainer;
+            else
+            {
+                var found = FindDeepChild(customPanel.transform, "INV_StorageSlotsContainer");
+                resolvedContainer = found?.GetComponent<RectTransform>();
+            }
+
+            activeSlotsContainer = resolvedContainer;
+
+            if (customPanel == refrigeratorPanel)
+                activeSlotList = refrigeratorSlotUIs;
+            else if (customPanel == trophyPanel)
+                activeSlotList = trophySlotUIs;
+            else
+                activeSlotList = storageSlotUIs;
+
             if (storagePanel != null) storagePanel.SetActive(false);
             if (refrigeratorPanel != null && refrigeratorPanel != customPanel) refrigeratorPanel.SetActive(false);
             if (trophyPanel != null && trophyPanel != customPanel) trophyPanel.SetActive(false);
@@ -272,11 +320,36 @@ public class InventoryManagerUI : MonoBehaviour
         }
 
         if (activeSlotsContainer != null)
-            BuildSlots(activeSlotsContainer, activeSlotList, storageInv);
+            {
+                BuildSlots(activeSlotsContainer, activeSlotList, storageInv);
+            }
 
         isPlayerOpen = true;
         if (playerPanel != null) playerPanel.SetActive(true);
         if (activeStoragePanel != null) activeStoragePanel.SetActive(true);
+
+        if (activeSlotsContainer != null)
+            {
+                LayoutRebuilder.ForceRebuildLayoutImmediate(activeSlotsContainer);
+                if (activeSlotsContainer.rect.width < 1f)
+                {
+                    GridLayoutGroup glg = activeSlotsContainer.GetComponent<GridLayoutGroup>();
+                    int cols = glg != null && glg.constraint == GridLayoutGroup.Constraint.FixedColumnCount ? glg.constraintCount : 3;
+                    float cellW = glg != null ? glg.cellSize.x : 85f;
+                    float spacingX = glg != null ? glg.spacing.x : 8f;
+                    float padL = glg != null ? glg.padding.left : 0;
+                    float padR = glg != null ? glg.padding.right : 0;
+                    int rows = Mathf.CeilToInt((float)activeSlotList.Count / cols);
+                    float cellH = glg != null ? glg.cellSize.y : 85f;
+                    float spacingY = glg != null ? glg.spacing.y : 8f;
+                    float padT = glg != null ? glg.padding.top : 0;
+                    float padB = glg != null ? glg.padding.bottom : 0;
+                    float w = cols * cellW + (cols - 1) * spacingX + padL + padR;
+                    float h = rows * cellH + (rows - 1) * spacingY + padT + padB;
+                    activeSlotsContainer.sizeDelta = new Vector2(w, h);
+                    Debug.LogWarning($"[OpenStorageUI] Container width was ~0 after rebuild, forced sizeDelta=({w},{h}) for {activeSlotList.Count} slots");
+                }
+            }
 
         if (itemDetailsContainer != null)
             itemDetailsContainer.SetActive(customPanel == null || customPanel == storagePanel);
@@ -336,7 +409,16 @@ public class InventoryManagerUI : MonoBehaviour
 
         // Build rack panel on TROPHY panel (right).
         GameObject rackPanel = trophyPanel != null ? trophyPanel : storagePanel;
-        RectTransform rackContainer = rackPanel?.transform.Find("INV_StorageSlotsContainer")?.GetComponent<RectTransform>();
+        RectTransform rackContainer = null;
+
+        if (trophySlotsContainer != null)
+            rackContainer = trophySlotsContainer;
+        else if (rackPanel != null)
+        {
+            var found = FindDeepChild(rackPanel.transform, "INV_StorageSlotsContainer");
+            rackContainer = found?.GetComponent<RectTransform>();
+        }
+
         List<InventorySlotUI> rackList = trophyPanel != null ? new List<InventorySlotUI>() : storageSlotUIs;
 
         if (rackInv != null && rackContainer != null)
@@ -348,11 +430,12 @@ public class InventoryManagerUI : MonoBehaviour
 
         isPlayerOpen = true;
 
-        // Activate panels
+        // Activate panels - LEFT panel only for Trophy mode
         if (playerPanel != null) playerPanel.SetActive(true);
-        if (trophyPanel != null) trophyPanel.SetActive(true);
-        else if (storagePanel != null) storagePanel.SetActive(true);
-
+        
+        // TROPHY MODE: Right panel HIDDEN (uses 3D Snap Points for drag-drop)
+        if (trophyPanel != null) trophyPanel.SetActive(false);
+        if (storagePanel != null) storagePanel.SetActive(false);
         if (refrigeratorPanel != null) refrigeratorPanel.SetActive(false);
 
         // HIDE item details container for Trophy mode (no detail area)
@@ -496,11 +579,18 @@ public class InventoryManagerUI : MonoBehaviour
         int count = Mathf.Max(0, inventory.maxCapacity);
         for (int i = 0; i < count; i++)
         {
-            InventorySlotUI slot = Instantiate(slotPrefab, container);
+            InventorySlotUI slot = Instantiate(slotPrefab, container, false);
+            slot.transform.localScale = Vector3.one;
+            slot.transform.SetAsLastSibling();
+            RectTransform slotRect = slot.GetComponent<RectTransform>();
+            if (slotRect != null)
+                slotRect.anchoredPosition3D = Vector3.zero;
             slot.Init(this, i, inventory);
             slot.BoundSlot = i < inventory.slots.Count ? inventory.slots[i] : new InventorySlot();
             list.Add(slot);
         }
+
+        Debug.Log($"[BuildSlots] container={container.name}, count={list.Count}, containerSize={container.rect}, containerActive={container.gameObject.activeInHierarchy}");
     }
 
     public void SwapSlots(InventoryComponent owner, int sourceIndex, int destinationIndex)
@@ -513,6 +603,8 @@ public class InventoryManagerUI : MonoBehaviour
     {
         RefreshPanel(playerSlotUIs, displayLeftInventory);
         RefreshPanel(storageSlotUIs, currentStorageInventory);
+        RefreshPanel(refrigeratorSlotUIs, currentStorageInventory);
+        RefreshPanel(trophySlotUIs, currentStorageInventory);
     }
 
     private void RefreshPanel(List<InventorySlotUI> list, InventoryComponent inventory)
