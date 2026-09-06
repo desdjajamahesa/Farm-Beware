@@ -351,12 +351,14 @@ if (customPanel != null)
                 }
             }
 
+        if (playerHotbarContainer != null)
+            playerHotbarContainer.gameObject.SetActive(false);
+
         if (itemDetailsContainer != null)
-            itemDetailsContainer.SetActive(customPanel == null || customPanel == storagePanel);
+            itemDetailsContainer.SetActive(true);
 
         if (playerViewport != null)
-            playerViewport.offsetMin = new Vector2(playerViewport.offsetMin.x, 
-                (customPanel == null || customPanel == storagePanel) ? 150 : 0);
+            playerViewport.offsetMin = new Vector2(playerViewport.offsetMin.x, 150);
 
         // Set panel titles dynamically - find HeaderTitle in active panels
         if (leftPanelTitle != null) leftPanelTitle.text = "Inventory";
