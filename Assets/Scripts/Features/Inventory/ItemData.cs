@@ -22,6 +22,9 @@ public class ItemData : ScriptableObject
     // Referensi model 3D senjata/obyek yang di-spawn ke tangan pemain saat item di-equip.
     public GameObject equipPrefab;
 
+    // Menandai apakah item ini adalah senjata yang bisa digunakan untuk memicu animasi serang/tebas.
+    public bool isWeapon;
+
     // Referensi model 3D yang di-instantiate ke dunia saat item di-drop ke Snap Point
     // (mis. model piala saat disimpan ke rak trophy).
     public GameObject placeablePrefab;

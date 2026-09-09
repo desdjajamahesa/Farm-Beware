@@ -38,14 +38,21 @@ namespace FeaturesInteraction
 
             foreach (Collider hit in hits)
             {
-                IInteractable interactable = hit.GetComponent<IInteractable>();
+                // Cek IInteractable di collider ini, di parent-nya, atau di children-nya
+                IInteractable interactable = hit.GetComponentInParent<IInteractable>();
+                if (interactable == null)
+                    interactable = hit.GetComponentInChildren<IInteractable>();
+
                 if (interactable == null) continue;
 
+                // Hitung posisi representatif objek interaktif
+                Transform targetTransform = (interactable is MonoBehaviour mb) ? mb.transform : hit.transform;
+
                 // ZONE CHECK: If interactable is in a zone, player must be in same zone
-                if (!IsInSameZone(hit.transform))
+                if (!IsInSameZone(targetTransform))
                     continue;
 
-                float dist = (hit.transform.position - transform.position).sqrMagnitude;
+                float dist = (targetTransform.position - transform.position).sqrMagnitude;
                 if (dist < bestDist)
                 {
                     bestDist = dist;
@@ -62,8 +69,18 @@ namespace FeaturesInteraction
             var targetZone = target.GetComponentInParent<InteractionZone>();
             if (targetZone == null) return true; // No zone = always accessible
 
-            // Check if player is in same zone
-            return currentZone == targetZone;
+            // Jika player belum di dalam zona khusus mana pun atau di zona yang sama, izinkan
+            if (currentZone == null || currentZone == targetZone) return true;
+
+            // Fallback: periksa apakah posisi player saat ini berada di dalam bounds collider zone tersebut
+            Vector3 playerPos = transform.position;
+            if (targetZone.ContainsPoint(playerPos) || targetZone.ContainsPoint(playerPos + Vector3.up * 0.5f))
+            {
+                currentZone = targetZone;
+                return true;
+            }
+
+            return false;
         }
 
         private void OnTriggerEnter(Collider other)
@@ -80,10 +97,23 @@ namespace FeaturesInteraction
 
         public void OnInteractInput()
         {
-            if (WardrobeManager.IsInWardrobeMode) return;
+            if (WardrobeManager.IsInWardrobeMode)
+            {
+                Debug.LogWarning("[PlayerInteractor] Interaksi dibatalkan karena WardrobeManager.IsInWardrobeMode = true.");
+                return;
+            }
 
-            if (currentInteractable == null) return;
+            // Jika belum terisi, coba lakukan pencarian objek interaksi terdekat sekali lagi
+            if (currentInteractable == null)
+                currentInteractable = FindClosestInteractable();
 
+            if (currentInteractable == null)
+            {
+                Debug.LogWarning("[PlayerInteractor] Tombol E ditekan, tapi tidak ada objek interaksi di dekat pemain (atau terhalang zona/layer mask).");
+                return;
+            }
+
+            Debug.Log($"[PlayerInteractor] Berhasil berinteraksi dengan: {currentInteractable}");
             currentInteractable.Interact(gameObject);
         }
 

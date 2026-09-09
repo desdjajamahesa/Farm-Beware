@@ -13,8 +13,15 @@ namespace FeaturesInteraction
 
         public string ZoneName => zoneName;
 
+        private void Awake()
+        {
+            if (zoneCollider == null) zoneCollider = GetComponent<Collider>();
+            if (zoneCollider != null) zoneCollider.isTrigger = true;
+        }
+
         public bool ContainsPoint(Vector3 point)
         {
+            if (zoneCollider == null) zoneCollider = GetComponent<Collider>();
             if (zoneCollider == null) return false;
             return zoneCollider.bounds.Contains(point);
         }

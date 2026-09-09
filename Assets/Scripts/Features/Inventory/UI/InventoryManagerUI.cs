@@ -55,7 +55,14 @@ public class InventoryManagerUI : MonoBehaviour
     void Start()
     {
         if (playerInventory == null)
-            playerInventory = GetComponent<InventoryComponent>();
+        {
+            var player = FindFirstObjectByType<PlayerControl>();
+            if (player != null)
+                playerInventory = player.GetComponent<InventoryComponent>();
+
+            if (playerInventory == null)
+                playerInventory = GetComponent<InventoryComponent>();
+        }
 
         if (playerInventory != null)
         {
