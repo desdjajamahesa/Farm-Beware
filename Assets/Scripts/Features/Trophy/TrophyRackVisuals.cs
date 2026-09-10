@@ -90,7 +90,7 @@ public class TrophyRackVisuals : MonoBehaviour
         bool hasModel = _spawnedModels.TryGetValue(index, out GameObject model) && model != null;
 
         // Slot terisi item yang bisa ditempatkan di dunia -> pastikan model tampil.
-        if (item != null && item.placeablePrefab != null)
+        if (item != null && item is TrophyItemData trophy)
         {
             // Model sudah ada untuk item yang SAMA -> tidak perlu apa-apa.
             if (hasModel && _spawnedItemAt.TryGetValue(index, out ItemData renderedItem) && renderedItem == item)
@@ -103,7 +103,7 @@ public class TrophyRackVisuals : MonoBehaviour
             if (snapPoints == null || index >= snapPoints.Length || snapPoints[index] == null)
                 return;
 
-            GameObject created = CreateModel(item.placeablePrefab, snapPoints[index]);
+            GameObject created = CreateModel(trophy.placeablePrefab, snapPoints[index]);
             _spawnedModels[index] = created;
             _spawnedItemAt[index] = item;
             SetPlaceholder(index, false);

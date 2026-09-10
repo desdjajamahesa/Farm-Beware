@@ -85,18 +85,16 @@ public static class TrophyAssetFactory
         }
 
         // --- 3) ItemData (ScriptableObject) yang menunjuk ke prefab tsb ---
-        ItemData data = AssetDatabase.LoadAssetAtPath<ItemData>(dataPath);
+        TrophyItemData data = AssetDatabase.LoadAssetAtPath<TrophyItemData>(dataPath);
         if (data == null)
         {
-            data = ScriptableObject.CreateInstance<ItemData>();
+            data = ScriptableObject.CreateInstance<TrophyItemData>();
             AssetDatabase.CreateAsset(data, dataPath);
         }
 
         data.itemName = displayName;
         data.maxStack = 1;
         data.type = ItemData.ItemType.Trophy;
-        data.healAmount = 0;
-        data.equipPrefab = null;
         data.placeablePrefab = prefab;
 
         // Ikon: salin referensi builtin UISprite yang sudah valid dari asset lama

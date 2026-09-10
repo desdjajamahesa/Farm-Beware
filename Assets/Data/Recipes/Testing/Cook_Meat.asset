@@ -10,9 +10,13 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 5335ef365cb29a940816d2e56467f4a9, type: 3}
-  m_Name: Wash_Carrot
+  m_Name: Cook_Meat
   m_EditorClassIdentifier: Assembly-CSharp::KitchenRecipe
-  input: {fileID: 11400000, guid: b3319f908a899664698f67f253f2c66d, type: 2}
-  output: {fileID: 11400000, guid: 5bd3aca182d0923468b2c603d86f737a, type: 2}
+  input: {fileID: 11400000, guid: a3b2c9e393f5e144694d0e2c1b58af70, type: 2}
+  recipeName: Basic Steak
+  ingredients: []
+  recipeIcon: {fileID: 0}
+  description: 
+  output: {fileID: 11400000, guid: 2b750baa619232246ae846c39e557d57, type: 2}
   outputCount: 1
-  processTime: 3
+  processTime: 5

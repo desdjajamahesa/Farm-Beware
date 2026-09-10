@@ -157,10 +157,13 @@ public class InventorySlotUI : MonoBehaviour, IDropHandler, IPointerClickHandler
         // Perpindahan presisi slot-ke-slot. Backend MoveItemToSlot menangani
         // pindah ke slot kosong, penumpukan item sama, dan pertukaran item berbeda.
         // Berlaku untuk inventory sama maupun antar inventory (Player <-> Storage).
-        originSlot.ownerInventory.MoveItemToSlot(originSlot.SlotIndex, ownerInventory, SlotIndex);
+        bool success = originSlot.ownerInventory.MoveItemToSlot(originSlot.SlotIndex, ownerInventory, SlotIndex);
 
-        // Tutup visual drag (UpdateUI sudah dipicu via OnInventoryChanged).
-        dragItem.MarkDropped();
+        // Tutup visual drag hanya jika transfer berhasil; jika gagal, DraggableItem akan memantulkan ikon kembali.
+        if (success)
+        {
+            dragItem.MarkDropped();
+        }
     }
 
     public void OnPointerClick(PointerEventData eventData)
@@ -184,16 +187,28 @@ public class InventorySlotUI : MonoBehaviour, IDropHandler, IPointerClickHandler
         InventorySlot data = SlotIndex >= 0 && SlotIndex < ownerInventory.slots.Count
             ? ownerInventory.slots[SlotIndex]
             : null;
-        if (data == null || data.IsEmpty || ItemDisplayUI.Instance == null)
+        if (data == null || data.IsEmpty)
+        {
+            // Clear details if hovering empty slot
+            if (manager != null)
+                manager.UpdateItemDetails(null);
             return;
+        }
 
-        ItemDisplayUI.Instance.ShowHover(data.item.itemName);
+        // Tooltip disabled: ItemDisplayUI.Instance?.ShowHover(data.item.itemName);
+
+        // Update item details panel (for all inventory panels)
+        if (manager != null)
+            manager.UpdateItemDetails(data.item);
     }
 
     public void OnPointerExit(PointerEventData eventData)
     {
-        if (ItemDisplayUI.Instance != null)
-            ItemDisplayUI.Instance.HideHover();
+        // Tooltip disabled: ItemDisplayUI.Instance?.HideHover();
+
+        // Clear item details panel when mouse leaves
+        if (manager != null)
+            manager.UpdateItemDetails(null);
     }
 
     /// <summary>

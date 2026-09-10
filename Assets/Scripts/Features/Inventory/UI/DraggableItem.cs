@@ -107,7 +107,7 @@ public class DraggableItem : MonoBehaviour, IBeginDragHandler, IDragHandler, IEn
             return false;
 
         ItemData item = OriginSlot.BoundSlot != null ? OriginSlot.BoundSlot.item : null;
-        if (item == null || item.placeablePrefab == null)
+        if (item == null || item is not TrophyItemData trophy)
             return false;
 
         Vector2 mousePos = Mouse.current.position.ReadValue();

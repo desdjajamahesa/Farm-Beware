@@ -111,11 +111,11 @@ public class PlayerEquipment : MonoBehaviour
         if (slot.item.equipPrefab == null)
             return;
 
-        GameObject spawned = Instantiate(slot.item.equipPrefab, handSocket);
+        GameObject spawned = Instantiate(tool.equipPrefab, handSocket);
         spawned.transform.localPosition = Vector3.zero;
         spawned.transform.localRotation = Quaternion.identity;
         currentWeaponModel = spawned;
-        currentWeaponModel.transform.localScale = slot.item.equipPrefab.transform.localScale;
+        currentWeaponModel.transform.localScale = tool.equipPrefab.transform.localScale;
     }
 
     public void DestroyCurrentWeapon()
