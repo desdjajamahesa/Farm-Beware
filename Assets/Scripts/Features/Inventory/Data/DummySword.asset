@@ -18,3 +18,4 @@ MonoBehaviour:
   type: 2
   healAmount: 0
   equipPrefab: {fileID: 8479986625188135542, guid: 6b2794aaa34bd4e40a29b00fdc58afca, type: 3}
+  isWeapon: 1

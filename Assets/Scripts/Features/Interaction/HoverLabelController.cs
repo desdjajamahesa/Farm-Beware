@@ -75,12 +75,12 @@ public class HoverLabelController : MonoBehaviour
         {
             ClearHighlight();
             lastTarget = target;
-            lastHighlight = target.GetComponent<Highlightable>();
+            lastHighlight = target.GetComponent<Highlightable>() ?? target.GetComponentInChildren<Highlightable>();
             if (lastHighlight != null)
                 lastHighlight.SetHighlight(true);
         }
 
-        WorldLabel label = target.GetComponent<WorldLabel>();
+        WorldLabel label = target.GetComponent<WorldLabel>() ?? target.GetComponentInChildren<WorldLabel>();
         string displayName = label != null ? label.GetDisplayName() : target.name;
 
         if (string.IsNullOrEmpty(displayName))

@@ -7,7 +7,8 @@ using UnityEngine.InputSystem; // Pastikan ini tetap ada
 public class PlayerControl : MonoBehaviour
 {
     [Header("Pengaturan Pergerakan")]
-    public float moveSpeed = 7f;
+    public float walkSpeed = 5f;
+    public float runSpeed = 8f;
     public float turnSpeed = 15f;
 
     [Header("Pengaturan Aksi")]
@@ -22,10 +23,13 @@ public class PlayerControl : MonoBehaviour
     private PlayerInputActions inputActions;
     private PlayerInteractor interactor;
     private InventoryComponent playerInventory;
+    private PlayerStats playerStats;
+    private PlayerEquipment playerEquipment;
 
     // Status internal
     private bool isGrounded;
     private bool isDashing;
+    private bool isRunning;
     private float lastDashTime = -100f;
 
     // Kunci input global: saat true, pemain tidak bisa bergerak, membuka
@@ -37,11 +41,22 @@ public class PlayerControl : MonoBehaviour
         rb = GetComponent<Rigidbody>();
         animator = GetComponentInChildren<Animator>();
 
+        if (rb != null)
+        {
+            rb.constraints = RigidbodyConstraints.FreezeRotation;
+            rb.interpolation = RigidbodyInterpolation.Interpolate;
+            rb.collisionDetectionMode = CollisionDetectionMode.Continuous;
+        }
+
+        transform.rotation = Quaternion.Euler(0f, transform.eulerAngles.y, 0f);
+
         if (inputActions == null)
             inputActions = new PlayerInputActions();
 
         interactor = GetComponent<PlayerInteractor>();  
         playerInventory = GetComponent<InventoryComponent>();  
+        playerStats = GetComponent<PlayerStats>();
+        playerEquipment = GetComponent<PlayerEquipment>();
     }
 
     void OnEnable()
@@ -80,6 +95,12 @@ public class PlayerControl : MonoBehaviour
 
         HandleInventoryInput();
         HandleHotbarInput();
+        HandleAttackInput();
+
+        if (Keyboard.current != null && Keyboard.current.eKey.wasPressedThisFrame)
+        {
+            TriggerInteract();
+        }
 
         // 1. Cek apakah karakter menginjak tanah
         CheckGrounded();
@@ -87,19 +108,43 @@ public class PlayerControl : MonoBehaviour
         // Jika sedang dash, abaikan input pergerakan pemain
         if (isDashing) return;
 
-        // 2. Membaca Input Pergerakan
+        // 2. Membaca Input Pergerakan (Deadzone check agar micro-drift tidak menormalkan sudut acak)
         Vector2 moveInput = inputActions.Player.Move.ReadValue<Vector2>();
-        inputVector = new Vector3(moveInput.x, 0f, moveInput.y).normalized;
+        if (moveInput.sqrMagnitude > 0.01f)
+        {
+            inputVector = new Vector3(moveInput.x, 0f, moveInput.y).normalized;
+        }
+        else
+        {
+            inputVector = Vector3.zero;
+        }
 
-        // 3. Sinkronisasi Animator
+        // 3. Cek apakah pemain menahan tombol Shift untuk Lari (Sprint)
+        bool isMoving = inputVector.magnitude >= 0.1f;
+        bool wantsToRun = Keyboard.current != null && (Keyboard.current.leftShiftKey.isPressed || Keyboard.current.rightShiftKey.isPressed);
+
+        // Karakter hanya berlari jika bergerak, menekan shift, dan memiliki stamina
+        isRunning = isMoving && wantsToRun && (playerStats != null && !playerStats.IsExhausted);
+
+        // 4. Konsumsi Stamina HANYA saat Berlari (Sprint)
+        if (isRunning && playerStats != null)
+        {
+            playerStats.UseStamina(playerStats.staminaDrainRate * Time.deltaTime);
+        }
+
+        // 5. Sinkronisasi Animator
         if (animator != null)
         {
-            float speedValue = inputVector.magnitude;
-            animator.SetFloat("Vel", speedValue);
+            float targetSpeed = 0f;
+            if (isMoving)
+            {
+                targetSpeed = isRunning ? 1.0f : 0.5f;
+            }
 
-            // Mengirimkan status tanah SEBENARNYA ke Animator
+            // Gunakan dampTime (0.1f) agar perubahan kecepatan dan langkah kaki bertransisi mulus
+            animator.SetFloat("Vel", targetSpeed, 0.1f, Time.deltaTime);
             animator.SetBool("Grounded", isGrounded);
-            animator.SetBool("Idle", speedValue < 0.1f);
+            animator.SetBool("Idle", !isMoving);
         }
     }
 
@@ -114,48 +159,50 @@ public class PlayerControl : MonoBehaviour
         if (inputVector.magnitude >= 0.1f)
         {
             Vector3 moveDirection = Quaternion.Euler(0, 45f, 0) * inputVector;
-            float moveDistance = moveSpeed * Time.fixedDeltaTime;
             
-            // SWEEP TEST: Check for collisions before moving using CapsuleCast
-            CapsuleCollider capsuleCollider = GetComponent<CapsuleCollider>();
-            float capsuleRadius = capsuleCollider != null ? capsuleCollider.radius : 0.5f;
-            float capsuleHeight = capsuleCollider != null ? capsuleCollider.height : 2.0f;
-            Vector3 capsuleCenter = rb.position + Vector3.up * (capsuleHeight * 0.5f);
-            float capsuleHalfHeight = (capsuleHeight - capsuleRadius * 2f) * 0.5f;
-            float skinWidth = 0.05f; // Small margin
-            
-            // CapsuleCast to check for collisions along movement path
-            RaycastHit sweepHit;
-            bool hasHit = Physics.CapsuleCast(
-                capsuleCenter + Vector3.down * capsuleHalfHeight - moveDirection * 0.01f, // Start slightly behind
-                capsuleCenter + Vector3.up * capsuleHalfHeight - moveDirection * 0.01f,
-                capsuleRadius - 0.01f, // Slightly smaller radius for safety
-                moveDirection,
-                out sweepHit,
-                moveDistance + 0.05f, // Distance + skin width
-                ~0, // All layers
-                QueryTriggerInteraction.Ignore);
-            
-            if (hasHit)
-            {
-                // Hit something - move only to contact point minus skin width
-                moveDistance = Mathf.Max(0, sweepHit.distance - 0.05f);
-            }
-            
-            Vector3 newPosition = rb.position + moveDirection * moveDistance;
-            rb.MovePosition(newPosition);
+            // Kecepatan: walkSpeed (5) saat jalan, runSpeed (8) saat lari
+            float currentSpeed = isRunning ? runSpeed : walkSpeed;
 
-            Quaternion targetRotation = Quaternion.LookRotation(moveDirection);
-            rb.MoveRotation(Quaternion.Slerp(rb.rotation, targetRotation, turnSpeed * Time.fixedDeltaTime));
+            // Gerakkan karakter murni dengan linearVelocity (kecepatan akurat, responsif, dan tidak ngedrift)
+            Vector3 targetVelocity = moveDirection * currentSpeed;
+            rb.linearVelocity = new Vector3(targetVelocity.x, rb.linearVelocity.y, targetVelocity.z);
+
+            // Rotasi karakter menghadap arah pergerakan
+            if (moveDirection.sqrMagnitude > 0.001f)
+            {
+                Vector3 lookEuler = Quaternion.LookRotation(moveDirection).eulerAngles;
+                Quaternion targetRotation = Quaternion.Euler(0f, lookEuler.y, 0f);
+                rb.MoveRotation(Quaternion.Slerp(rb.rotation, targetRotation, turnSpeed * Time.fixedDeltaTime));
+            }
         }
         else
         {
             // Pengereman alami saat tidak ada input (mempertahankan kecepatan jatuh Y)
             rb.linearVelocity = new Vector3(0, rb.linearVelocity.y, 0);
         }
+
+        // Redam sisa angular velocity fisik
+        rb.angularVelocity = Vector3.zero;
     }
 
     // --- LOGIKA AKSI ---
+
+    // Klik Kiri Mouse / Serang: Panggil animasi serangan jika item yang dipegang adalah senjata.
+    private void HandleAttackInput()
+    {
+        if (isInputLocked) return;
+
+        if (Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame)
+        {
+            if (playerEquipment == null)
+                playerEquipment = GetComponent<PlayerEquipment>();
+
+            if (playerEquipment != null)
+            {
+                playerEquipment.TryPerformAttack();
+            }
+        }
+    }
 
     // Tombol Tab / I membuka-menutup panel pemain. Jika storage terbuka, tutup semua.
     private void HandleInventoryInput()
@@ -220,16 +267,37 @@ public class PlayerControl : MonoBehaviour
         }
     }
 
-    private void OnInteractPressed(InputAction.CallbackContext context)
-{
-    if (isInputLocked) return;
+    private int lastInteractFrame = -1;
 
-    // Pastikan skrip interactor tidak hilang/error
-    if (interactor != null)
+    public void TriggerInteract()
+    {
+        if (Time.frameCount == lastInteractFrame) return;
+        lastInteractFrame = Time.frameCount;
+
+        if (isInputLocked)
+        {
+            Debug.LogWarning("[PlayerControl] Tombol E ditekan tetapi isInputLocked = true!");
+            return;
+        }
+
+        // Pastikan skrip interactor tidak hilang/error
+        if (interactor == null)
+            interactor = GetComponent<PlayerInteractor>();
+
+        if (interactor != null)
         {
             // Perintahkan "Tangan" untuk menjalankan logikanya
             interactor.OnInteractInput(); 
         }
+        else
+        {
+            Debug.LogError("[PlayerControl] PlayerInteractor tidak ditemukan pada Player!");
+        }
+    }
+
+    private void OnInteractPressed(InputAction.CallbackContext context)
+    {
+        TriggerInteract();
     }
 
     private IEnumerator ExecuteDash()
@@ -252,6 +320,7 @@ public class PlayerControl : MonoBehaviour
         {
             // Mendorong karakter ke depan dengan kecepatan dash
             rb.linearVelocity = dashDirection * dashSpeed;
+            rb.angularVelocity = Vector3.zero;
             yield return null; // Tunggu ke frame berikutnya
         }
 
