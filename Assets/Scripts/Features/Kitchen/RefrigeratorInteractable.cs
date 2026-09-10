@@ -10,12 +10,14 @@ using FeaturesInteraction;
 [RequireComponent(typeof(InventoryComponent))]
 public class RefrigeratorInteractable : MonoBehaviour, IInteractable
 {
-    [Tooltip("Kategori makanan yang boleh disimpan (default: sayur & buah).")]
+    [Tooltip("Kategori makanan yang boleh disimpan (default: sayur, buah, daging mentah, masakan jadi).")]
     [SerializeField] private List<ItemData.FoodCategory> allowedCategories =
         new List<ItemData.FoodCategory>
         {
             ItemData.FoodCategory.Vegetable,
             ItemData.FoodCategory.Fruit,
+            ItemData.FoodCategory.Meat,
+            ItemData.FoodCategory.Dish,
         };
 
     private void Awake()
@@ -26,6 +28,8 @@ public class RefrigeratorInteractable : MonoBehaviour, IInteractable
             {
                 ItemData.FoodCategory.Vegetable,
                 ItemData.FoodCategory.Fruit,
+                ItemData.FoodCategory.Meat,
+                ItemData.FoodCategory.Dish,
             };
         }
 

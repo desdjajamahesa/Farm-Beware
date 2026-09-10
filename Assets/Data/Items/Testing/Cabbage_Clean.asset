@@ -13,11 +13,11 @@ MonoBehaviour:
   m_Name: Cabbage_Clean
   m_EditorClassIdentifier: Assembly-CSharp::ItemData
   itemName: Cabbage Clean
-  itemIcon: {fileID: 0}
+  itemIcon: {fileID: 10905, guid: 0000000000000000f000000000000000, type: 0}
   maxStack: 99
   description: Kubis bersih segar dan renyah.
   type: 1
   healAmount: 10
   foodCategory: 1
-  equipPrefab: {fileID: 0}
-  placeablePrefab: {fileID: 0}
+  isDirty: 0
+  cleanVariant: {fileID: 0}

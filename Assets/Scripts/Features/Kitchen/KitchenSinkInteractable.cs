@@ -1,36 +1,56 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.InputSystem;
 using FeaturesInteraction;
 
 /// <summary>
-/// Kitchen Sink: mencuci sayuran/buah kotor.
-/// Saat item (input recipe) diletakkan di slot stasiun, proses MENCUCI otomatis berjalan
-/// (timer backend di KitchenStation) lalu hasil bersih otomatis kembali ke inventory player
-/// (resultTarget). UI terbuka ala storage generik.
+/// Kitchen Sink: mencuci item kotor.
+/// Sistem dirty/clean sekarang berbasis data item itu sendiri (FoodItemData.isDirty + cleanVariant),
+/// bukan dari aset resep terpisah.
+/// Membuka Panel_Sink (Furnace-style) saat interaksi E key.
 /// </summary>
 [RequireComponent(typeof(InventoryComponent))]
 public class KitchenSinkInteractable : KitchenStation, IInteractable
 {
-    [Header("Recipe Pencucian (kotor -> bersih)")]
-    [Tooltip("Mapping item kotor -> item bersih + durasi.")]
-    [SerializeField] private List<KitchenRecipe> washRecipes = new List<KitchenRecipe>();
+    [Header("Wastafel Settings")]
+    [Tooltip("Durasi cucian default (detik).")]
+    [SerializeField] private float washDuration = 2f;
 
-    [Tooltip("Bila true, hasil cuci otomatis dikembalikan ke Inventory Player. Bila false (default), hasil tetap di slot sink seperti Stove.")]
+    [Tooltip("Kategori makanan yang boleh dicuci di wastafel.")]
+    [SerializeField] private List<ItemData.FoodCategory> allowedCategories =
+        new List<ItemData.FoodCategory>
+        {
+            ItemData.FoodCategory.Vegetable,
+            ItemData.FoodCategory.Fruit,
+        };
+
+    [Tooltip("Bila true, hasil cuci otomatis dikembalikan ke Inventory Player.")]
     [SerializeField] private bool returnWashedToPlayer = false;
+
+    [Header("Panel Reference")]
+    [Tooltip("Panel_Sink GameObject (Furnace-style UI).")]
+    [SerializeField] private GameObject panelSink;
+
+    // Virtual recipe template — reusable instance, tidak perlu asset.
+    private KitchenRecipe virtualRecipe;
 
     protected override void Awake()
     {
         base.Awake();
 
-        // Kebijakan hasil cuci: sesuai flag. Bila false, pastikan resultTarget kosong
-        // (hasil tetap di slot sink) walau ada wiring lama yang menunjuk ke Player.
+        // Buat reusable virtual recipe template (runtime-only, bukan asset).
+        virtualRecipe = ScriptableObject.CreateInstance<KitchenRecipe>();
+        virtualRecipe.name = "VirtualWashRecipe";
+
+        if (allowedCategories != null && allowedCategories.Count > 0)
+            stationInventory?.SetAllowedFoodCategories(allowedCategories);
+
         if (!returnWashedToPlayer)
         {
             resultTarget = null;
             return;
         }
 
-        // Auto-resolve target hasil ke Inventory Player (backend, bukan di UI).
         if (resultTarget == null)
         {
             GameObject playerGO = GameObject.Find("Player");
@@ -44,10 +64,24 @@ public class KitchenSinkInteractable : KitchenStation, IInteractable
         if (item == null)
             return null;
 
-        for (int i = 0; i < washRecipes.Count; i++)
+        // Check FoodItemData (consumables)
+        if (item is FoodItemData food && food.isDirty && food.cleanVariant != null)
         {
-            if (washRecipes[i] != null && washRecipes[i].input == item)
-                return washRecipes[i];
+            virtualRecipe.input = item;
+            virtualRecipe.output = food.cleanVariant;
+            virtualRecipe.processTime = washDuration;
+            virtualRecipe.outputCount = 1;
+            return virtualRecipe;
+        }
+
+        // Check MaterialItemData (materials like Carrot_Dirty)
+        if (item is MaterialItemData mat && mat.isDirty && mat.cleanVariant != null)
+        {
+            virtualRecipe.input = item;
+            virtualRecipe.output = mat.cleanVariant;
+            virtualRecipe.processTime = washDuration;
+            virtualRecipe.outputCount = 1;
+            return virtualRecipe;
         }
 
         return null;
@@ -55,7 +89,60 @@ public class KitchenSinkInteractable : KitchenStation, IInteractable
 
     public void Interact(GameObject interactor)
     {
-        if (InventoryManagerUI.Instance != null && StationInventory != null)
-            InventoryManagerUI.Instance.OpenStorageUI(StationInventory, "Kitchen Sink");
+        if (panelSink == null)
+        {
+            Debug.LogWarning("[KitchenSinkInteractable] Panel_Sink tidak ditemukan!");
+            return;
+        }
+
+        panelSink.SetActive(true);
+
+        // Unlock cursor
+        Cursor.visible = true;
+        Cursor.lockState = CursorLockMode.None;
+
+        // Lock player input
+        var playerControl = interactor.GetComponent<PlayerControl>();
+        if (playerControl != null)
+            playerControl.isInputLocked = true;
+    }
+
+    private void Update()
+    {
+        if (panelSink != null && panelSink.activeSelf &&
+            Keyboard.current != null &&
+            Keyboard.current.escapeKey.wasPressedThisFrame)
+        {
+            ClosePanel();
+        }
+    }
+
+    public void ClosePanel()
+    {
+        // Stop wash coroutine BEFORE hiding panel
+        if (panelSink != null)
+        {
+            var sinkMgr = panelSink.GetComponent<SinkManager>();
+            if (sinkMgr != null)
+                sinkMgr.ClosePanel();
+        }
+
+        if (panelSink != null)
+            panelSink.SetActive(false);
+
+        // Restore cursor
+        Cursor.visible = false;
+        Cursor.lockState = CursorLockMode.Locked;
+
+        // Unlock player input
+        var player = FindFirstObjectByType<PlayerControl>();
+        if (player != null)
+            player.isInputLocked = false;
+    }
+
+    private void OnDestroy()
+    {
+        if (virtualRecipe != null)
+            Destroy(virtualRecipe);
     }
 }

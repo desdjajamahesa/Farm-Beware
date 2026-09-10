@@ -13,11 +13,11 @@ MonoBehaviour:
   m_Name: Apple_Dirty
   m_EditorClassIdentifier: Assembly-CSharp::ItemData
   itemName: Apple Dirty
-  itemIcon: {fileID: 0}
+  itemIcon: {fileID: 10905, guid: 0000000000000000f000000000000000, type: 0}
   maxStack: 99
   description: Apel kotor dengan lumpur di kulitnya.
   type: 1
   healAmount: 5
   foodCategory: 2
-  equipPrefab: {fileID: 0}
-  placeablePrefab: {fileID: 0}
+  isDirty: 1
+  cleanVariant: {fileID: 11400000, guid: ef32b6ad8fa4d7d44894337a66fd6745, type: 2}

@@ -13,6 +13,10 @@ MonoBehaviour:
   m_Name: Cook_Tomato
   m_EditorClassIdentifier: Assembly-CSharp::KitchenRecipe
   input: {fileID: 11400000, guid: e6ff05ced1c7e7644a8be36134e2e741, type: 2}
+  recipeName: Tomato Soup
+  ingredients: []
+  recipeIcon: {fileID: 0}
+  description: 
   output: {fileID: 11400000, guid: 274114a10af933d4e961032604094177, type: 2}
   outputCount: 1
   processTime: 4

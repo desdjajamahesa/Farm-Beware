@@ -14,6 +14,25 @@ public class StoveInteractable : KitchenStation, IInteractable
     [Tooltip("Resep bahan -> hasil + durasi.")]
     [SerializeField] private List<KitchenRecipe> recipes = new List<KitchenRecipe>();
 
+    [Tooltip("Kategori makanan yang boleh dimasak di kompor.")]
+    [SerializeField] private List<ItemData.FoodCategory> allowedCategories =
+        new List<ItemData.FoodCategory>
+        {
+            ItemData.FoodCategory.Vegetable,
+            ItemData.FoodCategory.Fruit,
+            ItemData.FoodCategory.Meat,
+            ItemData.FoodCategory.Ingredient,
+        };
+
+    protected override void Awake()
+    {
+        base.Awake();
+
+        // Backend: pastikan kompor hanya menerima bahan mentah, bukan masakan jadi.
+        if (allowedCategories != null && allowedCategories.Count > 0)
+            stationInventory?.SetAllowedFoodCategories(allowedCategories);
+    }
+
     protected override KitchenRecipe FindRecipeFor(ItemData item, int slotIndex)
     {
         if (item == null)

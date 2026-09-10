@@ -13,6 +13,10 @@ MonoBehaviour:
   m_Name: Recipe_CookCarrot
   m_EditorClassIdentifier: Assembly-CSharp::KitchenRecipe
   input: {fileID: 11400000, guid: 5bd3aca182d0923468b2c603d86f737a, type: 2}
+  recipeName: Carrot Cooked
+  ingredients: []
+  recipeIcon: {fileID: 0}
+  description: 
   output: {fileID: 11400000, guid: 7af89bc59c19e664b91952c2e930e32b, type: 2}
   outputCount: 1
   processTime: 5

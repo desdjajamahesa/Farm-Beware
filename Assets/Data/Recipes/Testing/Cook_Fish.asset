@@ -13,6 +13,10 @@ MonoBehaviour:
   m_Name: Cook_Fish
   m_EditorClassIdentifier: Assembly-CSharp::KitchenRecipe
   input: {fileID: 11400000, guid: 3b85d492a9b51f743be3bae49fc0070a, type: 2}
+  recipeName: Grilled Fish
+  ingredients: []
+  recipeIcon: {fileID: 0}
+  description: 
   output: {fileID: 11400000, guid: d8d23ec8081bd454c8389d52caae64bc, type: 2}
   outputCount: 1
   processTime: 5

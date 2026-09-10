@@ -13,6 +13,10 @@ MonoBehaviour:
   m_Name: Cook_Potato
   m_EditorClassIdentifier: Assembly-CSharp::KitchenRecipe
   input: {fileID: 11400000, guid: aa0b2ae1ebeb15b46b87bab9595916c2, type: 2}
+  recipeName: Baked Potato
+  ingredients: []
+  recipeIcon: {fileID: 0}
+  description: 
   output: {fileID: 11400000, guid: 117bc0117e877a8478d564858c7af137, type: 2}
   outputCount: 1
   processTime: 4
