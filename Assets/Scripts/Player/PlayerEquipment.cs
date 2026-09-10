@@ -52,14 +52,14 @@ public class PlayerEquipment : MonoBehaviour
             return;
 
         InventorySlot slot = inventory.slots[hotbarIndex];
-        if (slot == null || slot.item == null || slot.item.equipPrefab == null)
+        if (slot == null || slot.item == null || slot.item is not ToolItemData tool)
             return;
 
-        GameObject spawned = Instantiate(slot.item.equipPrefab, handSocket);
+        GameObject spawned = Instantiate(tool.equipPrefab, handSocket);
         spawned.transform.localPosition = Vector3.zero;
         spawned.transform.localRotation = Quaternion.identity;
         currentWeaponModel = spawned;
-        currentWeaponModel.transform.localScale = slot.item.equipPrefab.transform.localScale;
+        currentWeaponModel.transform.localScale = tool.equipPrefab.transform.localScale;
     }
 
     public void DestroyCurrentWeapon()

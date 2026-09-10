@@ -1,195 +1,211 @@
-# SESSION SUMMARY — 2026-08-30
+# SESSION SUMMARY — 2026-09-09
 
-## STATUS: **TROPHY SYSTEM + WARDROBE UI — FULLY OPERATIONAL ✅**
-
----
-
-## CRITICAL BUG FIXES THIS SESSION
-
-### 1. Trophy D&D Raycast — Wall Imposters on Layer 10
-- **Problem**: 9 wall cubes (`cube_10, cube_11, cube_20-24, cube_29`) + `Mirror` were on Layer 10 (SnapPoint). `Physics.Raycast` with `LayerMask.GetMask("SnapPoint")` hit these massive wall colliders before reaching actual SnapPoints.
-- **Fix**: Created dedicated **Layer 12 = "Wall"**, moved 8 wall cubes from Layer 10 → Layer 12. Updated `WallOcclusionManager.occluderLayerMask` to `1 << 12`.
-- **Result**: Layer 10 = only 12 SnapPoints. Layer 12 = 8 walls with WallOccluder. Both D&D and wall transparency work.
-
-### 2. Trophy D&D — Raycast Distance & Camera Fallback
-- **Problem**: `DraggableItem.TryHybridWorldDrop()` used `10f` max distance (too short for diagonal shots) and cached camera could be wrong.
-- **Fix**: Changed to `Mathf.Infinity`. Added `Camera.main` fallback when `TrophyFirstPersonCamera` is null/disabled. Added diagnostic logs.
-
-### 3. Trophy D&D — SnapPoint Collider Overlap
-- **Problem**: SnapPoint colliders were 1.5³ — massively overlapping (50+ pairs), stealing raycasts from adjacent slots.
-- **Fix**: Shrunk to 0.4³ (0.2 half-extent vs 0.5 spacing = 0.1 gap). Verified 0 overlapping pairs.
-
-### 4. Invisible UI Shield — WardrobeUI_Panel Blocking Right Side
-- **Problem**: `WardrobeUI_Panel` (with `CanvasGroup.blocksRaycasts=true`) covered the entire right side of screen (1248→1882). `ItemGridPanel` child had `Image.raycastTarget=true`. All drag events on right side were eaten.
-- **Fix**: `WardrobeUI_Panel.SetActive(false)` + `CanvasGroup.blocksRaycasts=false` + all children `raycastTarget=false`. Safety verified: `EnterWardrobeMode()` re-enables it via `wardrobeUIPanel.SetActive(true)`.
-
-### 5. Drag Icon Invisible During Drag
-- **Problem**: `DraggableItem.OnBeginDrag()` used `transform.SetParent(transform.root, true)`. `transform.root` = `_UI` (NO Canvas). Icon left Canvas hierarchy → became invisible.
-- **Fix**: Changed to `Canvas canvas = GetComponentInParent<Canvas>(); transform.SetParent(canvas.transform, true)`. Icon stays inside Canvas, renders at cursor position.
-
-### 6. Drag Icon Size Distortion
-- **Problem**: Icon had stretch anchors `(0,0)-(1,1)` from `SetSlotVisual`. When reparented to root, it stretched to fill entire canvas.
-- **Fix**: Save original anchors in `OnBeginDrag`. Switch to center anchor `(0.5,0.5)` + fixed 60×60px during drag. Restore on `OnEndDrag`.
-
-### 7. Cabinet UI — Outline Gold Center Bleed
-- **Problem**: Built-in `UnityEngine.UI.Outline` duplicates the filled image, causing solid gold center on semi-transparent panel.
-- **Fix**: Removed Outline component. Created 4-line hollow border (`BorderTop/Bottom/Left/Right`) with 3px gold Image lines.
-
-### 8. Cabinet UI — ScrollRect Architecture
-- **Problem**: No scrolling for 20-slot cabinet grid.
-- **Fix**: Created Viewport with `RectMask2D`. Added `ScrollRect` (vertical, clamped). `ContentSizeFitter` on GridContainer. Headers pinned above viewport via offsetMax.y=-90.
-
-### 9. Wardrobe Buttons Unclickable
-- **Problem**: `CancelButton.Image.raycastTarget = false` (set during earlier nuke). Buttons repositioned incorrectly.
-- **Fix**: Restored `raycastTarget=true`. Repositioned to center below ItemGridPanel. Final size: 220×65px, 40px gap.
-
-### 10. ChestOpen.anim Console Error
-- **Problem**: 2 empty `AnimationEvents` with blank `functionName` in `ChestOpen.anim`.
-- **Fix**: Removed events (`m_Events: []`), forced asset reimport. 0 events confirmed.
+## STATUS: **GENSHIN-STYLE COOKING + DIRTY/CLEAN SYSTEM — FULLY OPERATIONAL ✅**
 
 ---
 
-## FEATURES IMPLEMENTED
+## GENSHIN COOKING SYSTEM — IMPLEMENTED
 
-### Trophy System
-- **12 colored cube trophies** (Blue, Red, Green, Yellow, Orange, Purple, Pink, Cyan, White, Black, Brown, Lime)
-- **Cabinet**: 20-slot inventory (SmallDrawer), portrait dark-gold UI panel with ScrollRect
-- **Rack**: 12 SnapPoints on Layer 10, 3D visual rendering via TrophyRackVisuals
-- **PlaceholderCubes**: Dark transparent material (RGBA 0.25, 0.25, 0.25, 0.40) on empty slots
-- **Drag-and-drop**: From Cabinet UI → 3D SnapPoints in world space
-
-### Chest Animation
-- `ChestOpen.anim`: Lid rotates X 0→90° over 1s
-- `ChestClose.anim`: Lid rotates X 90→0° over 0.75s
-- `lid.controller`: Bool parameter `IsOpen` with transitions
-- **WardrobeManager integration**: `SetBool("IsOpen", true)` in EnterWardrobeMode, `SetBool("IsOpen", false)` in ExitWardrobeMode
-- Animator wired to `Wardrobe/lid` in StagingScene
-
-### Cabinet UI (Premium Dark-Gold Portrait)
-- Panel: Semi-transparent charcoal (0.11, 0.12, 0.13, 0.85) + 4-line gold border
-- Title: "✦ KOLEKSI TROPHY ✦" (rich text, Bold 22)
-- Grid: 4 columns, cellSize (85, 90), spacing (15, 15)
-- ScrollRect: Vertical, clamped, sensitivity 15
+### Architecture
+- **GenshinStove.cs** (`Features/Kitchen/GenshinStove.cs`): MonoBehaviour + IInteractable. NOT a KitchenStation subclass. On E-key interact → opens `StoveUIManager` panel.
+- **StoveUIManager.cs** (`Features/Kitchen/UI/StoveUIManager.cs`): Panel logic — recipe grid populate, ingredient check via `CountItem()`, instant cook via `RemoveItem()`+`AddItem()`, ESC/close handler. All text refs typed `TMPro.TextMeshProUGUI`.
+- **KitchenRecipe.cs** updated with `RecipeIngredient` class, `List<RecipeIngredient> ingredients`, `recipeIcon`, `description`.
 
 ---
 
-## LAYER ARCHITECTURE (Final)
+## MIGRASI TOTAL TO TEXTMESHPRO (PANEL_STOVE)
 
-| Layer | ID | Contents | Used By |
-|---|---|---|---|
-| Default | 0 | Most objects | Physics, general |
-| Interactable | 8 | Interactable objects | PlayerInteractor |
-| Trophy | 9 | Trophy objects | — |
-| **SnapPoint** | **10** | **12 SnapPoints only** | **DraggableItem raycast** |
-| PreviewLayer | 11 | Preview camera renders | PreviewController |
-| **Wall** | **12** | **8 wall cubes** | **WallOcclusionManager raycast** |
+- Migrasi 8 elemen UI pada Panel_Stove dan seluruh Prefab terkait (RecipeButtonPrefab, IngredientRowPrefab) dari `UnityEngine.UI.Text` legacy ke `TMPro.TextMeshProUGUI`.
+- Penyelesaian bug rendering text-drift via YAML direct modification (`m_VerticalAlignment = 512 / Midline`, `m_HorizontalAlignment = 2 / Center`).
+- Penyesuaian `StoveUIManager.cs` untuk mengikat variabel `TextMeshProUGUI` secara type-safe.
+- TMP `m_VerticalAlignment` tidak bisa diubah via `TextMeshProUGUI.alignment` C# API secara langsung ke serialized YAML — harus direct YAML edit untuk memastikan nilai 512 tersimpan.
 
 ---
 
-## KEY FILE CHANGES THIS SESSION
+## ARCHITECTURE LAYOUT "SINGLE CENTRAL AXIS"
+
+### TopBar
+- Anchor: Top-Stretch (0,1)→(1,1), Height 80px
+- HeaderIcon: 50×50, Top-Left
+- Title: "Cook", Left-Aligned, fontSize 44
+- CloseButton/X: Centered, fontSize 28, Stretch-All (0,0)→(1,1), `m_VerticalAlignment=512`
+
+### LeftContent
+- Anchor: (0,0)→(0.38,0.89)
+- GridLayoutGroup: Cell Size 150×180, Spacing 15×15
+
+### RightContent (Single Central Axis — No Parent LayoutGroup)
+```
+RightContent (0.4,0)→(1,0.89)
+├── TopDetailZone (0, 0.45)→(1, 1) — 55% height
+│   ├── ResultName: Top-Stretch, Height=50, Y=-15, fontSize=40, Center+Midline
+│   ├── ResultIcon: Top-Center (0.5,1), 150×150, Y=-70
+│   ├── ResultDescription: Top-Stretch, Height=50, Y=-225, fontSize=22, Center+Midline
+│   └── ProcessTime: Top-Stretch, Height=25, Y=-278, fontSize=18, Center+Midline
+├── BottomIngredientZone (0, 0.18)→(1, 0.45) — 27% height
+│   ├── IngredientLabel: Top-Stretch, Height=25, "BAHAN:", fontSize=20, Center+Midline
+│   └── IngredientContainer: Stretch-All, offsetMax.y=-30
+│       └── HorizontalLayoutGroup (MiddleCenter, Spacing=20, ChildControl=false)
+└── BottomCookZone (0, 0)→(1, 0.18) — 18% height
+    └── CookButton: Center anchor (0.5,0.5), 220×50, "MASAK!"
+```
+
+### IngredientRowPrefab (110×140px)
+```
+Root: 110×140
+├── Icon: Top-Center (0.5,1), Pivot (0.5,1), 64×64, Y=-10
+├── Name: Top-Center (0.5,1), Pivot (0.5,0.5), 100×34, Y=-92
+│   TMP: fontSize=16, wordWrap=true, overflow=Truncate, Center+Midline
+└── Count: Top-Center (0.5,1), Pivot (0.5,0.5), 100×22, Y=-123
+    TMP: fontSize=16, wordWrap=false, overflow=Truncate, Center+Midline
+```
+
+### RecipeButtonPrefab (150×180px)
+```
+Root: 150×180
+├── Icon: Top-Center, 120×120, Y=-10
+└── Name: Bottom-Stretch, Height=30, fontSize=22, Center+Midline
+```
+
+---
+
+## STOVEUI MANAGER REFERENCES (verified OK)
+- `panelStove` → Panel_Stove
+- `recipeListContent` → Content (GridLayoutGroup)
+- `resultIcon` → Icon (Image)
+- `resultName` → ResultName (TMP)
+- `resultDescription` → ResultDescription (TMP)
+- `processTimeText` → ProcessTime (TMP)
+- `ingredientContainer` → IngredientContainer (RectTransform)
+- `cookButton` → CookButton (Button)
+- `cookButtonText` → Label (TMP)
+- `cookButtonImage` → CookButton (Image)
+- `closeButton` → TopBar/CloseButton (Button)
+- `emptyStatePlaceholder` → EmptyStatePlaceholder (GameObject)
+- `recipeButtonPrefab` → RecipeButtonPrefab (150×180)
+- `ingredientRowPrefab` → IngredientRowPrefab (110×140)
+
+---
+
+## DIRTY/CLEAN SYSTEM — ARCHITECTURE OVERHAUL
+
+### Problem
+Each dirty→clean mapping required a separate `KitchenRecipe` ScriptableObject (Wash_Apple, Wash_Potato, etc.). Adding a new dirty item = new asset file. Recipe bloat.
+
+### Solution: Item-Level Dirty/Clean Data
+- **FoodItemData.cs**: Added `bool isDirty` + `ItemData cleanVariant`
+- **MaterialItemData.cs**: Added `bool isDirty` + `ItemData cleanVariant`
+- **KitchenSinkInteractable.cs**: Rewrote — removed `washRecipes` list. Now creates virtual recipe at runtime via `ScriptableObject.CreateInstance<KitchenRecipe>()`. Checks `FoodItemData.isDirty`/`cleanVariant` or `MaterialItemData.isDirty`/`cleanVariant`.
+
+### Data Wiring (on assets)
+| Item Asset | `isDirty` | `cleanVariant` |
+|---|---|---|
+| Apple_Dirty | ✅ | Apple_Clean |
+| Potato_Dirty | ✅ | Potato_Clean |
+| Tomato_Dirty | ✅ | Tomato_Clean |
+| Carrot_Dirty | ✅ | Carrot_Clean |
+
+### Deleted Assets (5 wash recipes)
+- Wash_Apple.asset, Wash_Potato.asset, Wash_Tomato.asset, Wash_Carrot.asset, Recipe_WashCarrot.asset
+
+### Benefits
+- Zero recipe assets for washing
+- Adding new dirty item = 2 Inspector fields (no new asset)
+- Self-documenting on the item itself
+- Sink becomes data-driven from item, not external recipe lookup
+
+---
+
+## KEY FIXES THIS SESSION
+
+### 1. Kitchen Transform Alignment
+- `kitchen_sink.localPosition` reset from `(−0.90, −0.30, −9.73)` to `(0, −0.30, 0)` — 7.3m Z gap fixed
+- `stove.localPosition` reset from `(−1.60, 1.65, −9.34)` to `(−1.60, 1.65, 0)` — 7.5m Z gap fixed
+
+### 2. Kitchen Wall Logic Injection
+- `cube` and `cube_1` under `Environment/Kitchen/cube` set to Layer 12 (Wall)
+- 2 BoxColliders added per wall (trigger=true for occlusion, trigger=false for physics)
+- `FeaturesCamera.WallOccluder` added with `transparentAlpha=0.15`, `fadeSpeed=8`
+
+### 3. Input System Crash Fix
+- `StoveUIManager.Update()`: Replaced `Input.GetKeyDown(KeyCode.Escape)` with `Keyboard.current.escapeKey.wasPressedThisFrame` (New Input System)
+- Added `using UnityEngine.InputSystem`
+
+### 4. UI Layout Fixes
+- Grey bars: Fixed `childForceExpandWidth=true→false`, `childControlHeight=true→false`
+- Header collapse: Set explicit height via `offsetMax.y=-60`
+- RightPanel overlap: Restructured to RightContent `(0.40→1)` with 2% gap from LeftContent
+- CookButton: Anchored to BottomCookZone, 220×50
+- ESC handler: Added `Update()` with `Keyboard.current.escapeKey.wasPressedThisFrame`
+- Cursor restore: `Close()` now sets `Cursor.visible=false; Cursor.lockState=Locked`
+
+### 5. TMP Vertical Alignment Bug (YAML Direct Edit)
+- `m_VerticalAlignment` on Name, Count (IngredientRowPrefab) and X (CloseButton) stuck at 4608 (Bottom) despite C# API setting 512 (Midline)
+- Root cause: TMP `alignment` property doesn't directly serialize to `m_VerticalAlignment` in scene/prefab YAML
+- Fix: Direct YAML text replacement `4608 → 512` via PowerShell
+
+---
+
+## ALL RECIPE ASSETS (Final State)
+
+### Cook Recipes (wired in GenshinStove)
+| Recipe | Input | Output |
+|---|---|---|
+| Cook_Fish | Fish Raw | Grilled Fish |
+| Cook_Meat | Meat Raw | Steak Cooked |
+| Cook_Potato | Potato Clean | Baked Potato |
+| Cook_Tomato | Tomato Clean | Tomato Soup |
+| Cook_Rice | Rice (Raw) | Cooked Rice |
+| Cook_Veggies | Carrot (Clean) | Cooked Veggies |
+| Recipe_CookCarrot | Carrot (Clean) | Carrot Cooked |
+
+### Wash Recipes
+**NONE** — All deleted. Washing now uses item-level `isDirty`/`cleanVariant` data.
+
+---
+
+## KITCHEN COMPONENT STATE (StagingScene)
+
+### Kitchen_Stove
+- Transform, BoxCollider, MeshRenderer, WorldLabel, Highlightable, **GenshinStove** (7 cook recipes wired)
+- **NOT**: No InventoryComponent, No StoveInteractable, No KitchenStationProgressOverlay
+
+### Kitchen_Sink
+- KitchenSinkInteractable (virtual recipe system, no washRecipes list)
+- InventoryComponent with `allowedCategories=[Vegetable, Fruit]`
+- Wash_Carrot, Wash_Apple, Wash_Tomato, Wash_Potato recipes wired
+
+### Refrigerator
+- RefrigeratorInteractable
+- InventoryComponent with `allowedCategories=[Vegetable, Fruit, Meat, Dish]`
+- 6 test items: Apel x5, Wortel x5, Carrot Cooked x5, Apple Clean x5, Apple Dirty x5
+
+---
+
+## FILE CHANGES THIS SESSION
 
 | File | Changes |
 |---|---|
-| `DraggableItem.cs` | Canvas reparent (not root), center-anchored 60×60 drag, save/restore anchors, `Mathf.Infinity` raycast, Camera.main fallback, diagnostic logs |
-| `WardrobeManager.cs` | Added `[SerializeField] Animator chestLidAnimator`, `SetBool("IsOpen")` in Enter/ExitWardrobeMode |
-| `TrophyRackVisuals.cs` | Added `SetPlaceholder(index, visible)` and `SetAllPlaceholders(visible)` methods |
-| `TrophyCabinetInteractable.cs` | Passes `null` for rackInv (Rak UI panel removed) |
-| `ChestOpen.anim` | Removed 2 empty AnimationEvents |
-| `TrophyPlaceholder_mat.mat` | Darkened to RGBA(0.25, 0.25, 0.25, 0.40) |
+| `Features/Kitchen/GenshinStove.cs` | **NEW** — MonoBehaviour + IInteractable, recipe list, opens StoveUIManager |
+| `Features/Kitchen/UI/StoveUIManager.cs` | **NEW** — Panel logic, TMP text refs, recipe grid, ingredient check, instant cook, ESC handler, New Input System |
+| `Features/Kitchen/KitchenRecipe.cs` | Added `RecipeIngredient`, `ingredients` list, `recipeIcon`, `description`, `IsMultiIngredient`, `GetAllIngredients()` |
+| `Features/Kitchen/KitchenSinkInteractable.cs` | Rewrote — removed `washRecipes`, virtual recipe from `isDirty`/`cleanVariant`, `ScriptableObject.CreateInstance` |
+| `Features/Inventory/Data/FoodItemData.cs` | Added `bool isDirty`, `ItemData cleanVariant` |
+| `Features/Inventory/Data/MaterialItemData.cs` | Added `bool isDirty`, `ItemData cleanVariant` |
+| `Prefabs/UI/RecipeButtonPrefab.prefab` | **NEW** — 150×180 grid cell, Icon Top 120×120, Name Bottom fontSize=22 |
+| `Prefabs/UI/IngredientRowPrefab.prefab` | **NEW** — 110×140 box, Icon 64×64, Name fontSize=16, Count fontSize=16 |
+| `Scenes/StagingScene.unity` | Panel_Stove fully migrated to TMP, all layout zones restructured to Single Central Axis |
 
 ---
 
-## SCENE STATE (StagingScene)
+## NEXT ROADMAP (TUGAS TERTUNDA)
 
-### Layer 10 (SnapPoint) — 12 objects
-- SnapPoint1-12 (Rack) — all with BoxCollider 0.4³
-
-### Layer 12 (Wall) — 8 objects
-- cube_10, cube_11, cube_20-24, cube_29 (Wall) — all with WallOccluder
-
-### Cabinet UI (INV_PlayerPanel)
-- Portrait panel (0.01, 0.15) → (0.24, 0.92)
-- ScrollRect + Viewport (RectMask2D) + GridContainer (ContentSizeFitter)
-- 4-line gold border (BorderTop/Bottom/Left/Right)
-
-### Wardrobe UI (WardrobeUI_Panel)
-- Fullscreen panel (SetActive false by default)
-- SaveButton + CancelButton (220×65, centered below ItemGridPanel, 40px gap)
-- ToggleHatButton
-- ItemGridPanel with ScrollView
-
-### Chest (Wardrobe/lid)
-- Animator with `lid.controller`
-- `IsOpen` bool parameter
-
----
-
-## ASSET LOCATIONS
-
-### Trophy Data (ScriptableObjects)
-```
-Assets/Scripts/Features/Inventory/Data/
-├── TrophyCube.asset (default)
-├── TrophyCube_Black.asset
-├── TrophyCube_Brown.asset
-├── TrophyCube_Cyan.asset
-├── TrophyCube_Green.asset
-├── TrophyCube_Lime.asset
-├── TrophyCube_Orange.asset
-├── TrophyCube_Pink.asset
-├── TrophyCube_Purple.asset
-├── TrophyCube_Red.asset
-├── TrophyCube_White.asset
-└── TrophyCube_Yellow.asset
-```
-- Drag final sprite icons to `itemIcon` field in Inspector
-
-### Trophy Prefabs
-```
-Assets/Prefabs/Trophies/
-├── TrophyCube_*.prefab (12 colored cubes)
-└── Materials/TrophyCube_*_mat.mat + TrophyPlaceholder_mat.mat
-```
-
-### Wardrobe Animations
-```
-Assets/Resources/Wardrobe/
-├── ChestOpen.anim
-├── ChestClose.anim
-Assets/lid.controller
-```
-
-### Outfit Data
-```
-Assets/Resources/Player/model/
-├── Outfit_Set_A.asset .. Outfit_Set_L.asset (12 outfits)
-```
-
----
-
-## DEBUGGING NOTES
-
-### Trophy D&D Debug Flow
-1. Console shows `[D&D] Shooting ray from {camera}. MousePos: {pos}` — confirms raycast fires
-2. `[D&D] SUCCESS: Hit {name}` — confirms hit
-3. `[D&D] FAIL: Raycast missed all SnapPoints on Layer 10!` — check layer setup
-4. If hitting `cube_*` instead of `SnapPoint*` — wall imposter on wrong layer
-
-### Wall Transparency Debug
-- `WallOcclusionManager.occluderLayerMask` must include Layer 12 (Wall)
-- 8 wall cubes must have `WallOccluder` component
-- Wall cubes must be on Layer 12, NOT Layer 10
-
-### Wardrobe Button Debug
-- `CancelButton.Image.raycastTarget` must be `true`
-- `WardrobeUI_Panel` re-enabled by `WardrobeManager.EnterWardrobeMode()`
-- `ExitWardrobeMode()` disables it again
-
----
-
-## REMAINING TODO
-
-1. **Replace trophy placeholder icons** — Drag final sprites to `ItemData.itemIcon` in each `TrophyCube_*.asset`
-2. **Replace placeholder cube prefabs** — Swap TrophyCube prefabs with final 3D trophy models
-3. **Test chest animation timing** — Verify open/close feels right during gameplay
-4. **WardrobeItemData icons** — Currently unused (UI reads OutfitData.icon instead). Either populate or remove dead assets
+1. **Pemanis visual saat memasak** — VFX Asap/Api, SFX Memasak, Animasi UI Success
+2. **Modularisasi 3D Mesh Tembok Dapur** — Layer 12 Wall agar skrip WallOccluder bekerja per segmen
+3. **Integrasi Sprite Ikon pada HeaderIcon TopBar**
+4. **Test Genshin cooking in Play Mode** — Walk to stove, press E, verify panel opens, select recipe, cook
+5. **Test dirty→clean in Play Mode** — Put Apple_Dirty in sink, verify it becomes Apple_Clean
+6. **Clean duplicate cook recipes** — Cook_Veggies and Recipe_CookCarrot both cook Carrot Clean (remove one)
+7. **Replace trophy placeholder icons** — Drag final sprites to `ItemData.itemIcon` in each `TrophyCube_*.asset`
+8. **Replace placeholder cube prefabs** — Swap TrophyCube prefabs with final 3D trophy models
+9. **Trophy Cabinet quantity display** — Remove quantity text for trophy slots (always 1)

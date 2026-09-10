@@ -52,13 +52,13 @@ namespace FeaturesInteraction
             }
         }
 
-        public void Interact(GameObject interactor)
-        {
-            Debug.Log("Storage dibuka oleh " + interactor.name);
+public void Interact(GameObject interactor)
+    {
+        Debug.Log("Storage dibuka oleh " + interactor.name);
 
-            // Buka UI dual-panel (player + storage) tanpa auto-transfer item.
-            if (InventoryManagerUI.Instance != null)
-                InventoryManagerUI.Instance.OpenStorageUI(GetComponent<InventoryComponent>());
-        }
+        // Buka UI dual-panel (player + storage) tanpa auto-transfer item.
+        if (InventoryManagerUI.Instance != null)
+            InventoryManagerUI.Instance.OpenStorageUI(GetComponent<InventoryComponent>(), "Storage");
+    }
     }
 }
