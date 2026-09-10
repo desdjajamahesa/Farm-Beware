@@ -14,6 +14,9 @@ public class PlayerEquipment : MonoBehaviour
     [Tooltip("Nama Trigger parameter di Animator Controller untuk serangan pedang (misal: \"Attack\", \"Slash\").")]
     [SerializeField] private string attackTriggerName = "Attack";
 
+    [Tooltip("Jika dicentang, animasi serang tetap berjalan meskipun pemain sedang tidak memegang senjata (tangan kosong).")]
+    [SerializeField] private bool allowBareHandsAttack = false;
+
     private GameObject currentWeaponModel;
     private InventoryComponent inventory;
     private Animator animator;
@@ -37,11 +40,27 @@ public class PlayerEquipment : MonoBehaviour
     public bool TryPerformAttack()
     {
         ItemData item = CurrentEquippedItem;
-        if (item == null) return false;
 
-        // Hanya jalankan serangan jika item bertipe pedang/senjata atau isWeapon diset true
-        if (!item.isWeapon && item.type != ItemData.ItemType.Tool)
-            return false;
+        // 1. Jika tangan kosong (tidak ada item di slot hotbar aktif)
+        if (item == null)
+        {
+            if (!allowBareHandsAttack)
+            {
+                Debug.Log("[PlayerEquipment] Tidak bisa menyerang: Harus memegang senjata/pedang (slot hotbar kosong).");
+                return false;
+            }
+        }
+        // 2. Jika ada item, cek apakah item tersebut adalah senjata (isWeapon == true)
+        else
+        {
+            bool isWeapon = (item is ToolItemData tool && tool.isWeapon);
+
+            if (!isWeapon && !allowBareHandsAttack)
+            {
+                Debug.Log($"[PlayerEquipment] Item '{item.itemName}' bukan senjata (isWeapon = false), tidak bisa menyerang.");
+                return false;
+            }
+        }
 
         if (animator == null) animator = GetComponentInChildren<Animator>();
         if (animator != null && !string.IsNullOrEmpty(attackTriggerName))
@@ -57,6 +76,13 @@ public class PlayerEquipment : MonoBehaviour
     {
         inventory = GetComponent<InventoryComponent>();
         animator = GetComponentInChildren<Animator>();
+        FindHandSocketIfNeeded();
+    }
+
+    private void Start()
+    {
+        // Refresh visual saat awal mulai game
+        RefreshCurrentEquipment();
     }
 
     private void OnEnable()
@@ -90,25 +116,30 @@ public class PlayerEquipment : MonoBehaviour
     {
         DestroyCurrentWeapon();
 
-        if (inventory == null || handSocket == null)
+        if (inventory == null)
             return;
 
         if (hotbarIndex < 0 || hotbarIndex >= inventory.slots.Count)
             return;
 
         InventorySlot slot = inventory.slots[hotbarIndex];
-        if (slot == null || slot.item == null)
-            return;
 
-        // Panggil animasi equip pada Animator selama slot berisi item
+        // Panggil animasi equip pada Animator selama hotbar dipilih (atau slot terisi)
         if (animator == null) animator = GetComponentInChildren<Animator>();
         if (animator != null && !string.IsNullOrEmpty(equipTriggerName))
         {
             animator.SetTrigger(equipTriggerName);
         }
 
-        // Jika item belum punya prefab 3D (equipPrefab null), cukup jalankan animasinya saja
-        if (slot.item.equipPrefab == null)
+        if (slot == null || slot.item == null)
+            return;
+
+        FindHandSocketIfNeeded();
+        if (handSocket == null)
+            return;
+
+        // Jika item bukan Tool atau belum punya prefab 3D (equipPrefab null), lewati spawning model
+        if (slot.item is not ToolItemData tool || tool.equipPrefab == null)
             return;
 
         GameObject spawned = Instantiate(tool.equipPrefab, handSocket);
@@ -116,6 +147,28 @@ public class PlayerEquipment : MonoBehaviour
         spawned.transform.localRotation = Quaternion.identity;
         currentWeaponModel = spawned;
         currentWeaponModel.transform.localScale = tool.equipPrefab.transform.localScale;
+    }
+
+    private void FindHandSocketIfNeeded()
+    {
+        if (handSocket != null) return;
+
+        foreach (var t in GetComponentsInChildren<Transform>(true))
+        {
+            if (t.name.Equals("HandSocket", System.StringComparison.OrdinalIgnoreCase))
+            {
+                handSocket = t;
+                return;
+            }
+        }
+        foreach (var t in GetComponentsInChildren<Transform>(true))
+        {
+            if (t.name.EndsWith("RightHand", System.StringComparison.OrdinalIgnoreCase))
+            {
+                handSocket = t;
+                return;
+            }
+        }
     }
 
     public void DestroyCurrentWeapon()
