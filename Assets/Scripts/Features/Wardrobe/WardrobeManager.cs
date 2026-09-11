@@ -578,9 +578,30 @@ namespace FeaturesWardrobe
         {
             if (playerControl == null) return;
 
-            // Fixed pose authored per user spec — no runtime math.
-            Vector3 target = new Vector3(17.5f, 0.1f, 17.5f);
-            Quaternion facingMirror = Quaternion.Euler(0f, -90f, 0f);
+            Vector3 target;
+            Quaternion facingMirror;
+
+            if (mirrorCamera != null && mirrorCamera.MirrorSurface != null)
+            {
+                Transform mirror = mirrorCamera.MirrorSurface;
+                // Posisikan player tepat di depan cermin (~1.97m di depan permukaan cermin)
+                target = mirror.position + mirror.forward * 1.97f;
+                target.y = playerControl.transform.position.y;
+                // Hadapkan player menghadap cermin
+                facingMirror = Quaternion.LookRotation(-mirror.forward, Vector3.up);
+            }
+            else if (wardrobeRoot != null)
+            {
+                // Fallback jika mirrorSurface null
+                target = wardrobeRoot.position + Vector3.right * 1.26f + Vector3.forward * 1.3f;
+                target.y = playerControl.transform.position.y;
+                facingMirror = Quaternion.Euler(0f, -90f, 0f);
+            }
+            else
+            {
+                target = new Vector3(26.72f, 0.1f, 23.05f);
+                facingMirror = Quaternion.Euler(0f, -90f, 0f);
+            }
 
             Rigidbody rb = playerControl.GetComponent<Rigidbody>();
             if (rb != null)
@@ -588,7 +609,6 @@ namespace FeaturesWardrobe
                 rb.linearVelocity = Vector3.zero;
                 rb.position = target;
                 rb.rotation = facingMirror;
-                // Sync transform immediately (required in Edit Mode / non-simulated contexts)
                 playerControl.transform.position = target;
                 playerControl.transform.rotation = facingMirror;
             }
@@ -597,6 +617,8 @@ namespace FeaturesWardrobe
                 playerControl.transform.position = target;
                 playerControl.transform.rotation = facingMirror;
             }
+
+            Physics.SyncTransforms();
         }
 
         #endregion
