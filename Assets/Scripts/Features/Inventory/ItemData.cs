@@ -12,4 +12,6 @@ public class ItemData : ScriptableObject
     public int maxStack;
     public string description;
     public ItemType type;
+    public bool isWeapon;
+    public GameObject equipPrefab;
 }
