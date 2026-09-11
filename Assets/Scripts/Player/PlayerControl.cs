@@ -146,7 +146,7 @@ public class PlayerControl : MonoBehaviour
         bool wantsToRun = !isCrouching && Keyboard.current != null && (Keyboard.current.leftShiftKey.isPressed || Keyboard.current.rightShiftKey.isPressed);
 
         // Karakter hanya berlari jika bergerak, menekan shift, tidak sedang jongkok, dan memiliki stamina
-        isRunning = isMoving && wantsToRun && (playerStats != null && !playerStats.IsExhausted);
+        isRunning = isMoving && wantsToRun && (playerStats == null || !playerStats.IsExhausted);
 
         // Update ketinggian collider secara mulus saat jongkok vs berdiri
         if (playerCollider != null)
@@ -179,6 +179,7 @@ public class PlayerControl : MonoBehaviour
             animator.SetBool("Grounded", isGrounded);
             animator.SetBool("Idle", !isMoving);
             animator.SetBool("IsCrouching", isCrouching);
+            animator.SetBool("Sprinting", isRunning);
         }
     }
 
