@@ -8,7 +8,19 @@ using System.Linq;
 
 public class InventoryManagerUI : MonoBehaviour
 {
-    public static InventoryManagerUI Instance { get; private set; }
+    private static InventoryManagerUI _instance;
+    public static InventoryManagerUI Instance
+    {
+        get
+        {
+            if (_instance == null)
+            {
+                _instance = Object.FindFirstObjectByType<InventoryManagerUI>();
+            }
+            return _instance;
+        }
+        private set { _instance = value; }
+    }
 
     [Header("Data Inventori")]
     public InventoryComponent playerInventory;
@@ -492,7 +504,7 @@ if (customPanel != null)
         }
 
         // Restore player input (unlock movement/interaction)
-        var playerControl = FindObjectOfType<PlayerControl>();
+        var playerControl = FindFirstObjectByType<PlayerControl>();
         if (playerControl != null)
         {
             playerControl.isInputLocked = false;
