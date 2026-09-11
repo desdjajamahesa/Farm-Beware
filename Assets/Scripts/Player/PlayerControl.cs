@@ -17,6 +17,15 @@ public class PlayerControl : MonoBehaviour
     public float dashDuration = 0.2f;
     public float dashCooldown = 1f;
 
+    [Header("Pengaturan Crouch")]
+    public float crouchSpeed = 2.5f;
+    public float crouchColliderHeight = 1.2f;
+    public float crouchColliderCenterY = 0.6f;
+    private float originalColliderHeight = 2.0f;
+    private float originalColliderCenterY = 1.0f;
+    private CapsuleCollider playerCollider;
+    private bool isCrouching = false;
+
     private Rigidbody rb;
     private Animator animator;
     private Vector3 inputVector;
@@ -40,6 +49,12 @@ public class PlayerControl : MonoBehaviour
     {
         rb = GetComponent<Rigidbody>();
         animator = GetComponentInChildren<Animator>();
+        playerCollider = GetComponent<CapsuleCollider>();
+        if (playerCollider != null)
+        {
+            originalColliderHeight = playerCollider.height;
+            originalColliderCenterY = playerCollider.center.y;
+        }
 
         if (rb != null)
         {
@@ -57,6 +72,8 @@ public class PlayerControl : MonoBehaviour
         playerInventory = GetComponent<InventoryComponent>();  
         playerStats = GetComponent<PlayerStats>();
         playerEquipment = GetComponent<PlayerEquipment>();
+        if (playerEquipment == null)
+            playerEquipment = gameObject.AddComponent<PlayerEquipment>();
     }
 
     void OnEnable()
@@ -96,6 +113,7 @@ public class PlayerControl : MonoBehaviour
         HandleInventoryInput();
         HandleHotbarInput();
         HandleAttackInput();
+        HandlePlantSeedInput();
 
         if (Keyboard.current != null && Keyboard.current.eKey.wasPressedThisFrame)
         {
@@ -119,32 +137,48 @@ public class PlayerControl : MonoBehaviour
             inputVector = Vector3.zero;
         }
 
-        // 3. Cek apakah pemain menahan tombol Shift untuk Lari (Sprint)
-        bool isMoving = inputVector.magnitude >= 0.1f;
-        bool wantsToRun = Keyboard.current != null && (Keyboard.current.leftShiftKey.isPressed || Keyboard.current.rightShiftKey.isPressed);
+        // 3. Cek apakah pemain menahan tombol Ctrl untuk Jongkok (Crouch)
+        bool wantsToCrouch = Keyboard.current != null && (Keyboard.current.leftCtrlKey.isPressed || Keyboard.current.rightCtrlKey.isPressed);
+        isCrouching = isGrounded && wantsToCrouch;
 
-        // Karakter hanya berlari jika bergerak, menekan shift, dan memiliki stamina
+        // 4. Cek apakah pemain menahan tombol Shift untuk Lari (Sprint)
+        bool isMoving = inputVector.magnitude >= 0.1f;
+        bool wantsToRun = !isCrouching && Keyboard.current != null && (Keyboard.current.leftShiftKey.isPressed || Keyboard.current.rightShiftKey.isPressed);
+
+        // Karakter hanya berlari jika bergerak, menekan shift, tidak sedang jongkok, dan memiliki stamina
         isRunning = isMoving && wantsToRun && (playerStats != null && !playerStats.IsExhausted);
 
-        // 4. Konsumsi Stamina HANYA saat Berlari (Sprint)
+        // Update ketinggian collider secara mulus saat jongkok vs berdiri
+        if (playerCollider != null)
+        {
+            float targetHeight = isCrouching ? crouchColliderHeight : originalColliderHeight;
+            float targetCenterY = isCrouching ? crouchColliderCenterY : originalColliderCenterY;
+            playerCollider.height = Mathf.MoveTowards(playerCollider.height, targetHeight, 6f * Time.deltaTime);
+            Vector3 center = playerCollider.center;
+            center.y = Mathf.MoveTowards(center.y, targetCenterY, 3f * Time.deltaTime);
+            playerCollider.center = center;
+        }
+
+        // 5. Konsumsi Stamina HANYA saat Berlari (Sprint)
         if (isRunning && playerStats != null)
         {
             playerStats.UseStamina(playerStats.staminaDrainRate * Time.deltaTime);
         }
 
-        // 5. Sinkronisasi Animator
+        // 6. Sinkronisasi Animator
         if (animator != null)
         {
             float targetSpeed = 0f;
             if (isMoving)
             {
-                targetSpeed = isRunning ? 1.0f : 0.5f;
+                targetSpeed = isRunning ? 1.0f : (isCrouching ? 0.3f : 0.5f);
             }
 
             // Gunakan dampTime (0.1f) agar perubahan kecepatan dan langkah kaki bertransisi mulus
             animator.SetFloat("Vel", targetSpeed, 0.1f, Time.deltaTime);
             animator.SetBool("Grounded", isGrounded);
             animator.SetBool("Idle", !isMoving);
+            animator.SetBool("IsCrouching", isCrouching);
         }
     }
 
@@ -160,8 +194,8 @@ public class PlayerControl : MonoBehaviour
         {
             Vector3 moveDirection = Quaternion.Euler(0, 45f, 0) * inputVector;
             
-            // Kecepatan: walkSpeed (5) saat jalan, runSpeed (8) saat lari
-            float currentSpeed = isRunning ? runSpeed : walkSpeed;
+            // Kecepatan: crouchSpeed (2.5) saat jongkok, runSpeed (8) saat lari, walkSpeed (5) saat jalan
+            float currentSpeed = isCrouching ? crouchSpeed : (isRunning ? runSpeed : walkSpeed);
 
             // Gerakkan karakter murni dengan linearVelocity (kecepatan akurat, responsif, dan tidak ngedrift)
             Vector3 targetVelocity = moveDirection * currentSpeed;
@@ -197,9 +231,26 @@ public class PlayerControl : MonoBehaviour
             if (playerEquipment == null)
                 playerEquipment = GetComponent<PlayerEquipment>();
 
+            if (playerEquipment == null)
+                playerEquipment = gameObject.AddComponent<PlayerEquipment>();
+
             if (playerEquipment != null)
             {
                 playerEquipment.TryPerformAttack();
+            }
+        }
+    }
+
+    // Tombol Q: Memainkan animasi menanam benih (PlantSeed).
+    private void HandlePlantSeedInput()
+    {
+        if (isInputLocked) return;
+
+        if (Keyboard.current != null && Keyboard.current.qKey.wasPressedThisFrame)
+        {
+            if (animator != null)
+            {
+                animator.SetTrigger("PlantSeed");
             }
         }
     }
@@ -258,8 +309,8 @@ public class PlayerControl : MonoBehaviour
     {
         if (isInputLocked) return;
 
-        // Hanya bisa lompat jika menginjak tanah dan tidak sedang dash
-        if (isGrounded && !isDashing)
+        // Hanya bisa lompat jika menginjak tanah, tidak sedang dash, dan tidak sedang jongkok
+        if (isGrounded && !isDashing && !isCrouching)
         {
             // Reset kecepatan Y agar lompatan konsisten, lalu dorong ke atas
             rb.linearVelocity = new Vector3(rb.linearVelocity.x, 0f, rb.linearVelocity.z);
