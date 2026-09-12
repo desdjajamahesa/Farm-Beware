@@ -42,8 +42,6 @@ public class SinkDragDropHandler : MonoBehaviour, IBeginDragHandler, IDragHandle
 
     public void OnBeginDrag(PointerEventData eventData)
     {
-        if (slotType == SlotType.InputSlot) return;
-
         InventorySlot sourceSlot = GetSourceSlot();
         if (sourceSlot == null || sourceSlot.IsEmpty) return;
 
@@ -166,6 +164,11 @@ public class SinkDragDropHandler : MonoBehaviour, IBeginDragHandler, IDragHandle
         if (slotType == SlotType.OutputSlot)
         {
             return sinkManager.GetOutputSlot();
+        }
+
+        if (slotType == SlotType.InputSlot)
+        {
+            return sinkManager.GetInputSlot();
         }
 
         return null;

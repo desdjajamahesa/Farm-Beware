@@ -1,23 +1,17 @@
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
-using UnityEngine.EventSystems;
 using TMPro;
 
 /// <summary>
-/// Furnace-style Sink Manager: Dual-Panel (Left: Player Inventory, Right: Furnace Sink).
-/// Left panel shows player inventory; clicking dirty items transfers to InputSlot.
-/// Clicking OutputSlot returns clean items to player inventory.
+/// UI-only Sink Manager. Reads washing state from KitchenSinkInteractable (processor).
+/// Processor owns slots and runs washing timer independently of panel visibility.
 /// </summary>
 public class SinkManager : MonoBehaviour
 {
-    [Header("Slot Data")]
-    [Tooltip("InventorySlot for input (dirty items).")]
-    [SerializeField] private InventorySlot inputSlot;
-
-    [Tooltip("InventorySlot for output (clean items).")]
-    [SerializeField] private InventorySlot outputSlot;
+    [Header("Processor Reference")]
+    [Tooltip("KitchenSinkInteractable that owns washing logic and slots.")]
+    [SerializeField] private KitchenSinkInteractable processor;
 
     [Header("UI References")]
     [SerializeField] private Image inputSlotImage;
@@ -45,22 +39,11 @@ public class SinkManager : MonoBehaviour
     [Tooltip("TMP text for item description at bottom of LeftContent.")]
     [SerializeField] private TextMeshProUGUI itemDescriptionText;
 
-    [Header("Wash Settings")]
-    [SerializeField] private float washDurationPerItem = 2f;
-
-    private bool isWashing;
-    private Coroutine washCoroutine;
     private InventoryComponent playerInventory;
     private List<GameObject> spawnedSlots = new List<GameObject>();
 
     private void Awake()
     {
-        if (inputSlot == null)
-            inputSlot = new InventorySlot();
-        if (outputSlot == null)
-            outputSlot = new InventorySlot();
-
-        // Hard-wire close button
         if (closeButton != null)
         {
             closeButton.onClick.RemoveAllListeners();
@@ -70,6 +53,10 @@ public class SinkManager : MonoBehaviour
 
     private void Start()
     {
+        // Auto-resolve processor if not assigned
+        if (processor == null)
+            processor = FindFirstObjectByType<KitchenSinkInteractable>();
+
         // Anti-Inspector Bug: auto-resolve child references from parent transforms
         if (inputSlotUI != null)
         {
@@ -115,35 +102,87 @@ public class SinkManager : MonoBehaviour
         }
 
         PopulatePlayerInventory();
-        RefreshSlotVisuals();
-        CheckAndStartWashing();
+        SyncToProcessor();
     }
 
     private void OnDisable()
     {
-        StopWashing();
         ClearSpawnedSlots();
+        // NOTE: Washing does NOT stop here. Processor keeps running on Kitchen_Sink.
     }
 
     /// <summary>
     /// Called when Panel_Sink is closed (by CloseButton or ESC).
-    /// Stops any running wash coroutine and restores game state.
+    /// Does NOT stop washing — processor continues independently.
     /// </summary>
     public void ClosePanel()
     {
-        StopWashing();
+        // NOTE: No StopWashing() call. Processor keeps running.
 
-        // Restore cursor
         Cursor.visible = false;
         Cursor.lockState = CursorLockMode.Locked;
 
-        // Unlock player input
         var player = FindFirstObjectByType<PlayerControl>();
         if (player != null)
             player.isInputLocked = false;
 
-        // Hide panel
         gameObject.SetActive(false);
+    }
+
+    /// <summary>
+    /// Sync UI to current processor state. Called on OnEnable and after slot changes.
+    /// </summary>
+    public void SyncToProcessor()
+    {
+        RefreshSlotVisuals();
+        SyncProgressUI();
+    }
+
+    /// <summary>
+    /// Update progress bar and status text from processor state.
+    /// </summary>
+    private void SyncProgressUI()
+    {
+        if (processor == null) return;
+
+        if (processor.IsWashing)
+        {
+            if (progressFillImage != null)
+                progressFillImage.fillAmount = processor.WashProgress;
+
+            float remaining = Mathf.Ceil(processor.WashDurationPerItem * (1f - processor.WashProgress));
+            UpdateStatus($"Mencuci... ({remaining:F0}s)");
+        }
+        else
+        {
+            if (processor.InputSlot != null && !processor.InputSlot.IsEmpty)
+            {
+                // Items waiting but not washing (output full, etc.)
+                if (processor.OutputSlot != null && !processor.OutputSlot.IsEmpty &&
+                    processor.OutputSlot.quantity >= processor.OutputSlot.item.maxStack)
+                {
+                    UpdateStatus("Slot hasil penuh");
+                }
+                else
+                {
+                    UpdateStatus("Menunggu...");
+                }
+                if (progressFillImage != null)
+                    progressFillImage.fillAmount = 0f;
+            }
+            else if (processor.OutputSlot != null && !processor.OutputSlot.IsEmpty)
+            {
+                UpdateStatus("Selesai! Ambil item bersih");
+                if (progressFillImage != null)
+                    progressFillImage.fillAmount = 0f;
+            }
+            else
+            {
+                UpdateStatus("Taruh item kotor di slot kiri");
+                if (progressFillImage != null)
+                    progressFillImage.fillAmount = 0f;
+            }
+        }
     }
 
     // ═══════════════════════════════════════════════════════
@@ -354,7 +393,7 @@ public class SinkManager : MonoBehaviour
     }
 
     // ═══════════════════════════════════════════════════════
-    // PUBLIC ACCESSORS (for DragDrop)
+    // PUBLIC ACCESSORS (for DragDrop — delegates to processor)
     // ═══════════════════════════════════════════════════════
 
     public InventorySlot GetPlayerSlot(int index)
@@ -366,12 +405,14 @@ public class SinkManager : MonoBehaviour
 
     public InventorySlot GetOutputSlot()
     {
-        return outputSlot;
+        return processor != null ? processor.OutputSlot : null;
     }
 
-    /// <summary>
-    /// Swap items between two player inventory slots (drag internal rearrange).
-    /// </summary>
+    public InventorySlot GetInputSlot()
+    {
+        return processor != null ? processor.InputSlot : null;
+    }
+
     public void SwapPlayerSlots(int indexA, int indexB)
     {
         if (indexA == indexB) return;
@@ -384,10 +425,8 @@ public class SinkManager : MonoBehaviour
 
         ItemData tempItem = slotA.item;
         int tempQty = slotA.quantity;
-
         slotA.item = slotB.item;
         slotA.quantity = slotB.quantity;
-
         slotB.item = tempItem;
         slotB.quantity = tempQty;
 
@@ -399,21 +438,14 @@ public class SinkManager : MonoBehaviour
     // CLICK HANDLERS
     // ═══════════════════════════════════════════════════════
 
-    /// <summary>
-    /// Called when a player inventory slot in LeftContent is clicked.
-    /// If item is dirty, transfer entire stack to inputSlot.
-    /// </summary>
     private void OnPlayerSlotClicked(int slotIndex)
     {
         if (playerInventory == null || slotIndex < 0 || slotIndex >= playerInventory.slots.Count) return;
 
         InventorySlot playerSlot = playerInventory.slots[slotIndex];
-
-        // Cache data BEFORE any mutation
         ItemData itemToMove = playerSlot.item;
         int amountToMove = playerSlot.quantity;
 
-        // Guard clauses
         if (itemToMove == null || amountToMove <= 0) return;
 
         if (!IsDirty(itemToMove))
@@ -423,90 +455,34 @@ public class SinkManager : MonoBehaviour
             return;
         }
 
-        ItemData cleanVariant = GetCleanVariant(itemToMove);
-        if (cleanVariant == null)
-        {
-            UpdateStatus("Item ini tidak bisa dicuci");
-            ShowItemDescription(itemToMove);
-            return;
-        }
-
-        if (!inputSlot.IsEmpty && inputSlot.item != itemToMove)
-        {
-            UpdateStatus("Slot input berisi item berbeda");
-            return;
-        }
-
-        // Respect maxStack capacity
-        int inputCapacity = itemToMove.maxStack - inputSlot.quantity;
-        if (inputCapacity <= 0)
-        {
-            UpdateStatus("Slot input penuh");
-            return;
-        }
-        if (amountToMove > inputCapacity)
-            amountToMove = inputCapacity;
-
-        // Copy to inputSlot FIRST
-        if (inputSlot.IsEmpty)
-        {
-            inputSlot.item = itemToMove;
-            inputSlot.quantity = amountToMove;
-        }
-        else
-        {
-            inputSlot.quantity += amountToMove;
-        }
-
-        // Remove from player inventory AFTER copy
-        playerInventory.RemoveItem(itemToMove, amountToMove);
-
-        PopulatePlayerInventory();
-        RefreshSlotVisuals();
-        CheckAndStartWashing();
-
-        // Show description
+        TransferToInputSlot(slotIndex);
         ShowItemDescription(itemToMove);
     }
 
-    /// <summary>
-    /// Called when OutputSlot is clicked.
-    /// Returns clean item to player inventory.
-    /// </summary>
     public void OnOutputSlotClicked()
     {
         TransferFromOutputToPlayer();
     }
 
     /// <summary>
-    /// Transfer dirty items from player inventory to inputSlot.
-    /// Moves ENTIRE stack from the player slot.
-    /// Used by both click and drag-drop.
+    /// Transfer dirty items from player inventory to processor inputSlot.
     /// </summary>
     public bool TransferToInputSlot(int playerSlotIndex)
     {
-        if (playerInventory == null || playerSlotIndex < 0 || playerSlotIndex >= playerInventory.slots.Count) return false;
+        if (processor == null || playerInventory == null) return false;
+        if (playerSlotIndex < 0 || playerSlotIndex >= playerInventory.slots.Count) return false;
 
         InventorySlot playerSlot = playerInventory.slots[playerSlotIndex];
+        InventorySlot inputSlot = processor.InputSlot;
 
-        // 1. Cache data BEFORE any mutation
         ItemData itemToMove = playerSlot.item;
         int amountToMove = playerSlot.quantity;
 
-        // 2. Guard clauses
-        if (itemToMove == null || amountToMove <= 0)
-            return false;
+        if (itemToMove == null || amountToMove <= 0) return false;
 
         if (!IsDirty(itemToMove))
         {
             UpdateStatus("Item ini tidak kotor!");
-            return false;
-        }
-
-        ItemData cleanVariant = GetCleanVariant(itemToMove);
-        if (cleanVariant == null)
-        {
-            UpdateStatus("Item ini tidak bisa dicuci");
             return false;
         }
 
@@ -516,7 +492,6 @@ public class SinkManager : MonoBehaviour
             return false;
         }
 
-        // Respect maxStack capacity
         int inputCapacity = itemToMove.maxStack - inputSlot.quantity;
         if (inputCapacity <= 0)
         {
@@ -526,7 +501,6 @@ public class SinkManager : MonoBehaviour
         if (amountToMove > inputCapacity)
             amountToMove = inputCapacity;
 
-        // 3. Copy to inputSlot FIRST (before removing from player)
         if (inputSlot.IsEmpty)
         {
             inputSlot.item = itemToMove;
@@ -537,36 +511,35 @@ public class SinkManager : MonoBehaviour
             inputSlot.quantity += amountToMove;
         }
 
-        // 4. Remove from player inventory AFTER copy
         playerInventory.RemoveItem(itemToMove, amountToMove);
 
-        // 4b. Clear source slot if empty after removal
         if (playerSlot.quantity <= 0)
         {
             playerSlot.item = null;
             playerSlot.quantity = 0;
         }
 
-        // 5. Refresh & start washing
         PopulatePlayerInventory();
         RefreshSlotVisuals();
-        CheckAndStartWashing();
+        processor.StartWashing();
+        SyncProgressUI();
 
         return true;
     }
 
     /// <summary>
-    /// Transfer clean items from outputSlot back to player inventory.
-    /// Used by both click and drag-drop.
+    /// Transfer clean items from processor outputSlot to player inventory.
     /// </summary>
     public bool TransferFromOutputToPlayer(int targetSlotIndex = -1)
     {
-        if (outputSlot.IsEmpty || playerInventory == null) return false;
+        if (processor == null || playerInventory == null) return false;
+
+        InventorySlot outputSlot = processor.OutputSlot;
+        if (outputSlot == null || outputSlot.IsEmpty) return false;
 
         ItemData cleanItem = outputSlot.item;
         int qty = outputSlot.quantity;
 
-        // 1. Try targeted slot first (drag-drop)
         if (targetSlotIndex >= 0)
         {
             InventorySlot targetSlot = playerInventory.slots[targetSlotIndex];
@@ -588,7 +561,6 @@ public class SinkManager : MonoBehaviour
             }
         }
 
-        // 2. Fallback to main inventory for remainder
         if (qty > 0)
         {
             bool added = AddItemToMainInventory(cleanItem, qty);
@@ -603,27 +575,28 @@ public class SinkManager : MonoBehaviour
         outputSlot.quantity = 0;
 
         PopulatePlayerInventory();
-        CheckAndStartWashing();
         RefreshSlotVisuals();
+        processor.StartWashing();
+        SyncProgressUI();
         UpdateStatus("Item bersih masuk tas");
         return true;
     }
 
     /// <summary>
-    /// Cancel washing and return ALL dirty items from inputSlot to player inventory.
-    /// Called by clicking InputSlot or dragging from InputSlot to player area.
+    /// Cancel washing and return ALL dirty items from processor inputSlot to player inventory.
     /// </summary>
     public bool TransferFromInputToPlayer(int targetSlotIndex = -1)
     {
-        if (inputSlot.IsEmpty || inputSlot.quantity <= 0 || playerInventory == null) return false;
+        if (processor == null || playerInventory == null) return false;
 
-        // Stop active wash coroutine
-        StopWashing();
+        InventorySlot inputSlot = processor.InputSlot;
+        if (inputSlot == null || inputSlot.IsEmpty || inputSlot.quantity <= 0) return false;
+
+        processor.StopWashing();
 
         ItemData itemToMove = inputSlot.item;
         int qty = inputSlot.quantity;
 
-        // 1. Try targeted slot first (drag-drop)
         if (targetSlotIndex >= 0)
         {
             InventorySlot targetSlot = playerInventory.slots[targetSlotIndex];
@@ -645,7 +618,6 @@ public class SinkManager : MonoBehaviour
             }
         }
 
-        // 2. Fallback to main inventory for remainder
         if (qty > 0)
         {
             bool added = AddItemToMainInventory(itemToMove, qty);
@@ -656,148 +628,15 @@ public class SinkManager : MonoBehaviour
             }
         }
 
-        // Clear inputSlot
         inputSlot.item = null;
         inputSlot.quantity = 0;
 
         PopulatePlayerInventory();
-        CheckAndStartWashing();
         RefreshSlotVisuals();
+        SyncProgressUI();
         UpdateStatus("Item kotor dikembalikan ke tas");
 
         return true;
-    }
-
-    // ═══════════════════════════════════════════════════════
-    // WASHING LOGIC
-    // ═══════════════════════════════════════════════════════
-
-    public void OnSlotChanged()
-    {
-        CheckAndStartWashing();
-    }
-
-    private void CheckAndStartWashing()
-    {
-        if (isWashing) return;
-
-        // Validate inputSlot
-        if (inputSlot.IsEmpty)
-        {
-            ResetProgress();
-            UpdateStatus("Taruh item kotor di slot kiri");
-            return;
-        }
-
-        ItemData cleanVariant = GetCleanVariant(inputSlot.item);
-        if (cleanVariant == null)
-        {
-            ResetProgress();
-            UpdateStatus("Item ini tidak bisa dicuci");
-            return;
-        }
-
-        // Validate outputSlot
-        if (!outputSlot.IsEmpty)
-        {
-            if (outputSlot.item != cleanVariant)
-            {
-                ResetProgress();
-                UpdateStatus("Slot hasil tidak cocok");
-                return;
-            }
-            if (outputSlot.quantity >= cleanVariant.maxStack)
-            {
-                ResetProgress();
-                UpdateStatus("Slot hasil penuh");
-                return;
-            }
-        }
-
-        // All valid → start washing
-        washCoroutine = StartCoroutine(WashRoutine(cleanVariant));
-    }
-
-    private ItemData GetCleanVariant(ItemData item)
-    {
-        if (item is FoodItemData food && food.isDirty && food.cleanVariant != null)
-            return food.cleanVariant;
-        if (item is MaterialItemData mat && mat.isDirty && mat.cleanVariant != null)
-            return mat.cleanVariant;
-        return null;
-    }
-
-    private IEnumerator WashRoutine(ItemData cleanVariant)
-    {
-        isWashing = true;
-
-        // Guard: validate inputSlot still has items before starting timer
-        if (inputSlot.IsEmpty || inputSlot.quantity <= 0)
-        {
-            StopWashing();
-            yield break;
-        }
-
-        float elapsed = 0f;
-        while (elapsed < washDurationPerItem)
-        {
-            elapsed += Time.deltaTime;
-            float progress = Mathf.Clamp01(elapsed / washDurationPerItem);
-
-            if (progressFillImage != null)
-                progressFillImage.fillAmount = progress;
-
-            float remaining = Mathf.Ceil(washDurationPerItem - elapsed);
-            UpdateStatus($"Mencuci... ({remaining:F0}s)");
-
-            yield return null;
-        }
-
-        // Timer complete: transfer 1 item
-        inputSlot.quantity--;
-
-        // Explicit state clearing when inputSlot is empty
-        if (inputSlot.quantity <= 0)
-        {
-            inputSlot.item = null;
-            inputSlot.quantity = 0;
-        }
-
-        if (outputSlot.IsEmpty)
-        {
-            outputSlot.item = cleanVariant;
-            outputSlot.quantity = 1;
-        }
-        else
-        {
-            outputSlot.quantity++;
-        }
-
-        // Reset progress
-        ResetProgress();
-        UpdateStatus("Selesai!");
-
-        isWashing = false;
-        washCoroutine = null;
-
-        // Refresh UI
-        PopulatePlayerInventory();
-        RefreshSlotVisuals();
-
-        // Check if more items to wash
-        yield return new WaitForSeconds(0.3f);
-        CheckAndStartWashing();
-    }
-
-    private void StopWashing()
-    {
-        if (washCoroutine != null)
-        {
-            StopCoroutine(washCoroutine);
-            washCoroutine = null;
-        }
-        isWashing = false;
-        ResetProgress();
     }
 
     // ═══════════════════════════════════════════════════════
@@ -812,9 +651,9 @@ public class SinkManager : MonoBehaviour
 
     private void RefreshInputSlotVisual()
     {
-        if (inputSlotImage == null) return;
+        if (inputSlotImage == null || processor == null) return;
 
-        // Strict empty check: clear and return early
+        InventorySlot inputSlot = processor.InputSlot;
         if (inputSlot == null || inputSlot.IsEmpty || inputSlot.item == null || inputSlot.quantity <= 0)
         {
             inputSlotImage.sprite = null;
@@ -824,7 +663,6 @@ public class SinkManager : MonoBehaviour
             return;
         }
 
-        // Slot has valid item: render icon
         Sprite iconSprite = GetItemSprite(inputSlot.item);
         if (iconSprite != null)
         {
@@ -845,9 +683,9 @@ public class SinkManager : MonoBehaviour
 
     private void RefreshOutputSlotVisual()
     {
-        if (outputSlotImage == null) return;
+        if (outputSlotImage == null || processor == null) return;
 
-        // Strict empty check: clear and return early
+        InventorySlot outputSlot = processor.OutputSlot;
         if (outputSlot == null || outputSlot.IsEmpty || outputSlot.item == null || outputSlot.quantity <= 0)
         {
             outputSlotImage.sprite = null;
@@ -857,7 +695,6 @@ public class SinkManager : MonoBehaviour
             return;
         }
 
-        // Slot has valid item: render icon
         Sprite iconSprite = GetItemSprite(outputSlot.item);
         if (iconSprite != null)
         {
@@ -874,12 +711,6 @@ public class SinkManager : MonoBehaviour
         }
         if (outputCountText != null)
             outputCountText.text = outputSlot.quantity > 1 ? outputSlot.quantity.ToString() : "";
-    }
-
-    private void ResetProgress()
-    {
-        if (progressFillImage != null)
-            progressFillImage.fillAmount = 0f;
     }
 
     private void UpdateStatus(string text)
