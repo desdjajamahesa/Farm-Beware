@@ -36716,7 +36716,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 959b73b363c78864fb50e28322d13f38, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::KitchenStationSoundFx
-  station: {fileID: 714534236}
+  stationComponent: {fileID: 0}
   soundVolume: 0.8
   soundCooldown: 0.5
 --- !u!114 &714534244
@@ -36731,7 +36731,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e79f3b27cb433e24cb5486a2484b0c39, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::KitchenStationProgressOverlay
-  station: {fileID: 714534236}
+  stationComponent: {fileID: 0}
   slotAnchors:
   - {fileID: 1664398867}
   overlayMaterial: {fileID: 2100000, guid: 1b4aa5cb681d04a4d9d62386abff4b67, type: 2}
@@ -54158,6 +54158,37 @@ SkinnedMeshRenderer:
     m_Center: {x: 0.0000011324883, y: 0.79862404, z: 0.055393457}
     m_Extent: {x: 0.28374454, y: 0.06908226, z: 0.28374457}
   m_DirtyAABB: 0
+--- !u!1 &1088563182
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1088563183}
+  m_Layer: 0
+  m_Name: Burner_1
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1088563183
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1088563182}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0.8, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1513094635}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1089726137
 GameObject:
   m_ObjectHideFlags: 0
@@ -69874,6 +69905,19 @@ Transform:
   - {fileID: 321388963}
   m_Father: {fileID: 1360758679}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!134 &1440400636
+PhysicsMaterial:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: ' (Instance)'
+  serializedVersion: 2
+  m_DynamicFriction: 0.6
+  m_StaticFriction: 0.6
+  m_Bounciness: 0
+  m_FrictionCombine: 0
+  m_BounceCombine: 0
 --- !u!1 &1441265494
 GameObject:
   m_ObjectHideFlags: 0
@@ -72708,6 +72752,8 @@ GameObject:
   - component: {fileID: 1513094641}
   - component: {fileID: 1513094642}
   - component: {fileID: 1513094643}
+  - component: {fileID: 1513094645}
+  - component: {fileID: 1513094644}
   m_Layer: 0
   m_Name: Kitchen_Stove
   m_TagString: Untagged
@@ -72729,6 +72775,7 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 2001735015}
+  - {fileID: 1088563183}
   m_Father: {fileID: 1607177103}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!23 &1513094638
@@ -72787,7 +72834,7 @@ BoxCollider:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1513094634}
-  m_Material: {fileID: 1953279655}
+  m_Material: {fileID: 1440400636}
   m_IncludeLayers:
     serializedVersion: 2
     m_Bits: 0
@@ -72853,6 +72900,47 @@ MonoBehaviour:
   - {fileID: 11400000, guid: af32dc3afad95e3499e71d38ef922388, type: 2}
   - {fileID: 11400000, guid: fa58bdd8d47928f47b61b1d456ed0fb4, type: 2}
   stoveUI: {fileID: 1874173120}
+--- !u!114 &1513094644
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1513094634}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e79f3b27cb433e24cb5486a2484b0c39, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::KitchenStationProgressOverlay
+  stationComponent: {fileID: 1513094643}
+  slotAnchors:
+  - {fileID: 0}
+  overlayMaterial: {fileID: 0}
+  overlayColor: {r: 1, g: 1, b: 1, a: 0.5}
+  overlayWidth: 0.9
+  maxHeight: 0.7
+  useBillboard: 1
+  billboardCameraTag: MainCamera
+  hideDelayAfterComplete: 1.2
+  flashDuration: 0.25
+  completeSound: {fileID: 0}
+  soundVolume: 0.8
+  soundCooldown: 0.5
+--- !u!114 &1513094645
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1513094634}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 959b73b363c78864fb50e28322d13f38, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::KitchenStationSoundFx
+  stationComponent: {fileID: 1513094643}
+  soundVolume: 0.8
+  soundCooldown: 0.5
 --- !u!1 &1514462688
 GameObject:
   m_ObjectHideFlags: 0
@@ -91903,6 +91991,7 @@ MonoBehaviour:
   cannotCookColor: {r: 0.5, g: 0.5, b: 0.5, a: 1}
   haveEnoughColor: {r: 0.3, g: 0.9, b: 0.4, a: 1}
   notEnoughColor: {r: 0.9, g: 0.3, b: 0.3, a: 1}
+  stove: {fileID: 0}
 --- !u!224 &1874173121
 RectTransform:
   m_ObjectHideFlags: 0
@@ -95489,19 +95578,6 @@ Transform:
   - {fileID: 1257340309}
   m_Father: {fileID: 1352306688}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!134 &1953279655
-PhysicsMaterial:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_Name: 
-  serializedVersion: 2
-  m_DynamicFriction: 0.6
-  m_StaticFriction: 0.6
-  m_Bounciness: 0
-  m_FrictionCombine: 0
-  m_BounceCombine: 0
 --- !u!1 &1954218855
 GameObject:
   m_ObjectHideFlags: 0

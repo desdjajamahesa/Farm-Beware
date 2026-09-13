@@ -36,6 +36,8 @@ public class KitchenSinkInteractable : KitchenStation, IInteractable
     private bool isWashing;
     private float washProgress;
     private KitchenRecipe virtualRecipe;
+    private PlayerControl cachedPlayerControl;
+    public PlayerControl CachedPlayerControl => cachedPlayerControl;
 
     // ── Public Accessors (for SinkManager UI sync) ──
     public InventorySlot InputSlot => inputSlot;
@@ -43,6 +45,16 @@ public class KitchenSinkInteractable : KitchenStation, IInteractable
     public bool IsWashing => isWashing;
     public float WashProgress => washProgress;
     public float WashDurationPerItem => washDurationPerItem;
+
+    public override bool IsProcessing(int slot)
+    {
+        return isWashing;
+    }
+
+    public override float GetSlotProgress(int slot)
+    {
+        return isWashing ? Mathf.Clamp01(washProgress) : 0f;
+    }
 
     protected override void Awake()
     {
@@ -105,14 +117,27 @@ public class KitchenSinkInteractable : KitchenStation, IInteractable
             return;
         }
 
+        // Safety: force-unlock stale input lock if no panel is active
+        var pc = interactor.GetComponent<PlayerControl>();
+        if (pc != null && pc.isInputLocked)
+        {
+            bool sinkOpen = panelSink.activeSelf;
+            if (!sinkOpen)
+            {
+                pc.isInputLocked = false;
+                Debug.Log("[KitchenSinkInteractable] Safety: force-unlocked stale isInputLocked");
+            }
+        }
+
         panelSink.SetActive(true);
 
         Cursor.visible = true;
         Cursor.lockState = CursorLockMode.None;
 
-        var playerControl = interactor.GetComponent<PlayerControl>();
-        if (playerControl != null)
-            playerControl.isInputLocked = true;
+        // Cache player reference for reliable unlock in ClosePanel
+        cachedPlayerControl = pc;
+        if (cachedPlayerControl != null)
+            cachedPlayerControl.isInputLocked = true;
 
         // Sync UI to current processor state
         var sinkMgr = panelSink.GetComponent<SinkManager>();
@@ -163,18 +188,19 @@ public class KitchenSinkInteractable : KitchenStation, IInteractable
                     StopWashing();
                     return;
                 }
+                RaiseProcessProgress(0, 0f);
             }
             else
             {
                 isWashing = false;
+                RaiseProcessCompleted(0);
             }
 
-            // Sync UI if panel is open
             SyncUIIfOpen();
         }
         else
         {
-            // Update progress UI if panel is open
+            RaiseProcessProgress(0, Mathf.Clamp01(washProgress));
             SyncUIIfOpen();
         }
     }
@@ -227,6 +253,8 @@ public class KitchenSinkInteractable : KitchenStation, IInteractable
 
         isWashing = true;
         washProgress = 0f;
+        RaiseProcessStarted(0, washDurationPerItem);
+        RaiseProcessProgress(0, 0f);
     }
 
     /// <summary>
@@ -235,6 +263,8 @@ public class KitchenSinkInteractable : KitchenStation, IInteractable
     /// </summary>
     public void StopWashing()
     {
+        if (isWashing)
+            RaiseProcessCancelled(0);
         isWashing = false;
         washProgress = 0f;
     }
@@ -254,9 +284,13 @@ public class KitchenSinkInteractable : KitchenStation, IInteractable
         Cursor.visible = false;
         Cursor.lockState = CursorLockMode.Locked;
 
-        var player = FindFirstObjectByType<PlayerControl>();
-        if (player != null)
-            player.isInputLocked = false;
+        if (cachedPlayerControl == null)
+            cachedPlayerControl = FindFirstObjectByType<PlayerControl>();
+        if (cachedPlayerControl != null)
+        {
+            cachedPlayerControl.isInputLocked = false;
+            cachedPlayerControl = null;
+        }
     }
 
     /// <summary>
