@@ -52,11 +52,12 @@ public class DoorInteractable : MonoBehaviour, IInteractable
         if (player == null)
             return;
 
-        // Detect which side player is on using configured axis
-        float playerCoord = GetCoordinate(player.transform.position, thresholdAxis);
-        bool isInside = (thresholdAxis == ThresholdAxis.X || thresholdAxis == ThresholdAxis.Z) 
-            ? playerCoord > insideThreshold 
-            : playerCoord < insideThreshold; // Y axis: higher = inside (e.g., upstairs)
+        // Deteksi posisi player: bandingkan jarak ke spawnPointInside vs spawnPointOutside
+        // Jika lebih dekat ke luar -> target adalah ke dalam (spawnPointInside)
+        // Jika lebih dekat ke dalam -> target adalah ke luar (spawnPointOutside)
+        float distToInside = Vector3.Distance(player.transform.position, spawnPointInside.position);
+        float distToOutside = Vector3.Distance(player.transform.position, spawnPointOutside.position);
+        bool isInside = distToInside < distToOutside;
 
         Transform targetSpawn = isInside ? spawnPointOutside : spawnPointInside;
 
@@ -95,10 +96,8 @@ public class DoorInteractable : MonoBehaviour, IInteractable
             rb.linearVelocity = Vector3.zero;
             rb.position = targetPosition;
         }
-        else
-        {
-            player.transform.position = targetPosition;
-        }
+        player.transform.position = targetPosition;
+        Physics.SyncTransforms();
     }
 
     private float GetCoordinate(Vector3 pos, ThresholdAxis axis)

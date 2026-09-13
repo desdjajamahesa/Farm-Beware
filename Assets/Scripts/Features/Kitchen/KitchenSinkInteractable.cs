@@ -107,8 +107,10 @@ public class KitchenSinkInteractable : KitchenStation, IInteractable
             playerControl.isInputLocked = true;
     }
 
-    private void Update()
+    protected override void Update()
     {
+        base.Update();
+
         if (panelSink != null && panelSink.activeSelf &&
             Keyboard.current != null &&
             Keyboard.current.escapeKey.wasPressedThisFrame)
