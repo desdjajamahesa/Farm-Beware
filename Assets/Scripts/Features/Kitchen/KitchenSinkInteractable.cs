@@ -120,9 +120,10 @@ public class KitchenSinkInteractable : KitchenStation, IInteractable
             sinkMgr.SyncToProcessor();
     }
 
-    private void Update()
+    protected override void Update()
     {
-        // ESC to close
+        base.Update();
+
         if (panelSink != null && panelSink.activeSelf &&
             Keyboard.current != null &&
             Keyboard.current.escapeKey.wasPressedThisFrame)
