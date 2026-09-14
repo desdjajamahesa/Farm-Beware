@@ -13,6 +13,9 @@ public class PlayerControl : MonoBehaviour
 
     [Header("Pengaturan Aksi")]
     public float jumpForce = 5f;
+    [Tooltip("Durasi penguncian pergerakan saat menanam benih (detik).")]
+    public float plantDuration = 1.56f;
+    private bool isPlanting = false;
 
     private CapsuleCollider playerCollider;
     private Rigidbody rb;
@@ -109,6 +112,20 @@ public class PlayerControl : MonoBehaviour
         // Kunci input: hentikan inventory/hotbar/gerak/animator saat terkunci.
         if (isInputLocked) return;
 
+        // Saat menanam benih, karakter diam di tempat (tidak bisa bergerak/berlari/lompat/interact)
+        if (isPlanting)
+        {
+            inputVector = Vector3.zero;
+            isRunning = false;
+            if (animator != null)
+            {
+                animator.SetFloat("Vel", 0f, 0.1f, Time.deltaTime);
+                animator.SetBool("Idle", true);
+                animator.SetBool("Sprinting", false);
+            }
+            return;
+        }
+
         HandleInventoryInput();
         HandleHotbarInput();
         HandleAttackInput();
@@ -165,8 +182,13 @@ public class PlayerControl : MonoBehaviour
 
     void FixedUpdate()
     {
-        // Kunci input: hentikan fisika pergerakan saat terkunci.
-        if (isInputLocked) return;
+        // Kunci input: hentikan fisika pergerakan saat terkunci atau sedang menanam
+        if (isInputLocked || isPlanting)
+        {
+            if (rb != null)
+                rb.linearVelocity = new Vector3(0f, rb.linearVelocity.y, 0f);
+            return;
+        }
 
         if (inputVector.magnitude >= 0.1f)
         {
@@ -307,7 +329,7 @@ public class PlayerControl : MonoBehaviour
     // Klik Kiri Mouse / Serang: Panggil animasi serangan jika item yang dipegang adalah senjata.
     private void HandleAttackInput()
     {
-        if (isInputLocked) return;
+        if (isInputLocked || isPlanting) return;
 
         if (Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame)
         {
@@ -324,18 +346,58 @@ public class PlayerControl : MonoBehaviour
         }
     }
 
-    // Tombol Q: Memainkan animasi menanam benih (PlantSeed).
+    // Tombol Q: Memainkan animasi menanam benih (PlantSeed) dan mengunci gerakan pemain sampai animasi selesai.
     private void HandlePlantSeedInput()
     {
-        if (isInputLocked) return;
+        if (isInputLocked || isPlanting || !isGrounded) return;
 
         if (Keyboard.current != null && Keyboard.current.qKey.wasPressedThisFrame)
         {
-            if (animator != null)
-            {
-                animator.SetTrigger("PlantSeed");
-            }
+            StartCoroutine(RoutinePlantSeed());
         }
+    }
+
+    private IEnumerator RoutinePlantSeed()
+    {
+        isPlanting = true;
+        inputVector = Vector3.zero;
+
+        if (rb != null)
+        {
+            rb.linearVelocity = new Vector3(0f, rb.linearVelocity.y, 0f);
+            rb.angularVelocity = Vector3.zero;
+        }
+
+        if (animator != null)
+        {
+            animator.SetTrigger("PlantSeed");
+            animator.SetFloat("Vel", 0f);
+            animator.SetBool("Idle", true);
+            animator.SetBool("Sprinting", false);
+        }
+
+        // Tunggu frame berikutnya agar transisi animator ke PlantSeed dimulai
+        yield return null;
+
+        float timer = 0f;
+        while (timer < plantDuration)
+        {
+            timer += Time.deltaTime;
+
+            // Jika animasi sudah selesai dan bertransisi kembali ke Idle/Moving setelah minimal 0.5 detik
+            if (timer > 0.5f && animator != null)
+            {
+                var stateInfo = animator.GetCurrentAnimatorStateInfo(0);
+                if (!stateInfo.IsName("PlantSeed") && !animator.GetNextAnimatorStateInfo(0).IsName("PlantSeed"))
+                {
+                    break;
+                }
+            }
+
+            yield return null;
+        }
+
+        isPlanting = false;
     }
 
     // Tombol Tab / I membuka-menutup panel pemain. Jika storage terbuka, tutup semua.
@@ -390,7 +452,7 @@ public class PlayerControl : MonoBehaviour
 
     private void ExecuteJump()
     {
-        if (isInputLocked) return;
+        if (isInputLocked || isPlanting) return;
 
         // Hanya bisa lompat jika menginjak tanah
         if (isGrounded)
@@ -408,7 +470,7 @@ public class PlayerControl : MonoBehaviour
 
     public void TriggerInteract()
     {
-        if (Time.frameCount == lastInteractFrame) return;
+        if (Time.frameCount == lastInteractFrame || isPlanting) return;
         lastInteractFrame = Time.frameCount;
 
         if (isInputLocked)
