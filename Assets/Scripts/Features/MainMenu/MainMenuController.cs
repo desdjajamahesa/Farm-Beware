@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using FeaturesCommon;
+using UnityEngine.InputSystem;
 
 public class MainMenuController : MonoBehaviour
 {
@@ -38,6 +39,7 @@ public class MainMenuController : MonoBehaviour
 
     private PlayerControl playerControl;
     private bool menuActive = false;
+    private bool hasStartedGame = false;
     private Vector3 titleOriginalPos;
     private Vector3 titleOriginalScale;
     private Camera mainCamera;
@@ -102,6 +104,11 @@ public class MainMenuController : MonoBehaviour
 
     void Update()
     {
+        if (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame)
+        {
+            HandleEscapeKey();
+        }
+
         System.DateTime now = System.DateTime.UtcNow;
         float dt = (float)(now - lastFrameTime).TotalSeconds;
         lastFrameTime = now;
@@ -126,6 +133,44 @@ public class MainMenuController : MonoBehaviour
             case MenuState.FadingOut:
                 UpdateFadingOut(dt);
                 break;
+        }
+    }
+
+    private void HandleEscapeKey()
+    {
+        // If settings panel is open or opening, ESC returns to Main Menu
+        if (currentState == MenuState.SettingsOpen || currentState == MenuState.SettingsOpening)
+        {
+            OnSettingsBackClicked();
+            return;
+        }
+
+        // If in animation transition, ignore ESC
+        if (currentState == MenuState.FadingIn || currentState == MenuState.FadingOut || currentState == MenuState.SettingsClosing)
+        {
+            return;
+        }
+
+        // If Main Menu is currently active
+        if (currentState == MenuState.Active)
+        {
+            if (hasStartedGame)
+            {
+                OnStartClicked();
+            }
+            return;
+        }
+
+        // If Main Menu is Hidden (gameplay active)
+        if (currentState == MenuState.Hidden)
+        {
+            if (playerControl == null) playerControl = FindFirstObjectByType<PlayerControl>();
+            if (playerControl != null && playerControl.isInputLocked)
+            {
+                return;
+            }
+
+            ShowMenu(isPause: true);
         }
     }
 
@@ -178,10 +223,13 @@ public class MainMenuController : MonoBehaviour
 
         if (t >= 1f)
         {
-            gameObject.SetActive(false);
-            if (FadeManager.Instance != null)
+            SetMenuVisualsActive(false);
+            if (FadeManager.Instance != null && FadeManager.Instance.IsFading)
                 FadeManager.Instance.FadeOut(0.3f);
             LockPlayerInput(false);
+            Time.timeScale = 1f;
+            if (mainCamera != null)
+                mainCamera.transform.position = cameraOriginalPos;
             currentState = MenuState.Hidden;
         }
     }
@@ -413,17 +461,23 @@ public class MainMenuController : MonoBehaviour
         }
     }
 
-    public void ShowMenu()
+    public void ShowMenu(bool isPause = false)
     {
         menuActive = true;
         gameObject.SetActive(true);
 
-        if (mainMenuPanel != null) mainMenuPanel.SetActive(true);
-        if (settingsPanel != null) settingsPanel.SetActive(false);
+        Time.timeScale = 0f;
+
+        SetMenuVisualsActive(true);
+        UpdateStartButtonLabel();
 
         LockPlayerInput(true);
         Cursor.visible = true;
         Cursor.lockState = CursorLockMode.None;
+
+        if (mainCamera == null) mainCamera = Camera.main;
+        if (mainCamera != null)
+            cameraOriginalPos = mainCamera.transform.position;
 
         if (menuCanvasGroup != null)
         {
@@ -472,20 +526,44 @@ public class MainMenuController : MonoBehaviour
 
         titleOriginalPos = titleText != null ? titleText.rectTransform.localPosition : Vector3.zero;
         titleOriginalScale = titleText != null ? titleText.rectTransform.localScale : Vector3.one;
+    }
 
-        if (mainCamera != null)
-            cameraOriginalPos = mainCamera.transform.position;
+    private void SetMenuVisualsActive(bool active)
+    {
+        if (menuCanvasGroup != null)
+        {
+            menuCanvasGroup.alpha = active ? 1f : 0f;
+            menuCanvasGroup.blocksRaycasts = active;
+            menuCanvasGroup.interactable = active;
+        }
+
+        if (mainMenuPanel != null) mainMenuPanel.SetActive(active);
+        if (settingsPanel != null) settingsPanel.SetActive(false);
+        if (backgroundOverlay != null) backgroundOverlay.gameObject.SetActive(active);
+        if (titleText != null) titleText.gameObject.SetActive(active);
+    }
+
+    private void UpdateStartButtonLabel()
+    {
+        if (startButton == null) return;
+        var txt = startButton.GetComponentInChildren<TextMeshProUGUI>();
+        if (txt != null)
+        {
+            txt.text = hasStartedGame ? "RESUME" : "START";
+        }
     }
 
     private void OnStartClicked()
     {
         if (!menuActive) return;
+        bool isFirstStart = !hasStartedGame;
+        hasStartedGame = true;
         menuActive = false;
         currentState = MenuState.FadingOut;
         stateTimer = 0f;
-        stateDuration = 0.4f;
+        stateDuration = isFirstStart ? 0.4f : 0.2f;
 
-        if (FadeManager.Instance != null)
+        if (isFirstStart && FadeManager.Instance != null)
             FadeManager.Instance.FadeIn(0.4f);
     }
 
@@ -505,7 +583,7 @@ public class MainMenuController : MonoBehaviour
     private void OnQuitClicked()
     {
 #if UNITY_EDITOR
-        Debug.Log("[MainMenu] Quit requested.");
+        UnityEditor.EditorApplication.isPlaying = false;
 #else
         Application.Quit();
 #endif
