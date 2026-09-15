@@ -328,8 +328,16 @@ public class PlayerControl : MonoBehaviour
 
         if (isInputLocked)
         {
-            Debug.LogWarning("[PlayerControl] Tombol E ditekan tetapi isInputLocked = true!");
-            return;
+            // Safety: if no known UI panel is active, the lock is stale — force reset
+            if (!IsAnyUILockActive())
+            {
+                isInputLocked = false;
+                Debug.Log("[PlayerControl] Safety: force-unlocked stale isInputLocked");
+            }
+            else
+            {
+                return;
+            }
         }
 
         // Pastikan skrip interactor tidak hilang/error
@@ -345,6 +353,34 @@ public class PlayerControl : MonoBehaviour
         {
             Debug.LogError("[PlayerControl] PlayerInteractor tidak ditemukan pada Player!");
         }
+    }
+
+    /// <summary>
+    /// Check if any UI panel that legitimately locks input is currently active.
+    /// Returns false if the lock is stale (no panel open).
+    /// </summary>
+    private bool IsAnyUILockActive()
+    {
+        // Check StoveUIManager panel
+        var stoveUI = FindFirstObjectByType<StoveUIManager>();
+        if (stoveUI != null && stoveUI.gameObject.activeSelf)
+            return true;
+
+        // Check SinkManager panel
+        var sinkMgr = FindFirstObjectByType<SinkManager>();
+        if (sinkMgr != null && sinkMgr.gameObject.activeSelf)
+            return true;
+
+        // Check InventoryManagerUI
+        if (InventoryManagerUI.Instance != null && InventoryManagerUI.Instance.gameObject.activeSelf)
+            return true;
+
+        // Check WardrobeUI
+        var wardrobeUI = FindFirstObjectByType<FeaturesWardrobe.WardrobeUI>();
+        if (wardrobeUI != null && wardrobeUI.gameObject.activeSelf)
+            return true;
+
+        return false;
     }
 
     private void OnInteractPressed(InputAction.CallbackContext context)

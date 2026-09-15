@@ -1,6 +1,6 @@
-# SESSION SUMMARY — 2026-09-09
+# SESSION SUMMARY — 2026-09-14
 
-## STATUS: **GENSHIN-STYLE COOKING + DIRTY/CLEAN SYSTEM — FULLY OPERATIONAL ✅**
+## STATUS: **GENSHIN-STYLE COOKING + DIRTY/CLEAN SYSTEM — OPERATIONAL WITH POSITION DRIFT ⚠️**
 
 ---
 
@@ -118,9 +118,10 @@ Each dirty→clean mapping required a separate `KitchenRecipe` ScriptableObject 
 
 ## KEY FIXES THIS SESSION
 
-### 1. Kitchen Transform Alignment
-- `kitchen_sink.localPosition` reset from `(−0.90, −0.30, −9.73)` to `(0, −0.30, 0)` — 7.3m Z gap fixed
-- `stove.localPosition` reset from `(−1.60, 1.65, −9.34)` to `(−1.60, 1.65, 0)` — 7.5m Z gap fixed
+### 1. Kitchen Transform Alignment — **NOT YET APPLIED (2026-09-14)**
+- `kitchen_sink.localPosition`: Current `(31.28, 0.42, 16.98)` → Target `(0, -0.30, 0)` — 17m Z drift
+- `stove.localPosition`: Current `(34.17, 0.156, 17.019)` → Target `(-1.60, 1.65, 0)` — 17m Z drift
+- Root cause: Kitchen parent (`Environment/Kitchen`) at `(32.57, -0.126, -0.039)` instead of origin
 
 ### 2. Kitchen Wall Logic Injection
 - `cube` and `cube_1` under `Environment/Kitchen/cube` set to Layer 12 (Wall)
@@ -164,25 +165,32 @@ Each dirty→clean mapping required a separate `KitchenRecipe` ScriptableObject 
 
 ---
 
-## KITCHEN COMPONENT STATE (StagingScene)
+## KITCHEN COMPONENT STATE (StagingScene) — **UPDATED 2026-09-14**
 
 ### Kitchen_Stove
-- Transform, BoxCollider, MeshRenderer, WorldLabel, Highlightable, **GenshinStove** (7 cook recipes wired)
+- Transform: `localPosition (34.17, 0.156, 17.019)` — **NEEDS RESET**
+- BoxCollider, MeshRenderer, WorldLabel, Highlightable, **GenshinStove** (7 cook recipes wired)
 - **NOT**: No InventoryComponent, No StoveInteractable, No KitchenStationProgressOverlay
 
 ### Kitchen_Sink
+- Transform: `localPosition (31.28, 0.42, 16.98)` — **NEEDS RESET**
 - KitchenSinkInteractable (virtual recipe system, no washRecipes list)
 - InventoryComponent with `allowedCategories=[Vegetable, Fruit]`
-- Wash_Carrot, Wash_Apple, Wash_Tomato, Wash_Potato recipes wired
+- KitchenStationProgressOverlay, KitchenStationSoundFx **PRESENT** (unexpected per old summary)
+- **NO wash recipes should be wired** — virtual recipe system handles dirty→clean
 
 ### Refrigerator
 - RefrigeratorInteractable
 - InventoryComponent with `allowedCategories=[Vegetable, Fruit, Meat, Dish]`
 - 6 test items: Apel x5, Wortel x5, Carrot Cooked x5, Apple Clean x5, Apple Dirty x5
 
+### SinkManager (NEW)
+- `Assets/Scripts/Features/Kitchen/SinkManager.cs` — exists, modified 2026-09-13
+- Purpose: TBD (verify if used or legacy)
+
 ---
 
-## FILE CHANGES THIS SESSION
+## FILE CHANGES THIS SESSION (2026-09-09) + **DELTA 2026-09-14**
 
 | File | Changes |
 |---|---|
@@ -195,17 +203,20 @@ Each dirty→clean mapping required a separate `KitchenRecipe` ScriptableObject 
 | `Prefabs/UI/RecipeButtonPrefab.prefab` | **NEW** — 150×180 grid cell, Icon Top 120×120, Name Bottom fontSize=22 |
 | `Prefabs/UI/IngredientRowPrefab.prefab` | **NEW** — 110×140 box, Icon 64×64, Name fontSize=16, Count fontSize=16 |
 | `Scenes/StagingScene.unity` | Panel_Stove fully migrated to TMP, all layout zones restructured to Single Central Axis |
+| `Features/Kitchen/SinkManager.cs` | **EXISTS** (modified 2026-09-13) — purpose TBD, verify usage |
 
 ---
 
-## NEXT ROADMAP (TUGAS TERTUNDA)
+## NEXT ROADMAP (TUGAS TERTUNDA) — **UPDATED 2026-09-14**
 
+0. **URGENT: Reset Kitchen Transforms** — `Environment/Kitchen` parent + `Kitchen_Stove` + `Kitchen_Sink` to origin (fixes 17m Z drift)
 1. **Pemanis visual saat memasak** — VFX Asap/Api, SFX Memasak, Animasi UI Success
 2. **Modularisasi 3D Mesh Tembok Dapur** — Layer 12 Wall agar skrip WallOccluder bekerja per segmen
 3. **Integrasi Sprite Ikon pada HeaderIcon TopBar**
 4. **Test Genshin cooking in Play Mode** — Walk to stove, press E, verify panel opens, select recipe, cook
 5. **Test dirty→clean in Play Mode** — Put Apple_Dirty in sink, verify it becomes Apple_Clean
 6. **Clean duplicate cook recipes** — Cook_Veggies and Recipe_CookCarrot both cook Carrot Clean (remove one)
-7. **Replace trophy placeholder icons** — Drag final sprites to `ItemData.itemIcon` in each `TrophyCube_*.asset`
-8. **Replace placeholder cube prefabs** — Swap TrophyCube prefabs with final 3D trophy models
-9. **Trophy Cabinet quantity display** — Remove quantity text for trophy slots (always 1)
+7. **Verify SinkManager purpose** — Remove if unused / document if needed
+8. **Replace trophy placeholder icons** — Drag final sprites to `ItemData.itemIcon` in each `TrophyCube_*.asset`
+9. **Replace placeholder cube prefabs** — Swap TrophyCube prefabs with final 3D trophy models
+10. **Trophy Cabinet quantity display** — Remove quantity text for trophy slots (always 1)
