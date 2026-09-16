@@ -19,7 +19,7 @@ MonoBehaviour:
   itemIcon: {fileID: 0}
   description: Ubi jalar kotor berlumpur yang baru dipanen dari ladang. Cuci di wastafel
     dapur sebelum dimasak.
-  maxStack: 99
+  maxStack: 20
   type: 1
   buyPrice: 150
   sellPrice: 300

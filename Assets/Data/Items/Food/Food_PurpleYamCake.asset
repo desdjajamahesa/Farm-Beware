@@ -19,7 +19,7 @@ MonoBehaviour:
   itemIcon: {fileID: 21300000, guid: f7ce4113809c56d4aa9e78b508643b63, type: 3}
   description: 'Traditional purple yam cake. Vitality Boost: +10% Max HP for 1 minute.
     (+15 Hunger)'
-  maxStack: 99
+  maxStack: 20
   type: 1
   buyPrice: 500
   sellPrice: 300

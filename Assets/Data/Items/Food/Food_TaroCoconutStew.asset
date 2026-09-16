@@ -19,7 +19,7 @@ MonoBehaviour:
   itemIcon: {fileID: 21300000, guid: a220ba93ab4613e49b0923c45b611544, type: 3}
   description: 'Rich coconut curry stew with soft taro chunks. Powerful: +12% ATK
     & +12% ATK SPD for 2 minutes. (+20 Hunger, +10 Hydration)'
-  maxStack: 99
+  maxStack: 20
   type: 1
   buyPrice: 900
   sellPrice: 550

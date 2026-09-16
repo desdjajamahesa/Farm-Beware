@@ -19,7 +19,7 @@ MonoBehaviour:
   itemIcon: {fileID: 21300000, guid: 0e59c935caa4af544a055086cd19be87, type: 3}
   description: 'Warm roasted sweet potato slice. Steady Stamina: +10% Max Stamina
     & +10% Move Speed for 30s. (+10 Hunger, -8 Hydration)'
-  maxStack: 99
+  maxStack: 20
   type: 1
   buyPrice: 250
   sellPrice: 150

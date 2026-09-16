@@ -19,7 +19,7 @@ MonoBehaviour:
   itemIcon: {fileID: 21300000, guid: b44df9687690a1146bed75ab9a2f705d, type: 3}
   description: 'Warm sweet potato porridge. Fortify: +5% Max HP & +10% Max Stamina
     for 90s. (+10 Hunger, +15 Hydration)'
-  maxStack: 99
+  maxStack: 20
   type: 1
   buyPrice: 600
   sellPrice: 380

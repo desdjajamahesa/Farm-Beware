@@ -19,7 +19,7 @@ MonoBehaviour:
   itemIcon: {fileID: 21300000, guid: 2a3dc52004cf0dc4995bf36c41510d87, type: 3}
   description: 'A lavish whole roasted feast. Traveler: +20% Movement Speed & +10%
     Stamina Regen for 2 minutes. (+45 Hunger, +10 Hydration)'
-  maxStack: 99
+  maxStack: 20
   type: 1
   buyPrice: 1200
   sellPrice: 750

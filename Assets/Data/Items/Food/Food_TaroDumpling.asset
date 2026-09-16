@@ -19,7 +19,7 @@ MonoBehaviour:
   itemIcon: {fileID: 21300000, guid: 40eddfbf6f4c5db43990bd1a33e66f2a, type: 3}
   description: 'Soft steamed taro dumpling. Warm Belly: +4 HP regen/tick for 10s.
     (+10 Hunger, +5 Hydration)'
-  maxStack: 99
+  maxStack: 20
   type: 1
   buyPrice: 300
   sellPrice: 180

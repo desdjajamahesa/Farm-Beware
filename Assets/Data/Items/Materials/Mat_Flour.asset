@@ -18,7 +18,7 @@ MonoBehaviour:
   rarity: 0
   itemIcon: {fileID: 0}
   description: Finely ground baking flour. Used to make dumplings and cakes.
-  maxStack: 99
+  maxStack: 20
   type: 0
   buyPrice: 80
   sellPrice: 40

@@ -19,7 +19,7 @@ MonoBehaviour:
   itemIcon: {fileID: 0}
   description: Talas kotor berlumpur yang baru dipanen. Cuci di wastafel dapur untuk
     mendapatkan talas bersih siap olah.
-  maxStack: 99
+  maxStack: 20
   type: 1
   buyPrice: 200
   sellPrice: 400

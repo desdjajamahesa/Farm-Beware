@@ -38,7 +38,9 @@ public class ItemData : ScriptableObject
     public Sprite itemIcon;
     [TextArea(2, 4)]
     public string description;
-    public int maxStack = 99;
+    [Tooltip("Jumlah maksimum item dalam satu slot inventory. Batas absolut sistem adalah 20.")]
+    [Range(1, 20)]
+    public int maxStack = 20;
     public ItemType type;
 
     [Header("Economy")]
@@ -50,4 +52,12 @@ public class ItemData : ScriptableObject
     public bool isDirty = false;
     [Tooltip("Item bersih hasil cucian (diisi jika item ini kotor).")]
     public ItemData cleanVariant;
+
+    protected virtual void OnValidate()
+    {
+        if (maxStack > 20)
+            maxStack = 20;
+        else if (maxStack < 1)
+            maxStack = 1;
+    }
 }

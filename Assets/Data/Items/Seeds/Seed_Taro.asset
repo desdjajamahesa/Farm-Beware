@@ -19,7 +19,7 @@ MonoBehaviour:
   itemIcon: {fileID: 0}
   description: Medium-growth taro seed. Beware of Taro Brute monsters roaming near
     harvest plots.
-  maxStack: 99
+  maxStack: 20
   type: 0
   buyPrice: 250
   sellPrice: 120

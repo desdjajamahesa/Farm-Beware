@@ -19,7 +19,7 @@ MonoBehaviour:
   itemIcon: {fileID: 0}
   description: Dense petrified root from Taro Brute. Forges weapons along the Power
     & Defense path.
-  maxStack: 99
+  maxStack: 20
   type: 0
   buyPrice: 250
   sellPrice: 180

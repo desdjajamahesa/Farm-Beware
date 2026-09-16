@@ -101,6 +101,12 @@ Decouples logical storage from in-world 3D visual anchors:
 - **`RackInventory`**: Visual source of truth where each slot corresponds to a 3D `SnapPoint`.
 - Drag-and-drop or raycast clicks transfer items between these inventories seamlessly.
 
+### 1.7 Item Stack Size Invariant (Max Stack = 20)
+All stackable items enforce a hard ceiling of 20 units per inventory slot:
+- **`ItemData.maxStack`**: Clamped to `[Range(1, 20)]`. Any value above 20 is strictly prohibited and automatically clamped in `OnValidate()`.
+- Stackable items (crops, food, ingredients, materials, seeds, monster drops): `maxStack = 20`.
+- Non-stackable equipment (weapons, tools, trophies): `maxStack = 1`.
+
 ---
 
 ## 2. Coding Standards & Conventions

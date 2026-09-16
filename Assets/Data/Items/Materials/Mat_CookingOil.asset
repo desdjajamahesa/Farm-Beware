@@ -18,7 +18,7 @@ MonoBehaviour:
   rarity: 0
   itemIcon: {fileID: 0}
   description: Pure cooking oil. Essential for frying chips and roasting crops.
-  maxStack: 99
+  maxStack: 20
   type: 0
   buyPrice: 90
   sellPrice: 45
