@@ -216,18 +216,18 @@ namespace FeaturesWardrobe
                 Debug.LogWarning($"[WardrobeManager] Camera switching failed: {e.Message}");
             }
 
-            // Enable MirrorCamera (renders to RawImage texture)
+            // Enable MirrorInnerCam (renders to RawImage texture)
             try
             {
-                if (mirrorCamera != null)
+                if (mirrorCamera != null && mirrorCamera.MirrorCameraComponent != null)
                 {
-                    mirrorCamera.EnableMirrorCamera(true);
-                    Debug.Log("[WardrobeManager] MirrorCamera enabled");
+                    mirrorCamera.MirrorCameraComponent.enabled = true;
+                    Debug.Log("[WardrobeManager] MirrorInnerCam enabled");
                 }
             }
             catch (System.Exception e)
             {
-                Debug.LogWarning($"[WardrobeManager] MirrorCamera enable failed: {e.Message}");
+                Debug.LogWarning($"[WardrobeManager] MirrorInnerCam enable failed: {e.Message}");
             }
 
             // Open chest lid animation
@@ -318,6 +318,8 @@ namespace FeaturesWardrobe
                 Debug.LogWarning($"[WardrobeManager] Hotbar hide failed: {e.Message}");
             }
 
+            // PreviewController binding removed: the in-world MirrorCamera handles all preview rendering.
+
             // Subscribe to UI close event
             if (wardrobeUI != null)
                 wardrobeUI.OnWardrobeClosed += ExitWardrobeMode;
@@ -388,18 +390,33 @@ namespace FeaturesWardrobe
             try { if (playerInteractor != null) playerInteractor.enabled = true; } catch { }
             try { if (hoverLabelController != null) hoverLabelController.enabled = true; } catch { }
 
-            // Disable MirrorCamera
+            // Disable MirrorInnerCam before camera switch
             try
             {
-                if (mirrorCamera != null)
+                if (mirrorCamera != null && mirrorCamera.MirrorCameraComponent != null)
                 {
-                    mirrorCamera.EnableMirrorCamera(false);
-                    Debug.Log("[WardrobeManager] MirrorCamera disabled");
+                    mirrorCamera.MirrorCameraComponent.enabled = false;
+                    Debug.Log("[WardrobeManager] MirrorInnerCam disabled");
                 }
             }
             catch (System.Exception e)
             {
-                Debug.LogWarning($"[WardrobeManager] MirrorCamera disable failed: {e.Message}");
+                Debug.LogWarning($"[WardrobeManager] MirrorInnerCam disable failed: {e.Message}");
+            }
+
+            // Re-enable MirrorInnerCam for mirror surface (gameplay)
+            try
+            {
+                if (mirrorCamera != null && mirrorCamera.MirrorTexture != null && mirrorCamera.MirrorCameraComponent != null)
+                {
+                    mirrorCamera.MirrorCameraComponent.targetTexture = mirrorCamera.MirrorTexture;
+                    mirrorCamera.MirrorCameraComponent.enabled = true;
+                    Debug.Log("[WardrobeManager] MirrorInnerCam re-enabled for mirror surface");
+                }
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogWarning($"[WardrobeManager] MirrorInnerCam re-enable failed: {e.Message}");
             }
 
             // UI fade out
@@ -627,10 +644,8 @@ namespace FeaturesWardrobe
             if (mainCamera == null && Camera.main != null) mainCamera = Camera.main;
             if (mirrorCamera == null) mirrorCamera = FindObjectOfType<MirrorCamera>();
 
-            // Enforce initial state: UI hidden, mirror cam off for performance.
-            if (mirrorCamera != null)
-                mirrorCamera.EnableMirrorCamera(false);
-
+            // Enforce initial state: UI hidden, mirror cam bound to RT only.
+            // Scene files can persist stale active-states from a previous session.
             if (wardrobeUIPanel != null)
                 wardrobeUIPanel.SetActive(false);
             if (uiCanvasGroup != null)
@@ -646,10 +661,7 @@ namespace FeaturesWardrobe
             if (!isInWardrobeMode) return;
 
             if (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame)
-            {
-                MainMenuController.LastFrameUIPanelClosed = Time.frameCount;
                 ExitWardrobeMode();
-            }
         }
 
         private void OnDestroy()

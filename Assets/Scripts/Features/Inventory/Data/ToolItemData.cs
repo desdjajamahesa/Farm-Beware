@@ -5,7 +5,6 @@ public class ToolItemData : ItemData
 {
     public GameObject equipPrefab;
     public bool isWeapon;
-
     void OnEnable()
     {
         type = ItemType.Tool;

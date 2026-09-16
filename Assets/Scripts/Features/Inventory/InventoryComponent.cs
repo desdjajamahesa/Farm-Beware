@@ -250,28 +250,12 @@ public class InventoryComponent : MonoBehaviour
 
         if (item.type == ItemData.ItemType.Consumable && item is FoodItemData food)
         {
-            // Terapkan efek penyembuhan, nutrisi lapar & haus, serta buff status
+            // Terapkan efek penyembuhan ke status pemain bila ada.
             PlayerStats playerStats = GetComponent<PlayerStats>();
-            PlayerBuffManager buffManager = GetComponent<PlayerBuffManager>();
-
             if (playerStats != null)
-            {
-                if (food.healAmount > 0)
-                    playerStats.Heal(food.healAmount);
+                playerStats.Heal(food.healAmount);
 
-                if (food.hungerRestore != 0)
-                    playerStats.Eat(food.hungerRestore);
-
-                if (food.hydrationRestore != 0)
-                    playerStats.Drink(food.hydrationRestore);
-            }
-
-            if (buffManager != null && food.buffEffects != null && food.buffEffects.Count > 0)
-            {
-                buffManager.ApplyBuffs(food.buffEffects);
-            }
-
-            Debug.Log($"[Inventory] Mengonsumsi {item.itemName}: Heal={food.healAmount}, Hunger={food.hungerRestore}, Thirst={food.hydrationRestore}, Buffs={food.buffEffects?.Count ?? 0}");
+            Debug.Log("Mengonsumsi " + item.itemName + " memulihkan " + food.healAmount + " HP");
 
             // Kurangi quantity PADA SLOT yang diklik secara spesifik.
             slot.quantity -= 1;

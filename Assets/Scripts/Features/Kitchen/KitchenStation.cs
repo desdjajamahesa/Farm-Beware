@@ -6,8 +6,9 @@ using UnityEngine;
 /// - State & timer hidup DI SINI (bukan di UI).
 /// - Bereaksi pada OnInventoryChanged dari stationInventory (auto-mulai saat slot terisi).
 /// - Sinyal event untuk listener UI: OnProcessStarted / OnProcessProgress / OnProcessCompleted.
+/// Implements IKitchenStationEvents untuk dukung SoundFx & ProgressOverlay.
 /// </summary>
-public abstract class KitchenStation : MonoBehaviour
+public abstract class KitchenStation : MonoBehaviour, IKitchenStationEvents
 {
     [Tooltip("Inventori stasiun (slot tempat bahan ditaruh). Jika kosong, memakai komponen sendiri.")]
     [SerializeField] protected InventoryComponent stationInventory;
@@ -26,13 +27,18 @@ public abstract class KitchenStation : MonoBehaviour
     public event System.Action<int> OnProcessCompleted;        // (slot)
     public event System.Action<int> OnProcessCancelled;        // (slot) — proses dibatalkan (item dicabut di tengah)
 
+    protected void RaiseProcessStarted(int slot, float duration) => OnProcessStarted?.Invoke(slot, duration);
+    protected void RaiseProcessProgress(int slot, float progress) => OnProcessProgress?.Invoke(slot, progress);
+    protected void RaiseProcessCompleted(int slot) => OnProcessCompleted?.Invoke(slot);
+    protected void RaiseProcessCancelled(int slot) => OnProcessCancelled?.Invoke(slot);
+
     public InventoryComponent StationInventory { get { return stationInventory; } }
 
     // Akses state read-only untuk visual/data-driven (mis. overlay polling),
     // mandiri dari event agar UI tidak menggantung ketika proses sudah berjalan sebelum subscribe.
     public int ActiveSlotCount { get { return activeRecipes.Count; } }
-    public bool IsProcessing(int slot) { return activeRecipes.ContainsKey(slot); }
-    public float GetSlotProgress(int slot)
+    public virtual bool IsProcessing(int slot) { return activeRecipes.ContainsKey(slot); }
+    public virtual float GetSlotProgress(int slot)
     {
         if (!remainingTime.TryGetValue(slot, out float remaining))
             return 0f;

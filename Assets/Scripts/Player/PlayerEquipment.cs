@@ -14,20 +14,12 @@ public class PlayerEquipment : MonoBehaviour
     [Tooltip("Nama Trigger parameter di Animator Controller untuk serangan pedang (misal: \"Attack\", \"Slash\").")]
     [SerializeField] private string attackTriggerName = "Attack";
 
-    [Tooltip("Jumlah konsumsi stamina saat melakukan serangan.")]
-    [SerializeField] private float attackStaminaCost = 15f;
-
     [Tooltip("Jika dicentang, animasi serang tetap berjalan meskipun pemain sedang tidak memegang senjata (tangan kosong).")]
     [SerializeField] private bool allowBareHandsAttack = false;
 
     private GameObject currentWeaponModel;
     private InventoryComponent inventory;
     private Animator animator;
-    private PlayerStats playerStats;
-    private PlayerBuffManager buffManager;
-
-    public float AttackDamageMultiplier => buffManager != null ? buffManager.GetAttackDamageMultiplier() : 1f;
-    public float AttackSpeedMultiplier => buffManager != null ? buffManager.GetAttackSpeedMultiplier() : 1f;
 
     public ItemData CurrentEquippedItem
     {
@@ -47,25 +39,6 @@ public class PlayerEquipment : MonoBehaviour
 
     public bool TryPerformAttack()
     {
-        if (animator == null) animator = GetComponentInChildren<Animator>();
-
-        // Cegah spam klik saat animasi serang sebelumnya masih aktif
-        if (animator != null)
-        {
-            var state = animator.GetCurrentAnimatorStateInfo(0);
-            if ((state.IsName("attack") || state.IsName(attackTriggerName)) && state.normalizedTime < 0.75f)
-            {
-                return false;
-            }
-        }
-
-        if (playerStats == null) playerStats = GetComponent<PlayerStats>();
-        if (playerStats != null && (playerStats.currentStamina < attackStaminaCost || playerStats.IsExhausted))
-        {
-            Debug.Log("[PlayerEquipment] Stamina tidak cukup untuk menyerang!");
-            return false;
-        }
-
         ItemData item = CurrentEquippedItem;
 
         // 1. Jika tangan kosong (tidak ada item di slot hotbar aktif)
@@ -89,16 +62,10 @@ public class PlayerEquipment : MonoBehaviour
             }
         }
 
+        if (animator == null) animator = GetComponentInChildren<Animator>();
         if (animator != null && !string.IsNullOrEmpty(attackTriggerName))
         {
             animator.SetTrigger(attackTriggerName);
-
-            // Kurangi stamina saat serangan berhasil dilakukan
-            if (playerStats != null)
-            {
-                playerStats.UseStamina(attackStaminaCost);
-            }
-
             return true;
         }
 
@@ -109,8 +76,6 @@ public class PlayerEquipment : MonoBehaviour
     {
         inventory = GetComponent<InventoryComponent>();
         animator = GetComponentInChildren<Animator>();
-        playerStats = GetComponent<PlayerStats>();
-        buffManager = GetComponent<PlayerBuffManager>();
         FindHandSocketIfNeeded();
     }
 
@@ -177,11 +142,11 @@ public class PlayerEquipment : MonoBehaviour
         if (slot.item is not ToolItemData tool || tool.equipPrefab == null)
             return;
 
-        GameObject spawned = Instantiate(tool.equipPrefab, handSocket);
+        GameObject spawned = Instantiate(slot.item.equipPrefab, handSocket);
         spawned.transform.localPosition = Vector3.zero;
         spawned.transform.localRotation = Quaternion.identity;
         currentWeaponModel = spawned;
-        currentWeaponModel.transform.localScale = tool.equipPrefab.transform.localScale;
+        currentWeaponModel.transform.localScale = slot.item.equipPrefab.transform.localScale;
     }
 
     private void FindHandSocketIfNeeded()

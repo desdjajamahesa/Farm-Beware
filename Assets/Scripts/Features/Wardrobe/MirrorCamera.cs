@@ -37,25 +37,16 @@ namespace FeaturesWardrobe
         private bool _textureCreatedByScript = false;
         private AudioListener _mirrorAudioListener;
 
-        public void EnableMirrorCamera(bool enable)
-        {
-            if (mirrorCamera != null)
-            {
-                mirrorCamera.gameObject.SetActive(enable);
-                mirrorCamera.enabled = enable;
-            }
-        }
-
         private void Awake()
         {
             // Cache AudioListener
             if (mirrorCamera != null)
                 _mirrorAudioListener = mirrorCamera.GetComponent<AudioListener>();
 
-            // Ambil kamera dari child (MirrorCamera) jika di Inspector kosong (termasuk inactive)
+            // Ambil kamera dari child (MirrorInnerCam) jika di Inspector kosong
             if (mirrorCamera == null)
             {
-                mirrorCamera = GetComponentInChildren<Camera>(true);
+                mirrorCamera = GetComponentInChildren<Camera>();
                 if (mirrorCamera != null)
                     _mirrorAudioListener = mirrorCamera.GetComponent<AudioListener>();
             }
@@ -98,10 +89,6 @@ namespace FeaturesWardrobe
                         uacd.cameraStack.Clear();
                     }
                 }
-
-                // Default state: MATI untuk performa sampai player interact dengan wardrobe
-                mirrorCamera.enabled = false;
-                mirrorCamera.gameObject.SetActive(false);
             }
 
             InitializeRenderTexture();
@@ -161,9 +148,6 @@ namespace FeaturesWardrobe
 
         private void LateUpdate()
         {
-            // Jika kamera mirror sedang tidak aktif/mati, lewati seluruh kalkulasi LateUpdate
-            if (mirrorCamera == null || !mirrorCamera.enabled || !mirrorCamera.gameObject.activeInHierarchy)
-                return;
             // SAFETY: If camera is enabled but has no targetTexture, disable it IMMEDIATELY
             if (mirrorCamera != null && mirrorCamera.enabled && mirrorCamera.targetTexture == null)
             {

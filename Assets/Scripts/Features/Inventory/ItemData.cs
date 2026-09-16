@@ -1,26 +1,5 @@
 using UnityEngine;
 
-public enum ItemCategory
-{
-    Seed,
-    Crop,
-    Food,
-    Material,
-    MonsterDrop,
-    Weapon,
-    Tool,
-    Trophy
-}
-
-public enum ItemRarity
-{
-    Common,
-    Uncommon,
-    Rare,
-    Epic,
-    Legendary
-}
-
 [CreateAssetMenu(fileName = "NewItem", menuName = "Inventory/ItemData")]
 public class ItemData : ScriptableObject
 {
@@ -28,36 +7,11 @@ public class ItemData : ScriptableObject
 
     public enum FoodCategory { None, Vegetable, Fruit, Meat, Ingredient, Dish }
 
-    [Header("Identity")]
-    public string itemId;
     public string itemName;
-    public ItemCategory category = ItemCategory.Material;
-    public ItemRarity rarity = ItemRarity.Common;
-
-    [Header("Visual & Description")]
     public Sprite itemIcon;
-    [TextArea(2, 4)]
+    public int maxStack;
     public string description;
-    [Tooltip("Jumlah maksimum item dalam satu slot inventory. Batas absolut sistem adalah 20.")]
-    [Range(1, 20)]
-    public int maxStack = 20;
     public ItemType type;
-
-    [Header("Economy")]
-    public int buyPrice = 0;
-    public int sellPrice = 0;
-
-    [Header("Dirty / Clean System")]
-    [Tooltip("True jika item ini dalam keadaan kotor dan bisa dicuci di wastafel.")]
-    public bool isDirty = false;
-    [Tooltip("Item bersih hasil cucian (diisi jika item ini kotor).")]
-    public ItemData cleanVariant;
-
-    protected virtual void OnValidate()
-    {
-        if (maxStack > 20)
-            maxStack = 20;
-        else if (maxStack < 1)
-            maxStack = 1;
-    }
-}
+    public bool isWeapon;
+    public GameObject equipPrefab;
+}

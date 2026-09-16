@@ -38,20 +38,9 @@ public class PlayerStats : MonoBehaviour
 
     private float lastStaminaUseTime;
 
-    private int baseMaxHealth;
-    private float baseMaxStamina;
-    private float baseStaminaRegenRate;
-
     public bool IsExhausted => currentStamina <= 0.1f;
     public bool IsStarving => currentHunger <= 0.01f;
     public bool IsDehydrated => currentThirst <= 0.01f;
-
-    void Awake()
-    {
-        baseMaxHealth = maxHealth;
-        baseMaxStamina = maxStamina;
-        baseStaminaRegenRate = staminaRegenRate;
-    }
 
     void Start()
     {
@@ -64,27 +53,6 @@ public class PlayerStats : MonoBehaviour
         OnStaminaChanged?.Invoke(currentStamina, maxStamina);
         OnHungerChanged?.Invoke(currentHunger, maxHunger);
         OnThirstChanged?.Invoke(currentThirst, maxThirst);
-    }
-
-    public void ApplyBuffModifiers(float healthModPercent, float staminaModPercent, float staminaRegenModPercent)
-    {
-        int newMaxHealth = Mathf.Max(1, Mathf.RoundToInt(baseMaxHealth * (1f + healthModPercent)));
-        float newMaxStamina = Mathf.Max(1f, baseMaxStamina * (1f + staminaModPercent));
-        staminaRegenRate = baseStaminaRegenRate * (1f + staminaRegenModPercent);
-
-        if (newMaxHealth != maxHealth)
-        {
-            maxHealth = newMaxHealth;
-            currentHealth = Mathf.Clamp(currentHealth, 0, maxHealth);
-            OnHealthChanged?.Invoke(currentHealth, maxHealth);
-        }
-
-        if (Mathf.Abs(newMaxStamina - maxStamina) > 0.01f)
-        {
-            maxStamina = newMaxStamina;
-            currentStamina = Mathf.Clamp(currentStamina, 0, maxStamina);
-            OnStaminaChanged?.Invoke(currentStamina, maxStamina);
-        }
     }
 
     void Update()

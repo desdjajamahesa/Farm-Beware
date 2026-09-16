@@ -148,19 +148,6 @@ public class InventoryManagerUI : MonoBehaviour
             playerInventory.SelectHotbarSlot(0);
     }
 
-    /// <summary>
-    /// Returns true if any inventory, storage, refrigerator, or trophy panel is open.
-    /// </summary>
-    public bool IsAnyInventoryUIRelatedOpen()
-    {
-        return isPlayerOpen ||
-               (playerPanel != null && playerPanel.activeSelf) ||
-               (storagePanel != null && storagePanel.activeSelf) ||
-               (refrigeratorPanel != null && refrigeratorPanel.activeSelf) ||
-               (trophyPanel != null && trophyPanel.activeSelf) ||
-               isTrophyCabinetMode;
-    }
-
     void Update()
     {
         // Auto-close storage ketika pemain menjauh (anchor = storage / rak).
@@ -187,9 +174,8 @@ public class InventoryManagerUI : MonoBehaviour
         // ESC key closes any open inventory/storage/trophy UI
         if (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame)
         {
-            if (IsAnyInventoryUIRelatedOpen())
+            if (isPlayerOpen || storagePanel != null && storagePanel.activeSelf || isTrophyCabinetMode)
             {
-                MainMenuController.LastFrameUIPanelClosed = Time.frameCount;
                 CloseAllUI();
             }
         }
@@ -266,7 +252,7 @@ public class InventoryManagerUI : MonoBehaviour
         if (playerViewport != null)
         {
             if (isPlayerOpen)
-                playerViewport.offsetMin = new Vector2(playerViewport.offsetMin.x, 205);
+                playerViewport.offsetMin = new Vector2(playerViewport.offsetMin.x, 150);
             else
                 playerViewport.offsetMin = new Vector2(playerViewport.offsetMin.x, 0);
         }
@@ -281,10 +267,6 @@ public class InventoryManagerUI : MonoBehaviour
         // Set title when opening player-only inventory
         if (isPlayerOpen && leftPanelTitle != null)
             leftPanelTitle.text = "Inventory";
-
-        var playerControl = FindFirstObjectByType<PlayerControl>();
-        if (playerControl != null)
-            playerControl.isInputLocked = isPlayerOpen;
 
         SetCursorFree(isPlayerOpen);
     }
@@ -364,14 +346,14 @@ if (customPanel != null)
                 if (activeSlotsContainer.rect.width < 1f)
                 {
                     GridLayoutGroup glg = activeSlotsContainer.GetComponent<GridLayoutGroup>();
-                    int cols = glg != null && glg.constraint == GridLayoutGroup.Constraint.FixedColumnCount ? glg.constraintCount : 4;
-                    float cellW = glg != null ? glg.cellSize.x : 100f;
-                    float spacingX = glg != null ? glg.spacing.x : 12f;
+                    int cols = glg != null && glg.constraint == GridLayoutGroup.Constraint.FixedColumnCount ? glg.constraintCount : 3;
+                    float cellW = glg != null ? glg.cellSize.x : 85f;
+                    float spacingX = glg != null ? glg.spacing.x : 8f;
                     float padL = glg != null ? glg.padding.left : 0;
                     float padR = glg != null ? glg.padding.right : 0;
                     int rows = Mathf.CeilToInt((float)activeSlotList.Count / cols);
-                    float cellH = glg != null ? glg.cellSize.y : 100f;
-                    float spacingY = glg != null ? glg.spacing.y : 12f;
+                    float cellH = glg != null ? glg.cellSize.y : 85f;
+                    float spacingY = glg != null ? glg.spacing.y : 8f;
                     float padT = glg != null ? glg.padding.top : 0;
                     float padB = glg != null ? glg.padding.bottom : 0;
                     float w = cols * cellW + (cols - 1) * spacingX + padL + padR;
@@ -388,7 +370,7 @@ if (customPanel != null)
             itemDetailsContainer.SetActive(true);
 
         if (playerViewport != null)
-            playerViewport.offsetMin = new Vector2(playerViewport.offsetMin.x, 205);
+            playerViewport.offsetMin = new Vector2(playerViewport.offsetMin.x, 150);
 
         // Set panel titles dynamically - find HeaderTitle in active panels
         if (leftPanelTitle != null) leftPanelTitle.text = "Inventory";
@@ -396,9 +378,6 @@ if (customPanel != null)
         GameObject activeRightPanel = customPanel != null ? customPanel : storagePanel;
         var rightTitleText = activeRightPanel?.transform.Find("HeaderTitle")?.GetComponent<Text>();
         if (rightTitleText != null) rightTitleText.text = storageTitle;
-
-        var pc = FindFirstObjectByType<PlayerControl>();
-        if (pc != null) pc.isInputLocked = true;
 
         SetCursorFree(true);
         UpdateUI();
@@ -486,9 +465,6 @@ if (customPanel != null)
         
         var rightTitleText = trophyPanel?.transform.Find("HeaderTitle")?.GetComponent<Text>();
         if (rightTitleText != null) rightTitleText.text = "Rak Trophy";
-
-        var pcCabinet = FindFirstObjectByType<PlayerControl>();
-        if (pcCabinet != null) pcCabinet.isInputLocked = true;
 
         SetCursorFree(true);
         UpdateUI();

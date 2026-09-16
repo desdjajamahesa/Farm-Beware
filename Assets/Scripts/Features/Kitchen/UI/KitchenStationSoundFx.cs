@@ -4,12 +4,12 @@ using UnityEngine;
 /// Feedback suara kecil untuk stasiun dapur (Sink / Kompor).
 /// Murni visual/audio: subscribe OnProcessCompleted -> bunyi "pop" prosedural
 /// (AudioClip.Create, tanpa aset). Cooldown mencegah bunyi dobel saat 2 slot
-/// selesai hampir bersamaan. Layak juga digunakan oleh fitur lain di masa depan.
+/// selesai hampir bersamaan. Mendukung semua implementasi IKitchenStationEvents.
 /// </summary>
 public class KitchenStationSoundFx : MonoBehaviour
 {
-    [Tooltip("Stasiun yang dipantau (Sink / Kompor). Jika kosong, memakai komponen sendiri.")]
-    [SerializeField] private KitchenStation station;
+    [Tooltip("Stasiun yang dipantau (Sink / Kompor). Harus implement IKitchenStationEvents.")]
+    [SerializeField] private MonoBehaviour stationComponent;
 
     [Tooltip("Volume suara selesai.")]
     [SerializeField] private float soundVolume = 0.8f;
@@ -17,14 +17,15 @@ public class KitchenStationSoundFx : MonoBehaviour
     [Tooltip("Jeda minimum antar bunyi agar 2 slot yang selesai bersamaan tidak dobel.")]
     [SerializeField] private float soundCooldown = 0.5f;
 
+    private IKitchenStationEvents station;
     private AudioSource audioSource;
     private AudioClip generatedPop;
     private float lastSoundTime = -100f;
 
     private void OnEnable()
     {
-        if (station == null)
-            station = GetComponent<KitchenStation>();
+        if (stationComponent != null)
+            station = stationComponent as IKitchenStationEvents;
 
         if (station == null)
             return;
