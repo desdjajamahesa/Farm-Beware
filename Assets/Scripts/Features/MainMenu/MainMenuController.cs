@@ -687,12 +687,24 @@ public class MainMenuController : MonoBehaviour
 
     private void UpdateStartButtonLabel()
     {
-        if (startButton == null) return;
-        var txt = startButton.GetComponentInChildren<TextMeshProUGUI>();
-        if (txt != null)
+        if (startButton != null)
         {
-            bool isAlreadyInTarget = SceneManager.GetActiveScene().name == targetSceneName;
-            txt.text = (hasStartedGame && isAlreadyInTarget) ? "RESUME" : "START";
+            var txt = startButton.GetComponentInChildren<TextMeshProUGUI>();
+            if (txt != null)
+            {
+                bool isAlreadyInTarget = SceneManager.GetActiveScene().name == targetSceneName;
+                txt.text = (hasStartedGame && isAlreadyInTarget) ? "RESUME" : "START";
+            }
+        }
+
+        if (quitButton != null)
+        {
+            var quitTxt = quitButton.GetComponentInChildren<TextMeshProUGUI>();
+            if (quitTxt != null)
+            {
+                bool isGameplay = SceneManager.GetActiveScene().name != "MainMenuScene";
+                quitTxt.text = isGameplay ? "MAIN MENU" : "QUIT";
+            }
         }
     }
 
@@ -733,12 +745,39 @@ public class MainMenuController : MonoBehaviour
 
     private void OnQuitClicked()
     {
+        // When paused during gameplay, returning to Main Menu is expected
+        if (SceneManager.GetActiveScene().name != "MainMenuScene")
+        {
+            ReturnToMainMenu();
+            return;
+        }
+
 #if UNITY_EDITOR
         Debug.Log("[MainMenu] Quit requested.");
         UnityEditor.EditorApplication.isPlaying = false;
 #else
         Application.Quit();
 #endif
+    }
+
+    public void ReturnToMainMenu()
+    {
+        Time.timeScale = 1f;
+        LockPlayerInput(false);
+
+        if (FadeManager.Instance != null)
+        {
+            FadeManager.Instance.FadeIn(0.3f, () =>
+            {
+                Debug.Log("[MainMenuController] Returning to MainMenuScene.");
+                SceneManager.LoadScene("MainMenuScene");
+            });
+        }
+        else
+        {
+            Debug.Log("[MainMenuController] Returning to MainMenuScene.");
+            SceneManager.LoadScene("MainMenuScene");
+        }
     }
 
     private void UpdateSettingsOpening(float dt)
@@ -806,8 +845,11 @@ public class MainMenuController : MonoBehaviour
             if (t >= 1f)
             {
                 currentState = MenuState.Active;
-                UpdateTitleIdle(0);
-                UpdateCameraSway(0);
+                if (useLegacyCodeStyling)
+                {
+                    UpdateTitleIdle(0);
+                    UpdateCameraSway(0);
+                }
             }
         }
     }
