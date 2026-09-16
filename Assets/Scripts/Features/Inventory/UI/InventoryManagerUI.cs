@@ -130,8 +130,8 @@ public class InventoryManagerUI : MonoBehaviour
             playerInventory.OnHotbarSelected += OnHotbarSelected;
             playerTransform = playerInventory.transform;
 
-            // Initialize player inventory slots (CRITICAL: ensures slots list is allocated)
-            playerInventory.ResetInventory(playerInventory.maxCapacity);
+            // Ensure player inventory slots list is allocated without wiping existing items
+            playerInventory.EnsureSlotsAllocated();
         }
 
         // Ensure hotbar is visible at start

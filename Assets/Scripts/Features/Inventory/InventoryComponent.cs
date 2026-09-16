@@ -96,6 +96,18 @@ public class InventoryComponent : MonoBehaviour
             slots.Add(new InventorySlot());
     }
 
+    /// <summary>
+    /// Memastikan list slot teralokasi hingga maxCapacity tanpa menghapus item yang sudah ada.
+    /// </summary>
+    public void EnsureSlotsAllocated()
+    {
+        if (slots == null)
+            slots = new List<InventorySlot>();
+
+        while (slots.Count < maxCapacity)
+            slots.Add(new InventorySlot());
+    }
+
     public bool AddItem(ItemData item, int amount)
     {
         if (item == null || amount <= 0)
