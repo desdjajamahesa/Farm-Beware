@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.SceneManagement;
 using TMPro;
 using FeaturesCommon;
 
@@ -35,6 +36,16 @@ public class MainMenuController : MonoBehaviour
     [SerializeField] private float settingsBtnDelay = 0.65f;
     [SerializeField] private float quitBtnDelay = 0.8f;
     [SerializeField] private float elementFadeDuration = 0.35f;
+
+    [Header("Scene Transition")]
+    [Tooltip("Target gameplay scene to load when Start Game is clicked.")]
+    [SerializeField] private string targetSceneName = "StagingScene";
+    [Tooltip("Whether to load the target scene when the menu fades out.")]
+    [SerializeField] private bool loadSceneOnStart = true;
+
+    [Header("Legacy Style Override")]
+    [Tooltip("Enable to use old programmatic layout/colors instead of custom inspector art.")]
+    [SerializeField] private bool useLegacyCodeStyling = false;
 
     private PlayerControl playerControl;
     private bool menuActive = false;
@@ -94,9 +105,12 @@ public class MainMenuController : MonoBehaviour
     void Start()
     {
         lastFrameTime = System.DateTime.UtcNow;
-        SetupLayout();
-        ApplyVisualStyling();
-        SetupAtmosphere();
+        if (useLegacyCodeStyling)
+        {
+            SetupLayout();
+            ApplyVisualStyling();
+            SetupAtmosphere();
+        }
         ShowMenu();
     }
 
@@ -114,8 +128,11 @@ public class MainMenuController : MonoBehaviour
                 UpdateFadingIn(dt);
                 break;
             case MenuState.Active:
-                UpdateTitleIdle(dt);
-                UpdateCameraSway(dt);
+                if (useLegacyCodeStyling)
+                {
+                    UpdateTitleIdle(dt);
+                    UpdateCameraSway(dt);
+                }
                 break;
             case MenuState.SettingsOpening:
                 UpdateSettingsOpening(dt);
@@ -183,6 +200,12 @@ public class MainMenuController : MonoBehaviour
                 FadeManager.Instance.FadeOut(0.3f);
             LockPlayerInput(false);
             currentState = MenuState.Hidden;
+
+            if (loadSceneOnStart && !string.IsNullOrEmpty(targetSceneName))
+            {
+                Debug.Log($"[MainMenuController] Loading target scene: {targetSceneName}");
+                SceneManager.LoadScene(targetSceneName);
+            }
         }
     }
 
@@ -506,6 +529,7 @@ public class MainMenuController : MonoBehaviour
     {
 #if UNITY_EDITOR
         Debug.Log("[MainMenu] Quit requested.");
+        UnityEditor.EditorApplication.isPlaying = false;
 #else
         Application.Quit();
 #endif
