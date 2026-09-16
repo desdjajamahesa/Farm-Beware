@@ -119,7 +119,29 @@ public class MainMenuController : MonoBehaviour
             ApplyVisualStyling();
             SetupAtmosphere();
         }
-        ShowMenu();
+
+        string activeSceneName = SceneManager.GetActiveScene().name;
+        bool isMainMenu = activeSceneName == "MainMenuScene" || (loadSceneOnStart && activeSceneName != targetSceneName);
+
+        if (isMainMenu)
+        {
+            hasStartedGame = false;
+            ShowMenu(isPause: false);
+        }
+        else
+        {
+            // Already in gameplay scene (e.g. StagingScene): start hidden so gameplay is immediately active.
+            hasStartedGame = true;
+            currentState = MenuState.Hidden;
+            SetMenuVisualsActive(false);
+            LockPlayerInput(false);
+            Time.timeScale = 1f;
+
+            if (FadeManager.Instance != null && FadeManager.Instance.IsFading)
+            {
+                FadeManager.Instance.FadeOut(0.4f);
+            }
+        }
     }
 
     void Update()
@@ -141,8 +163,11 @@ public class MainMenuController : MonoBehaviour
                 UpdateFadingIn(dt);
                 break;
             case MenuState.Active:
-                UpdateTitleIdle(dt);
-                UpdateCameraSway(dt);
+                if (useLegacyCodeStyling)
+                {
+                    UpdateTitleIdle(dt);
+                    UpdateCameraSway(dt);
+                }
                 break;
             case MenuState.SettingsOpening:
                 UpdateSettingsOpening(dt);
@@ -323,18 +348,24 @@ public class MainMenuController : MonoBehaviour
         if (t >= 1f)
         {
             SetMenuVisualsActive(false);
-            if (FadeManager.Instance != null && FadeManager.Instance.IsFading)
-                FadeManager.Instance.FadeOut(0.3f);
             LockPlayerInput(false);
             Time.timeScale = 1f;
             if (mainCamera != null)
                 mainCamera.transform.position = cameraOriginalPos;
             currentState = MenuState.Hidden;
 
-            if (loadSceneOnStart && !string.IsNullOrEmpty(targetSceneName))
+            bool isAlreadyInTarget = SceneManager.GetActiveScene().name == targetSceneName;
+            bool willLoadScene = loadSceneOnStart && !isAlreadyInTarget && !string.IsNullOrEmpty(targetSceneName);
+
+            if (willLoadScene)
             {
                 Debug.Log($"[MainMenuController] Loading target scene: {targetSceneName}");
                 SceneManager.LoadScene(targetSceneName);
+            }
+            else
+            {
+                if (FadeManager.Instance != null && FadeManager.Instance.IsFading)
+                    FadeManager.Instance.FadeOut(0.3f);
             }
         }
     }
@@ -577,7 +608,7 @@ public class MainMenuController : MonoBehaviour
         menuActive = true;
         gameObject.SetActive(true);
 
-        Time.timeScale = 0f;
+        Time.timeScale = isPause ? 0f : 1f;
 
         SetMenuVisualsActive(true);
         UpdateStartButtonLabel();
@@ -660,22 +691,31 @@ public class MainMenuController : MonoBehaviour
         var txt = startButton.GetComponentInChildren<TextMeshProUGUI>();
         if (txt != null)
         {
-            txt.text = hasStartedGame ? "RESUME" : "START";
+            bool isAlreadyInTarget = SceneManager.GetActiveScene().name == targetSceneName;
+            txt.text = (hasStartedGame && isAlreadyInTarget) ? "RESUME" : "START";
         }
     }
 
     private void OnStartClicked()
     {
         if (!menuActive) return;
+        bool isAlreadyInTarget = SceneManager.GetActiveScene().name == targetSceneName;
+        bool willLoadScene = loadSceneOnStart && !isAlreadyInTarget && !string.IsNullOrEmpty(targetSceneName);
+
         bool isFirstStart = !hasStartedGame;
         hasStartedGame = true;
         menuActive = false;
         currentState = MenuState.FadingOut;
         stateTimer = 0f;
-        stateDuration = isFirstStart ? 0.4f : 0.2f;
+        stateDuration = willLoadScene ? 0.4f : 0.2f;
 
-        if (isFirstStart && FadeManager.Instance != null)
-            FadeManager.Instance.FadeIn(0.4f);
+        if (FadeManager.Instance != null)
+        {
+            if (willLoadScene)
+                FadeManager.Instance.FadeIn(0.4f);
+            else if (FadeManager.Instance.IsFading)
+                FadeManager.Instance.FadeOut(0.2f);
+        }
     }
 
     private void OnSettingsClicked()

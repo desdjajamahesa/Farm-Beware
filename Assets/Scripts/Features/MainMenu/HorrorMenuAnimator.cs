@@ -122,8 +122,8 @@ public class HorrorMenuAnimator : MonoBehaviour
 
     private void Update()
     {
-        float dt = Time.deltaTime;
-        float time = Time.time;
+        float dt = Time.unscaledDeltaTime;
+        float time = Time.unscaledTime;
 
         UpdateMouseParallax(dt);
         UpdateTitleAnimation(time, dt);
@@ -206,16 +206,16 @@ public class HorrorMenuAnimator : MonoBehaviour
         {
             titleRect.localScale = titleInitialScale * 1.07f;
             titleRect.anchoredPosition = twitchPos + new Vector2(Random.Range(-5f, 5f), Random.Range(-4f, 4f));
-            yield return new WaitForSeconds(0.04f);
+            yield return new WaitForSecondsRealtime(0.04f);
 
             titleRect.localScale = titleInitialScale * 0.98f;
             titleRect.anchoredPosition = twitchPos;
-            yield return new WaitForSeconds(0.05f);
+            yield return new WaitForSecondsRealtime(0.05f);
         }
 
         titleRect.localScale = titleInitialScale;
         isTwitching = false;
-        nextTwitchTime = Time.time + Random.Range(twitchIntervalMin, twitchIntervalMax);
+        nextTwitchTime = Time.unscaledTime + Random.Range(twitchIntervalMin, twitchIntervalMax);
     }
     #endregion
 
@@ -253,7 +253,7 @@ public class HorrorMenuAnimator : MonoBehaviour
         // Fade out (tutup mata)
         while (elapsed < halfDur)
         {
-            elapsed += Time.deltaTime;
+            elapsed += Time.unscaledDeltaTime;
             eye.canvasGroup.alpha = Mathf.Lerp(eye.baseAlpha, 0f, elapsed / halfDur);
             yield return null;
         }
@@ -262,7 +262,7 @@ public class HorrorMenuAnimator : MonoBehaviour
 
         // Berkedip cepat atau mengintai sebentar dari kegelapan
         float closedDelay = (Random.value < 0.25f) ? Random.Range(0.8f, 2.0f) : Random.Range(0.08f, 0.2f);
-        yield return new WaitForSeconds(closedDelay);
+        yield return new WaitForSecondsRealtime(closedDelay);
 
         // Sedikit geser posisi mata (seolah mengintip ke arah lain)
         eye.eyeRect.anchoredPosition = eye.initialPos + new Vector2(Random.Range(-2f, 2f), Random.Range(-1.5f, 1.5f));
@@ -271,14 +271,14 @@ public class HorrorMenuAnimator : MonoBehaviour
         elapsed = 0f;
         while (elapsed < halfDur)
         {
-            elapsed += Time.deltaTime;
+            elapsed += Time.unscaledDeltaTime;
             eye.canvasGroup.alpha = Mathf.Lerp(0f, eye.baseAlpha, elapsed / halfDur);
             yield return null;
         }
 
         eye.canvasGroup.alpha = eye.baseAlpha;
         eye.isBlinking = false;
-        eye.nextBlinkTime = Time.time + Random.Range(2.5f, 7.5f);
+        eye.nextBlinkTime = Time.unscaledTime + Random.Range(2.5f, 7.5f);
     }
     #endregion
 
@@ -346,7 +346,7 @@ public class HorrorMenuAnimator : MonoBehaviour
         if (time >= nextLightningTime && lightningCoroutine == null)
         {
             lightningCoroutine = StartCoroutine(LightningFlickerRoutine());
-            nextLightningTime = Time.time + Random.Range(minLightningInterval, maxLightningInterval);
+            nextLightningTime = Time.unscaledTime + Random.Range(minLightningInterval, maxLightningInterval);
         }
     }
 
@@ -359,13 +359,13 @@ public class HorrorMenuAnimator : MonoBehaviour
 
         // Flash 1
         backgroundOverlayImage.color = flashColor;
-        yield return new WaitForSeconds(0.06f);
+        yield return new WaitForSecondsRealtime(0.06f);
         backgroundOverlayImage.color = originalColor;
-        yield return new WaitForSeconds(0.08f);
+        yield return new WaitForSecondsRealtime(0.08f);
 
         // Flash 2 (aftershock)
         backgroundOverlayImage.color = new Color(0.75f, 0.78f, 0.95f, 0.25f);
-        yield return new WaitForSeconds(0.08f);
+        yield return new WaitForSecondsRealtime(0.08f);
         backgroundOverlayImage.color = originalColor;
 
         lightningCoroutine = null;
