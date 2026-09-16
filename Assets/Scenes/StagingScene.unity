@@ -60187,9 +60187,37 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::InventoryComponent
   slots:
+  - item: {fileID: 11400000, guid: b1f5c99a438af924cbe737a1d0476132, type: 2}
+    quantity: 20
+  - item: {fileID: 11400000, guid: 871421747772b8c41b16f38651dece5e, type: 2}
+    quantity: 20
+  - item: {fileID: 11400000, guid: 7d4ca7d016e327b4f8cea215c54d2ae6, type: 2}
+    quantity: 20
+  - item: {fileID: 11400000, guid: 0b3f64f5cc4e73e4d8acc8ee24d96fda, type: 2}
+    quantity: 20
+  - item: {fileID: 11400000, guid: 65e193ea09deaae49bb2fbd321c6ef91, type: 2}
+    quantity: 20
+  - item: {fileID: 11400000, guid: e23ce534d2dfa1c42961166921b2abc6, type: 2}
+    quantity: 20
+  - item: {fileID: 11400000, guid: 633df2dc5d064c743928aafb65fffb6f, type: 2}
+    quantity: 20
+  - item: {fileID: 11400000, guid: 1c6c49817fca65540bf6a914b6a0b007, type: 2}
+    quantity: 20
+  - item: {fileID: 11400000, guid: 18736835b0621ad478537e2fa98f4c07, type: 2}
+    quantity: 20
   - item: {fileID: 11400000, guid: 2da20757d972f5e4387c2eab16885a48, type: 2}
     quantity: 1
-  - item: {fileID: 11400000, guid: 18736835b0621ad478537e2fa98f4c07, type: 2}
+  - item: {fileID: 11400000, guid: 204c190b81a6c054f8d1fe0f0c2a7a80, type: 2}
+    quantity: 20
+  - item: {fileID: 11400000, guid: 1555ed878052ac44c8b9e2fe43cbdf9a, type: 2}
+    quantity: 20
+  - item: {fileID: 11400000, guid: 631a56d8258854a40afd2bc5508e5304, type: 2}
+    quantity: 15
+  - item: {fileID: 11400000, guid: aadb6cfba39a5794387c1f0a6f1c53de, type: 2}
+    quantity: 10
+  - item: {fileID: 11400000, guid: 6e678c35f5e44604dbb1e4a457c0cd52, type: 2}
+    quantity: 15
+  - item: {fileID: 11400000, guid: 177b90592ae6123419e80276b292945a, type: 2}
     quantity: 10
   - item: {fileID: 11400000, guid: daa1a76fd4feedd4db758568f68793f5, type: 2}
     quantity: 10
@@ -60205,34 +60233,6 @@ MonoBehaviour:
     quantity: 10
   - item: {fileID: 11400000, guid: 94e04a066ceb6a949b7bbe14a0a12b2c, type: 2}
     quantity: 10
-  - item: {fileID: 11400000, guid: 7d4ca7d016e327b4f8cea215c54d2ae6, type: 2}
-    quantity: 20
-  - item: {fileID: 11400000, guid: 0b3f64f5cc4e73e4d8acc8ee24d96fda, type: 2}
-    quantity: 20
-  - item: {fileID: 11400000, guid: 204c190b81a6c054f8d1fe0f0c2a7a80, type: 2}
-    quantity: 20
-  - item: {fileID: 11400000, guid: 1555ed878052ac44c8b9e2fe43cbdf9a, type: 2}
-    quantity: 20
-  - item: {fileID: 11400000, guid: e23ce534d2dfa1c42961166921b2abc6, type: 2}
-    quantity: 20
-  - item: {fileID: 11400000, guid: 65e193ea09deaae49bb2fbd321c6ef91, type: 2}
-    quantity: 20
-  - item: {fileID: 11400000, guid: 633df2dc5d064c743928aafb65fffb6f, type: 2}
-    quantity: 20
-  - item: {fileID: 11400000, guid: 1c6c49817fca65540bf6a914b6a0b007, type: 2}
-    quantity: 20
-  - item: {fileID: 11400000, guid: 631a56d8258854a40afd2bc5508e5304, type: 2}
-    quantity: 15
-  - item: {fileID: 11400000, guid: aadb6cfba39a5794387c1f0a6f1c53de, type: 2}
-    quantity: 10
-  - item: {fileID: 11400000, guid: 6e678c35f5e44604dbb1e4a457c0cd52, type: 2}
-    quantity: 15
-  - item: {fileID: 11400000, guid: 177b90592ae6123419e80276b292945a, type: 2}
-    quantity: 10
-  - item: {fileID: 0}
-    quantity: 0
-  - item: {fileID: 0}
-    quantity: 0
   - item: {fileID: 0}
     quantity: 0
   maxCapacity: 24
