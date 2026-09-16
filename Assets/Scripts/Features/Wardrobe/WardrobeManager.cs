@@ -318,8 +318,6 @@ namespace FeaturesWardrobe
                 Debug.LogWarning($"[WardrobeManager] Hotbar hide failed: {e.Message}");
             }
 
-            // PreviewController binding removed: the in-world MirrorCamera handles all preview rendering.
-
             // Subscribe to UI close event
             if (wardrobeUI != null)
                 wardrobeUI.OnWardrobeClosed += ExitWardrobeMode;

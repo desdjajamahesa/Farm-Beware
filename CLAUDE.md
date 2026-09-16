@@ -156,14 +156,13 @@ Under `Assets/Editor/`:
 - **MirrorCamera**: RenderTexture camera (always renders to `mirrorTexture`, never screen). Used in gameplay (mirror surface) and wardrobe mode (UI RawImage). Not controlled by CameraManager.
 - **WallOcclusionManager**: Raycasts between camera and player; fades walls in-between via `WallOccluder` component.
 
-### Wardrobe System (NEW — Per-Part Outfit + Live 3D Preview)
-- **WardrobeItemData** (`Logic/WardrobeItemData.cs`): ScriptableObject for individual items (ID, Name, Icon, Category, 3D Prefab).
+### Wardrobe System (Per-Part Outfit + Live 3D Mirror)
+- **WardrobeItemData** (`Features/Wardrobe/WardrobeItemData.cs`): ScriptableObject for individual items (ID, Name, Icon, Category, 3D Prefab).
 - **ItemSlot** (`Features/Wardrobe/UI/ItemSlot.cs`): UI slot prefab with icon, selection highlight, click handling.
-- **PreviewController** (`Features/Wardrobe/PreviewController.cs`): Off-screen camera + RenderTexture for live 3D avatar preview. Drag-to-rotate, dynamic mesh swap on item select.
-- **WardrobeUI** (`Features/Wardrobe/UI/WardrobeUI.cs`): 4-panel layout — Left (Category tabs), Center-Left (Item Grid), Center-Right (RawImage preview), Right (Save/Exit).
-- **WardrobeManager** (`Features/Wardrobe/WardrobeManager.cs`): Integrates UI, populates items from `WardrobeItemData` assets or `PlayerOutfit.unlockedOutfits`, binds preview.
-- **OutfitPartResolver** (`Logic/OutfitPartResolver.cs`): Pure logic for category/variant ↔ renderer name mapping (zero UnityEngine deps).
-- **PlayerOutfit** (`Features/Wardrobe/PlayerOutfit.cs`): Thin adapter — applies `OutfitData` to character SkinnedMeshRenderers via `OutfitData.ApplyToCharacter()`.
+- **WardrobeUI** (`Features/Wardrobe/UI/WardrobeUI.cs`): UI controller for wardrobe panel and action buttons.
+- **WardrobeManager** (`Features/Wardrobe/WardrobeManager.cs`): Integrates UI, controls wardrobe camera mode, mirror activation, and outfit saving.
+- **OutfitPartResolver** (`Features/Wardrobe/OutfitPartResolver.cs`): Pure logic for category/variant ↔ renderer name mapping (zero UnityEngine deps).
+- **PlayerOutfit** (`Features/Wardrobe/PlayerOutfit.cs`): Applies `OutfitData` to character SkinnedMeshRenderers via `OutfitData.ApplyToCharacter()`.
 
 ---
 
