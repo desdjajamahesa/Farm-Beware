@@ -57,6 +57,10 @@ namespace FeaturesCamera
         [Tooltip("PlayerControl component for input locking.")]
         [SerializeField] private PlayerControl playerControl;
 
+        public Camera MainCamera => mainCamera;
+        public Camera TrophyCamera => trophyCamera;
+        public Camera WardrobeCamera => wardrobeCamera;
+
         private CameraMode _currentMode = CameraMode.Gameplay;
         public CameraMode CurrentMode => _currentMode;
 
@@ -81,17 +85,21 @@ namespace FeaturesCamera
             if (playerControl == null)
                 playerControl = FindFirstObjectByType<PlayerControl>();
 
-            // Enforce initial mode: gameplay cameras on, feature cameras off.
-            // Scene files can persist stale enabled-states from a previous session
-            // (e.g. after an editor crash or edit-mode simulation) — never trust them.
+            // Enforce initial mode: gameplay cameras on, feature cameras off (both component and GameObject).
             if (mainCamera != null)
                 mainCamera.enabled = true;
             if (isometricCameraController != null)
                 isometricCameraController.enabled = true;
             if (trophyCamera != null)
+            {
                 trophyCamera.enabled = false;
+                trophyCamera.gameObject.SetActive(false);
+            }
             if (wardrobeCamera != null)
+            {
                 wardrobeCamera.enabled = false;
+                wardrobeCamera.gameObject.SetActive(false);
+            }
 
             // Gameplay mode is the only valid starting state
             _currentMode = CameraMode.Gameplay;
@@ -170,12 +178,18 @@ namespace FeaturesCamera
             if (isometricCameraController != null)
                 isometricCameraController.enabled = true;
 
-            // Disable feature cameras
+            // Disable feature cameras completely
             if (trophyCamera != null)
+            {
                 trophyCamera.enabled = false;
+                trophyCamera.gameObject.SetActive(false);
+            }
 
             if (wardrobeCamera != null)
+            {
                 wardrobeCamera.enabled = false;
+                wardrobeCamera.gameObject.SetActive(false);
+            }
 
             // Unlock input, keep cursor free
             if (playerControl == null)
@@ -219,7 +233,8 @@ namespace FeaturesCamera
             if (isometricCameraController != null)
                 isometricCameraController.enabled = false;
 
-            // Camera pose is authored directly in the scene — no runtime repositioning.
+            // Enable trophy camera GameObject and component
+            trophyCamera.gameObject.SetActive(true);
             trophyCamera.enabled = true;
 
             // Lock input, free cursor
@@ -255,7 +270,8 @@ namespace FeaturesCamera
             if (isometricCameraController != null)
                 isometricCameraController.enabled = false;
 
-            // Camera pose is authored directly in the scene — no runtime repositioning.
+            // Enable wardrobe camera GameObject and component
+            wardrobeCamera.gameObject.SetActive(true);
             wardrobeCamera.enabled = true;
 
             // Lock input, free cursor

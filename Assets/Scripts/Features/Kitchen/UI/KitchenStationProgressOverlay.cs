@@ -4,17 +4,16 @@ using System.Collections.Generic;
 
 /// <summary>
 /// Overlay progress dunia (ala Minecraft) untuk Stove & Kitchen Sink.
-/// MURNI visual: subscribe ke event IKitchenStationEvents, tidak menyimpan state gameplay.
+/// MURNI visual: subscribe ke event KitchenStation, tidak menyimpan state gameplay.
 /// Visual: "veil" putih transparan yang NAIK dari bawah ke atas mengikuti progress
 /// real-time (OnProcessProgress per frame), billboard menghadap kamera,
 /// plus flash + bunyi saat selesai.
-/// Backend tetap sumber kebenaran (timer ada di stasiun).
-/// Mendukung semua implementasi IKitchenStationEvents (KitchenStation, GenshinStove, dll).
+/// Backend tetap sumber kebenaran (timer ada di KitchenStation).
 /// </summary>
 public class KitchenStationProgressOverlay : MonoBehaviour
 {
-    [Tooltip("Stasiun yang dipantau (Sink / Kompor). Harus implement IKitchenStationEvents.")]
-    [SerializeField] private MonoBehaviour stationComponent;
+    [Tooltip("Stasiun yang dipantau (Sink / Kompor). Jika kosong, memakai komponen sejenis pada GameObject ini.")]
+    [SerializeField] private KitchenStation station;
 
     [Tooltip("Dasar overlay per slot (urutan = index slot). Stove: Burner_1 & Burner_2. Kosong = fallback ke atas Renderer.")]
     [SerializeField] private Transform[] slotAnchors;
@@ -56,7 +55,6 @@ public class KitchenStationProgressOverlay : MonoBehaviour
         public Color defaultColor;
     }
 
-    private IKitchenStationEvents station;
     private readonly Dictionary<int, SlotOverlay> overlays = new Dictionary<int, SlotOverlay>();
     private AudioSource audioSource;
     private AudioClip generatedPop;
@@ -66,8 +64,8 @@ public class KitchenStationProgressOverlay : MonoBehaviour
 
     private void OnEnable()
     {
-        if (stationComponent != null)
-            station = stationComponent as IKitchenStationEvents;
+        if (station == null)
+            station = GetComponent<KitchenStation>();
 
         if (station == null)
         {

@@ -13,19 +13,15 @@ public class PlayerControl : MonoBehaviour
 
     [Header("Pengaturan Aksi")]
     public float jumpForce = 5f;
-    public float dashSpeed = 15f;
-    public float dashDuration = 0.2f;
-    public float dashCooldown = 1f;
+    [Tooltip("Durasi penguncian pergerakan saat menanam benih (detik).")]
+    public float plantDuration = 1.56f;
+    private bool isPlanting = false;
 
-    [Header("Pengaturan Crouch")]
-    public float crouchSpeed = 2.5f;
-    public float crouchColliderHeight = 1.2f;
-    public float crouchColliderCenterY = 0.6f;
-    private float originalColliderHeight = 2.0f;
-    private float originalColliderCenterY = 1.0f;
+    [Tooltip("Durasi karakter diam di tempat saat mengayunkan serangan pedang (detik).")]
+    public float attackLockDuration = 1.1f;
+    private bool isAttacking = false;
+
     private CapsuleCollider playerCollider;
-    private bool isCrouching = false;
-
     private Rigidbody rb;
     private Animator animator;
     private Vector3 inputVector;
@@ -34,12 +30,16 @@ public class PlayerControl : MonoBehaviour
     private InventoryComponent playerInventory;
     private PlayerStats playerStats;
     private PlayerEquipment playerEquipment;
+    private PlayerBuffManager buffManager;
 
     // Status internal
     private bool isGrounded;
-    private bool isDashing;
     private bool isRunning;
-    private float lastDashTime = -100f;
+
+    // Wall slide helpers
+    private Vector3 contactWallNormal = Vector3.zero;
+    private bool isTouchingWall = false;
+    private readonly System.Collections.Generic.HashSet<Collider> activeWallColliders = new System.Collections.Generic.HashSet<Collider>();
 
     // Kunci input global: saat true, pemain tidak bisa bergerak, membuka
     // inventori, melompat, dash, atau berinteraksi (dipakai mode Trophy, dst).
@@ -50,10 +50,19 @@ public class PlayerControl : MonoBehaviour
         rb = GetComponent<Rigidbody>();
         animator = GetComponentInChildren<Animator>();
         playerCollider = GetComponent<CapsuleCollider>();
+
+        // Berikan material tanpa friksi agar pergerakan dan sliding di tembok sangat mulus
         if (playerCollider != null)
         {
-            originalColliderHeight = playerCollider.height;
-            originalColliderCenterY = playerCollider.center.y;
+            PhysicsMaterial frictionless = new PhysicsMaterial("PlayerFrictionless")
+            {
+                dynamicFriction = 0f,
+                staticFriction = 0f,
+                frictionCombine = PhysicsMaterialCombine.Minimum,
+                bounciness = 0f,
+                bounceCombine = PhysicsMaterialCombine.Minimum
+            };
+            playerCollider.material = frictionless;
         }
 
         if (rb != null)
@@ -71,6 +80,7 @@ public class PlayerControl : MonoBehaviour
         interactor = GetComponent<PlayerInteractor>();  
         playerInventory = GetComponent<InventoryComponent>();  
         playerStats = GetComponent<PlayerStats>();
+        buffManager = GetComponent<PlayerBuffManager>();
         playerEquipment = GetComponent<PlayerEquipment>();
         if (playerEquipment == null)
             playerEquipment = gameObject.AddComponent<PlayerEquipment>();
@@ -86,7 +96,6 @@ public class PlayerControl : MonoBehaviour
 
         // Mendaftarkan event: Saat tombol ditekan, panggil fungsi yang sesuai
         inputActions.Player.Jump.performed += ctx => ExecuteJump();
-        inputActions.Player.Dash.performed += ctx => StartCoroutine(ExecuteDash());
         inputActions.Player.Interact.performed += OnInteractPressed;
     }
 
@@ -98,7 +107,6 @@ public class PlayerControl : MonoBehaviour
 
         // Mencabut pendaftaran event untuk mencegah memory leak
         inputActions.Player.Jump.performed -= ctx => ExecuteJump();
-        inputActions.Player.Dash.performed -= ctx => StartCoroutine(ExecuteDash());
 
         inputActions.Player.Disable();
 
@@ -109,6 +117,20 @@ public class PlayerControl : MonoBehaviour
     {
         // Kunci input: hentikan inventory/hotbar/gerak/animator saat terkunci.
         if (isInputLocked) return;
+
+        // Saat menanam benih atau menyerang, karakter diam di tempat (tidak bisa bergerak/berlari/lompat/interact)
+        if (isPlanting || isAttacking)
+        {
+            inputVector = Vector3.zero;
+            isRunning = false;
+            if (animator != null)
+            {
+                animator.SetFloat("Vel", 0f, 0.1f, Time.deltaTime);
+                animator.SetBool("Idle", true);
+                animator.SetBool("Sprinting", false);
+            }
+            return;
+        }
 
         HandleInventoryInput();
         HandleHotbarInput();
@@ -123,9 +145,6 @@ public class PlayerControl : MonoBehaviour
         // 1. Cek apakah karakter menginjak tanah
         CheckGrounded();
 
-        // Jika sedang dash, abaikan input pergerakan pemain
-        if (isDashing) return;
-
         // 2. Membaca Input Pergerakan (Deadzone check agar micro-drift tidak menormalkan sudut acak)
         Vector2 moveInput = inputActions.Player.Move.ReadValue<Vector2>();
         if (moveInput.sqrMagnitude > 0.01f)
@@ -137,75 +156,125 @@ public class PlayerControl : MonoBehaviour
             inputVector = Vector3.zero;
         }
 
-        // 3. Cek apakah pemain menahan tombol Ctrl untuk Jongkok (Crouch)
-        bool wantsToCrouch = Keyboard.current != null && (Keyboard.current.leftCtrlKey.isPressed || Keyboard.current.rightCtrlKey.isPressed);
-        isCrouching = isGrounded && wantsToCrouch;
-
-        // 4. Cek apakah pemain menahan tombol Shift untuk Lari (Sprint)
+        // 3. Cek apakah pemain menahan tombol Shift untuk Lari (Sprint)
         bool isMoving = inputVector.magnitude >= 0.1f;
-        bool wantsToRun = !isCrouching && Keyboard.current != null && (Keyboard.current.leftShiftKey.isPressed || Keyboard.current.rightShiftKey.isPressed);
+        bool wantsToRun = Keyboard.current != null && (Keyboard.current.leftShiftKey.isPressed || Keyboard.current.rightShiftKey.isPressed);
 
-        // Karakter hanya berlari jika bergerak, menekan shift, tidak sedang jongkok, dan memiliki stamina
+        // Karakter hanya berlari jika bergerak, menekan shift, dan memiliki stamina
         isRunning = isMoving && wantsToRun && (playerStats == null || !playerStats.IsExhausted);
 
-        // Update ketinggian collider secara mulus saat jongkok vs berdiri
-        if (playerCollider != null)
-        {
-            float targetHeight = isCrouching ? crouchColliderHeight : originalColliderHeight;
-            float targetCenterY = isCrouching ? crouchColliderCenterY : originalColliderCenterY;
-            playerCollider.height = Mathf.MoveTowards(playerCollider.height, targetHeight, 6f * Time.deltaTime);
-            Vector3 center = playerCollider.center;
-            center.y = Mathf.MoveTowards(center.y, targetCenterY, 3f * Time.deltaTime);
-            playerCollider.center = center;
-        }
-
-        // 5. Konsumsi Stamina HANYA saat Berlari (Sprint)
+        // 4. Konsumsi Stamina HANYA saat Berlari (Sprint)
         if (isRunning && playerStats != null)
         {
             playerStats.UseStamina(playerStats.staminaDrainRate * Time.deltaTime);
         }
 
-        // 6. Sinkronisasi Animator
+        // 5. Sinkronisasi Animator
         if (animator != null)
         {
             float targetSpeed = 0f;
             if (isMoving)
             {
-                targetSpeed = isRunning ? 1.0f : (isCrouching ? 0.3f : 0.5f);
+                targetSpeed = isRunning ? 1.0f : 0.5f;
             }
 
             // Gunakan dampTime (0.1f) agar perubahan kecepatan dan langkah kaki bertransisi mulus
             animator.SetFloat("Vel", targetSpeed, 0.1f, Time.deltaTime);
             animator.SetBool("Grounded", isGrounded);
             animator.SetBool("Idle", !isMoving);
-            animator.SetBool("IsCrouching", isCrouching);
             animator.SetBool("Sprinting", isRunning);
         }
     }
 
     void FixedUpdate()
     {
-        // Kunci input: hentikan fisika pergerakan saat terkunci.
-        if (isInputLocked) return;
-
-        // Jika sedang dash, fisika dikendalikan oleh Coroutine
-        if (isDashing) return;
+        // Kunci input: hentikan fisika pergerakan saat terkunci atau sedang menanam/menyerang
+        if (isInputLocked || isPlanting || isAttacking)
+        {
+            if (rb != null)
+                rb.linearVelocity = new Vector3(0f, rb.linearVelocity.y, 0f);
+            return;
+        }
 
         if (inputVector.magnitude >= 0.1f)
         {
             Vector3 moveDirection = Quaternion.Euler(0, 45f, 0) * inputVector;
-            
-            // Kecepatan: crouchSpeed (2.5) saat jongkok, runSpeed (8) saat lari, walkSpeed (5) saat jalan
-            float currentSpeed = isCrouching ? crouchSpeed : (isRunning ? runSpeed : walkSpeed);
+            float speedMultiplier = buffManager != null ? buffManager.GetSpeedMultiplier() : 1f;
+            float currentSpeed = (isRunning ? runSpeed : walkSpeed) * speedMultiplier;
+            Vector3 desiredMove = moveDirection;
 
-            // Gerakkan karakter murni dengan linearVelocity (kecepatan akurat, responsif, dan tidak ngedrift)
-            Vector3 targetVelocity = moveDirection * currentSpeed;
+            // 1. Wall Sliding via kontak fisika aktif
+            if (isTouchingWall && contactWallNormal.sqrMagnitude > 0.01f)
+            {
+                float dot = Vector3.Dot(desiredMove, contactWallNormal);
+                if (dot < 0f) // Bergerak menabrak tembok
+                {
+                    Vector3 slide = Vector3.ProjectOnPlane(desiredMove, contactWallNormal);
+                    slide.y = 0f;
+                    if (slide.sqrMagnitude > 0.001f)
+                        desiredMove = slide.normalized;
+                }
+            }
+
+            // 2. Wall Sliding prediktif via CapsuleCast ke depan (mencegah tersendat sebelum kontak)
+            if (playerCollider != null)
+            {
+                float halfHeight = Mathf.Max(playerCollider.height * 0.5f - playerCollider.radius, 0f);
+                Vector3 p1 = transform.position + playerCollider.center + Vector3.up * halfHeight;
+                Vector3 p2 = transform.position + playerCollider.center - Vector3.up * Mathf.Max(halfHeight - 0.1f, 0f);
+                float radius = playerCollider.radius;
+                float castDist = currentSpeed * Time.fixedDeltaTime + 0.15f;
+
+                // Pass 1: Deteksi dan defleksikan arah ke dinding pertama
+                if (Physics.CapsuleCast(p1, p2, radius * 0.95f, desiredMove, out RaycastHit hit, castDist, ~LayerMask.GetMask("Ignore Raycast"), QueryTriggerInteraction.Ignore))
+                {
+                    float wallAngle = Vector3.Angle(hit.normal, Vector3.up);
+                    if (wallAngle > 50f && wallAngle < 130f)
+                    {
+                        Vector3 hitNormal = hit.normal;
+                        hitNormal.y = 0f;
+                        hitNormal.Normalize();
+
+                        float dot = Vector3.Dot(desiredMove, hitNormal);
+                        if (dot < 0f)
+                        {
+                            Vector3 slide = Vector3.ProjectOnPlane(desiredMove, hitNormal);
+                            slide.y = 0f;
+                            if (slide.sqrMagnitude > 0.001f)
+                                desiredMove = slide.normalized;
+
+                            // Pass 2: Jika berada di sudut (dua dinding bertemu), cek dinding kedua
+                            if (Physics.CapsuleCast(p1, p2, radius * 0.95f, desiredMove, out RaycastHit hitCorner, castDist * 0.5f, ~LayerMask.GetMask("Ignore Raycast"), QueryTriggerInteraction.Ignore))
+                            {
+                                float cornerAngle = Vector3.Angle(hitCorner.normal, Vector3.up);
+                                if (cornerAngle > 50f && cornerAngle < 130f)
+                                {
+                                    Vector3 cornerNormal = hitCorner.normal;
+                                    cornerNormal.y = 0f;
+                                    cornerNormal.Normalize();
+
+                                    float dotCorner = Vector3.Dot(desiredMove, cornerNormal);
+                                    if (dotCorner < 0f)
+                                    {
+                                        Vector3 cornerSlide = Vector3.ProjectOnPlane(desiredMove, cornerNormal);
+                                        cornerSlide.y = 0f;
+                                        desiredMove = cornerSlide.sqrMagnitude > 0.001f ? cornerSlide.normalized : Vector3.zero;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Terapkan kecepatan linier mulus
+            Vector3 targetVelocity = desiredMove * currentSpeed;
             rb.linearVelocity = new Vector3(targetVelocity.x, rb.linearVelocity.y, targetVelocity.z);
 
-            // Rotasi karakter menghadap arah pergerakan
-            if (moveDirection.sqrMagnitude > 0.001f)
+            // Rotasi karakter menghadap arah pergerakan / sliding
+            if (desiredMove.sqrMagnitude > 0.001f)
             {
-                Vector3 lookEuler = Quaternion.LookRotation(moveDirection).eulerAngles;
+                Vector3 lookEuler = Quaternion.LookRotation(desiredMove).eulerAngles;
                 Quaternion targetRotation = Quaternion.Euler(0f, lookEuler.y, 0f);
                 rb.MoveRotation(Quaternion.Slerp(rb.rotation, targetRotation, turnSpeed * Time.fixedDeltaTime));
             }
@@ -220,12 +289,54 @@ public class PlayerControl : MonoBehaviour
         rb.angularVelocity = Vector3.zero;
     }
 
+    void OnCollisionStay(Collision collision)
+    {
+        bool foundWall = false;
+        for (int i = 0; i < collision.contactCount; i++)
+        {
+            Vector3 normal = collision.GetContact(i).normal;
+            float angle = Vector3.Angle(normal, Vector3.up);
+            if (angle > 50f && angle < 130f)
+            {
+                normal.y = 0f;
+                contactWallNormal = normal.normalized;
+                foundWall = true;
+                break;
+            }
+        }
+
+        if (foundWall)
+        {
+            activeWallColliders.Add(collision.collider);
+            isTouchingWall = true;
+        }
+        else
+        {
+            activeWallColliders.Remove(collision.collider);
+            if (activeWallColliders.Count == 0)
+            {
+                isTouchingWall = false;
+                contactWallNormal = Vector3.zero;
+            }
+        }
+    }
+
+    void OnCollisionExit(Collision collision)
+    {
+        activeWallColliders.Remove(collision.collider);
+        if (activeWallColliders.Count == 0)
+        {
+            isTouchingWall = false;
+            contactWallNormal = Vector3.zero;
+        }
+    }
+
     // --- LOGIKA AKSI ---
 
-    // Klik Kiri Mouse / Serang: Panggil animasi serangan jika item yang dipegang adalah senjata.
+    // Klik Kiri Mouse / Serang: Panggil animasi serangan jika item yang dipegang adalah senjata dan kunci pergerakan selama ayunan.
     private void HandleAttackInput()
     {
-        if (isInputLocked) return;
+        if (isInputLocked || isPlanting || isAttacking) return;
 
         if (Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame)
         {
@@ -235,25 +346,107 @@ public class PlayerControl : MonoBehaviour
             if (playerEquipment == null)
                 playerEquipment = gameObject.AddComponent<PlayerEquipment>();
 
-            if (playerEquipment != null)
+            if (playerEquipment != null && playerEquipment.TryPerformAttack())
             {
-                playerEquipment.TryPerformAttack();
+                StartCoroutine(RoutineAttack());
             }
         }
     }
 
-    // Tombol Q: Memainkan animasi menanam benih (PlantSeed).
+    private IEnumerator RoutineAttack()
+    {
+        isAttacking = true;
+        inputVector = Vector3.zero;
+
+        if (rb != null)
+        {
+            rb.linearVelocity = new Vector3(0f, rb.linearVelocity.y, 0f);
+            rb.angularVelocity = Vector3.zero;
+        }
+
+        if (animator != null)
+        {
+            animator.SetFloat("Vel", 0f);
+            animator.SetBool("Idle", true);
+            animator.SetBool("Sprinting", false);
+        }
+
+        // Tunggu satu frame agar transisi animator ke state attack dimulai
+        yield return null;
+
+        float timer = 0f;
+        while (timer < attackLockDuration)
+        {
+            timer += Time.deltaTime;
+
+            // Jika animator sudah selesai animasi serang dan bertransisi kembali ke Idle/Moving setelah minimal 0.4 detik
+            if (timer > 0.4f && animator != null)
+            {
+                var stateInfo = animator.GetCurrentAnimatorStateInfo(0);
+                if (!stateInfo.IsName("attack") && !animator.GetNextAnimatorStateInfo(0).IsName("attack"))
+                {
+                    break;
+                }
+            }
+
+            yield return null;
+        }
+
+        isAttacking = false;
+    }
+
+    // Tombol Q: Memainkan animasi menanam benih (PlantSeed) dan mengunci gerakan pemain sampai animasi selesai.
     private void HandlePlantSeedInput()
     {
-        if (isInputLocked) return;
+        if (isInputLocked || isPlanting || isAttacking || !isGrounded) return;
 
         if (Keyboard.current != null && Keyboard.current.qKey.wasPressedThisFrame)
         {
-            if (animator != null)
-            {
-                animator.SetTrigger("PlantSeed");
-            }
+            StartCoroutine(RoutinePlantSeed());
         }
+    }
+
+    private IEnumerator RoutinePlantSeed()
+    {
+        isPlanting = true;
+        inputVector = Vector3.zero;
+
+        if (rb != null)
+        {
+            rb.linearVelocity = new Vector3(0f, rb.linearVelocity.y, 0f);
+            rb.angularVelocity = Vector3.zero;
+        }
+
+        if (animator != null)
+        {
+            animator.SetTrigger("PlantSeed");
+            animator.SetFloat("Vel", 0f);
+            animator.SetBool("Idle", true);
+            animator.SetBool("Sprinting", false);
+        }
+
+        // Tunggu frame berikutnya agar transisi animator ke PlantSeed dimulai
+        yield return null;
+
+        float timer = 0f;
+        while (timer < plantDuration)
+        {
+            timer += Time.deltaTime;
+
+            // Jika animasi sudah selesai dan bertransisi kembali ke Idle/Moving setelah minimal 0.5 detik
+            if (timer > 0.5f && animator != null)
+            {
+                var stateInfo = animator.GetCurrentAnimatorStateInfo(0);
+                if (!stateInfo.IsName("PlantSeed") && !animator.GetNextAnimatorStateInfo(0).IsName("PlantSeed"))
+                {
+                    break;
+                }
+            }
+
+            yield return null;
+        }
+
+        isPlanting = false;
     }
 
     // Tombol Tab / I membuka-menutup panel pemain. Jika storage terbuka, tutup semua.
@@ -308,11 +501,14 @@ public class PlayerControl : MonoBehaviour
 
     private void ExecuteJump()
     {
-        if (isInputLocked) return;
+        if (isInputLocked || isPlanting || isAttacking) return;
 
-        // Hanya bisa lompat jika menginjak tanah, tidak sedang dash, dan tidak sedang jongkok
-        if (isGrounded && !isDashing && !isCrouching)
+        // Hanya bisa lompat jika menginjak tanah
+        if (isGrounded)
         {
+            isGrounded = false;
+            if (animator != null) animator.SetBool("Grounded", false);
+
             // Reset kecepatan Y agar lompatan konsisten, lalu dorong ke atas
             rb.linearVelocity = new Vector3(rb.linearVelocity.x, 0f, rb.linearVelocity.z);
             rb.AddForce(Vector3.up * jumpForce, ForceMode.Impulse);
@@ -323,21 +519,13 @@ public class PlayerControl : MonoBehaviour
 
     public void TriggerInteract()
     {
-        if (Time.frameCount == lastInteractFrame) return;
+        if (Time.frameCount == lastInteractFrame || isPlanting || isAttacking) return;
         lastInteractFrame = Time.frameCount;
 
         if (isInputLocked)
         {
-            // Safety: if no known UI panel is active, the lock is stale — force reset
-            if (!IsAnyUILockActive())
-            {
-                isInputLocked = false;
-                Debug.Log("[PlayerControl] Safety: force-unlocked stale isInputLocked");
-            }
-            else
-            {
-                return;
-            }
+            Debug.LogWarning("[PlayerControl] Tombol E ditekan tetapi isInputLocked = true!");
+            return;
         }
 
         // Pastikan skrip interactor tidak hilang/error
@@ -355,72 +543,23 @@ public class PlayerControl : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Check if any UI panel that legitimately locks input is currently active.
-    /// Returns false if the lock is stale (no panel open).
-    /// </summary>
-    private bool IsAnyUILockActive()
-    {
-        // Check StoveUIManager panel
-        var stoveUI = FindFirstObjectByType<StoveUIManager>();
-        if (stoveUI != null && stoveUI.gameObject.activeSelf)
-            return true;
-
-        // Check SinkManager panel
-        var sinkMgr = FindFirstObjectByType<SinkManager>();
-        if (sinkMgr != null && sinkMgr.gameObject.activeSelf)
-            return true;
-
-        // Check InventoryManagerUI
-        if (InventoryManagerUI.Instance != null && InventoryManagerUI.Instance.gameObject.activeSelf)
-            return true;
-
-        // Check WardrobeUI
-        var wardrobeUI = FindFirstObjectByType<FeaturesWardrobe.WardrobeUI>();
-        if (wardrobeUI != null && wardrobeUI.gameObject.activeSelf)
-            return true;
-
-        return false;
-    }
-
     private void OnInteractPressed(InputAction.CallbackContext context)
     {
         TriggerInteract();
     }
 
-    private IEnumerator ExecuteDash()
-    {
-        // Kunci input / cooldown / syarat dash
-        if (isInputLocked || isDashing || Time.time < lastDashTime + dashCooldown || inputVector.magnitude < 0.1f)
-            yield break;
-
-        isDashing = true;
-        lastDashTime = Time.time;
-
-        // Pemicu animasi dash (Misalnya menggunakan parameter "Sliding" di template Anda)
-        if (animator != null) animator.SetBool("Sliding", true);
-
-        // Arah dash berdasarkan orientasi karakter saat ini
-        Vector3 dashDirection = transform.forward;
-        float startTime = Time.time;
-
-        while (Time.time < startTime + dashDuration)
-        {
-            // Mendorong karakter ke depan dengan kecepatan dash
-            rb.linearVelocity = dashDirection * dashSpeed;
-            rb.angularVelocity = Vector3.zero;
-            yield return null; // Tunggu ke frame berikutnya
-        }
-
-        // Akhiri dash
-        if (animator != null) animator.SetBool("Sliding", false);
-        isDashing = false;
-    }
 
     private void CheckGrounded()
     {
+        // Jika karakter sedang bergerak ke atas karena dorongan lompat, abaikan raycast tanah
+        if (rb != null && rb.linearVelocity.y > 0.1f)
+        {
+            isGrounded = false;
+            return;
+        }
+
         // Menembakkan sinar ke bawah (sedikit dari atas kaki) untuk mengecek tanah
-        // Jarak sinar 0.2f. Sesuaikan jika kapsul Anda lebih tinggi/rendah.
+        // Jarak sinar 0.25f.
         Vector3 origin = transform.position + (Vector3.up * 0.1f);
         isGrounded = Physics.Raycast(origin, Vector3.down, 0.25f);
     }

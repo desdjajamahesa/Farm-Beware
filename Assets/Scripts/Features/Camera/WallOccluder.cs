@@ -62,13 +62,15 @@ private void Initialize()
             // Load the transparent wall material from assets
             var transparentMat = Resources.Load<Material>("Materials/Walls/Mat_Wall_Transparent");
             
-            // If not in Resources, try to find it in the project
+            // If not in Resources, try to find it in the project (Editor only)
             if (transparentMat == null) {
+#if UNITY_EDITOR
                 var guids = UnityEditor.AssetDatabase.FindAssets("Mat_Wall_Transparent t:Material");
                 if (guids.Length > 0) {
                     string path = UnityEditor.AssetDatabase.GUIDToAssetPath(guids[0]);
                     transparentMat = UnityEditor.AssetDatabase.LoadAssetAtPath<Material>(path);
                 }
+#endif
             }
 
             // If still not found, create a runtime instance from original

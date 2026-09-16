@@ -122,10 +122,7 @@ public class SinkManager : MonoBehaviour
         Cursor.visible = false;
         Cursor.lockState = CursorLockMode.Locked;
 
-        // Use processor's cached PlayerControl for reliable unlock
-        PlayerControl player = processor?.CachedPlayerControl;
-        if (player == null)
-            player = FindFirstObjectByType<PlayerControl>();
+        var player = FindFirstObjectByType<PlayerControl>();
         if (player != null)
             player.isInputLocked = false;
 

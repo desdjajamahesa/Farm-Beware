@@ -113,20 +113,26 @@ public class InventorySlotUI : MonoBehaviour, IDropHandler, IPointerClickHandler
         GameObject qtyGO = new GameObject("Quantity", typeof(RectTransform));
         qtyGO.transform.SetParent(transform, false);
         RectTransform qtyRT = qtyGO.GetComponent<RectTransform>();
-        // Jangkar ke pojok kanan-bawah dengan sedikit offset agar tidak menabrak padding ikon.
+        // Jangkar ke pojok kanan-bawah
         qtyRT.anchorMin = new Vector2(1, 0);
         qtyRT.anchorMax = new Vector2(1, 0);
-        qtyRT.pivot = new Vector2(1, 1);
-        qtyRT.anchoredPosition = new Vector2(-2, 2);
-        qtyRT.sizeDelta = new Vector2(22, 16);
+        qtyRT.pivot = new Vector2(1, 0);
+        qtyRT.anchoredPosition = new Vector2(-6, 6);
+        qtyRT.sizeDelta = new Vector2(45, 26);
 
         Text qText = qtyGO.AddComponent<Text>();
         qText.font = GetFont();
-        qText.fontSize = 14;
+        qText.fontSize = 20;
+        qText.fontStyle = FontStyle.Bold;
         qText.color = Color.white;
-        qText.alignment = TextAnchor.MiddleRight;
+        qText.alignment = TextAnchor.LowerRight;
         qText.raycastTarget = false;
         qText.text = slot.quantity.ToString();
+
+        var shadow = qtyGO.AddComponent<Shadow>();
+        shadow.effectColor = new Color(0f, 0f, 0f, 0.9f);
+        shadow.effectDistance = new Vector2(1.5f, -1.5f);
+
         quantityText = qText;
     }
 
