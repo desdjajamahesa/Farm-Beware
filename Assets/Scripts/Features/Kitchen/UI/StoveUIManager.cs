@@ -41,25 +41,23 @@ public class StoveUIManager : MonoBehaviour
     [SerializeField] private Color haveEnoughColor = new Color(0.3f, 0.9f, 0.4f, 1f);
     [SerializeField] private Color notEnoughColor = new Color(0.9f, 0.3f, 0.3f, 1f);
 
-    [Header("Stove Reference")]
-    [SerializeField] private GenshinStove stove;
-
     private List<KitchenRecipe> allRecipes;
     private InventoryComponent playerInventory;
     private KitchenRecipe selectedRecipe;
     private bool isCooking = false;
-    private PlayerControl cachedPlayerControl;
     private readonly List<GameObject> spawnedRecipeButtons = new List<GameObject>();
     private readonly List<GameObject> spawnedIngredientRows = new List<GameObject>();
 
+    public static StoveUIManager Instance { get; private set; }
+    public bool IsPanelOpen => panelStove != null && panelStove.activeSelf;
+
     private void Awake()
     {
+        Instance = this;
         if (cookButton != null)
             cookButton.onClick.AddListener(OnCookClicked);
         if (closeButton != null)
             closeButton.onClick.AddListener(OnCloseClicked);
-        if (stove == null)
-            stove = FindFirstObjectByType<GenshinStove>();
     }
 
     /// <summary>Buka panel stove dengan resep dan inventory pemain.</summary>
@@ -79,11 +77,10 @@ public class StoveUIManager : MonoBehaviour
         Cursor.visible = true;
         Cursor.lockState = CursorLockMode.None;
 
-        // Lock player input (cache reference for reliable unlock in Close)
-        if (cachedPlayerControl == null)
-            cachedPlayerControl = FindFirstObjectByType<PlayerControl>();
-        if (cachedPlayerControl != null)
-            cachedPlayerControl.isInputLocked = true;
+        // Lock player input
+        var playerControl = FindFirstObjectByType<PlayerControl>();
+        if (playerControl != null)
+            playerControl.isInputLocked = true;
     }
 
     private void Update()
@@ -92,6 +89,7 @@ public class StoveUIManager : MonoBehaviour
             Keyboard.current != null &&
             Keyboard.current.escapeKey.wasPressedThisFrame)
         {
+            MainMenuController.LastFrameUIPanelClosed = Time.frameCount;
             Close();
         }
     }
@@ -103,7 +101,6 @@ public class StoveUIManager : MonoBehaviour
         {
             StopAllCoroutines();
             isCooking = false;
-            stove?.CancelCooking();
         }
 
         if (panelStove != null)
@@ -116,14 +113,10 @@ public class StoveUIManager : MonoBehaviour
         Cursor.visible = false;
         Cursor.lockState = CursorLockMode.Locked;
 
-        // Unlock player input (use cached ref; fallback to Find if stale)
-        if (cachedPlayerControl == null)
-            cachedPlayerControl = FindFirstObjectByType<PlayerControl>();
-        if (cachedPlayerControl != null)
-        {
-            cachedPlayerControl.isInputLocked = false;
-            cachedPlayerControl = null;
-        }
+        // Unlock player input
+        var playerControl = FindFirstObjectByType<PlayerControl>();
+        if (playerControl != null)
+            playerControl.isInputLocked = false;
     }
 
     private void PopulateRecipeList()
@@ -312,8 +305,6 @@ public class StoveUIManager : MonoBehaviour
 
         if (cookButton != null) cookButton.interactable = false;
 
-        stove?.BeginCooking(duration);
-
         while (elapsed < duration)
         {
             elapsed += Time.deltaTime;
@@ -321,8 +312,6 @@ public class StoveUIManager : MonoBehaviour
             if (cookButtonText != null) cookButtonText.text = $"Memasak... ({remaining}s)";
             yield return null;
         }
-
-        stove?.FinishCooking();
 
         // 3. Tambahkan hasil ke inventory
         playerInventory.AddItem(recipe.output, recipe.outputCount);
@@ -354,6 +343,9 @@ public class StoveUIManager : MonoBehaviour
 
     private void OnDestroy()
     {
+        if (Instance == this)
+            Instance = null;
+
         if (cookButton != null)
             cookButton.onClick.RemoveListener(OnCookClicked);
         if (closeButton != null)

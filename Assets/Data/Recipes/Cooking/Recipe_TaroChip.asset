@@ -1,0 +1,29 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5335ef365cb29a940816d2e56467f4a9, type: 3}
+  m_Name: Recipe_TaroChip
+  m_EditorClassIdentifier: Assembly-CSharp::KitchenRecipe
+  input: {fileID: 0}
+  recipeName: Taro Chip
+  ingredients:
+  - item: {fileID: 11400000, guid: 0b3f64f5cc4e73e4d8acc8ee24d96fda, type: 2}
+    quantity: 1
+  - item: {fileID: 11400000, guid: 633df2dc5d064c743928aafb65fffb6f, type: 2}
+    quantity: 1
+  - item: {fileID: 11400000, guid: 1c6c49817fca65540bf6a914b6a0b007, type: 2}
+    quantity: 1
+  recipeIcon: {fileID: 21300000, guid: 6bf40a7950dda4b47b53087536445837, type: 3}
+  description: 'Crunchy thin taro chips. Quick energy: +5% Stamina & HP Regen for
+    30s. (+10 Hunger, -5 Hydration)'
+  output: {fileID: 11400000, guid: daa1a76fd4feedd4db758568f68793f5, type: 2}
+  outputCount: 2
+  processTime: 3

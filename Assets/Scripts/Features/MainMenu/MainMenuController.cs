@@ -3,9 +3,16 @@ using UnityEngine.UI;
 using UnityEngine.SceneManagement;
 using TMPro;
 using FeaturesCommon;
+using FeaturesWardrobe;
+using UnityEngine.InputSystem;
 
 public class MainMenuController : MonoBehaviour
 {
+    /// <summary>
+    /// Frame counter to prevent ESC from pausing when it was used to close a gameplay UI panel on the same frame.
+    /// </summary>
+    public static int LastFrameUIPanelClosed = -1;
+
     [Header("References")]
     [SerializeField] private GameObject mainMenuPanel;
     [SerializeField] private GameObject settingsPanel;
@@ -49,6 +56,7 @@ public class MainMenuController : MonoBehaviour
 
     private PlayerControl playerControl;
     private bool menuActive = false;
+    private bool hasStartedGame = false;
     private Vector3 titleOriginalPos;
     private Vector3 titleOriginalScale;
     private Camera mainCamera;
@@ -116,6 +124,11 @@ public class MainMenuController : MonoBehaviour
 
     void Update()
     {
+        if (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame)
+        {
+            HandleEscapeKey();
+        }
+
         System.DateTime now = System.DateTime.UtcNow;
         float dt = (float)(now - lastFrameTime).TotalSeconds;
         lastFrameTime = now;
@@ -144,6 +157,123 @@ public class MainMenuController : MonoBehaviour
                 UpdateFadingOut(dt);
                 break;
         }
+    }
+
+    private void HandleEscapeKey()
+    {
+        // If settings panel is open or opening, ESC returns to Main Menu
+        if (currentState == MenuState.SettingsOpen || currentState == MenuState.SettingsOpening)
+        {
+            OnSettingsBackClicked();
+            return;
+        }
+
+        // If in animation transition, ignore ESC
+        if (currentState == MenuState.FadingIn || currentState == MenuState.FadingOut || currentState == MenuState.SettingsClosing)
+        {
+            return;
+        }
+
+        // If Main Menu is currently active
+        if (currentState == MenuState.Active)
+        {
+            if (hasStartedGame)
+            {
+                OnStartClicked();
+            }
+            return;
+        }
+
+        // If Main Menu is Hidden (gameplay active)
+        if (currentState == MenuState.Hidden)
+        {
+            // 1. If a gameplay UI panel was already closed on this exact frame, DO NOT pause!
+            if (Time.frameCount == LastFrameUIPanelClosed)
+            {
+                return;
+            }
+
+            // 2. If any gameplay UI panel is currently open, close it and DO NOT pause!
+            if (TryCloseAnyGameplayPanel())
+            {
+                LastFrameUIPanelClosed = Time.frameCount;
+                return;
+            }
+
+            // 3. If player control input is locked (e.g. cutscene, transition), do not pause
+            if (playerControl == null) playerControl = FindFirstObjectByType<PlayerControl>();
+            if (playerControl != null && playerControl.isInputLocked)
+            {
+                return;
+            }
+
+            ShowMenu(isPause: true);
+        }
+    }
+
+    /// <summary>
+    /// Checks all gameplay UI panels (inventory, storage, kitchen stations, wardrobe, trophy).
+    /// If any is open, closes it and returns true.
+    /// </summary>
+    private bool TryCloseAnyGameplayPanel()
+    {
+        bool closedAny = false;
+
+        // 1. Inventory & Storage (Player Panel, Chest, Refrigerator, Trophy Cabinet)
+        if (InventoryManagerUI.Instance != null && InventoryManagerUI.Instance.IsAnyInventoryUIRelatedOpen())
+        {
+            InventoryManagerUI.Instance.CloseAllUI();
+            closedAny = true;
+        }
+
+        // 2. Kitchen Sink
+        if (KitchenSinkInteractable.Instance != null && KitchenSinkInteractable.Instance.IsPanelOpen)
+        {
+            KitchenSinkInteractable.Instance.ClosePanel();
+            closedAny = true;
+        }
+        else
+        {
+            var sink = FindFirstObjectByType<KitchenSinkInteractable>(FindObjectsInactive.Include);
+            if (sink != null && sink.IsPanelOpen)
+            {
+                sink.ClosePanel();
+                closedAny = true;
+            }
+        }
+
+        // 3. Kitchen Stove
+        if (StoveUIManager.Instance != null && StoveUIManager.Instance.IsPanelOpen)
+        {
+            StoveUIManager.Instance.Close();
+            closedAny = true;
+        }
+        else
+        {
+            var stove = FindFirstObjectByType<StoveUIManager>(FindObjectsInactive.Include);
+            if (stove != null && stove.IsPanelOpen)
+            {
+                stove.Close();
+                closedAny = true;
+            }
+        }
+
+        // 4. Wardrobe Mode
+        if (WardrobeManager.IsInWardrobeMode)
+        {
+            if (WardrobeManager.Instance != null)
+                WardrobeManager.Instance.ExitWardrobeMode();
+            closedAny = true;
+        }
+
+        // 5. Trophy Mode
+        if (TrophySystemManager.Instance != null && TrophySystemManager.Instance.IsInTrophyMode)
+        {
+            TrophySystemManager.Instance.ExitTrophyMode();
+            closedAny = true;
+        }
+
+        return closedAny;
     }
 
     private void UpdateFadingIn(float dt)
@@ -195,10 +325,13 @@ public class MainMenuController : MonoBehaviour
 
         if (t >= 1f)
         {
-            gameObject.SetActive(false);
-            if (FadeManager.Instance != null)
+            SetMenuVisualsActive(false);
+            if (FadeManager.Instance != null && FadeManager.Instance.IsFading)
                 FadeManager.Instance.FadeOut(0.3f);
             LockPlayerInput(false);
+            Time.timeScale = 1f;
+            if (mainCamera != null)
+                mainCamera.transform.position = cameraOriginalPos;
             currentState = MenuState.Hidden;
 
             if (loadSceneOnStart && !string.IsNullOrEmpty(targetSceneName))
@@ -415,17 +548,23 @@ public class MainMenuController : MonoBehaviour
 
     private void SetupAtmosphere()
     {
-        RenderSettings.fog = true;
-        RenderSettings.fogMode = FogMode.ExponentialSquared;
-        RenderSettings.fogDensity = 0.012f;
-        RenderSettings.fogColor = new Color(0.55f, 0.5f, 0.45f, 1f);
-        RenderSettings.ambientIntensity = 0.85f;
+        RenderSettings.fog = false;
+        RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Trilight;
+        RenderSettings.ambientSkyColor = new Color(0.70f, 0.74f, 0.80f, 1.0f);
+        RenderSettings.ambientEquatorColor = new Color(0.55f, 0.52f, 0.48f, 1.0f);
+        RenderSettings.ambientGroundColor = new Color(0.35f, 0.32f, 0.28f, 1.0f);
+        RenderSettings.ambientIntensity = 1.0f;
 
         var dl = GameObject.Find("Directional Light");
         if (dl != null)
         {
             var l = dl.GetComponent<Light>();
-            if (l != null) { l.color = new Color(1f, 0.92f, 0.78f, 1f); l.intensity = 1.1f; }
+            if (l != null)
+            {
+                l.color = new Color(1.0f, 0.95f, 0.88f, 1.0f);
+                l.intensity = 0.95f;
+                l.shadowStrength = 0.55f;
+            }
         }
 
         if (backgroundOverlay != null)
@@ -436,17 +575,23 @@ public class MainMenuController : MonoBehaviour
         }
     }
 
-    public void ShowMenu()
+    public void ShowMenu(bool isPause = false)
     {
         menuActive = true;
         gameObject.SetActive(true);
 
-        if (mainMenuPanel != null) mainMenuPanel.SetActive(true);
-        if (settingsPanel != null) settingsPanel.SetActive(false);
+        Time.timeScale = 0f;
+
+        SetMenuVisualsActive(true);
+        UpdateStartButtonLabel();
 
         LockPlayerInput(true);
         Cursor.visible = true;
         Cursor.lockState = CursorLockMode.None;
+
+        if (mainCamera == null) mainCamera = Camera.main;
+        if (mainCamera != null)
+            cameraOriginalPos = mainCamera.transform.position;
 
         if (menuCanvasGroup != null)
         {
@@ -495,20 +640,44 @@ public class MainMenuController : MonoBehaviour
 
         titleOriginalPos = titleText != null ? titleText.rectTransform.localPosition : Vector3.zero;
         titleOriginalScale = titleText != null ? titleText.rectTransform.localScale : Vector3.one;
+    }
 
-        if (mainCamera != null)
-            cameraOriginalPos = mainCamera.transform.position;
+    private void SetMenuVisualsActive(bool active)
+    {
+        if (menuCanvasGroup != null)
+        {
+            menuCanvasGroup.alpha = active ? 1f : 0f;
+            menuCanvasGroup.blocksRaycasts = active;
+            menuCanvasGroup.interactable = active;
+        }
+
+        if (mainMenuPanel != null) mainMenuPanel.SetActive(active);
+        if (settingsPanel != null) settingsPanel.SetActive(false);
+        if (backgroundOverlay != null) backgroundOverlay.gameObject.SetActive(active);
+        if (titleText != null) titleText.gameObject.SetActive(active);
+    }
+
+    private void UpdateStartButtonLabel()
+    {
+        if (startButton == null) return;
+        var txt = startButton.GetComponentInChildren<TextMeshProUGUI>();
+        if (txt != null)
+        {
+            txt.text = hasStartedGame ? "RESUME" : "START";
+        }
     }
 
     private void OnStartClicked()
     {
         if (!menuActive) return;
+        bool isFirstStart = !hasStartedGame;
+        hasStartedGame = true;
         menuActive = false;
         currentState = MenuState.FadingOut;
         stateTimer = 0f;
-        stateDuration = 0.4f;
+        stateDuration = isFirstStart ? 0.4f : 0.2f;
 
-        if (FadeManager.Instance != null)
+        if (isFirstStart && FadeManager.Instance != null)
             FadeManager.Instance.FadeIn(0.4f);
     }
 

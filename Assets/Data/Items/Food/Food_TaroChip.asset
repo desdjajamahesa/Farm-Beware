@@ -1,0 +1,43 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 117e45cf0891f1140846879fe1eded20, type: 3}
+  m_Name: Food_TaroChip
+  m_EditorClassIdentifier: Assembly-CSharp::FoodItemData
+  itemId: food_taro_chip
+  itemName: Taro Chip (Small)
+  category: 2
+  rarity: 0
+  itemIcon: {fileID: 21300000, guid: 6bf40a7950dda4b47b53087536445837, type: 3}
+  description: 'Crunchy thin taro chips. Quick energy: +5% Stamina & HP Regen for
+    30s. (+10 Hunger, -5 Hydration)'
+  maxStack: 20
+  type: 1
+  buyPrice: 200
+  sellPrice: 120
+  isDirty: 0
+  cleanVariant: {fileID: 0}
+  foodTier: 0
+  foodCategory: 5
+  healAmount: 0
+  hungerRestore: 10
+  hydrationRestore: -5
+  buffEffects:
+  - buffType: 1
+    value: 0.05
+    duration: 30
+    buffName: Quick Energy
+    description: +5% Max Stamina
+  - buffType: 2
+    value: 2
+    duration: 30
+    buffName: Quick Regen
+    description: +2 HP regen per second
