@@ -25,7 +25,7 @@ MonoBehaviour:
   sellPrice: 75
   isDirty: 0
   cleanVariant: {fileID: 0}
-  cropYield: {fileID: 11400000, guid: 7d4ca7d016e327b4f8cea215c54d2ae6, type: 2}
+  cropYield: {fileID: 11400000, guid: b1f5c99a438af924cbe737a1d0476132, type: 2}
   growthDuration: 30
   minYield: 1
   maxYield: 3

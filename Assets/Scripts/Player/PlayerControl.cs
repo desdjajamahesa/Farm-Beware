@@ -406,6 +406,15 @@ public class PlayerControl : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Memanggil animasi menanam secara kontekstual (mis. saat berinteraksi dengan FarmlandTile).
+    /// </summary>
+    public void TriggerPlantAnimation()
+    {
+        if (isPlanting || isAttacking) return;
+        StartCoroutine(RoutinePlantSeed());
+    }
+
     private IEnumerator RoutinePlantSeed()
     {
         isPlanting = true;
