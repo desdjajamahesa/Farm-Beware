@@ -1,0 +1,32 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e447cd2500fd1904792f0338794a0f86, type: 3}
+  m_Name: Seed_SweetPotato
+  m_EditorClassIdentifier: Assembly-CSharp::SeedItemData
+  itemId: seed_sweet_potato
+  itemName: Sweet Potato Seed
+  category: 0
+  rarity: 0
+  itemIcon: {fileID: 21300000, guid: 56350d8d11d96354581adb83a40ca5b2, type: 3}
+  description: Fast-growing sweet potato seed. Associated with nocturnal Tuber Maw
+    monsters.
+  maxStack: 20
+  type: 0
+  buyPrice: 150
+  sellPrice: 75
+  isDirty: 0
+  cleanVariant: {fileID: 0}
+  cropYield: {fileID: 11400000, guid: b1f5c99a438af924cbe737a1d0476132, type: 2}
+  growthDuration: 30
+  minYield: 1
+  maxYield: 3
+  associatedMonster: Tuber Maw

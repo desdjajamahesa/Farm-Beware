@@ -1,0 +1,9 @@
+﻿Foods,Buffs,Hunger/Hyrdation,Resource
+Taro Chip (small),Quick energy: +5% stamina & +5% Hp Regen(30s),+10 Hunger & -5 Hydration,Taro + ?
+Roasted Sweet Potato slice (small),Steady Stamina: +10% Max stamina & 10% Movement speed (30s),+10 Hunger & -8 Hydration,
+Taro Dumpling (small),Warm Belly: +4 Hp regen/tick (10s),+10 Hunger & +5 Hydration,
+Purple Yam Cake (medium),Vitality boost: +10% Max HP (1mins),"+15 Hunger ",
+Sweet Potato Porridge Bowl (medium),Fortify: +5% Max Hp & + 10% Max Stamina (1m30s),+10 Hunger & +15 Hydration,
+Taro Coconut Stew Bowl (large),Powerful: +12% ATK & ATK SPD (2mins),+20 Hunger & +10 Hydration,
+Whole Roasted Sweet Potato Feast (large),Traverler: +20% Movement spd & +10% Stamina Regen (2mins),"+45 Hunger & +10 Hydration ",
+Bottle of Water,literally a bottle of water,+50 Hydration,
