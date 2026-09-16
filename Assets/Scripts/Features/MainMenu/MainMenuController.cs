@@ -525,17 +525,23 @@ public class MainMenuController : MonoBehaviour
 
     private void SetupAtmosphere()
     {
-        RenderSettings.fog = true;
-        RenderSettings.fogMode = FogMode.ExponentialSquared;
-        RenderSettings.fogDensity = 0.012f;
-        RenderSettings.fogColor = new Color(0.55f, 0.5f, 0.45f, 1f);
-        RenderSettings.ambientIntensity = 0.85f;
+        RenderSettings.fog = false;
+        RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Trilight;
+        RenderSettings.ambientSkyColor = new Color(0.70f, 0.74f, 0.80f, 1.0f);
+        RenderSettings.ambientEquatorColor = new Color(0.55f, 0.52f, 0.48f, 1.0f);
+        RenderSettings.ambientGroundColor = new Color(0.35f, 0.32f, 0.28f, 1.0f);
+        RenderSettings.ambientIntensity = 1.0f;
 
         var dl = GameObject.Find("Directional Light");
         if (dl != null)
         {
             var l = dl.GetComponent<Light>();
-            if (l != null) { l.color = new Color(1f, 0.92f, 0.78f, 1f); l.intensity = 1.1f; }
+            if (l != null)
+            {
+                l.color = new Color(1.0f, 0.95f, 0.88f, 1.0f);
+                l.intensity = 0.95f;
+                l.shadowStrength = 0.55f;
+            }
         }
 
         if (backgroundOverlay != null)
