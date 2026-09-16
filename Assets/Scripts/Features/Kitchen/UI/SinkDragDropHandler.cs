@@ -7,7 +7,7 @@ using UnityEngine.UI;
 /// Uses static ghost tracking to prevent orphaned ghost icons
 /// when source slot is destroyed before OnEndDrag fires.
 /// </summary>
-public class SinkDragDropHandler : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHandler, IDropHandler
+public class SinkDragDropHandler : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHandler, IDropHandler, IPointerClickHandler
 {
     public enum SlotType { PlayerInventory, InputSlot, OutputSlot }
 
@@ -108,6 +108,25 @@ public class SinkDragDropHandler : MonoBehaviour, IBeginDragHandler, IDragHandle
         // CRITICAL: Destroy ghost BEFORE any transfer logic
         ForceCleanupGhost();
 
+        // Support dropping DraggableItem (from HUD hotbar or standard inventory) onto InputSlot
+        var draggable = eventData.pointerDrag != null ? eventData.pointerDrag.GetComponent<DraggableItem>() : null;
+        if (draggable != null && draggable.OriginSlot != null)
+        {
+            if (this.slotType == SlotType.InputSlot)
+            {
+                int srcIndex = draggable.OriginSlot.SlotIndex;
+                if (sinkManager != null)
+                {
+                    bool transferred = sinkManager.TransferToInputSlot(srcIndex);
+                    if (transferred)
+                    {
+                        draggable.MarkDropped();
+                        return;
+                    }
+                }
+            }
+        }
+
         // Get the handler from the dragged object directly
         var draggedHandler = eventData.pointerDrag?.GetComponent<SinkDragDropHandler>();
         if (draggedHandler != null)
@@ -150,6 +169,40 @@ public class SinkDragDropHandler : MonoBehaviour, IBeginDragHandler, IDragHandle
         }
 
         dragSource = null;
+    }
+
+    public void OnPointerClick(PointerEventData eventData)
+    {
+        if (eventData.button != PointerEventData.InputButton.Left)
+            return;
+
+        // Ignore clicks that ended a drag operation.
+        if (eventData.dragging)
+            return;
+
+        if (sinkManager == null)
+            return;
+
+        switch (slotType)
+        {
+            case SlotType.OutputSlot:
+                // Click output → transfer clean items to player inventory.
+                sinkManager.TransferFromOutputToPlayer();
+                break;
+
+            case SlotType.InputSlot:
+                // Click input → cancel wash and return dirty items to player.
+                sinkManager.TransferFromInputToPlayer();
+                break;
+
+            case SlotType.PlayerInventory:
+                // Click player slot → send dirty item to washer input.
+                // This is already handled by the Button.onClick on the spawned slot,
+                // but SinkDragDropHandler's IPointerClickHandler fires first.
+                // Delegate to SinkManager to avoid duplicate calls.
+                sinkManager.TransferToInputSlot(inventoryIndex);
+                break;
+        }
     }
 
     private InventorySlot GetSourceSlot()

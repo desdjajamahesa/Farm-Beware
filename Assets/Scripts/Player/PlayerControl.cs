@@ -79,6 +79,8 @@ public class PlayerControl : MonoBehaviour
 
         interactor = GetComponent<PlayerInteractor>();  
         playerInventory = GetComponent<InventoryComponent>();  
+        if (playerInventory != null)
+            playerInventory.HasHotbar = true;
         playerStats = GetComponent<PlayerStats>();
         buffManager = GetComponent<PlayerBuffManager>();
         playerEquipment = GetComponent<PlayerEquipment>();

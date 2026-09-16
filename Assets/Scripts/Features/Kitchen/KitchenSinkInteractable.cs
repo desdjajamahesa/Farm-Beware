@@ -40,8 +40,8 @@ public class KitchenSinkInteractable : KitchenStation, IInteractable
     // ── Public Accessors (for SinkManager UI sync) ──
     public static KitchenSinkInteractable Instance { get; private set; }
     public bool IsPanelOpen => panelSink != null && panelSink.activeSelf;
-    public InventorySlot InputSlot => inputSlot;
-    public InventorySlot OutputSlot => outputSlot;
+    public InventorySlot InputSlot { get { if (inputSlot == null) inputSlot = new InventorySlot(); return inputSlot; } }
+    public InventorySlot OutputSlot { get { if (outputSlot == null) outputSlot = new InventorySlot(); return outputSlot; } }
     public bool IsWashing => isWashing;
     public float WashProgress => washProgress;
     public float WashDurationPerItem => washDurationPerItem;
@@ -52,8 +52,8 @@ public class KitchenSinkInteractable : KitchenStation, IInteractable
         Instance = this;
 
         // Initialize slots
-        inputSlot = new InventorySlot();
-        outputSlot = new InventorySlot();
+        if (inputSlot == null) inputSlot = new InventorySlot();
+        if (outputSlot == null) outputSlot = new InventorySlot();
 
         virtualRecipe = ScriptableObject.CreateInstance<KitchenRecipe>();
         virtualRecipe.name = "VirtualWashRecipe";
@@ -81,19 +81,17 @@ public class KitchenSinkInteractable : KitchenStation, IInteractable
 
         if (item is FoodItemData food && food.isDirty && food.cleanVariant != null)
         {
-            virtualRecipe.input = item;
             virtualRecipe.output = food.cleanVariant;
-            virtualRecipe.processTime = washDurationPerItem;
             virtualRecipe.outputCount = 1;
+            virtualRecipe.processTime = washDurationPerItem;
             return virtualRecipe;
         }
 
         if (item is MaterialItemData mat && mat.isDirty && mat.cleanVariant != null)
         {
-            virtualRecipe.input = item;
             virtualRecipe.output = mat.cleanVariant;
-            virtualRecipe.processTime = washDurationPerItem;
             virtualRecipe.outputCount = 1;
+            virtualRecipe.processTime = washDurationPerItem;
             return virtualRecipe;
         }
 
@@ -102,10 +100,14 @@ public class KitchenSinkInteractable : KitchenStation, IInteractable
 
     public void Interact(GameObject interactor)
     {
-        if (panelSink == null)
+        if (panelSink == null) return;
+
+        var sinkMgr = panelSink.GetComponent<SinkManager>();
+        if (sinkMgr != null && interactor != null)
         {
-            Debug.LogWarning("[KitchenSinkInteractable] Panel_Sink tidak ditemukan!");
-            return;
+            var pInv = interactor.GetComponent<InventoryComponent>();
+            if (pInv != null)
+                sinkMgr.SetPlayerInventory(pInv);
         }
 
         panelSink.SetActive(true);
@@ -113,12 +115,11 @@ public class KitchenSinkInteractable : KitchenStation, IInteractable
         Cursor.visible = true;
         Cursor.lockState = CursorLockMode.None;
 
-        var playerControl = interactor.GetComponent<PlayerControl>();
+        var playerControl = interactor != null ? interactor.GetComponent<PlayerControl>() : null;
         if (playerControl != null)
             playerControl.isInputLocked = true;
 
         // Sync UI to current processor state
-        var sinkMgr = panelSink.GetComponent<SinkManager>();
         if (sinkMgr != null)
             sinkMgr.SyncToProcessor();
     }

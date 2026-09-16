@@ -11,11 +11,22 @@ public class InventoryComponent : MonoBehaviour
     [Tooltip("Tidak mengizinkan item tipe Trophy masuk ke inventory ini (Contoh: inventory Player).")]
     [SerializeField] private bool blockTrophyItems;
 
+    [Tooltip("Jika true, 4 slot pertama adalah hotbar. Penambahan item akan memprioritaskan slot inventori utama (indeks >= 4) sebelum hotbar (indeks 0..3).")]
+    [SerializeField] private bool hasHotbar = false;
+
+    public bool HasHotbar { get => hasHotbar; set => hasHotbar = value; }
+
     private void Awake()
     {
         if (slots == null || slots.Count == 0)
         {
             ResetInventory(maxCapacity);
+        }
+
+        // Auto-detect player inventory agar hasHotbar aktif otomatis tanpa perlu konfigurasi inspector manual
+        if (CompareTag("Player") || GetComponent<PlayerControl>() != null || blockTrophyItems)
+        {
+            hasHotbar = true;
         }
     }
 
@@ -108,41 +119,107 @@ public class InventoryComponent : MonoBehaviour
             slots.Add(new InventorySlot());
     }
 
-    public bool AddItem(ItemData item, int amount)
+    /// <summary>
+    /// Menambahkan item ke inventory.
+    /// Bila hasHotbar bernilai true (mis. player), item akan dimasukkan ke slot inventori utama (indeks 4+) terlebih dahulu,
+    /// dan hanya akan mengisi hotbar (indeks 0..3) jika slot utama sudah penuh.
+    /// Mengembalikan jumlah item yang BERHASIL ditambahkan.
+    /// </summary>
+    public int AddItemAmount(ItemData item, int amount)
     {
         if (item == null || amount <= 0)
-            return false;
+            return 0;
 
         // Aturan backend terpusat: trophy/ kategori terlarang tidak boleh masuk.
         if (!CanAcceptItem(item))
-            return false;
+            return 0;
 
         int remaining = amount;
 
-        // 1. Tumpuk ke slot yang sudah punya item yang sama dan belum penuh
-        foreach (InventorySlot slot in slots)
+        if (hasHotbar && slots.Count > 4)
         {
-            if (remaining <= 0) break;
-
-            if (!slot.IsEmpty && slot.item == item)
+            // 1a. Tumpuk ke slot inventori utama (indeks >= 4) yang sudah berisi item sama
+            for (int i = 4; i < slots.Count && remaining > 0; i++)
             {
-                int space = item.maxStack - slot.quantity;
-                int toAdd = Mathf.Min(space, remaining);
-                if (toAdd > 0)
+                InventorySlot slot = slots[i];
+                if (!slot.IsEmpty && slot.item == item)
                 {
-                    slot.quantity += toAdd;
+                    int space = item.maxStack - slot.quantity;
+                    int toAdd = Mathf.Min(space, remaining);
+                    if (toAdd > 0)
+                    {
+                        slot.quantity += toAdd;
+                        remaining -= toAdd;
+                    }
+                }
+            }
+
+            // 1b. Isi ke slot inventori utama (indeks >= 4) yang masih kosong
+            for (int i = 4; i < slots.Count && remaining > 0; i++)
+            {
+                InventorySlot slot = slots[i];
+                if (slot.IsEmpty)
+                {
+                    int toAdd = Mathf.Min(item.maxStack, remaining);
+                    slot.item = item;
+                    slot.quantity = toAdd;
+                    remaining -= toAdd;
+                }
+            }
+
+            // 2a. Jika slot utama penuh dan masih ada sisa, tumpuk ke slot hotbar (indeks 0..3) yang berisi item sama
+            int hotbarEnd = Mathf.Min(4, slots.Count);
+            for (int i = 0; i < hotbarEnd && remaining > 0; i++)
+            {
+                InventorySlot slot = slots[i];
+                if (!slot.IsEmpty && slot.item == item)
+                {
+                    int space = item.maxStack - slot.quantity;
+                    int toAdd = Mathf.Min(space, remaining);
+                    if (toAdd > 0)
+                    {
+                        slot.quantity += toAdd;
+                        remaining -= toAdd;
+                    }
+                }
+            }
+
+            // 2b. Jika masih ada sisa, isi ke slot hotbar (indeks 0..3) yang kosong
+            for (int i = 0; i < hotbarEnd && remaining > 0; i++)
+            {
+                InventorySlot slot = slots[i];
+                if (slot.IsEmpty)
+                {
+                    int toAdd = Mathf.Min(item.maxStack, remaining);
+                    slot.item = item;
+                    slot.quantity = toAdd;
                     remaining -= toAdd;
                 }
             }
         }
-
-        // 2. Isi ke slot kosong bila masih ada sisa.
-        if (remaining > 0)
+        else
         {
-            foreach (InventorySlot slot in slots)
+            // Default inventory tanpa hotbar (mis. Chest, Storage, Lemari, dll.):
+            // 1. Tumpuk ke slot yang sudah punya item yang sama dan belum penuh
+            for (int i = 0; i < slots.Count && remaining > 0; i++)
             {
-                if (remaining <= 0) break;
+                InventorySlot slot = slots[i];
+                if (!slot.IsEmpty && slot.item == item)
+                {
+                    int space = item.maxStack - slot.quantity;
+                    int toAdd = Mathf.Min(space, remaining);
+                    if (toAdd > 0)
+                    {
+                        slot.quantity += toAdd;
+                        remaining -= toAdd;
+                    }
+                }
+            }
 
+            // 2. Isi ke slot kosong bila masih ada sisa.
+            for (int i = 0; i < slots.Count && remaining > 0; i++)
+            {
+                InventorySlot slot = slots[i];
                 if (slot.IsEmpty)
                 {
                     int toAdd = Mathf.Min(item.maxStack, remaining);
@@ -153,10 +230,17 @@ public class InventoryComponent : MonoBehaviour
             }
         }
 
-        if (remaining == 0)
+        int added = amount - remaining;
+        if (added > 0)
             OnInventoryChanged?.Invoke();
 
-        return remaining == 0;
+        return added;
+    }
+
+    public bool AddItem(ItemData item, int amount)
+    {
+        int added = AddItemAmount(item, amount);
+        return added == amount;
     }
 
     public bool RemoveItem(ItemData item, int amount)
@@ -206,22 +290,19 @@ public class InventoryComponent : MonoBehaviour
         if (amountToMove <= 0)
             return;
 
-        // Coba tambah dulu ke inventori target. Jika gagal penuh, batalkan.
-        if (!targetInventory.AddItem(item, amountToMove))
+        int added = targetInventory.AddItemAmount(item, amountToMove);
+        if (added <= 0)
             return;
 
-        RemoveItem(item, amountToMove);
-
-        // Jamin kedua inventori (sumber & target) memberi tahu UI untuk refresh.
-        targetInventory.OnInventoryChanged?.Invoke();
+        RemoveItem(item, added);
         OnInventoryChanged?.Invoke();
     }
 
     /// <summary>
-    /// Overload berbasis INDEKS: pindahkan SELURUH isi slot [sourceIndex] pada inventory ini
-    /// ke targetInventory. Dipakai sebagai backend command oleh TrophySystemManager
-    /// (Rack -> Cabinet) dan alur data-driven lain. Bila target penuh/tidak muat,
-    /// transaksi dibatalkan total (tidak ada isi slot yang dihapus).
+    /// Overload berbasis INDEKS: pindahkan isi slot [sourceIndex] pada inventory ini
+    /// ke targetInventory. Bila target inventory memiliki hotbar (mis. Player), item akan
+    /// masuk ke slot inventori utama (4+) terlebih dahulu, baru ke hotbar (0-3).
+    /// Mengurangi atau mengosongkan slot sumber sesuai jumlah item yang berhasil ditransfer.
     /// </summary>
     /// <param name="targetInventory">Inventori tujuan transfer.</param>
     /// <param name="sourceIndex">Indeks slot sumber pada inventory ini.</param>
@@ -237,15 +318,17 @@ public class InventoryComponent : MonoBehaviour
         if (source == null || source.IsEmpty || source.item == null)
             return;
 
-        // Coba tambahkan seluruh isi slot ke target dulu; bila gagal (penuh) batal total.
-        if (!targetInventory.AddItem(source.item, source.quantity))
+        int added = targetInventory.AddItemAmount(source.item, source.quantity);
+        if (added <= 0)
             return;
 
-        // Transaksi berhasil: kosongkan slot sumber.
-        source.item = null;
-        source.quantity = 0;
+        source.quantity -= added;
+        if (source.quantity <= 0)
+        {
+            source.item = null;
+            source.quantity = 0;
+        }
 
-        // AddItem sudah otomatis me-refresh target; sumber wajib di-refresh di sini.
         OnInventoryChanged?.Invoke();
     }
 

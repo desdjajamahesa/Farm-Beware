@@ -150,7 +150,25 @@ public class InventorySlotUI : MonoBehaviour, IDropHandler, IPointerClickHandler
         DraggableItem dragItem = eventData.pointerDrag != null
             ? eventData.pointerDrag.GetComponent<DraggableItem>()
             : null;
-        if (dragItem == null) return;
+        if (dragItem == null)
+        {
+            // Support dropping from Sink (OutputSlot clean item or InputSlot returned item)
+            var sinkHandler = eventData.pointerDrag != null ? eventData.pointerDrag.GetComponent<SinkDragDropHandler>() : null;
+            if (sinkHandler != null && sinkHandler.sinkManager != null)
+            {
+                if (sinkHandler.slotType == SinkDragDropHandler.SlotType.OutputSlot)
+                {
+                    sinkHandler.sinkManager.TransferFromOutputToPlayer(this.SlotIndex);
+                    return;
+                }
+                else if (sinkHandler.slotType == SinkDragDropHandler.SlotType.InputSlot)
+                {
+                    sinkHandler.sinkManager.TransferFromInputToPlayer(this.SlotIndex);
+                    return;
+                }
+            }
+            return;
+        }
 
         InventorySlotUI originSlot = dragItem.OriginSlot;
         if (originSlot == null || manager == null || ownerInventory == null)
@@ -174,14 +192,28 @@ public class InventorySlotUI : MonoBehaviour, IDropHandler, IPointerClickHandler
 
     public void OnPointerClick(PointerEventData eventData)
     {
-        // Gunakan item dengan DOUBLE-CLICK tombol kiri.
-        if (eventData.button != PointerEventData.InputButton.Left || eventData.clickCount != 2)
+        if (eventData.button != PointerEventData.InputButton.Left)
             return;
 
-        // Hanya item di inventory Player yang bisa digunakan; item di Storage tidak.
-        if (ownerInventory != null && manager != null && ownerInventory == manager.playerInventory)
+        // Ignore clicks that ended a drag operation.
+        if (eventData.dragging)
+            return;
+
+        // DOUBLE-CLICK: use the item (only for player inventory items).
+        if (eventData.clickCount >= 2)
         {
-            ownerInventory.UseItem(SlotIndex);
+            if (ownerInventory != null && manager != null && ownerInventory == manager.playerInventory)
+            {
+                ownerInventory.UseItem(SlotIndex);
+            }
+            return;
+        }
+
+        // SINGLE-CLICK: quick transfer to the other open inventory.
+        // Only works when a secondary inventory panel is open (chest, kitchen sink, etc.).
+        if (manager != null && manager.IsAnyInventoryUIRelatedOpen())
+        {
+            manager.TryQuickTransfer(ownerInventory, SlotIndex);
         }
     }
 

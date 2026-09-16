@@ -126,6 +126,7 @@ public class InventoryManagerUI : MonoBehaviour
 
         if (playerInventory != null)
         {
+            playerInventory.HasHotbar = true;
             playerInventory.OnInventoryChanged += OnInventoryChanged;
             playerInventory.OnHotbarSelected += OnHotbarSelected;
             playerTransform = playerInventory.transform;
@@ -149,7 +150,7 @@ public class InventoryManagerUI : MonoBehaviour
     }
 
     /// <summary>
-    /// Returns true if any inventory, storage, refrigerator, or trophy panel is open.
+    /// Returns true if any inventory, storage, refrigerator, trophy, or kitchen sink panel is open.
     /// </summary>
     public bool IsAnyInventoryUIRelatedOpen()
     {
@@ -158,7 +159,16 @@ public class InventoryManagerUI : MonoBehaviour
                (storagePanel != null && storagePanel.activeSelf) ||
                (refrigeratorPanel != null && refrigeratorPanel.activeSelf) ||
                (trophyPanel != null && trophyPanel.activeSelf) ||
-               isTrophyCabinetMode;
+               isTrophyCabinetMode ||
+               IsKitchenSinkOpen();
+    }
+
+    public bool IsKitchenSinkOpen()
+    {
+        var sink = KitchenSinkInteractable.Instance;
+        if (sink != null && sink.IsPanelOpen) return true;
+        var sinkMgr = FindFirstObjectByType<SinkManager>();
+        return sinkMgr != null && sinkMgr.gameObject.activeInHierarchy;
     }
 
     void Update()
@@ -382,7 +392,7 @@ if (customPanel != null)
             }
 
         if (playerHotbarContainer != null)
-            playerHotbarContainer.gameObject.SetActive(false);
+            playerHotbarContainer.gameObject.SetActive(true);
 
         if (itemDetailsContainer != null)
             itemDetailsContainer.SetActive(true);
@@ -635,6 +645,70 @@ if (customPanel != null)
     {
         if (owner == null) return;
         owner.SwapSlots(sourceIndex, destinationIndex);
+    }
+
+    /// <summary>
+    /// Single-click quick transfer: moves the entire stack from the clicked slot
+    /// to the "other" inventory. If clicked from storage → player, or player → storage.
+    /// Returns true if transfer happened.
+    /// </summary>
+    public bool TryQuickTransfer(InventoryComponent slotOwner, int slotIndex)
+    {
+        if (slotOwner == null || playerInventory == null)
+            return false;
+
+        // Determine which inventory to transfer TO.
+        InventoryComponent targetInventory = null;
+
+        if (slotOwner == playerInventory)
+        {
+            // Jika UI Kitchen Sink sedang terbuka, transfer langsung ke slot input wastafel
+            if (IsKitchenSinkOpen())
+            {
+                var sinkMgr = FindFirstObjectByType<SinkManager>();
+                if (sinkMgr != null)
+                {
+                    return sinkMgr.TransferToInputSlot(slotIndex);
+                }
+            }
+
+            // Clicked a player slot → transfer to storage (if open).
+            targetInventory = currentStorageInventory;
+
+            // Trophy cabinet mode: player panel shows cabinet inventory, not player.
+            // In that mode, left panel owner == cabinetInventory, not playerInventory.
+            // So this branch means we truly clicked Player inventory → send to storage.
+        }
+        else if (slotOwner == currentStorageInventory)
+        {
+            // Clicked a storage slot → transfer to player.
+            targetInventory = playerInventory;
+
+            // In trophy cabinet mode, left is cabinetInventory. If rack is storage,
+            // clicking rack slot sends to cabinetInventory (displayed on left).
+            if (isTrophyCabinetMode && cabinetInventory != null)
+                targetInventory = cabinetInventory;
+        }
+        else if (isTrophyCabinetMode && slotOwner == cabinetInventory)
+        {
+            // Clicked cabinet (left panel) → transfer to rack (storage, right panel).
+            targetInventory = currentStorageInventory;
+        }
+
+        if (targetInventory == null)
+            return false;
+
+        // Validate the slot has an item.
+        if (slotIndex < 0 || slotIndex >= slotOwner.slots.Count)
+            return false;
+
+        InventorySlot slot = slotOwner.slots[slotIndex];
+        if (slot == null || slot.IsEmpty || slot.item == null)
+            return false;
+
+        // Use TransferItemTo (index overload) which moves the entire stack.
+        slotOwner.TransferItemTo(targetInventory, slotIndex);
+        return true;
     }
 
     public void UpdateUI()

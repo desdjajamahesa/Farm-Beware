@@ -74,31 +74,64 @@ public class SinkManager : MonoBehaviour
         }
     }
 
-    private void OnEnable()
+    public void SetPlayerInventory(InventoryComponent inv)
     {
-        // Resolve player inventory
-        if (playerInventory == null)
+        if (inv == null) return;
+        playerInventory = inv;
+        playerInventory.HasHotbar = true;
+    }
+
+    public void EnsurePlayerInventoryRef()
+    {
+        if (playerInventory != null)
         {
-            if (InventoryManagerUI.Instance != null)
-                playerInventory = InventoryManagerUI.Instance.playerInventory;
-            if (playerInventory == null)
-            {
-                var player = GameObject.Find("Player");
-                if (player != null)
-                    playerInventory = player.GetComponent<InventoryComponent>();
-            }
+            playerInventory.HasHotbar = true;
+            return;
         }
 
-        // Wire InputSlot click → TransferFromInputToPlayer
-        var inputSlotBtn = gameObject.GetComponentInChildren<SinkDragDropHandler>(true);
-        if (inputSlotBtn != null && inputSlotBtn.slotType == SinkDragDropHandler.SlotType.InputSlot)
+        if (InventoryManagerUI.Instance != null && InventoryManagerUI.Instance.playerInventory != null)
         {
-            var btn = inputSlotBtn.GetComponent<Button>();
-            if (btn != null)
-            {
-                btn.onClick.RemoveAllListeners();
-                btn.onClick.AddListener(() => TransferFromInputToPlayer());
-            }
+            playerInventory = InventoryManagerUI.Instance.playerInventory;
+            playerInventory.HasHotbar = true;
+            return;
+        }
+
+        var pc = FindFirstObjectByType<PlayerControl>();
+        if (pc != null)
+        {
+            playerInventory = pc.GetComponent<InventoryComponent>();
+            if (playerInventory != null)
+                playerInventory.HasHotbar = true;
+            return;
+        }
+
+        var p = GameObject.Find("Player");
+        if (p != null)
+        {
+            playerInventory = p.GetComponent<InventoryComponent>();
+            if (playerInventory != null)
+                playerInventory.HasHotbar = true;
+        }
+    }
+
+    private void OnEnable()
+    {
+        EnsurePlayerInventoryRef();
+
+        if (playerInventory != null)
+        {
+            playerInventory.OnInventoryChanged -= OnPlayerInventoryChanged;
+            playerInventory.OnInventoryChanged += OnPlayerInventoryChanged;
+        }
+
+        // Click-to-transfer is now handled by SinkDragDropHandler.OnPointerClick
+        // on each slot (InputSlot, OutputSlot, PlayerInventory). Ensure all
+        // SinkDragDropHandler children have their sinkManager reference set.
+        var handlers = gameObject.GetComponentsInChildren<SinkDragDropHandler>(true);
+        foreach (var h in handlers)
+        {
+            if (h.sinkManager == null)
+                h.sinkManager = this;
         }
 
         PopulatePlayerInventory();
@@ -107,8 +140,17 @@ public class SinkManager : MonoBehaviour
 
     private void OnDisable()
     {
+        if (playerInventory != null)
+        {
+            playerInventory.OnInventoryChanged -= OnPlayerInventoryChanged;
+        }
         ClearSpawnedSlots();
         // NOTE: Washing does NOT stop here. Processor keeps running on Kitchen_Sink.
+    }
+
+    private void OnPlayerInventoryChanged()
+    {
+        PopulatePlayerInventory();
     }
 
     /// <summary>
@@ -119,8 +161,8 @@ public class SinkManager : MonoBehaviour
     {
         // NOTE: No StopWashing() call. Processor keeps running.
 
-        Cursor.visible = false;
-        Cursor.lockState = CursorLockMode.Locked;
+        Cursor.visible = true;
+        Cursor.lockState = CursorLockMode.None;
 
         var player = FindFirstObjectByType<PlayerControl>();
         if (player != null)
@@ -198,7 +240,9 @@ public class SinkManager : MonoBehaviour
         {
             for (int i = playerInventoryGrid.childCount - 1; i >= 0; i--)
             {
-                Destroy(playerInventoryGrid.GetChild(i).gameObject);
+                var child = playerInventoryGrid.GetChild(i).gameObject;
+                if (Application.isPlaying) Destroy(child);
+                else DestroyImmediate(child);
             }
         }
 
@@ -215,7 +259,11 @@ public class SinkManager : MonoBehaviour
     {
         foreach (var go in spawnedSlots)
         {
-            if (go != null) Destroy(go);
+            if (go != null)
+            {
+                if (Application.isPlaying) Destroy(go);
+                else DestroyImmediate(go);
+            }
         }
         spawnedSlots.Clear();
     }
@@ -306,14 +354,26 @@ public class SinkManager : MonoBehaviour
             dirtyTMP.alignment = TextAlignmentOptions.Center;
         }
 
-        // Click handler
-        int capturedIndex = index;
-        var btn = slotGO.GetComponent<Button>();
-        btn.onClick.AddListener(() =>
+        // Hotbar indicator badge for slots 0..3
+        if (index < 4)
         {
-            OnPlayerSlotClicked(capturedIndex);
-            ShowItemDescription(slot.item);
-        });
+            var hbGO = new GameObject("HotbarBadge", typeof(RectTransform), typeof(TextMeshProUGUI));
+            hbGO.transform.SetParent(slotGO.transform, false);
+            var hbRT = hbGO.GetComponent<RectTransform>();
+            hbRT.anchorMin = new Vector2(0f, 0.65f);
+            hbRT.anchorMax = new Vector2(0.45f, 1f);
+            hbRT.sizeDelta = Vector2.zero;
+            var hbTMP = hbGO.GetComponent<TextMeshProUGUI>();
+            hbTMP.text = $"H{index + 1}";
+            hbTMP.fontSize = 12;
+            hbTMP.fontStyle = FontStyles.Bold;
+            hbTMP.color = new Color(0.35f, 0.85f, 1f, 0.95f);
+            hbTMP.alignment = TextAlignmentOptions.TopLeft;
+        }
+
+        // Click handler — handled by SinkDragDropHandler.OnPointerClick (IPointerClickHandler).
+        // Button component kept for visual feedback (highlight/press states) but no onClick.
+        int capturedIndex = index;
 
         // Hover handlers for description
         var entry = new UnityEngine.EventSystems.EventTrigger.Entry();
@@ -354,42 +414,15 @@ public class SinkManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Add item to main inventory ONLY (slots >= 4), avoiding hotbar slots (0-3).
+    /// <summary>
+    /// Add item to player inventory, prioritizing main inventory slots (4+) before hotbar (0-3).
     /// Returns true if all items were added.
     /// </summary>
     private bool AddItemToMainInventory(ItemData item, int quantity)
     {
         if (playerInventory == null || item == null) return false;
-
-        int remaining = quantity;
-
-        // First pass: try to stack into existing same-item slots (index >= 4)
-        for (int i = 4; i < playerInventory.slots.Count && remaining > 0; i++)
-        {
-            InventorySlot slot = playerInventory.slots[i];
-            if (!slot.IsEmpty && slot.item == item && slot.quantity < item.maxStack)
-            {
-                int canAdd = item.maxStack - slot.quantity;
-                int toAdd = Mathf.Min(remaining, canAdd);
-                slot.quantity += toAdd;
-                remaining -= toAdd;
-            }
-        }
-
-        // Second pass: fill empty slots (index >= 4)
-        for (int i = 4; i < playerInventory.slots.Count && remaining > 0; i++)
-        {
-            InventorySlot slot = playerInventory.slots[i];
-            if (slot.IsEmpty)
-            {
-                slot.item = item;
-                int toAdd = Mathf.Min(remaining, item.maxStack);
-                slot.quantity = toAdd;
-                remaining -= toAdd;
-            }
-        }
-
-        return remaining == 0;
+        playerInventory.HasHotbar = true;
+        return playerInventory.AddItem(item, quantity);
     }
 
     // ═══════════════════════════════════════════════════════
@@ -423,12 +456,42 @@ public class SinkManager : MonoBehaviour
         InventorySlot slotA = playerInventory.slots[indexA];
         InventorySlot slotB = playerInventory.slots[indexB];
 
-        ItemData tempItem = slotA.item;
-        int tempQty = slotA.quantity;
-        slotA.item = slotB.item;
-        slotA.quantity = slotB.quantity;
-        slotB.item = tempItem;
-        slotB.quantity = tempQty;
+        // Case 1: Target is empty → move A to B
+        if (slotB.IsEmpty)
+        {
+            slotB.item = slotA.item;
+            slotB.quantity = slotA.quantity;
+            slotA.item = null;
+            slotA.quantity = 0;
+        }
+        // Case 2: Same item → merge/stack (combine quantities up to maxStack)
+        else if (!slotA.IsEmpty && slotA.item == slotB.item)
+        {
+            int maxStack = slotB.item.maxStack;
+            int space = maxStack - slotB.quantity;
+            if (space > 0)
+            {
+                int toMove = Mathf.Min(space, slotA.quantity);
+                slotB.quantity += toMove;
+                slotA.quantity -= toMove;
+                if (slotA.quantity <= 0)
+                {
+                    slotA.item = null;
+                    slotA.quantity = 0;
+                }
+            }
+            // If no space (target full), do nothing — no swap needed for same items
+        }
+        // Case 3: Different items → swap
+        else
+        {
+            ItemData tempItem = slotA.item;
+            int tempQty = slotA.quantity;
+            slotA.item = slotB.item;
+            slotA.quantity = slotB.quantity;
+            slotB.item = tempItem;
+            slotB.quantity = tempQty;
+        }
 
         PopulatePlayerInventory();
         RefreshSlotVisuals();
@@ -469,11 +532,15 @@ public class SinkManager : MonoBehaviour
     /// </summary>
     public bool TransferToInputSlot(int playerSlotIndex)
     {
+        EnsurePlayerInventoryRef();
+        if (processor == null)
+            processor = FindFirstObjectByType<KitchenSinkInteractable>();
         if (processor == null || playerInventory == null) return false;
         if (playerSlotIndex < 0 || playerSlotIndex >= playerInventory.slots.Count) return false;
 
         InventorySlot playerSlot = playerInventory.slots[playerSlotIndex];
         InventorySlot inputSlot = processor.InputSlot;
+        if (playerSlot == null || inputSlot == null) return false;
 
         ItemData itemToMove = playerSlot.item;
         int amountToMove = playerSlot.quantity;
@@ -511,13 +578,7 @@ public class SinkManager : MonoBehaviour
             inputSlot.quantity += amountToMove;
         }
 
-        playerInventory.RemoveItem(itemToMove, amountToMove);
-
-        if (playerSlot.quantity <= 0)
-        {
-            playerSlot.item = null;
-            playerSlot.quantity = 0;
-        }
+        playerInventory.RemoveFromSlot(playerSlotIndex, amountToMove);
 
         PopulatePlayerInventory();
         RefreshSlotVisuals();
@@ -563,16 +624,25 @@ public class SinkManager : MonoBehaviour
 
         if (qty > 0)
         {
-            bool added = AddItemToMainInventory(cleanItem, qty);
-            if (!added)
+            playerInventory.HasHotbar = true;
+            int added = playerInventory.AddItemAmount(cleanItem, qty);
+            if (added <= 0)
             {
                 UpdateStatus("Inventori penuh!");
                 return false;
             }
+            outputSlot.quantity -= added;
+            if (outputSlot.quantity <= 0)
+            {
+                outputSlot.item = null;
+                outputSlot.quantity = 0;
+            }
         }
-
-        outputSlot.item = null;
-        outputSlot.quantity = 0;
+        else
+        {
+            outputSlot.item = null;
+            outputSlot.quantity = 0;
+        }
 
         PopulatePlayerInventory();
         RefreshSlotVisuals();
@@ -620,16 +690,25 @@ public class SinkManager : MonoBehaviour
 
         if (qty > 0)
         {
-            bool added = AddItemToMainInventory(itemToMove, qty);
-            if (!added)
+            playerInventory.HasHotbar = true;
+            int added = playerInventory.AddItemAmount(itemToMove, qty);
+            if (added <= 0)
             {
                 UpdateStatus("Inventori penuh! Tidak bisa mengembalikan item.");
                 return false;
             }
+            inputSlot.quantity -= added;
+            if (inputSlot.quantity <= 0)
+            {
+                inputSlot.item = null;
+                inputSlot.quantity = 0;
+            }
         }
-
-        inputSlot.item = null;
-        inputSlot.quantity = 0;
+        else
+        {
+            inputSlot.item = null;
+            inputSlot.quantity = 0;
+        }
 
         PopulatePlayerInventory();
         RefreshSlotVisuals();
