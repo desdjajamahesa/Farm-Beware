@@ -14,9 +14,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::FoodItemData
   itemId: crop_sweet_potato_dirty
   itemName: Sweet Potato (Dirty)
-  category: 1
+  category: 2
   rarity: 0
-  itemIcon: {fileID: 0}
+  itemIcon: {fileID: 21300000, guid: a654020b401582f4abf3f188f95d7fb9, type: 3}
   description: Ubi jalar kotor berlumpur yang baru dipanen dari ladang. Cuci di wastafel
     dapur sebelum dimasak.
   maxStack: 20

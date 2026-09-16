@@ -16,7 +16,7 @@ MonoBehaviour:
   itemName: Cooking Oil
   category: 3
   rarity: 0
-  itemIcon: {fileID: 0}
+  itemIcon: {fileID: 21300000, guid: 2c770fcfc2c5a894aac5df357dd2b5bb, type: 3}
   description: Pure cooking oil. Essential for frying chips and roasting crops.
   maxStack: 20
   type: 0

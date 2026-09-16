@@ -16,7 +16,7 @@ MonoBehaviour:
   itemName: Sweet Potato Seed
   category: 0
   rarity: 0
-  itemIcon: {fileID: 0}
+  itemIcon: {fileID: 21300000, guid: aa7f23f2d573d9a4ea13a174416ea2ee, type: 3}
   description: Fast-growing sweet potato seed. Associated with nocturnal Tuber Maw
     monsters.
   maxStack: 20

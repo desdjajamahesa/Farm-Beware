@@ -14,9 +14,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::FoodItemData
   itemId: crop_taro_dirty
   itemName: Taro (Dirty)
-  category: 1
+  category: 2
   rarity: 0
-  itemIcon: {fileID: 0}
+  itemIcon: {fileID: 21300000, guid: 30218acc4e636d649af511c94a4d336f, type: 3}
   description: Talas kotor berlumpur yang baru dipanen. Cuci di wastafel dapur untuk
     mendapatkan talas bersih siap olah.
   maxStack: 20

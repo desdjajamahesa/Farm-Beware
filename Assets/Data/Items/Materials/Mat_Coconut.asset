@@ -16,7 +16,7 @@ MonoBehaviour:
   itemName: Coconut
   category: 3
   rarity: 0
-  itemIcon: {fileID: 0}
+  itemIcon: {fileID: 21300000, guid: 99148a88723253f459870fa539a15932, type: 3}
   description: Fresh coconut milk and meat. Key ingredient for hearty stews and cakes.
   maxStack: 20
   type: 0

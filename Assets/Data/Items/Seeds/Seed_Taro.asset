@@ -16,7 +16,7 @@ MonoBehaviour:
   itemName: Taro Seed
   category: 0
   rarity: 1
-  itemIcon: {fileID: 0}
+  itemIcon: {fileID: 21300000, guid: 960a457db13cfed41920450d6193dcf4, type: 3}
   description: Medium-growth taro seed. Beware of Taro Brute monsters roaming near
     harvest plots.
   maxStack: 20

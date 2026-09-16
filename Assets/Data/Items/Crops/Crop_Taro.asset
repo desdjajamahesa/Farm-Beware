@@ -16,7 +16,7 @@ MonoBehaviour:
   itemName: Taro
   category: 1
   rarity: 1
-  itemIcon: {fileID: 0}
+  itemIcon: {fileID: 21300000, guid: 960a457db13cfed41920450d6193dcf4, type: 3}
   description: Dense, starchy root crop. High sell value (1200G) or cooked into defensive
     and power feasts.
   maxStack: 20
