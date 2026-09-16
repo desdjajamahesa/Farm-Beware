@@ -1,73 +1,73 @@
 # AGENT.md
 
-Panduan utama bagi Autonomous AI Agent dan developer dalam mengoperasikan, mengembangkan, dan memodifikasi codebase proyek **Farm-Beware**.
+Primary operating guidelines, behavioral constraints, and Git workflow rules for autonomous AI agents working in the **Farm-Beware** codebase.
 
 ---
 
-## 1. Identitas & Konteks Proyek
-- **Nama Proyek**: Farm-Beware
-- **Engine**: Unity 6000.3.20f1 (Unity 6 / 2023 LTS equivalent)
-- **Genre**: 3D Isometric Farming, Cooking, and Night Brawl Game
-- **Bridge Tooling**: Unity MCP (Model Context Protocol). Agent mampu dan wajib memantau hierarki scene, mengeksekusi C# Roslyn in-memory (`execute_code`), dan menarik log Unity console (`read_console`) secara mandiri.
-- **Standar Kode**: Ditujukan untuk standar Senior Engineer dengan prinsip OOP yang ketat, arsitektur data-driven, dan pemisahan murni antara logic dan rendering.
+## 1. Identity & System Context
+- **Project**: Farm-Beware
+- **Engine**: Unity 6000.3.20f1 (Unity 6 / 2023 LTS)
+- **Render Pipeline**: Universal Render Pipeline (URP)
+- **Tooling**: Unity MCP (Model Context Protocol). The agent can and must inspect scene hierarchy, run in-memory Roslyn C# code (`execute_code`), and inspect console logs (`read_console`) autonomously.
+- **Audience**: Senior Engineer. Code must adhere to strict OOP principles, data-driven architecture, and zero-leak event lifecycles. Avoid explaining basic programming concepts.
 
 ---
 
-## 2. Aturan Baku Operasional Agent (Operational Laws)
+## 2. Agent Operational Laws
 
-### 2.1 Kedisiplinan Eksekusi & Token
-- Berikan output yang terstruktur, padat, dan teknis tanpa basa-basi (*no preamble/postamble unnecessary apologies*).
-- Gunakan format link file standar `path/File.cs:LINE` untuk referensi kode.
-- Terapkan *single-concern edits*: jangan lakukan refactor liar (*drive-by refactors*) di luar cakupan tugas.
+### 2.1 Token Discipline & Communication
+- Keep responses dense, technical, and structured without unnecessary conversational filler or apologies.
+- Reference code using standard markdown links: `path/File.cs:LINE`.
+- Apply single-concern edits: avoid unrequested drive-by refactorings.
 
-### 2.2 Larangan Script Setup Editor Otomatis (Non-Negotiable)
-- ❌ **DILARANG KERAS** membuat script otomatisasi sementara seperti `Assets/Editor/*Setup*.cs` atau `[MenuItem("Farm Beware/...")]` untuk memodifikasi scene secara buta.
-- Skrip semacam ini terbukti menyebabkan duplikasi komponen fatal (misalnya menduplikasi controller kamera atau menimpa referensi inspector).
-- ✅ **Gunakan MCP Langsung**: Lakukan inspeksi dan modifikasi scene via MCP tools (`execute_code`, `manage_scene`, `manage_gameobject`, `manage_components`).
+### 2.2 No Editor Setup Scripts (Hard Rule)
+- ❌ **NEVER** write or execute temporary editor wiring scripts (`Assets/Editor/*Setup*.cs` or `[MenuItem("...")]`).
+- These scripts mutate scenes blindly and introduce duplicate controllers or broken serialized references.
+- ✅ **Use Direct MCP Tools**: Inspect and modify scenes exclusively via MCP tools (`execute_code`, `manage_scene`, `manage_gameobject`, `manage_components`).
 
-### 2.3 Protokol Self-Healing (MCP-First)
-- Jangan meminta pengguna menempelkan error console atau screenshot jika bisa diakses melalui tool:
-  1. Pantau error/warning secara real-time via `read_console` (filter: `error`).
-  2. Identifikasi akar masalah (*root cause*) hingga ke baris spesifik.
-  3. Lakukan patch minimalis dan tepat sasaran.
-  4. Trigger refresh Unity via `refresh_unity` (compile: `request`).
-  5. Verifikasi ulang console log hingga 0 error.
+### 2.3 Self-Healing Protocol (MCP-First)
+- Never ask the user to paste console logs or describe the scene:
+  1. Pull active console logs via `read_console` (filter: `error`).
+  2. Identify the exact root cause and file line.
+  3. Apply targeted, minimal patches.
+  4. Trigger domain compilation via `refresh_unity` (compile: `request`).
+  5. Verify that console logs reach 0 errors.
 
-### 2.4 Arsitektur Pemisahan Logika Murni (Pure Logic Law)
-- Pisahkan logika perhitungan murni dari `MonoBehaviour`.
-- Logika murni (matematika grid isometrik, formula buff, kalkulasi inventory, validasi resep, sorting order) wajib berupa plain C# classes / POCO tanpa dependensi Unity lifecycle.
-- `MonoBehaviour` hanya bertindak sebagai **Thin Adapter**: menangani event input, Update/LateUpdate pumping, dan pemanggilan API Unity engine.
+### 2.4 Pure Logic vs. Thin Adapter Separation
+- Decouple pure computation from `MonoBehaviour`.
+- Grid math, buff formulas, inventory math, recipe evaluation, and sorting algorithms must reside in POCO C# classes with zero Unity lifecycle dependencies.
+- `MonoBehaviour` instances act strictly as **Thin Adapters**: handling input events, pumping updates, and routing engine API calls.
 
-### 2.5 Higienitas File & Cache Engine
-- ❌ **JANGAN PERNAH** membaca, mencari, atau meng-indeks folder cache engine:
+### 2.5 File Hygiene & Cache Boundaries
+- ❌ **NEVER** search, index, or parse engine cache folders:
   `Library/`, `Temp/`, `Obj/`, `Logs/`, `UserSettings/`, `Builds/`, `.vs/`.
-- ❌ Jangan pernah merusak file `.meta` tanpa sinkronisasi GUID. Ketika memindahkan aset Unity, gunakan `AssetDatabase.MoveAsset`.
+- ❌ Do not touch `.meta` files manually without GUID synchronization. Always use `AssetDatabase.MoveAsset` when relocating assets.
 
 ---
 
-## 3. Protokol Git & Aturan Commit (SOP Baku)
+## 3. Git Workflow & 3-Layer Repository SOP
 
-Berdasarkan arsitektur Git 3-Layer yang ditetapkan di repositori ini:
+The repository operates on a strict 3-Layer branch architecture:
 
-### 3.1 Struktur Lapisan Branch
+### 3.1 Branch Layers
 1. **Layer 1 (Tech Lead)**: `main` (Production) & `staging` (Testing)
-2. **Layer 2 (Team Lead)**: `development` / `dev` (Integrasi Utama)
-3. **Layer 3 (Programmer/Agent)**: `<nama_programmer>` (misal: `rafi-branch`). **Area kerja eksklusif Agent.**
+2. **Layer 2 (Lead Dev)**: `development` / `dev` (Primary Integration)
+3. **Layer 3 (Programmer/Agent)**: `<programmer_name>` (e.g., `rafi-branch`). **Exclusive agent workspace.**
 
-### 3.2 Aturan Keras Branching
-- Agent **DILARANG KERAS** membuat branch baru (`git checkout -b feature/...` dilarang).
-- Agent **DILARANG KERAS** melakukan push langsung ke `main`, `staging`, atau `development`.
-- Target operasi dan push **HANYA** branch Layer 3 milik programmer (`origin/rafi-branch`).
+### 3.2 Branching Constraints
+- Agents are **STRICTLY PROHIBITED** from creating new feature branches (`git checkout -b feature/...`).
+- Agents are **STRICTLY PROHIBITED** from pushing directly to `main`, `staging`, or `development`.
+- All operations and pushes target only Layer 3 branches (`origin/<programmer_name>`).
 
-### 3.3 Konvensi Commit Atomik
-Setiap commit harus atomik dan mengikuti format:
-`<Tipe_Commit> : <Deskripsi Singkat dan Jelas>`
+### 3.3 Atomic Commit Conventions
+All commit messages must be atomic and follow this format:
+`<Commit_Type> : <Clear, Concise Description>`
 
-| Tipe Commit | Penggunaan | Contoh |
+| Type | When to Use | Example |
 |---|---|---|
-| `feat (100%)` | Fitur baru selesai penuh dan telah terverifikasi | `feat (100%) : implement genshin cooking UI panel` |
-| `progress` | Snapshot pekerjaan berjalan (WIP) untuk backup | `progress : 50% wardrobe item reorganization` |
-| `fix` | Perbaikan bug atau null reference | `fix : resolve ESC key pause conflict on UI panels` |
-| `refactor` | Restrukturisasi kode tanpa mengubah output fungsional | `refactor : move wardrobe scripts to feature directory` |
-| `chore` | Pemeliharaan sistem, folder, atau dokumentasi | `chore : update architecture documentation and clean obsolete assets` |
-| `assets` | Penambahan/penghapusan resource visual, audio, 3D | `assets : import food icons into project resources` |
+| `feat (100%)` | Feature fully implemented and verified | `feat (100%) : implement genshin cooking UI panel` |
+| `progress` | Work-in-progress backup checkpoint | `progress : 50% wardrobe item reorganization` |
+| `fix` | Bug or null-reference resolution | `fix : resolve ESC key pause conflict on UI panels` |
+| `refactor` | Code restructuring with zero functional changes | `refactor : relocate wardrobe scripts to feature directory` |
+| `chore` | Maintenance, documentation, or folder cleanup | `chore : update architecture documentation and remove dead assets` |
+| `assets` | Asset modifications (models, sprites, materials) | `assets : import food icons into project resources` |

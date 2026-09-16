@@ -1,13 +1,13 @@
 # Patterns.md
 
-Standar penulisan kode, pola desain berulang (*design patterns*), dan pedoman anti-pattern dalam pengembangan proyek **Farm-Beware**.
+Coding standards, recurring design patterns, and strict anti-patterns for the **Farm-Beware** project.
 
 ---
 
-## 1. Pola Arsitektur Berulang (Recurring Architectural Patterns)
+## 1. Recurring Architectural Patterns
 
-### 1.1 Singleton dengan Fallback Resolver (Awake-Safe Singleton)
-Digunakan pada manajer utama (`TimeManager`, `CameraManager`, `TrophySystemManager`) untuk memastikan akses instance tidak menghasilkan null bahkan saat dipanggil di luar urutan inisialisasi normal:
+### 1.1 Awake-Safe Singleton with Fallback Resolver
+Used across primary managers (`TimeManager`, `CameraManager`, `TrophySystemManager`) to ensure access never returns null due to out-of-order execution:
 
 ```csharp
 private static T _instance;
@@ -27,25 +27,26 @@ public static T Instance
 }
 ```
 
-### 1.2 Pola Delegasi Sentral Kamera (Camera Delegation Pattern)
-Semua modul fitur (Trophy, Wardrobe, Interaction) **dilarang** mengaktifkan atau mematikan kamera sendiri. Semua kontrol kamera wajib didelegasikan ke `CameraManager`:
+### 1.2 Central Camera Delegation Pattern
+Feature managers are **strictly forbidden** from directly enabling, disabling, or transforming cameras. All transitions must delegate through `CameraManager`:
 
 ```csharp
-// Mengaktifkan mode interaktif
+// Enter an interactive feature mode
 CameraManager.Instance.SetMode(CameraManager.CameraMode.WardrobeMode, wardrobeRootTransform);
 
-// Keluar kembali ke mode penjelajahan
+// Exit back to standard gameplay
 CameraManager.Instance.SetMode(CameraManager.CameraMode.Gameplay);
 ```
 
-`CameraManager` menangani secara otomatis:
-- Penonaktifan kamera lama & pengaktifan kamera baru.
-- Penataan posisi kamera lokal terhadap root konteks.
-- Penguncian input pemain (`PlayerControl.isInputLocked`).
-- Pengaturan state kursor mouse (`Cursor.lockState` dan `Cursor.visible`).
+`CameraManager` handles:
+- Transition validation.
+- Camera activation/deactivation.
+- Positioning relative to context roots.
+- Input locking (`PlayerControl.isInputLocked`).
+- Cursor lock and visibility states (`Cursor.lockState`, `Cursor.visible`).
 
-### 1.3 Mode Guard pada Kamera Gameplay
-Komponen kamera bebas wajib memiliki pengecekan guard di awal siklus frame agar tidak saling berebut kendali saat pemain berada dalam mode interaksi:
+### 1.3 Gameplay Camera Mode Guard
+Camera controllers must include a guard condition at the start of their update loop to prevent conflicting with interactive modes:
 
 ```csharp
 void LateUpdate()
@@ -56,12 +57,12 @@ void LateUpdate()
         return;
     }
 
-    // Eksekusi logic follow, orbit, dan zoom
+    // Follow, orbit, and zoom execution
 }
 ```
 
-### 1.4 Komunikasi UI Berbasis Event (Event-Driven UI)
-Backend data (`InventoryComponent`, `KitchenStation`) memiliki data dan memancarkan event. Komponen UI murni bertindak sebagai penampil tanpa state ganda (*stateless renderer*):
+### 1.4 Event-Driven UI (Stateless Renderers)
+Backend components own state and emit events. UI scripts listen to events and re-render without maintaining duplicate state:
 
 ```csharp
 private void OnEnable()
@@ -78,53 +79,47 @@ private void OnDisable()
 ```
 
 ### 1.5 Virtual Recipe Pattern (Item-Level Transformation)
-Untuk mencegah ledakan file ScriptableObject resep satu-lawan-satu (seperti mencuci apel, mencuci kentang, dll.), data transformasi disimpan langsung pada item sumber:
+To prevent recipe asset explosion for simple transformations, transformation data is embedded directly in the source item data:
 
 ```csharp
-// Pada FoodItemData / MaterialItemData
+// In FoodItemData or MaterialItemData
 public bool isDirty;
 public ItemData cleanVariant;
 
-// Pada stasiun pembersih (KitchenSinkInteractable)
+// In cleaning station (KitchenSinkInteractable)
 if (foodItem.isDirty && foodItem.cleanVariant != null)
 {
-    // Buat virtual recipe secara dinamis saat runtime tanpa asset file terpisah
     var virtualRecipe = ScriptableObject.CreateInstance<KitchenRecipe>();
     virtualRecipe.SetProcess(foodItem, foodItem.cleanVariant, processTime: 2.0f);
     StartProcessing(virtualRecipe);
 }
 ```
 
-### 1.6 Dual-Inventory Pattern (Trophy System)
-Pemisahan penyimpanan logis dari representasi fisik dunia 3D:
-- **`CabinetInventory`**: Tempat penyimpanan data item piala yang belum dipajang.
-- **`RackInventory`**: Sumber kebenaran (*source of truth*) visual untuk piala yang sedang dipajang pada `SnapPoint` 3D.
-- Interaksi drag/drop atau klik raycast memicu transfer antar dua inventory ini tanpa menduplikasi objek.
+### 1.6 Dual-Inventory Pattern (Trophy Rack)
+Decouples logical storage from in-world 3D visual anchors:
+- **`CabinetInventory`**: Physical storage data list.
+- **`RackInventory`**: Visual source of truth where each slot corresponds to a 3D `SnapPoint`.
+- Drag-and-drop or raycast clicks transfer items between these inventories seamlessly.
 
 ---
 
-## 2. Standar & Konvensi Penulisan Kode
+## 2. Coding Standards & Conventions
 
-### 2.1 Penamaan & Struktur Namespace
-- Setiap modul fitur wajib berada dalam namespace spesifik di bawah `Features<NamaFitur>`:
-  - `FeaturesCamera`
-  - `FeaturesInteraction`
-  - `FeaturesInventory`
-  - `FeaturesKitchen`
-  - `FeaturesTrophy`
-  - `FeaturesWardrobe`
-- Public Class / Struct / Enum / Method / Property: **`PascalCase`**
-- Private Field: **`camelCase`** atau **`_camelCase`**
-- Local Variable & Method Parameter: **`camelCase`**
+### 2.1 Namespaces & Naming
+- Modular namespaces under `Features<ModuleName>`:
+  - `FeaturesCamera`, `FeaturesInteraction`, `FeaturesInventory`, `FeaturesKitchen`, `FeaturesTrophy`, `FeaturesWardrobe`.
+- Public Classes, Methods, Properties, Enums: **`PascalCase`**
+- Private Fields: **`camelCase`** or **`_camelCase`**
+- Local Variables & Parameters: **`camelCase`**
 
-### 2.2 Komponen UI Wajib Menggunakan TextMeshPro
-- ❌ Dilarang menggunakan `UnityEngine.UI.Text` (legacy).
-- ✅ Wajib menggunakan `TMPro.TextMeshProUGUI`.
-- Gunakan perataan teks eksplisit (*Alignment*) dan bungkus teks panjang dengan mode *Ellipsis* atau *Truncate*.
+### 2.2 TextMeshPro Exclusivity
+- ❌ Do not use legacy `UnityEngine.UI.Text`.
+- ✅ Always use `TMPro.TextMeshProUGUI`.
+- Set explicit vertical and horizontal alignment; truncate overflowing text with ellipsis where appropriate.
 
-### 2.3 Standar Input System Baru
-- ❌ Hindari `Input.GetKeyDown(KeyCode.Escape)` atau API legacy lainnya.
-- ✅ Gunakan New Input System API:
+### 2.3 New Input System Standard
+- ❌ Avoid legacy `Input.GetKeyDown(KeyCode.Escape)`.
+- ✅ Use the New Input System API:
   ```csharp
   if (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame)
   {
@@ -132,8 +127,8 @@ Pemisahan penyimpanan logis dari representasi fisik dunia 3D:
   }
   ```
 
-### 2.4 Resolusi Dependensi Defensif di `Awake()`
-Jangan mengandalkan referensi Inspector saja untuk komponen yang berada pada GameObject yang sama:
+### 2.4 Defensive Dependency Resolution in `Awake()`
+Do not rely solely on Inspector assignments for components residing on the same GameObject:
 ```csharp
 private void Awake()
 {
@@ -144,12 +139,12 @@ private void Awake()
 
 ---
 
-## 3. Daftar Larangan / Anti-Patterns (STRICT PROHIBITION)
+## 3. Strict Anti-Patterns (PROHIBITED)
 
-1. ❌ **Mengubah State Kamera Secara Langsung** di luar `CameraManager.Instance.SetMode()`.
-2. ❌ **Memanipulasi `PlayerControl.isInputLocked` Secara Manual** dari skrip interaksi (hanya boleh dikontrol oleh `CameraManager`).
-3. ❌ **Polling Status Backend di Loop `Update()` UI** — Gunakan event callback (`OnInventoryChanged`, `OnProcessCompleted`).
-4. ❌ **Melakukan Subskripsi Event Tanpa Unsubskripsi di `OnDisable()`** — Menyebabkan memory leak dan bug pemanggilan ganda.
-5. ❌ **Menggunakan String/Angka Index Layer Hardcoded** — Selalu gunakan `LayerMask.NameToLayer("LayerName")` atau `LayerMask.GetMask("LayerName")`.
-6. ❌ **Mematikan Kamera Menggunakan `gameObject.SetActive(false)`** — Matikan komponen kameranya saja (`camera.enabled = false`) agar tidak memicu konflik listener audio dan hierarchy overhead.
-7. ❌ **Membuat Script Automation Sementara di Editor** — Dilarang membuat script penataan scene di `Assets/Editor/*Setup*.cs` yang dapat merusak struktur hierarki secara otomatis. Gunakan MCP tools terukur.
+1. ❌ **Direct Camera State Mutating**: Never call `camera.enabled` or change camera transforms outside `CameraManager.Instance.SetMode()`.
+2. ❌ **Manual Input Locking**: Never toggle `PlayerControl.isInputLocked` manually from feature scripts; `CameraManager` owns this state.
+3. ❌ **UI Polling**: Never poll backend inventories or station timers inside UI `Update()` methods; rely on events.
+4. ❌ **Event Leaks**: Never subscribe to events without unsubscribing in `OnDisable()`.
+5. ❌ **Hardcoded Layer Indices**: Never hardcode integers for physics layers; use `LayerMask.NameToLayer("LayerName")` or `LayerMask.GetMask("LayerName")`.
+6. ❌ **Disabling Cameras via `SetActive(false)`**: Disable the `Camera` component instead (`camera.enabled = false`) to avoid AudioListener conflicts and hierarchy churn.
+7. ❌ **Blind Editor Automation Scripts**: Never create ad-hoc `Assets/Editor/*Setup*.cs` menu scripts that blindly alter scene hierarchy. Use targeted MCP commands.

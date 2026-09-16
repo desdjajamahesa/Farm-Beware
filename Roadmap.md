@@ -1,88 +1,88 @@
 # Roadmap.md
 
-Rencana pengembangan, target fitur, dan tonggak pencapaian (*milestones*) untuk proyek **Farm-Beware** berdasarkan dokumen *MVP Version Guideline V0.1*.
+Development roadmap, milestone tracking, and feature goals for **Farm-Beware** based on the *MVP Version Guideline V0.1*.
 
 ---
 
-## 1. Visi Utama Game Loop MVP
+## 1. Core MVP Game Loop
 
 ```
                                   ┌────────────────────────┐
-                                  │       SIKLUS PAGI      │
-                                  │      (Day Phase)       │
+                                  │       DAY PHASE        │
+                                  │ (Exploration & Prep)   │
                                   └───────────┬────────────┘
                                               │
                     ┌─────────────────────────┴─────────────────────────┐
                     ▼                                                   ▼
          ┌─────────────────────┐                             ┌─────────────────────┐
-         │     BERKEBUN        │                             │    TRANSAKSI        │
-         │ (Tanam Ubi & Talas) │                             │ (Jual Panen → Gold) │
+         │       FARMING       │                             │      COMMERCE       │
+         │ (Sweet Potato/Taro) │                             │ (Sell Crops → Gold) │
          └──────────┬──────────┘                             └──────────┬──────────┘
                     │                                                   │
                     ▼                                                   ▼
          ┌─────────────────────┐                             ┌─────────────────────┐
-         │     MEMASAK         │                             │     WORKBENCH       │
-         │ (Buat Food Buffs)   │                             │  (Upgrade Senjata)  │
+         │       COOKING       │                             │      WORKBENCH      │
+         │ (Prepare Food Buffs)│                             │  (Upgrade Weapon)   │
          └──────────┬──────────┘                             └──────────┬──────────┘
                     │                                                   │
                     └─────────────────────────┬─────────────────────────┘
-                                              │ Tidur di Kasur
+                                              │ Sleep on Bed
                                               ▼
                                   ┌────────────────────────┐
-                                  │      SIKLUS MALAM      │
-                                  │     (Night Phase)      │
+                                  │      NIGHT PHASE       │
+                                  │      (Night Brawl)     │
                                   └───────────┬────────────┘
                                               │
                                               ▼
                                   ┌────────────────────────┐
-                                  │      NIGHT BRAWL       │
-                                  │   (Gelombang Monster)  │
+                                  │      COMBAT WAVES      │
+                                  │ (Survive Monster Pack) │
                                   └───────────┬────────────┘
                                               │
                                               ▼
                                   ┌────────────────────────┐
                                   │     MONSTER DROPS      │
-                                  │ (Material Upgrade Baru)│
+                                  │ (Crafting Materials)   │
                                   └────────────────────────┘
 ```
 
 ---
 
-## 2. Milestone Proyek
+## 2. Project Milestones
 
-### Milestone 1: Fondasi Rumah, Dapur, & Sistem Inti (SELESAI ✅)
-- [x] **Arsitektur Kamera Terpusat**: `CameraManager` dengan transisi mulus dan proteksi input.
-- [x] **Sistem Memasak Instan**: `GenshinStove` & `StoveUIManager` berbasis TextMeshPro dengan layout Single Central Axis.
-- [x] **Sistem Cuci Bahan Dinamis**: `KitchenSinkInteractable` berbasis item-level dirty/clean data.
-- [x] **Pemberian Item MVP & Database Terpusat**: 33 item valid di `ItemDatabase` (8 Makanan, 2 Hasil Panen, 2 Bibit, 4 Bahan Masak, 4 Monster Drops, 1 Pedang Dummy, 12 Trophy).
-- [x] **Kustomisasi Pakaian**: `PlayerOutfit` dan in-world `MirrorCamera` live preview.
-- [x] **UI Scaling & ESC Priority Stack**: Resolusi referensi 1920×1080 dan penanganan tombol ESC berprioritas modal.
-- [x] **Restrukturisasi Folder & Pembersihan Aset**: Repositori bersih, aset usang dihapus, dan diagram desain dipreservasi ke `Docs/MVP_Design/`.
-
----
-
-### Milestone 2: Sistem Pertanian (Farming System) (BERIKUTNYA ⏳)
-- [ ] **Sistem Lahan & Petak Tanah**: Petak tanah yang dapat dicangkul dan disiram air.
-- [ ] **Siklus Pertumbuhan Tanaman**:
-  - **Ubi Jalar (Sweet Potato)**: Waktu tumbuh cepat (*Fast*), nilai jual 750–1000 Gold.
-  - **Talas (Taro)**: Waktu tumbuh sedang (*Medium*), nilai panen lebih tinggi.
-- [ ] **Alur Panen (Harvesting)**: Menghasilkan item `Crop_SweetPotato` dan `Crop_Taro` yang masuk ke inventory pemain untuk dijual atau dimasak.
+### Milestone 1: House, Kitchen, & Core Systems (COMPLETED ✅)
+- [x] **Centralized Camera Architecture**: `CameraManager` handling state machine transitions, positioning, and input lock.
+- [x] **Instant Cooking System**: `GenshinStove` and `StoveUIManager` with Single Central Axis TextMeshPro layout.
+- [x] **Dynamic Washing Mechanic**: `KitchenSinkInteractable` with item-level dirty/clean data transformation.
+- [x] **Item Overhaul & Central Registry**: 33 active items in `ItemDatabase` (8 Food, 2 Crops, 2 Seeds, 4 Kitchen Materials, 4 Monster Drops, 1 Dummy Sword, 12 Trophies).
+- [x] **Wardrobe System**: `PlayerOutfit` with in-world `MirrorCamera` live preview.
+- [x] **UI Scaling & ESC Modal Priority**: 1920×1080 reference resolution and hierarchical modal close stack.
+- [x] **Repository Cleanup**: Dead assets removed, pipeline diagram and design docs preserved in `Docs/MVP_Design/`.
 
 ---
 
-### Milestone 3: Sistem Pertarungan Malam (Night Brawl Combat)
-- [ ] **Mekanik Senjata Utama (Weapon System)**:
-  - 1 Tipe Senjata Melee awal (Pedang / Cangkul Tempur) dengan kombo serangan ringan, berat, dan dash attack.
-- [ ] **Sistem Gelombang Musuh (5-Day Wave Progression)**:
-  - **Day 1**: 1 Wave (Normal encounters).
+### Milestone 2: Farming System (NEXT PRIORITY ⏳)
+- [ ] **Soil Grid & Tilling**: Tillable, waterable crop tiles with visual state feedback.
+- [ ] **Crop Growth Cycles**:
+  - **Sweet Potato**: Fast growth rate, 750–1000 Gold base harvest value.
+  - **Taro**: Medium growth rate, higher yield/combat utility.
+- [ ] **Harvest Loop**: Direct harvest delivery of `Crop_SweetPotato` and `Crop_Taro` to the player inventory for selling or cooking.
+
+---
+
+### Milestone 3: Night Brawl Combat Engine
+- [ ] **Primary Weapon System**:
+  - 1 Core melee weapon (Sword / Combat Hoe) with light attack combo, heavy strike, and dash attack.
+- [ ] **5-Day Wave Progression**:
+  - **Day 1**: 1 Wave (Normal encounter).
   - **Day 2**: 2 Waves.
   - **Day 3**: 3 Waves.
-  - **Day 4**: 4 Waves (Pengenalan Boss pertama + 4 musuh normal).
-  - **Day 5**: 5 Waves (Pertarungan puncak: 2 Boss + 3 musuh normal).
-- [ ] **Evolusi Musuh (2 Bibit → 4 Varian Musuh)**:
-  - *Sweet Potato Form*: **Tuber Maw** (Normal) → **Cyclops Tuber Maw** (Boss).
-  - *Taro Form*: **Taro Brute** (Normal) → **Taro Colossus** (Boss).
-- [ ] **Sistem Loot Monster**:
+  - **Day 4**: 4 Waves (First Boss Introduction + 4 normal enemies).
+  - **Day 5**: 5 Waves (Climax: 2 Bosses simultaneously + 3 normal enemies).
+- [ ] **Enemy Evolution (2 Seeds → 4 Monster Forms)**:
+  - *Sweet Potato Evolution*: **Tuber Maw** (Normal) → **Cyclops Tuber Maw** (Boss).
+  - *Taro Evolution*: **Taro Brute** (Normal) → **Taro Colossus** (Boss).
+- [ ] **Monster Drops**:
   - Tuber Maw → `Mutated Root` (Normal Material).
   - Cyclops Tuber Maw → `Cyclops Eye` (Boss Material).
   - Taro Brute → `Hardened Root` (Normal Material).
@@ -90,16 +90,16 @@ Rencana pengembangan, target fitur, dan tonggak pencapaian (*milestones*) untuk 
 
 ---
 
-### Milestone 4: Workbench & Upgrade Senjata
-- [ ] **Interaksi Meja Kerja (Workbench / Garage)**: Antarmuka pembuatan dan peningkatan senjata.
-- [ ] **Formula Biaya**: `Gold + Monster Material → Upgrade Senjata`.
-- [ ] **Dua Jalur Peningkatan Cabang**:
-  - **Jalur Ubi Jalar (Sweet Potato Path)**: Meningkatkan *Speed*, *Attack Speed*, dan *Mobility*.
-  - **Jalur Talas (Taro Path)**: Meningkatkan *Power*, *Knockback*, *Armor*, dan efek defensif.
+### Milestone 4: Workbench & Weapon Upgrades
+- [ ] **Workbench / Garage Interactable**: UI for weapon enhancement.
+- [ ] **Upgrade Cost Formula**: `Gold + Monster Materials → Weapon Upgrade`.
+- [ ] **Branching Upgrade Paths**:
+  - **Sweet Potato Path**: Focuses on *Speed*, *Attack Speed*, and *Mobility/Dash*.
+  - **Taro Path**: Focuses on *Power*, *Knockback*, *Armor*, and defensive perks.
 
 ---
 
 ### Milestone 5: Audio, Visual Polish, & Game Feel
-- [ ] **Efek Masak**: Partikel asap/api di kompor, animasi popup UI "Dish Cooked!", SFX menggoreng/merebus.
-- [ ] **Modularisasi Dinding Dapur**: Memisahkan mesh dinding dapur menjadi segmen-segmen Layer 12 agar fade `WallOccluder` bekerja sempurna per sudut kamera.
-- [ ] **Penggantian Model Trophy**: Mengganti kubus warna placeholder dengan model 3D piala dan monumen hasil buruan boss.
+- [ ] **Cooking Effects**: Smoke/fire VFX on the stove, cooking audio effects, and UI "Dish Created!" feedback.
+- [ ] **Modular Kitchen Walls**: Split monolithic kitchen wall meshes into Layer 12 segments for fine-grained `WallOccluder` fading.
+- [ ] **3D Trophy Models**: Replace placeholder colored cube prefabs with custom 3D trophy models.

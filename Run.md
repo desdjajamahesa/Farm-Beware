@@ -1,10 +1,10 @@
 # Run.md
 
-Panduan menjalankan, mengoperasikan, dan mengonfigurasi proyek **Farm-Beware** di lingkungan lokal dan Unity Editor.
+Execution instructions, controls, and configuration details for running **Farm-Beware** in local development and Unity Editor.
 
 ---
 
-## 1. Persyaratan Sistem & Lingkungan (Environment Prerequisites)
+## 1. System Requirements & Environment
 
 - **Unity Engine**: Unity 6000.3.20f1 (Unity 6 / 2023 LTS)
 - **Render Pipeline**: Universal Render Pipeline (URP)
@@ -15,67 +15,67 @@ Panduan menjalankan, mengoperasikan, dan mengonfigurasi proyek **Farm-Beware** d
 
 ---
 
-## 2. Cara Menjalankan Game (Execution Workflow)
+## 2. Launching the Project
 
-### 2.1 Membuka Proyek
-1. Buka **Unity Hub**.
-2. Klik **Add project from disk** dan arahkan ke folder:
+### 2.1 Opening in Unity Hub
+1. Open **Unity Hub**.
+2. Click **Add project from disk** and browse to:
    `C:\Users\HP\Rafi\MyProject\Farm-Beware`
-3. Pastikan versi editor yang digunakan adalah **6000.3.20f1**.
+3. Ensure the editor version matches **6000.3.20f1**.
 
-### 2.2 Membuka Scene Utama
-1. Di jendela *Project* Unity, buka folder:
+### 2.2 Loading the Primary Staging Scene
+1. In the Project window, navigate to:
    `Assets/Scenes/`
-2. Dobel-klik file scene aktif:
+2. Double-click to open:
    [`StagingScene.unity`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scenes/StagingScene.unity)
-3. Scene ini adalah lingkungan integrasi staging utama yang mencakup seluruh area:
-   - Kamar Tidur (`Bedroom`)
-   - Dapur (`Kitchen`)
-   - Area Lemari & Piala (`Wardrobe & Trophy Cabinet`)
-   - Area Pengujian (`Environment/Testing`)
-   - Entitas Pemain & Kamera Utama (`Player & Main Camera`)
-   - Canvas Antarmuka Pengguna (`Canvas_UI`)
+3. This scene is the master staging integration environment containing:
+   - Bedroom (`Environment/Bedroom`)
+   - Kitchen (`Environment/Kitchen`)
+   - Wardrobe and Trophy Cabinet (`Environment/WardrobeRoot`, `Environment/TrophyCabinetSystem`)
+   - Testing Area & Test Chest (`Environment/Testing/TestChest`)
+   - Player Character & Main Camera (`Player`, `Main Camera`)
+   - User Interface (`Canvas_UI`)
 
-### 2.3 Memulai Play Mode
-- Tekan tombol **Play** di bagian atas Editor (atau pintasan keyboard `Ctrl + P`).
+### 2.3 Entering Play Mode
+- Click the **Play** button at the top of the Editor (or press `Ctrl + P`).
 
 ---
 
-## 3. Kontrol Pemain & Pintasan Keyboard (Controls & Shortcuts)
+## 3. Player Controls & Keybindings
 
-| Tombol | Aksi | Konteks |
+| Key | Action | Context |
 |---|---|---|
-| `W, A, S, D` | Gerak Pemain | Gameplay |
-| `Space` | Lompat (*Jump*) | Gameplay |
-| `Left Shift` | Melesat (*Dash*) | Gameplay |
-| `1, 2, 3, 4` | Pilih Slot Hotbar | Gameplay |
-| `Scroll Wheel Mouse` | Ganti Slot Hotbar / Zoom Kamera | Gameplay |
-| `Klik Kanan (Tahan + Drag)` | Putar Orbit Kamera Isometrik | Gameplay |
-| `E` | Interaksi dengan Objek (Kasur, Kompor, Meja Cuci, Lemari, Peti) | Di dekat objek interaktif |
-| `Tab` atau `I` | Buka / Tutup Panel Inventory Pemain | Gameplay |
-| `ESC` | Tutup Panel Aktif (Prioritas 1) / Buka Pause Menu (Prioritas 2) | Kapan saja |
-| `N` *(Debug)* | Lompat Langsung ke Fase Malam (*Skip to Night*) | Pengujian siklus waktu kasur |
+| `W, A, S, D` | Player Movement | Gameplay |
+| `Space` | Jump | Gameplay |
+| `Left Shift` | Dash | Gameplay |
+| `1, 2, 3, 4` | Select Hotbar Slot | Gameplay |
+| `Scroll Wheel` | Cycle Hotbar Slots / Camera Zoom | Gameplay |
+| `Right Click (Hold + Drag)` | Orbit Isometric Camera | Gameplay |
+| `E` | Interact (Bed, Stove, Sink, Chest, Wardrobe) | Near interactable object |
+| `Tab` or `I` | Toggle Player Inventory Panel | Gameplay |
+| `ESC` | Close Active Modal (Priority 1) / Open Pause Menu (Priority 2) | Any time |
+| `N` *(Debug)* | Skip to Night Phase immediately | Testing bed sleep cycle |
 
 ---
 
-## 4. Integrasi Unity MCP Bridge (Autonomous Tools)
+## 4. Unity MCP Bridge Integration
 
-Pengembangan proyek ini didukung oleh server Unity MCP yang terhubung langsung ke Editor:
-- **Kompilasi & Domain Reload**:
-  Trigger via MCP tool `refresh_unity` dengan parameter `compile="request"`.
-- **Eksekusi Roslyn C# In-Memory**:
-  Gunakan tool `execute_code` untuk menjalankan pengujian runtime atau memvalidasi scene tanpa perlu membuat skrip sementara di aset.
-- **Monitoring Console Log**:
-  Gunakan tool `read_console` (filter: `error`, `warning`) untuk memastikan stabilitas bebas bug setiap kali terjadi modifikasi.
+AI agents and automated workflows communicate through the Unity MCP server:
+- **Recompilation & Asset Refresh**:
+  Call `refresh_unity` with `compile="request"`.
+- **In-Memory Roslyn Execution**:
+  Execute validation scripts without creating asset files via `execute_code`.
+- **Log Monitoring**:
+  Inspect Editor logs using `read_console` (filter: `error`, `warning`).
 
 ---
 
-## 5. Lokasi Objek Penting di Hierarchy (`StagingScene`)
+## 5. Critical Scene GameObjects (`StagingScene`)
 
-- **Player**: `Player` (memiliki `PlayerControl`, `PlayerStats`, `InventoryComponent`, `PlayerEquipment`, `PlayerOutfit`).
-- **Camera Controller**: `Main Camera` (memiliki `IsometricCameraController`, `CameraManager`, `WallOcclusionManager`).
-- **Peti Pengujian Item**: `Environment/Testing/TestChest` (berisi 21 item pengujian lengkap dari seluruh kategori MVP).
-- **Stasiun Memasak**: `Environment/Kitchen/stove` (memiliki `GenshinStove` dan pemicu UI memasak).
-- **Bak Cuci**: `Environment/Kitchen/kitchen_sink` (memiliki `KitchenSinkInteractable` untuk mencuci bahan makanan).
-- **Kulkas**: `Environment/Kitchen/refrigerator` (memiliki `RefrigeratorInteractable` untuk penyimpanan dingin).
-- **Cermin Kamar Tidur**: `Environment/Bedroom/Mirror` (memiliki komponen `MirrorCamera`).
+- **Player**: `Player` (contains `PlayerControl`, `PlayerStats`, `InventoryComponent`, `PlayerEquipment`, `PlayerOutfit`).
+- **Main Camera**: `Main Camera` (contains `IsometricCameraController`, `CameraManager`, `WallOcclusionManager`).
+- **Test Chest**: `Environment/Testing/TestChest` (populated with 21 active MVP test items).
+- **Stove**: `Environment/Kitchen/stove` (holds `GenshinStove`).
+- **Sink**: `Environment/Kitchen/kitchen_sink` (holds `KitchenSinkInteractable`).
+- **Refrigerator**: `Environment/Kitchen/refrigerator` (holds `RefrigeratorInteractable`).
+- **Bedroom Mirror**: `Environment/Bedroom/Mirror` (holds `MirrorCamera`).
