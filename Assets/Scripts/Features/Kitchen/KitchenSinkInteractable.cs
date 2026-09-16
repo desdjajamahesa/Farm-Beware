@@ -38,6 +38,8 @@ public class KitchenSinkInteractable : KitchenStation, IInteractable
     private KitchenRecipe virtualRecipe;
 
     // ── Public Accessors (for SinkManager UI sync) ──
+    public static KitchenSinkInteractable Instance { get; private set; }
+    public bool IsPanelOpen => panelSink != null && panelSink.activeSelf;
     public InventorySlot InputSlot => inputSlot;
     public InventorySlot OutputSlot => outputSlot;
     public bool IsWashing => isWashing;
@@ -47,6 +49,7 @@ public class KitchenSinkInteractable : KitchenStation, IInteractable
     protected override void Awake()
     {
         base.Awake();
+        Instance = this;
 
         // Initialize slots
         inputSlot = new InventorySlot();
@@ -129,6 +132,7 @@ public class KitchenSinkInteractable : KitchenStation, IInteractable
             Keyboard.current != null &&
             Keyboard.current.escapeKey.wasPressedThisFrame)
         {
+            MainMenuController.LastFrameUIPanelClosed = Time.frameCount;
             ClosePanel();
             return;
         }
@@ -282,6 +286,9 @@ public class KitchenSinkInteractable : KitchenStation, IInteractable
 
     private void OnDestroy()
     {
+        if (Instance == this)
+            Instance = null;
+
         if (virtualRecipe != null)
             Destroy(virtualRecipe);
     }

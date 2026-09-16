@@ -101,6 +101,7 @@ public class TrophySystemManager : MonoBehaviour
         // ESC untuk keluar dari mode trophy.
         if (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame)
         {
+            MainMenuController.LastFrameUIPanelClosed = Time.frameCount;
             ExitTrophyMode();
             return;
         }

@@ -48,8 +48,12 @@ public class StoveUIManager : MonoBehaviour
     private readonly List<GameObject> spawnedRecipeButtons = new List<GameObject>();
     private readonly List<GameObject> spawnedIngredientRows = new List<GameObject>();
 
+    public static StoveUIManager Instance { get; private set; }
+    public bool IsPanelOpen => panelStove != null && panelStove.activeSelf;
+
     private void Awake()
     {
+        Instance = this;
         if (cookButton != null)
             cookButton.onClick.AddListener(OnCookClicked);
         if (closeButton != null)
@@ -85,6 +89,7 @@ public class StoveUIManager : MonoBehaviour
             Keyboard.current != null &&
             Keyboard.current.escapeKey.wasPressedThisFrame)
         {
+            MainMenuController.LastFrameUIPanelClosed = Time.frameCount;
             Close();
         }
     }
@@ -338,6 +343,9 @@ public class StoveUIManager : MonoBehaviour
 
     private void OnDestroy()
     {
+        if (Instance == this)
+            Instance = null;
+
         if (cookButton != null)
             cookButton.onClick.RemoveListener(OnCookClicked);
         if (closeButton != null)

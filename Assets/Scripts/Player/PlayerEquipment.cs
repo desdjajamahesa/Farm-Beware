@@ -24,6 +24,10 @@ public class PlayerEquipment : MonoBehaviour
     private InventoryComponent inventory;
     private Animator animator;
     private PlayerStats playerStats;
+    private PlayerBuffManager buffManager;
+
+    public float AttackDamageMultiplier => buffManager != null ? buffManager.GetAttackDamageMultiplier() : 1f;
+    public float AttackSpeedMultiplier => buffManager != null ? buffManager.GetAttackSpeedMultiplier() : 1f;
 
     public ItemData CurrentEquippedItem
     {
@@ -106,6 +110,7 @@ public class PlayerEquipment : MonoBehaviour
         inventory = GetComponent<InventoryComponent>();
         animator = GetComponentInChildren<Animator>();
         playerStats = GetComponent<PlayerStats>();
+        buffManager = GetComponent<PlayerBuffManager>();
         FindHandSocketIfNeeded();
     }
 

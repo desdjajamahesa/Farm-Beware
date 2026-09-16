@@ -661,7 +661,10 @@ namespace FeaturesWardrobe
             if (!isInWardrobeMode) return;
 
             if (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame)
+            {
+                MainMenuController.LastFrameUIPanelClosed = Time.frameCount;
                 ExitWardrobeMode();
+            }
         }
 
         private void OnDestroy()

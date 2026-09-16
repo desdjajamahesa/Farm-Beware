@@ -12,11 +12,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a783b81893731074197062d5e7c46f15, type: 3}
   m_Name: TrophyCube_Yellow
   m_EditorClassIdentifier: Assembly-CSharp::ItemData
+  itemId: trophycube_yellow
   itemName: Trophy Cube Yellow
+  category: 3
+  rarity: 0
   itemIcon: {fileID: -362149104, guid: 3dc1d22cf1644cc4da26d0bc4f0f1fdc, type: 3}
+  description: 
   maxStack: 1
   type: 3
-  healAmount: 0
-  foodCategory: 0
-  equipPrefab: {fileID: 0}
+  buyPrice: 0
+  sellPrice: 0
+  isDirty: 0
+  cleanVariant: {fileID: 0}
   placeablePrefab: {fileID: 1694445601650324693, guid: 043f991d30d3983418c6c4859e716880, type: 3}

@@ -30,6 +30,7 @@ public class PlayerControl : MonoBehaviour
     private InventoryComponent playerInventory;
     private PlayerStats playerStats;
     private PlayerEquipment playerEquipment;
+    private PlayerBuffManager buffManager;
 
     // Status internal
     private bool isGrounded;
@@ -79,6 +80,7 @@ public class PlayerControl : MonoBehaviour
         interactor = GetComponent<PlayerInteractor>();  
         playerInventory = GetComponent<InventoryComponent>();  
         playerStats = GetComponent<PlayerStats>();
+        buffManager = GetComponent<PlayerBuffManager>();
         playerEquipment = GetComponent<PlayerEquipment>();
         if (playerEquipment == null)
             playerEquipment = gameObject.AddComponent<PlayerEquipment>();
@@ -197,7 +199,8 @@ public class PlayerControl : MonoBehaviour
         if (inputVector.magnitude >= 0.1f)
         {
             Vector3 moveDirection = Quaternion.Euler(0, 45f, 0) * inputVector;
-            float currentSpeed = isRunning ? runSpeed : walkSpeed;
+            float speedMultiplier = buffManager != null ? buffManager.GetSpeedMultiplier() : 1f;
+            float currentSpeed = (isRunning ? runSpeed : walkSpeed) * speedMultiplier;
             Vector3 desiredMove = moveDirection;
 
             // 1. Wall Sliding via kontak fisika aktif

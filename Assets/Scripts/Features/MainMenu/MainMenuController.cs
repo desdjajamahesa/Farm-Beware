@@ -2,10 +2,16 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using FeaturesCommon;
+using FeaturesWardrobe;
 using UnityEngine.InputSystem;
 
 public class MainMenuController : MonoBehaviour
 {
+    /// <summary>
+    /// Frame counter to prevent ESC from pausing when it was used to close a gameplay UI panel on the same frame.
+    /// </summary>
+    public static int LastFrameUIPanelClosed = -1;
+
     [Header("References")]
     [SerializeField] private GameObject mainMenuPanel;
     [SerializeField] private GameObject settingsPanel;
@@ -164,6 +170,20 @@ public class MainMenuController : MonoBehaviour
         // If Main Menu is Hidden (gameplay active)
         if (currentState == MenuState.Hidden)
         {
+            // 1. If a gameplay UI panel was already closed on this exact frame, DO NOT pause!
+            if (Time.frameCount == LastFrameUIPanelClosed)
+            {
+                return;
+            }
+
+            // 2. If any gameplay UI panel is currently open, close it and DO NOT pause!
+            if (TryCloseAnyGameplayPanel())
+            {
+                LastFrameUIPanelClosed = Time.frameCount;
+                return;
+            }
+
+            // 3. If player control input is locked (e.g. cutscene, transition), do not pause
             if (playerControl == null) playerControl = FindFirstObjectByType<PlayerControl>();
             if (playerControl != null && playerControl.isInputLocked)
             {
@@ -172,6 +192,71 @@ public class MainMenuController : MonoBehaviour
 
             ShowMenu(isPause: true);
         }
+    }
+
+    /// <summary>
+    /// Checks all gameplay UI panels (inventory, storage, kitchen stations, wardrobe, trophy).
+    /// If any is open, closes it and returns true.
+    /// </summary>
+    private bool TryCloseAnyGameplayPanel()
+    {
+        bool closedAny = false;
+
+        // 1. Inventory & Storage (Player Panel, Chest, Refrigerator, Trophy Cabinet)
+        if (InventoryManagerUI.Instance != null && InventoryManagerUI.Instance.IsAnyInventoryUIRelatedOpen())
+        {
+            InventoryManagerUI.Instance.CloseAllUI();
+            closedAny = true;
+        }
+
+        // 2. Kitchen Sink
+        if (KitchenSinkInteractable.Instance != null && KitchenSinkInteractable.Instance.IsPanelOpen)
+        {
+            KitchenSinkInteractable.Instance.ClosePanel();
+            closedAny = true;
+        }
+        else
+        {
+            var sink = FindFirstObjectByType<KitchenSinkInteractable>(FindObjectsInactive.Include);
+            if (sink != null && sink.IsPanelOpen)
+            {
+                sink.ClosePanel();
+                closedAny = true;
+            }
+        }
+
+        // 3. Kitchen Stove
+        if (StoveUIManager.Instance != null && StoveUIManager.Instance.IsPanelOpen)
+        {
+            StoveUIManager.Instance.Close();
+            closedAny = true;
+        }
+        else
+        {
+            var stove = FindFirstObjectByType<StoveUIManager>(FindObjectsInactive.Include);
+            if (stove != null && stove.IsPanelOpen)
+            {
+                stove.Close();
+                closedAny = true;
+            }
+        }
+
+        // 4. Wardrobe Mode
+        if (WardrobeManager.IsInWardrobeMode)
+        {
+            if (WardrobeManager.Instance != null)
+                WardrobeManager.Instance.ExitWardrobeMode();
+            closedAny = true;
+        }
+
+        // 5. Trophy Mode
+        if (TrophySystemManager.Instance != null && TrophySystemManager.Instance.IsInTrophyMode)
+        {
+            TrophySystemManager.Instance.ExitTrophyMode();
+            closedAny = true;
+        }
+
+        return closedAny;
     }
 
     private void UpdateFadingIn(float dt)
