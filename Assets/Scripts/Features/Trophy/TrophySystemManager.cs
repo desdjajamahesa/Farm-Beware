@@ -44,8 +44,6 @@ public class TrophySystemManager : MonoBehaviour
     [SerializeField] private InventoryComponent currentRackInventory;
 
     // Akses baca publik ke kamera trophy via CameraManager.
-    // Direct reference only — no FindObjectsByType/GetComponentInChildren fallback.
-    // A disabled feature camera in the scene makes those searches return the wrong Camera.
     public Camera TrophyFirstPersonCamera
     {
         get
@@ -53,8 +51,8 @@ public class TrophySystemManager : MonoBehaviour
             if (trophyCamera != null)
                 return trophyCamera;
 
-            if (CameraManager.Instance != null)
-                return CameraManager.Instance.GetComponentInChildren<Camera>();
+            if (CameraManager.Instance != null && CameraManager.Instance.TrophyCamera != null)
+                return CameraManager.Instance.TrophyCamera;
 
             return null;
         }
@@ -80,10 +78,9 @@ public class TrophySystemManager : MonoBehaviour
         Instance = this;
 
         // Auto-resolve trophy camera from the scene hierarchy (child of trophySystemRoot).
-        // Must be a direct reference — FindObjectsByType would return the wrong Camera
-        // when the feature camera is disabled in the scene.
+        // Must include inactive objects so camera can be found when disabled by default.
         if (trophyCamera == null && trophySystemRoot != null)
-            trophyCamera = trophySystemRoot.GetComponentInChildren<Camera>();
+            trophyCamera = trophySystemRoot.GetComponentInChildren<Camera>(true);
     }
 
     private void OnDestroy()
