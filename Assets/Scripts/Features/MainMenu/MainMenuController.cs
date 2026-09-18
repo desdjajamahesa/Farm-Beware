@@ -679,8 +679,30 @@ public class MainMenuController : MonoBehaviour
             menuCanvasGroup.interactable = active;
         }
 
-        if (mainMenuPanel != null) mainMenuPanel.SetActive(active);
-        if (settingsPanel != null) settingsPanel.SetActive(false);
+        if (mainMenuPanel != null)
+        {
+            mainMenuPanel.SetActive(active);
+            if (mainPanelCG == null) mainPanelCG = mainMenuPanel.GetComponent<CanvasGroup>();
+            if (mainPanelCG != null)
+            {
+                mainPanelCG.alpha = active ? 1f : 0f;
+                mainPanelCG.blocksRaycasts = active;
+                mainPanelCG.interactable = active;
+            }
+        }
+
+        if (settingsPanel != null)
+        {
+            settingsPanel.SetActive(false);
+            if (settingsCG == null) settingsCG = settingsPanel.GetComponent<CanvasGroup>();
+            if (settingsCG != null)
+            {
+                settingsCG.alpha = 0f;
+                settingsCG.blocksRaycasts = false;
+                settingsCG.interactable = false;
+            }
+        }
+
         if (backgroundOverlay != null) backgroundOverlay.gameObject.SetActive(active);
         if (titleText != null) titleText.gameObject.SetActive(active);
     }
@@ -733,12 +755,14 @@ public class MainMenuController : MonoBehaviour
     private void OnSettingsClicked()
     {
         if (!menuActive) return;
+        if (mainPanelCG != null) mainPanelCG.interactable = false;
         stateTimer = 0f;
         currentState = MenuState.SettingsOpening;
     }
 
     private void OnSettingsBackClicked()
     {
+        if (settingsCG != null) settingsCG.interactable = false;
         stateTimer = 0f;
         currentState = MenuState.SettingsClosing;
     }
@@ -786,34 +810,59 @@ public class MainMenuController : MonoBehaviour
         float fadeDur = 0.15f;
         float showDur = 0.25f;
 
-        if (stateTimer <= fadeDur)
+        if (stateTimer < fadeDur)
         {
             float t = EaseOutCubic(Mathf.Clamp01(stateTimer / fadeDur));
             if (mainPanelCG != null) mainPanelCG.alpha = 1f - t;
         }
-        else if (stateTimer <= fadeDur + 0.01f)
+        else
         {
-            if (mainPanelCG != null) mainPanelCG.alpha = 0f;
-            if (mainMenuPanel != null) mainMenuPanel.SetActive(false);
-            if (settingsPanel != null)
+            // Pastikan MainMenuPanel tertutup dan tidak memblokir raycast
+            if (mainMenuPanel != null && mainMenuPanel.activeSelf)
+                mainMenuPanel.SetActive(false);
+
+            if (mainPanelCG != null)
+            {
+                mainPanelCG.alpha = 0f;
+                mainPanelCG.blocksRaycasts = false;
+                mainPanelCG.interactable = false;
+            }
+
+            // Aktifkan SettingsPanel
+            if (settingsPanel != null && !settingsPanel.activeSelf)
             {
                 settingsPanel.SetActive(true);
-                if (settingsCG == null) { settingsCG = settingsPanel.GetComponent<CanvasGroup>(); if (settingsCG == null) settingsCG = settingsPanel.AddComponent<CanvasGroup>(); }
+                if (settingsCG == null)
+                    settingsCG = settingsPanel.GetComponent<CanvasGroup>() ?? settingsPanel.AddComponent<CanvasGroup>();
                 settingsPanel.transform.localScale = Vector3.one * 0.9f;
                 settingsCG.alpha = 0f;
             }
-        }
-        else
-        {
-            float elapsed = stateTimer - fadeDur - 0.01f;
+
+            float elapsed = stateTimer - fadeDur;
             float t = EaseOutCubic(Mathf.Clamp01(elapsed / showDur));
-            if (settingsCG != null) settingsCG.alpha = t;
-            if (settingsPanel != null) settingsPanel.transform.localScale = Vector3.Lerp(Vector3.one * 0.9f, Vector3.one, t);
+
+            if (settingsCG != null)
+            {
+                settingsCG.alpha = t;
+                settingsCG.blocksRaycasts = true;
+                settingsCG.interactable = true;
+            }
+
+            if (settingsPanel != null)
+                settingsPanel.transform.localScale = Vector3.Lerp(Vector3.one * 0.9f, Vector3.one, t);
 
             if (t >= 1f)
             {
                 currentState = MenuState.SettingsOpen;
-                if (settingsPanel != null) settingsPanel.transform.localScale = Vector3.one;
+                if (settingsPanel != null)
+                    settingsPanel.transform.localScale = Vector3.one;
+
+                if (settingsCG != null)
+                {
+                    settingsCG.alpha = 1f;
+                    settingsCG.blocksRaycasts = true;
+                    settingsCG.interactable = true;
+                }
             }
         }
     }
@@ -822,29 +871,76 @@ public class MainMenuController : MonoBehaviour
     {
         stateTimer += dt;
         float hideDur = 0.15f;
-        float showDur = 0.15f;
+        float showDur = 0.20f;
 
-        if (stateTimer <= hideDur)
+        if (stateTimer < hideDur)
         {
             float t = EaseOutCubic(Mathf.Clamp01(stateTimer / hideDur));
-            if (settingsCG != null) settingsCG.alpha = 1f - t;
-            if (settingsPanel != null) settingsPanel.transform.localScale = Vector3.Lerp(Vector3.one, Vector3.one * 0.95f, t);
-        }
-        else if (stateTimer <= hideDur + 0.01f)
-        {
-            if (settingsCG != null) settingsCG.alpha = 0f;
-            if (settingsPanel != null) settingsPanel.SetActive(false);
+            if (settingsCG != null)
+            {
+                settingsCG.alpha = 1f - t;
+                settingsCG.interactable = false;
+            }
+            if (settingsPanel != null)
+                settingsPanel.transform.localScale = Vector3.Lerp(Vector3.one, Vector3.one * 0.95f, t);
         }
         else
         {
-            float elapsed = stateTimer - hideDur - 0.01f;
+            // Pastikan SettingsPanel sepenuhnya tertutup dan dinonaktifkan agar tidak memblokir raycast
+            if (settingsCG != null)
+            {
+                settingsCG.alpha = 0f;
+                settingsCG.blocksRaycasts = false;
+                settingsCG.interactable = false;
+            }
+
+            if (settingsPanel != null && settingsPanel.activeSelf)
+            {
+                settingsPanel.SetActive(false);
+            }
+
+            // Aktifkan kembali MainMenuPanel
+            if (mainMenuPanel != null && !mainMenuPanel.activeSelf)
+            {
+                mainMenuPanel.SetActive(true);
+            }
+
+            if (mainPanelCG == null && mainMenuPanel != null)
+            {
+                mainPanelCG = mainMenuPanel.GetComponent<CanvasGroup>() ?? mainMenuPanel.AddComponent<CanvasGroup>();
+            }
+
+            float elapsed = stateTimer - hideDur;
             float t = EaseOutCubic(Mathf.Clamp01(elapsed / showDur));
-            if (mainMenuPanel != null && !mainMenuPanel.activeSelf) mainMenuPanel.SetActive(true);
-            if (mainPanelCG != null) mainPanelCG.alpha = t;
+
+            if (mainPanelCG != null)
+            {
+                mainPanelCG.alpha = t;
+                mainPanelCG.blocksRaycasts = true;
+                mainPanelCG.interactable = true;
+            }
 
             if (t >= 1f)
             {
                 currentState = MenuState.Active;
+
+                if (mainPanelCG != null)
+                {
+                    mainPanelCG.alpha = 1f;
+                    mainPanelCG.blocksRaycasts = true;
+                    mainPanelCG.interactable = true;
+                }
+
+                if (settingsPanel != null)
+                    settingsPanel.SetActive(false);
+
+                if (settingsCG != null)
+                {
+                    settingsCG.alpha = 0f;
+                    settingsCG.blocksRaycasts = false;
+                    settingsCG.interactable = false;
+                }
+
                 if (useLegacyCodeStyling)
                 {
                     UpdateTitleIdle(0);
