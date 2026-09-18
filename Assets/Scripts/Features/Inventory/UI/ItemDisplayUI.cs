@@ -24,6 +24,11 @@ public class ItemDisplayUI : MonoBehaviour
     public TextMeshProUGUI interactKeyTMP;
     public CanvasGroup interactPromptCanvasGroup;
 
+    [Header("Modern TMP Hotbar Popup Banner")]
+    public GameObject hotbarPopupRoot;
+    public TextMeshProUGUI hotbarPopupTMP;
+    public CanvasGroup hotbarPopupCanvasGroup;
+
     // Offset posisi tooltip dari kursor (dapat diatur dari Inspector).
     // Default (25, 65): tooltip muncul di atas kanan kursor agar tidak menutupi pointer.
     [SerializeField] private Vector2 tooltipOffset = new Vector2(25f, 65f);
@@ -44,6 +49,11 @@ public class ItemDisplayUI : MonoBehaviour
             interactPromptRoot.SetActive(false);
         else if (interactPromptTMP != null)
             interactPromptTMP.gameObject.SetActive(false);
+
+        if (hotbarPopupRoot != null)
+            hotbarPopupRoot.SetActive(false);
+        else if (hotbarPopupTMP != null)
+            hotbarPopupTMP.gameObject.SetActive(false);
 
         if (mouseTooltipText != null)
             BuildTooltipBackground();
@@ -205,21 +215,80 @@ public class ItemDisplayUI : MonoBehaviour
 
     public void ShowHotbarPopup(string itemName)
     {
-        if (hotbarPopupText == null)
+        if (string.IsNullOrEmpty(itemName))
             return;
 
-        hotbarPopupText.text = itemName;
-        hotbarPopupText.gameObject.SetActive(true);
+        if (hotbarPopupTMP != null)
+        {
+            hotbarPopupTMP.text = itemName;
 
-        if (hideHotbarCoroutine != null)
-            StopCoroutine(hideHotbarCoroutine);
+            if (hotbarPopupRoot != null)
+                hotbarPopupRoot.SetActive(true);
+            else
+                hotbarPopupTMP.gameObject.SetActive(true);
 
-        hideHotbarCoroutine = StartCoroutine(HideHotbarRoutine());
+            if (hideHotbarCoroutine != null)
+                StopCoroutine(hideHotbarCoroutine);
+
+            hideHotbarCoroutine = StartCoroutine(HotbarPopupRoutine());
+        }
+        else if (hotbarPopupText != null)
+        {
+            hotbarPopupText.text = itemName;
+            hotbarPopupText.gameObject.SetActive(true);
+
+            if (hideHotbarCoroutine != null)
+                StopCoroutine(hideHotbarCoroutine);
+
+            hideHotbarCoroutine = StartCoroutine(HideHotbarRoutine());
+        }
+    }
+
+    private IEnumerator HotbarPopupRoutine()
+    {
+        // Smooth fade in
+        if (hotbarPopupCanvasGroup != null)
+        {
+            hotbarPopupCanvasGroup.alpha = 0f;
+            float elapsed = 0f;
+            float fadeInDur = 0.12f;
+            while (elapsed < fadeInDur)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                hotbarPopupCanvasGroup.alpha = Mathf.Lerp(0f, 1f, elapsed / fadeInDur);
+                yield return null;
+            }
+            hotbarPopupCanvasGroup.alpha = 1f;
+        }
+
+        // Tampil stabil selama 1.8 detik
+        yield return new WaitForSecondsRealtime(1.8f);
+
+        // Smooth fade out
+        if (hotbarPopupCanvasGroup != null)
+        {
+            float elapsed = 0f;
+            float fadeOutDur = 0.25f;
+            while (elapsed < fadeOutDur)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                hotbarPopupCanvasGroup.alpha = Mathf.Lerp(1f, 0f, elapsed / fadeOutDur);
+                yield return null;
+            }
+            hotbarPopupCanvasGroup.alpha = 0f;
+        }
+
+        if (hotbarPopupRoot != null)
+            hotbarPopupRoot.SetActive(false);
+        else if (hotbarPopupTMP != null)
+            hotbarPopupTMP.gameObject.SetActive(false);
+
+        hideHotbarCoroutine = null;
     }
 
     private IEnumerator HideHotbarRoutine()
     {
-        yield return new WaitForSeconds(2f);
+        yield return new WaitForSecondsRealtime(2f);
 
         if (hotbarPopupText != null)
         {
