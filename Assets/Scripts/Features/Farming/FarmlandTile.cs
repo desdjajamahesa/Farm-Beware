@@ -103,7 +103,18 @@ namespace FeaturesFarming
             switch (currentState)
             {
                 case TileState.Untilled:
-                    TillSoil();
+                    if (IsHoldingHoe(interactor))
+                    {
+                        TillSoil();
+                    }
+                    else
+                    {
+                        Debug.LogWarning("[FarmlandTile] Harap pegang Cangkul di slot hotbar aktif untuk mencangkul tanah!");
+                        if (ItemDisplayUI.Instance != null)
+                        {
+                            ItemDisplayUI.Instance.ShowHotbarPopup("Butuh Cangkul di Hotbar!");
+                        }
+                    }
                     break;
 
                 case TileState.Tilled:
@@ -275,7 +286,10 @@ namespace FeaturesFarming
             switch (currentState)
             {
                 case TileState.Untilled:
-                    worldLabel.displayName = "Cangkul Tanah";
+                    if (IsHoldingHoe(interactor))
+                        worldLabel.displayName = "Cangkul Tanah";
+                    else
+                        worldLabel.displayName = "Tanah Liar (Butuh Cangkul)";
                     break;
 
                 case TileState.Tilled:
@@ -322,6 +336,34 @@ namespace FeaturesFarming
                     return seed;
             }
             return null;
+        }
+
+        private bool IsHoldingHoe(GameObject interactor)
+        {
+            if (interactor == null)
+            {
+                // Fallback: cari player aktif di scene
+                var player = FindFirstObjectByType<PlayerControl>();
+                if (player != null) interactor = player.gameObject;
+            }
+
+            if (interactor == null) return false;
+            var inv = interactor.GetComponent<InventoryComponent>();
+            if (inv == null) return false;
+
+            int idx = inv.selectedHotbarIndex;
+            if (idx >= 0 && idx < inv.slots.Count)
+            {
+                var slot = inv.slots[idx];
+                if (slot != null && !slot.IsEmpty && slot.item != null)
+                {
+                    if (slot.item is ToolItemData tool && tool.isHoe)
+                        return true;
+                    if (slot.item.itemId == "tool_hoe" || slot.item.name.ToLower().Contains("cangkul") || slot.item.name.ToLower().Contains("hoe"))
+                        return true;
+                }
+            }
+            return false;
         }
 
         private void UpdateVisuals()

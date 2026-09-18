@@ -80,6 +80,12 @@ public class HoverLabelController : MonoBehaviour
                 lastHighlight.SetHighlight(true);
         }
 
+        var farmland = target.GetComponent<FeaturesFarming.FarmlandTile>() ?? target.GetComponentInChildren<FeaturesFarming.FarmlandTile>();
+        if (farmland != null && interactor != null)
+        {
+            farmland.UpdateLabelText(interactor.gameObject);
+        }
+
         WorldLabel label = target.GetComponent<WorldLabel>() ?? target.GetComponentInChildren<WorldLabel>();
         string displayName = label != null ? label.GetDisplayName() : target.name;
 

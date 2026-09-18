@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c908330538660af40ad2893ecae8f656, type: 3}
+  m_Name: Tool_Hoe
+  m_EditorClassIdentifier: Assembly-CSharp::ToolItemData
+  itemId: tool_hoe
+  itemName: Cangkul
+  category: 6
+  rarity: 0
+  itemIcon: {fileID: 21300000, guid: da8589e6752645549aae0f26d793ec02, type: 3}
+  description: Alat pertanian untuk mencangkul dan menggemburkan tanah liar agar
+    siap ditanami benih.
+  maxStack: 1
+  type: 2
+  buyPrice: 500
+  sellPrice: 250
+  isDirty: 0
+  cleanVariant: {fileID: 0}
+  equipPrefab: {fileID: 136473597011710049, guid: 623ced75452ea0b4cadce1404da7a08a, type: 3}
+  isWeapon: 0
+  isHoe: 1
