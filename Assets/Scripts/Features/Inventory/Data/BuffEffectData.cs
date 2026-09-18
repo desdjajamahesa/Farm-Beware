@@ -32,14 +32,18 @@ public class BuffEffectData
     [Tooltip("Deskripsi efek buff untuk tooltip/UI.")]
     public string description;
 
+    [Tooltip("Ikon visual buff untuk ditampilkan di UI (opsional, jika kosong akan menggunakan ikon default berdasarkan BuffType).")]
+    public Sprite buffIcon;
+
     public BuffEffectData() { }
 
-    public BuffEffectData(BuffType type, float val, float dur, string name = "", string desc = "")
+    public BuffEffectData(BuffType type, float val, float dur, string name = "", string desc = "", Sprite icon = null)
     {
         buffType = type;
         value = val;
         duration = dur;
         buffName = name;
         description = desc;
+        buffIcon = icon;
     }
 }

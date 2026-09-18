@@ -5,6 +5,8 @@ public class PlayerStats : MonoBehaviour
 {
     // Event Darah, Stamina, Hunger & Thirst
     public event Action<int, int> OnHealthChanged;
+    public event Action<int> OnDamageTaken;
+    public event Action<int> OnHealed;
     public event Action<float, float> OnStaminaChanged;
     public event Action<float, float> OnHungerChanged;
     public event Action<float, float> OnThirstChanged;
@@ -151,14 +153,21 @@ public class PlayerStats : MonoBehaviour
     // --- HEALTH METHODS ---
     public void Heal(int amount)
     {
+        if (amount <= 0) return;
+        int prev = currentHealth;
         currentHealth = Mathf.Clamp(currentHealth + amount, 0, maxHealth);
+        int actualHealed = currentHealth - prev;
         OnHealthChanged?.Invoke(currentHealth, maxHealth);
+        if (actualHealed > 0)
+            OnHealed?.Invoke(actualHealed);
     }
 
     public void TakeDamage(int amount)
     {
+        if (amount <= 0) return;
         currentHealth = Mathf.Clamp(currentHealth - amount, 0, maxHealth);
         OnHealthChanged?.Invoke(currentHealth, maxHealth);
+        OnDamageTaken?.Invoke(amount);
     }
 
     // --- STAMINA METHODS ---
