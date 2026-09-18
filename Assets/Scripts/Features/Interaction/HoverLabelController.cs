@@ -103,7 +103,6 @@ public class HoverLabelController : MonoBehaviour
 
         if (ItemDisplayUI.Instance != null)
         {
-            ItemDisplayUI.Instance.ShowWorldHover(name);
             ItemDisplayUI.Instance.ShowInteractPrompt(name);
         }
     }
@@ -134,7 +133,6 @@ public class HoverLabelController : MonoBehaviour
 
         if (ItemDisplayUI.Instance != null)
         {
-            ItemDisplayUI.Instance.HideWorldHover();
             ItemDisplayUI.Instance.HideInteractPrompt();
         }
     }

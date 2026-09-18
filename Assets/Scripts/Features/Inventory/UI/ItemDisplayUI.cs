@@ -2,28 +2,27 @@ using System.Collections;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.UI;
+using TMPro;
 
 // Singleton UI untuk menampilkan informasi item bergaya Minecraft:
 // 1) Popup nama item di hotbar saat pindah slot terpilih.
 // 2) Tooltip mengikuti kursor saat hover item di inventory.
-//
-// Catatan visual: background gelap tooltip dibuat di runtime pada GameObject
-// TERPISAH (tanpa komponen Text). Menambahkan Image pada GameObject yang sudah
-// memiliki Text melempar NullReferenceException di editor, sehingga kotak
-// background dibuat sebagai sibling yang disinkronkan dengan tooltip.
+// 3) Banner prompt interaksi modern TextMeshPro dengan badge tombol [E].
 public class ItemDisplayUI : MonoBehaviour
 {
     public static ItemDisplayUI Instance { get; private set; }
 
+    [Header("Legacy Text References")]
     public Text hotbarPopupText;
     public Text mouseTooltipText;
-
-    // Label nama objek dunia (hover) yang ditampilkan TETAP di atas hotbar
-    // (bukan mengikuti kursor), dipakai oleh HoverLabelController.
     public Text worldHoverText;
-
-    // Prompt aksi "E — Nama" untuk objek interaktif yang sedang di-hover.
     public Text interactPromptText;
+
+    [Header("Modern TMP Interaction Prompt Banner")]
+    public GameObject interactPromptRoot;
+    public TextMeshProUGUI interactPromptTMP;
+    public TextMeshProUGUI interactKeyTMP;
+    public CanvasGroup interactPromptCanvasGroup;
 
     // Offset posisi tooltip dari kursor (dapat diatur dari Inspector).
     // Default (25, 65): tooltip muncul di atas kanan kursor agar tidak menutupi pointer.
@@ -40,6 +39,11 @@ public class ItemDisplayUI : MonoBehaviour
         SanitizeText(mouseTooltipText);
         SanitizeText(worldHoverText);
         SanitizeText(interactPromptText);
+
+        if (interactPromptRoot != null)
+            interactPromptRoot.SetActive(false);
+        else if (interactPromptTMP != null)
+            interactPromptTMP.gameObject.SetActive(false);
 
         if (mouseTooltipText != null)
             BuildTooltipBackground();
@@ -106,42 +110,97 @@ public class ItemDisplayUI : MonoBehaviour
             tooltipBg.gameObject.SetActive(false);
     }
 
-    // Label nama objek dunia: tampil PERSISTEN di atas hotbar (bukan ikut kursor).
+    // Label nama objek dunia: dinonaktifkan untuk mencegah teks dobel di atas hotbar.
     public void ShowWorldHover(string name)
     {
-        if (worldHoverText == null)
-            return;
-
-        worldHoverText.text = name;
-        worldHoverText.gameObject.SetActive(true);
+        // Safe no-op. Jika masih ada worldHoverText legacy di scene, pastikan tetap nonaktif.
+        if (worldHoverText != null && worldHoverText.gameObject.activeSelf)
+        {
+            worldHoverText.text = "";
+            worldHoverText.gameObject.SetActive(false);
+        }
     }
 
     public void HideWorldHover()
     {
-        if (worldHoverText == null)
-            return;
-
-        worldHoverText.text = "";
-        worldHoverText.gameObject.SetActive(false);
+        if (worldHoverText != null)
+        {
+            worldHoverText.text = "";
+            worldHoverText.gameObject.SetActive(false);
+        }
     }
 
     // Prompt aksi "E — Nama" saat objek interaktif sedang di-hover.
     public void ShowInteractPrompt(string displayName)
     {
-        if (interactPromptText == null)
-            return;
+        if (interactPromptTMP != null)
+        {
+            if (interactKeyTMP != null)
+                interactKeyTMP.text = "E";
 
-        interactPromptText.text = "E — " + displayName;
-        interactPromptText.gameObject.SetActive(true);
+            interactPromptTMP.text = FormatPromptText(displayName);
+
+            if (interactPromptRoot != null)
+                interactPromptRoot.SetActive(true);
+            else
+                interactPromptTMP.gameObject.SetActive(true);
+
+            if (interactPromptCanvasGroup != null)
+                interactPromptCanvasGroup.alpha = 1f;
+        }
+        else if (interactPromptText != null)
+        {
+            interactPromptText.text = "E — " + displayName;
+            interactPromptText.gameObject.SetActive(true);
+        }
     }
 
     public void HideInteractPrompt()
     {
-        if (interactPromptText == null)
-            return;
+        if (interactPromptRoot != null)
+            interactPromptRoot.SetActive(false);
+        else if (interactPromptTMP != null)
+            interactPromptTMP.gameObject.SetActive(false);
 
-        interactPromptText.text = "";
-        interactPromptText.gameObject.SetActive(false);
+        if (interactPromptText != null)
+        {
+            interactPromptText.text = "";
+            interactPromptText.gameObject.SetActive(false);
+        }
+    }
+
+    private static string FormatPromptText(string raw)
+    {
+        if (string.IsNullOrEmpty(raw)) return "";
+
+        // Bersihkan prefix jika ada string lama "E — " atau "E - "
+        if (raw.StartsWith("E — ") || raw.StartsWith("E - "))
+            raw = raw.Substring(4);
+
+        int parenOpen = raw.IndexOf('(');
+        int parenClose = raw.LastIndexOf(')');
+
+        if (parenOpen > 0 && parenClose > parenOpen)
+        {
+            string mainAction = raw.Substring(0, parenOpen).Trim();
+            string detail = raw.Substring(parenOpen, parenClose - parenOpen + 1);
+
+            // Jika countdown durasi seperti (15s)
+            if (detail.EndsWith("s)") && char.IsDigit(detail[1]))
+            {
+                return $"<b>{mainAction}</b> <color=#FBBF24><size=90%>{detail}</size></color>";
+            }
+
+            // Hint aksi / instruksi sekunder
+            return $"<b>{mainAction}</b> <color=#94A3B8><size=85%>{detail}</size></color>";
+        }
+
+        if (raw.Contains("Panen"))
+        {
+            return $"<b><color=#4ADE80>{raw}</color></b>";
+        }
+
+        return $"<b>{raw}</b>";
     }
 
     public void ShowHotbarPopup(string itemName)
