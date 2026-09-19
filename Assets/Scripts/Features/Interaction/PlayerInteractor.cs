@@ -6,8 +6,8 @@ namespace FeaturesInteraction
     public class PlayerInteractor : MonoBehaviour
     {
         [Header("Deteksi Interaksi")]
-        // Radius diperkecil agar interaksi lebih presisi (default 1.5f).
-        [SerializeField] private float interactRadius = 1.5f;
+        // Radius interaksi presisi yang nyaman (default 2.0f).
+        [SerializeField] private float interactRadius = 2.0f;
 
         [Header("Layer Interactable")]
         public LayerMask interactableLayer = ~0;
@@ -33,7 +33,8 @@ namespace FeaturesInteraction
 
         private IInteractable FindClosestInteractable()
         {
-            Collider[] hits = Physics.OverlapSphere(transform.position, interactRadius, interactableLayer.value);
+            Vector3 playerCenter = transform.position + Vector3.up * 0.8f;
+            Collider[] hits = Physics.OverlapSphere(playerCenter, interactRadius, interactableLayer.value);
 
             IInteractable best = null;
             float bestDist = float.MaxValue;
@@ -54,11 +55,14 @@ namespace FeaturesInteraction
                 if (!IsInSameZone(targetTransform))
                     continue;
 
-                // LINE-OF-SIGHT CHECK: Jangan bisa berinteraksi tembus dinding solid
-                if (IsObstructedByWall(targetTransform))
+                // Pintu (DoorInteractable) tertanam pada kusen/bukaan dinding sehingga dikecualikan dari pemblokiran raycast dinding
+                bool isDoor = (interactable is DoorInteractable) || targetTransform.GetComponentInParent<DoorInteractable>() != null;
+                if (!isDoor && IsObstructedByWall(targetTransform))
                     continue;
 
-                float dist = (targetTransform.position - transform.position).sqrMagnitude;
+                // Jarak dihitung dari titik terdekat collider target ke pusat tubuh pemain
+                Vector3 closestPoint = hit.ClosestPoint(playerCenter);
+                float dist = (closestPoint - playerCenter).sqrMagnitude;
                 if (dist < bestDist)
                 {
                     bestDist = dist;
