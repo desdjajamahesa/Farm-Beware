@@ -6,17 +6,19 @@ namespace FeaturesInteraction
     public class PlayerInteractor : MonoBehaviour
     {
         [Header("Deteksi Interaksi")]
-        // Radius diperkecil agar interaksi lebih presisi (default 2.5f).
-        [SerializeField] private float interactRadius = 2.5f;
+        // Radius diperkecil agar interaksi lebih presisi (default 1.5f).
+        [SerializeField] private float interactRadius = 1.5f;
 
         [Header("Layer Interactable")]
         public LayerMask interactableLayer = ~0;
 
         private IInteractable currentInteractable;
+        private Collider playerCollider;
 
         private void Awake()
         {
             this.enabled = true;
+            playerCollider = GetComponent<Collider>();
         }
 
         void Update()
@@ -52,6 +54,10 @@ namespace FeaturesInteraction
                 if (!IsInSameZone(targetTransform))
                     continue;
 
+                // LINE-OF-SIGHT CHECK: Jangan bisa berinteraksi tembus dinding solid
+                if (IsObstructedByWall(targetTransform))
+                    continue;
+
                 float dist = (targetTransform.position - transform.position).sqrMagnitude;
                 if (dist < bestDist)
                 {
@@ -63,14 +69,44 @@ namespace FeaturesInteraction
             return best;
         }
 
+        private bool IsObstructedByWall(Transform target)
+        {
+            Vector3 origin = transform.position + Vector3.up * 0.8f;
+            Vector3 targetCenter = target.position + Vector3.up * 0.5f;
+            Vector3 dir = targetCenter - origin;
+            float dist = dir.magnitude;
+
+            if (dist < 0.1f) return false;
+
+            if (Physics.Raycast(origin, dir.normalized, out RaycastHit hit, dist, ~LayerMask.GetMask("Ignore Raycast"), QueryTriggerInteraction.Ignore))
+            {
+                // Jika terkena collider solid yang bukan bagian dari target dan bukan collider player
+                if (hit.collider != null && hit.collider != playerCollider)
+                {
+                    if (!hit.collider.transform.IsChildOf(target) && !target.IsChildOf(hit.collider.transform))
+                    {
+                        // Hanya blokir jika permukaan yang tertabrak adalah bidang vertikal/dinding
+                        float wallAngle = Vector3.Angle(hit.normal, Vector3.up);
+                        if (wallAngle > 45f && wallAngle < 135f)
+                        {
+                            return true; // Terhalang dinding solid
+                        }
+                    }
+                }
+            }
+
+            return false;
+        }
+
         private bool IsInSameZone(Transform target)
         {
             // Find zone of target
             var targetZone = target.GetComponentInParent<InteractionZone>();
             if (targetZone == null) return true; // No zone = always accessible
 
-            // Jika player belum di dalam zona khusus mana pun atau di zona yang sama, izinkan
-            if (currentZone == null || currentZone == targetZone) return true;
+            // Objek berada di dalam zona tertentu (mis. Bedroom).
+            // Player harus berada di dalam zona yang sama.
+            if (currentZone == targetZone) return true;
 
             // Fallback: periksa apakah posisi player saat ini berada di dalam bounds collider zone tersebut
             Vector3 playerPos = transform.position;
@@ -80,6 +116,7 @@ namespace FeaturesInteraction
                 return true;
             }
 
+            // Player berada di luar zona kamar/koleksi -> tolak interaksi tembus kamar
             return false;
         }
 
