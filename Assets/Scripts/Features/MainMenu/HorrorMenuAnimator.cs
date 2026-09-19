@@ -1,141 +1,146 @@
 using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// HorrorMenuAnimator menghidupkan Main Menu Farm Beware dengan serangkaian animasi
-/// atmosferik: mata merah berkedip di ladang jagung, kabut merayap, efek parallax mouse 2.5D,
-/// getaran seram pada judul, dan ayunan plang tombol rustic.
+/// HorrorMenuAnimator brings the Farm Beware pause menu to life with atmospheric horror effects:
+/// - Cohesive 2.5D mouse parallax where background, pumpkin, and scarecrow move in unified lock-step
+/// - Realistic multi-frequency candle flame flicker inside the pumpkin scarecrow's carved eyes and mouth
+/// - Living organic scarecrow breath (subtle whole-scarecrow pulse)
+/// - Sinister title horror heartbeat and cursed twitch
+/// - Ambient distant lightning flashes
 /// </summary>
 public class HorrorMenuAnimator : MonoBehaviour
 {
-    [System.Serializable]
-    public class GlowingEye
-    {
-        public RectTransform eyeRect;
-        public CanvasGroup canvasGroup;
-        [HideInInspector] public Vector2 initialPos;
-        [HideInInspector] public float nextBlinkTime;
-        [HideInInspector] public bool isBlinking;
-        [HideInInspector] public float baseAlpha = 0.9f;
-        [HideInInspector] public float phaseOffset;
-    }
-
     [Header("Background & Parallax")]
-    [Tooltip("RectTransform gambar background utama.")]
+    [Tooltip("Main background RectTransform.")]
     [SerializeField] private RectTransform backgroundRect;
-    [Tooltip("Intensitas pergerakan background mengikuti kursor mouse (2.5D Parallax).")]
-    [SerializeField] private float bgParallaxStrength = 18f;
-    [Tooltip("Kecepatan smoothing pergerakan kursor.")]
-    [SerializeField] private float parallaxSmoothSpeed = 4f;
+    [Tooltip("Signpost RectTransform holding all plank buttons.")]
+    [SerializeField] private RectTransform signpostPanel;
+    [Tooltip("Intensity of mouse parallax movement.")]
+    [SerializeField] private float bgParallaxStrength = 14f;
+    [Tooltip("Smoothing speed for parallax.")]
+    [SerializeField] private float parallaxSmoothSpeed = 4.5f;
 
-    [Header("Title 'FARM BEWARE'")]
+    [Header("Title 'HAVE YOU GIVEN UP?'")]
     [SerializeField] private RectTransform titleRect;
     [SerializeField] private CanvasGroup titleGlowGroup;
-    [SerializeField] private float titleFloatSpeed = 0.8f;
-    [SerializeField] private float titleFloatAmount = 8f;
-    [SerializeField] private float titleBreathSpeed = 1.2f;
-    [SerializeField] private float titleBreathScale = 0.025f;
-    [SerializeField] private float twitchIntervalMin = 4f;
-    [SerializeField] private float twitchIntervalMax = 9f;
+    [SerializeField] private float titleBreathSpeed = 0.8f;
+    [SerializeField] private float titleBreathScale = 0.015f;
+    [SerializeField] private float twitchIntervalMin = 5f;
+    [SerializeField] private float twitchIntervalMax = 11f;
 
-    [Header("Cornfield Glowing Eyes")]
-    [SerializeField] private List<GlowingEye> glowingEyes = new List<GlowingEye>();
-    [SerializeField] private float eyeBlinkDuration = 0.18f;
-    [SerializeField] private float eyePulseSpeed = 1.5f;
+    [Header("Pumpkin Scarecrow Head")]
+    [SerializeField] private RectTransform pumpkinRect;
+    [SerializeField] private CanvasGroup pumpkinGlowGroup;
+    [SerializeField] private float pumpkinFlameFlickerSpeed = 7f;
 
-    [Header("Drifting Fog Layers")]
-    [SerializeField] private RectTransform[] fogLayers;
-    [SerializeField] private float[] fogDriftSpeeds = new float[] { -25f, -40f, -15f };
-    [SerializeField] private float fogWaveSpeed = 0.6f;
-    [SerializeField] private float fogWaveHeight = 12f;
-    [SerializeField] private float fogResetThreshold = 1400f;
+    [Header("Cornfield Lurker Eyes")]
+    [SerializeField] private RectTransform cornfieldEyesRect;
+    [SerializeField] private CanvasGroup cornfieldEyesGroup;
+    [SerializeField] private float eyePulseSpeed = 1.8f;
+    [SerializeField] private float eyeBlinkIntervalMin = 3.5f;
+    [SerializeField] private float eyeBlinkIntervalMax = 7.5f;
 
-    [Header("Rustic Buttons Sway")]
-    [SerializeField] private RectTransform[] buttonRects;
-    [SerializeField] private float buttonSwaySpeed = 1.2f;
-    [SerializeField] private float buttonSwayAngle = 1.2f;
-    [SerializeField] private float buttonFloatAmount = 4f;
+    [Header("Scarecrow Organic Breath")]
+    [SerializeField] private float scarecrowBreathSpeed = 0.7f;
+    [SerializeField] private float scarecrowBreathAmount = 0.008f;
 
     [Header("Ambient Lightning / Moonlight Flicker")]
     [SerializeField] private Image backgroundOverlayImage;
-    [SerializeField] private float minLightningInterval = 12f;
-    [SerializeField] private float maxLightningInterval = 28f;
+    [SerializeField] private float minLightningInterval = 14f;
+    [SerializeField] private float maxLightningInterval = 26f;
 
     // Internal State
     private Vector2 bgInitialPos;
     private Vector2 titleInitialPos;
     private Vector3 titleInitialScale;
-    private Vector2[] buttonsInitialPos;
-    private Vector2[] fogInitialPos;
+    private Vector2 pumpkinInitialPos;
+    private Vector2 signpostInitialPos;
+    private Vector3 signpostInitialScale;
+    private Vector2 cornfieldEyesInitialPos;
     private Vector2 targetParallaxOffset;
     private Vector2 currentParallaxOffset;
     private float nextTwitchTime;
     private bool isTwitching = false;
     private float nextLightningTime;
     private Coroutine lightningCoroutine;
+    private float nextEyeBlinkTime;
+    private bool isEyeBlinking = false;
+    private MainMenuController menuController;
 
     private void Awake()
     {
+        menuController = GetComponent<MainMenuController>();
         if (backgroundRect != null) bgInitialPos = backgroundRect.anchoredPosition;
         if (titleRect != null)
         {
             titleInitialPos = titleRect.anchoredPosition;
             titleInitialScale = titleRect.localScale;
-        }
-
-        // Cache initial positions
-        if (buttonRects != null && buttonRects.Length > 0)
-        {
-            buttonsInitialPos = new Vector2[buttonRects.Length];
-            for (int i = 0; i < buttonRects.Length; i++)
+            if (titleGlowGroup == null)
             {
-                if (buttonRects[i] != null) buttonsInitialPos[i] = buttonRects[i].anchoredPosition;
+                var tg = titleRect.GetComponentInChildren<CanvasGroup>();
+                if (tg != null) titleGlowGroup = tg;
             }
         }
-
-        if (fogLayers != null && fogLayers.Length > 0)
+        if (pumpkinRect != null)
         {
-            fogInitialPos = new Vector2[fogLayers.Length];
-            for (int i = 0; i < fogLayers.Length; i++)
+            pumpkinInitialPos = pumpkinRect.anchoredPosition;
+            if (pumpkinGlowGroup == null)
             {
-                if (fogLayers[i] != null) fogInitialPos[i] = fogLayers[i].anchoredPosition;
+                var pg = pumpkinRect.GetComponentInChildren<CanvasGroup>();
+                if (pg != null) pumpkinGlowGroup = pg;
             }
         }
-
-        // Initialize eyes
-        foreach (var eye in glowingEyes)
+        if (signpostPanel == null)
         {
-            if (eye.eyeRect != null)
-            {
-                eye.initialPos = eye.eyeRect.anchoredPosition;
-                eye.nextBlinkTime = Time.time + Random.Range(1f, 5f);
-                eye.phaseOffset = Random.Range(0f, Mathf.PI * 2f);
-                if (eye.canvasGroup != null) eye.baseAlpha = eye.canvasGroup.alpha;
-            }
+            var sp = transform.Find("SignpostPanel");
+            if (sp != null) signpostPanel = sp.GetComponent<RectTransform>();
+        }
+        if (signpostPanel != null)
+        {
+            signpostInitialPos = signpostPanel.anchoredPosition;
+            signpostInitialScale = signpostPanel.localScale;
         }
 
-        nextTwitchTime = Time.time + Random.Range(twitchIntervalMin, twitchIntervalMax);
-        nextLightningTime = Time.time + Random.Range(minLightningInterval, maxLightningInterval);
+        if (cornfieldEyesRect == null)
+        {
+            var eyes = transform.Find("CornfieldLurkerEyes");
+            if (eyes == null) eyes = transform.Find("BackgroundContainer/CornfieldLurkerEyes");
+            if (eyes != null) cornfieldEyesRect = eyes.GetComponent<RectTransform>();
+        }
+        if (cornfieldEyesRect != null)
+        {
+            cornfieldEyesInitialPos = cornfieldEyesRect.anchoredPosition;
+            if (cornfieldEyesGroup == null)
+                cornfieldEyesGroup = cornfieldEyesRect.GetComponent<CanvasGroup>();
+        }
+
+        nextTwitchTime = Time.unscaledTime + Random.Range(twitchIntervalMin, twitchIntervalMax);
+        nextLightningTime = Time.unscaledTime + Random.Range(minLightningInterval, maxLightningInterval);
+        nextEyeBlinkTime = Time.unscaledTime + Random.Range(eyeBlinkIntervalMin, eyeBlinkIntervalMax);
     }
 
     private void Update()
     {
+        if (menuController != null && !menuController.IsMenuActive)
+            return;
+
         float dt = Time.unscaledDeltaTime;
         float time = Time.unscaledTime;
 
         UpdateMouseParallax(dt);
-        UpdateTitleAnimation(time, dt);
+        UpdateTitleAnimation(time);
+        UpdatePumpkinAnimation(time);
         UpdateCornfieldEyes(time, dt);
-        UpdateDriftingFog(time, dt);
-        UpdateButtonsSway(time);
+        UpdateScarecrowBreath(time);
         UpdateLightningCycle(time);
     }
 
-    #region 2.5D Mouse Parallax
+    #region Unified 2.5D Mouse Parallax
     private void UpdateMouseParallax(float dt)
     {
+        if (bgParallaxStrength <= 0f) return;
         Vector2 mouseScreen = Vector2.zero;
 
 #if ENABLE_INPUT_SYSTEM
@@ -156,187 +161,161 @@ public class HorrorMenuAnimator : MonoBehaviour
         normX = Mathf.Clamp(normX, -1f, 1f);
         normY = Mathf.Clamp(normY, -1f, 1f);
 
-        targetParallaxOffset = new Vector2(-normX * bgParallaxStrength, -normY * (bgParallaxStrength * 0.6f));
+        targetParallaxOffset = new Vector2(-normX * bgParallaxStrength, -normY * (bgParallaxStrength * 0.55f));
         currentParallaxOffset = Vector2.Lerp(currentParallaxOffset, targetParallaxOffset, dt * parallaxSmoothSpeed);
 
+        // Move background, scarecrow signpost, pumpkin head, and title in unified 1:1 synchronization
+        // This ensures the button hitboxes NEVER desync from the painted planks on the background!
         if (backgroundRect != null)
-        {
             backgroundRect.anchoredPosition = bgInitialPos + currentParallaxOffset;
+
+        if (signpostPanel != null)
+            signpostPanel.anchoredPosition = signpostInitialPos + currentParallaxOffset;
+
+        if (pumpkinRect != null)
+            pumpkinRect.anchoredPosition = pumpkinInitialPos + currentParallaxOffset;
+
+        if (titleRect != null && !isTwitching)
+            titleRect.anchoredPosition = titleInitialPos + currentParallaxOffset * 0.85f;
+
+        if (cornfieldEyesRect != null)
+            cornfieldEyesRect.anchoredPosition = cornfieldEyesInitialPos + currentParallaxOffset;
+    }
+    #endregion
+
+    #region Cornfield Lurker Eyes
+    private void UpdateCornfieldEyes(float time, float dt)
+    {
+        if (cornfieldEyesGroup == null) return;
+
+        if (!isEyeBlinking)
+        {
+            // Sinusoidal eerie breathing pulse
+            float pulse = Mathf.Sin(time * eyePulseSpeed * Mathf.PI * 2f) * 0.22f;
+            cornfieldEyesGroup.alpha = Mathf.Clamp01(0.75f + pulse);
+
+            if (time >= nextEyeBlinkTime)
+            {
+                StartCoroutine(EyeBlinkRoutine());
+            }
+        }
+    }
+
+    private IEnumerator EyeBlinkRoutine()
+    {
+        isEyeBlinking = true;
+        if (cornfieldEyesGroup == null) yield break;
+
+        // Quick eerie blink
+        float duration = 0.08f;
+        float elapsed = 0f;
+        float startAlpha = cornfieldEyesGroup.alpha;
+
+        // Close eyes
+        while (elapsed < duration)
+        {
+            elapsed += Time.unscaledDeltaTime;
+            cornfieldEyesGroup.alpha = Mathf.Lerp(startAlpha, 0f, elapsed / duration);
+            yield return null;
+        }
+        cornfieldEyesGroup.alpha = 0f;
+
+        // Brief delay while closed or watching
+        float stayClosed = (Random.value < 0.3f) ? Random.Range(0.4f, 1.2f) : Random.Range(0.06f, 0.15f);
+        yield return new WaitForSecondsRealtime(stayClosed);
+
+        // Open eyes
+        elapsed = 0f;
+        while (elapsed < duration)
+        {
+            elapsed += Time.unscaledDeltaTime;
+            cornfieldEyesGroup.alpha = Mathf.Lerp(0f, 0.9f, elapsed / duration);
+            yield return null;
+        }
+        cornfieldEyesGroup.alpha = 0.9f;
+
+        isEyeBlinking = false;
+        nextEyeBlinkTime = Time.unscaledTime + Random.Range(eyeBlinkIntervalMin, eyeBlinkIntervalMax);
+    }
+    #endregion
+
+    #region Pumpkin Flame Flicker
+    private void UpdatePumpkinAnimation(float time)
+    {
+        if (pumpkinGlowGroup != null)
+        {
+            // Organic multi-frequency candlelight Perlin noise
+            float flameNoise1 = Mathf.PerlinNoise(time * pumpkinFlameFlickerSpeed, 0.4f);
+            float flameNoise2 = Mathf.PerlinNoise(time * 19f, 2.1f) * 0.22f;
+            float flamePulse = Mathf.Sin(time * 2.3f) * 0.10f;
+            pumpkinGlowGroup.alpha = Mathf.Clamp01(0.62f + flameNoise1 * 0.35f + flameNoise2 + flamePulse);
         }
     }
     #endregion
 
-    #region Title Animation
-    private void UpdateTitleAnimation(float time, float dt)
+    #region Scarecrow Organic Living Breath
+    private void UpdateScarecrowBreath(float time)
     {
-        if (titleRect == null) return;
+        if (signpostPanel == null) return;
 
-        // Subtle floating and breathing
-        float floatY = Mathf.Sin(time * titleFloatSpeed * Mathf.PI * 2f) * titleFloatAmount;
-        float breathScale = 1f + Mathf.Sin(time * titleBreathSpeed * Mathf.PI * 2f) * titleBreathScale;
+        // Slow, organic subtle breathing of the scarecrow entity as a whole
+        float breath = 1f + Mathf.Sin(time * scarecrowBreathSpeed * Mathf.PI * 2f) * scarecrowBreathAmount;
+        signpostPanel.localScale = new Vector3(signpostInitialScale.x * breath, signpostInitialScale.y * breath, 1f);
+    }
+    #endregion
 
-        // Occasional horror glitch / heartbeat twitch
+    #region Title Horror Pulse & Twitch
+    private void UpdateTitleAnimation(float time)
+    {
+        // Sinister slow breathing on title
+        if (titleRect != null && !isTwitching)
+        {
+            float breath = 1f + Mathf.Sin(time * titleBreathSpeed * Mathf.PI * 2f) * titleBreathScale;
+            titleRect.localScale = titleInitialScale * breath;
+        }
+
+        // Title blood aura pulse
+        if (titleGlowGroup != null && !isTwitching)
+        {
+            float glowAlpha = 0.45f + Mathf.Sin(time * titleBreathSpeed * Mathf.PI * 2f) * 0.25f;
+            titleGlowGroup.alpha = glowAlpha;
+        }
+
+        // Occasional creepy twitch / shudder
         if (!isTwitching && time >= nextTwitchTime)
         {
             StartCoroutine(TitleHorrorTwitchRoutine());
-        }
-
-        if (!isTwitching)
-        {
-            titleRect.anchoredPosition = titleInitialPos + new Vector2(currentParallaxOffset.x * 0.3f, floatY + currentParallaxOffset.y * 0.3f);
-            titleRect.localScale = titleInitialScale * breathScale;
-            titleRect.localRotation = Quaternion.Euler(0, 0, Mathf.Sin(time * 0.5f) * 0.6f);
-        }
-
-        // Title glow pulse
-        if (titleGlowGroup != null)
-        {
-            float glowAlpha = 0.35f + Mathf.Sin(time * titleBreathSpeed * Mathf.PI * 2f) * 0.25f;
-            titleGlowGroup.alpha = glowAlpha;
         }
     }
 
     private IEnumerator TitleHorrorTwitchRoutine()
     {
         isTwitching = true;
-        Vector2 twitchPos = titleRect.anchoredPosition;
+        Vector2 twitchBasePos = titleInitialPos + currentParallaxOffset * 0.85f;
 
-        // Quick double heartbeat spasm
-        for (int i = 0; i < 2; i++)
-        {
-            titleRect.localScale = titleInitialScale * 1.07f;
-            titleRect.anchoredPosition = twitchPos + new Vector2(Random.Range(-5f, 5f), Random.Range(-4f, 4f));
-            yield return new WaitForSecondsRealtime(0.04f);
+        if (titleRect != null)
+            titleRect.anchoredPosition = twitchBasePos + new Vector2(Random.Range(-3f, 3f), Random.Range(-2f, 2f));
+        if (titleGlowGroup != null)
+            titleGlowGroup.alpha = 1.0f;
 
-            titleRect.localScale = titleInitialScale * 0.98f;
-            titleRect.anchoredPosition = twitchPos;
-            yield return new WaitForSecondsRealtime(0.05f);
-        }
+        yield return new WaitForSecondsRealtime(0.04f);
 
-        titleRect.localScale = titleInitialScale;
+        if (titleRect != null)
+            titleRect.anchoredPosition = twitchBasePos + new Vector2(Random.Range(-2f, 2f), Random.Range(-1.5f, 1.5f));
+        if (titleGlowGroup != null)
+            titleGlowGroup.alpha = 0.25f;
+
+        yield return new WaitForSecondsRealtime(0.04f);
+
+        if (titleRect != null)
+            titleRect.anchoredPosition = twitchBasePos;
+        if (titleGlowGroup != null)
+            titleGlowGroup.alpha = 0.7f;
+
+        yield return new WaitForSecondsRealtime(0.04f);
+
         isTwitching = false;
         nextTwitchTime = Time.unscaledTime + Random.Range(twitchIntervalMin, twitchIntervalMax);
-    }
-    #endregion
-
-    #region Cornfield Glowing Eyes
-    private void UpdateCornfieldEyes(float time, float dt)
-    {
-        foreach (var eye in glowingEyes)
-        {
-            if (eye.eyeRect == null || eye.canvasGroup == null) continue;
-
-            // Parallax with corn stalks
-            eye.eyeRect.anchoredPosition = eye.initialPos + currentParallaxOffset * 0.85f;
-
-            if (!eye.isBlinking)
-            {
-                // Sinusoidal breathing glow
-                float pulse = Mathf.Sin(time * eyePulseSpeed + eye.phaseOffset) * 0.15f;
-                eye.canvasGroup.alpha = Mathf.Clamp01(eye.baseAlpha + pulse);
-
-                // Trigger blink
-                if (time >= eye.nextBlinkTime)
-                {
-                    StartCoroutine(BlinkEyeRoutine(eye));
-                }
-            }
-        }
-    }
-
-    private IEnumerator BlinkEyeRoutine(GlowingEye eye)
-    {
-        eye.isBlinking = true;
-        float elapsed = 0f;
-        float halfDur = eyeBlinkDuration * 0.5f;
-
-        // Fade out (tutup mata)
-        while (elapsed < halfDur)
-        {
-            elapsed += Time.unscaledDeltaTime;
-            eye.canvasGroup.alpha = Mathf.Lerp(eye.baseAlpha, 0f, elapsed / halfDur);
-            yield return null;
-        }
-
-        eye.canvasGroup.alpha = 0f;
-
-        // Berkedip cepat atau mengintai sebentar dari kegelapan
-        float closedDelay = (Random.value < 0.25f) ? Random.Range(0.8f, 2.0f) : Random.Range(0.08f, 0.2f);
-        yield return new WaitForSecondsRealtime(closedDelay);
-
-        // Sedikit geser posisi mata (seolah mengintip ke arah lain)
-        eye.eyeRect.anchoredPosition = eye.initialPos + new Vector2(Random.Range(-2f, 2f), Random.Range(-1.5f, 1.5f));
-
-        // Fade in (buka mata)
-        elapsed = 0f;
-        while (elapsed < halfDur)
-        {
-            elapsed += Time.unscaledDeltaTime;
-            eye.canvasGroup.alpha = Mathf.Lerp(0f, eye.baseAlpha, elapsed / halfDur);
-            yield return null;
-        }
-
-        eye.canvasGroup.alpha = eye.baseAlpha;
-        eye.isBlinking = false;
-        eye.nextBlinkTime = Time.unscaledTime + Random.Range(2.5f, 7.5f);
-    }
-    #endregion
-
-    #region Drifting Fog
-    private void UpdateDriftingFog(float time, float dt)
-    {
-        if (fogLayers == null || fogLayers.Length == 0) return;
-
-        for (int i = 0; i < fogLayers.Length; i++)
-        {
-            var fog = fogLayers[i];
-            if (fog == null) continue;
-
-            float speed = (i < fogDriftSpeeds.Length) ? fogDriftSpeeds[i] : -20f;
-            Vector2 pos = fog.anchoredPosition;
-
-            // Horizontal drift
-            pos.x += speed * dt;
-
-            // Vertical soft wave
-            float wave = Mathf.Sin(time * fogWaveSpeed + i * 1.7f) * fogWaveHeight;
-            pos.y = fogInitialPos[i].y + wave;
-
-            // Reset loop
-            if (speed < 0 && pos.x < -fogResetThreshold)
-            {
-                pos.x += fogResetThreshold * 2f;
-            }
-            else if (speed > 0 && pos.x > fogResetThreshold)
-            {
-                pos.x -= fogResetThreshold * 2f;
-            }
-
-            // Apply Parallax to fog
-            fog.anchoredPosition = pos + new Vector2(currentParallaxOffset.x * (0.6f + i * 0.2f), currentParallaxOffset.y * 0.4f);
-        }
-    }
-    #endregion
-
-    #region Rustic Buttons Sway
-    private void UpdateButtonsSway(float time)
-    {
-        if (buttonRects == null || buttonsInitialPos == null) return;
-
-        for (int i = 0; i < buttonRects.Length; i++)
-        {
-            var btn = buttonRects[i];
-            if (btn == null || i >= buttonsInitialPos.Length) continue;
-
-            // Subtle pendular sign sway
-            float sway = Mathf.Sin(time * buttonSwaySpeed + i * 1.3f) * buttonSwayAngle;
-            btn.localRotation = Quaternion.Euler(0, 0, sway);
-
-            // Subtle vertical float
-            float floatY = Mathf.Sin(time * (buttonSwaySpeed * 1.2f) + i * 2.1f) * buttonFloatAmount;
-            Vector2 targetPos = buttonsInitialPos[i] + new Vector2(currentParallaxOffset.x * 0.4f, floatY + currentParallaxOffset.y * 0.4f);
-            btn.anchoredPosition = targetPos;
-        }
     }
     #endregion
 
@@ -354,18 +333,18 @@ public class HorrorMenuAnimator : MonoBehaviour
     {
         if (backgroundOverlayImage == null) yield break;
 
-        Color originalColor = backgroundOverlayImage.color;
-        Color flashColor = new Color(0.85f, 0.88f, 1f, 0.45f);
+        Color originalColor = new Color(0f, 0f, 0.05f, 0.55f);
+        Color flashColor = new Color(0.82f, 0.85f, 1f, 0.40f);
 
-        // Flash 1
+        // First sharp strike
         backgroundOverlayImage.color = flashColor;
-        yield return new WaitForSecondsRealtime(0.06f);
+        yield return new WaitForSecondsRealtime(0.05f);
         backgroundOverlayImage.color = originalColor;
-        yield return new WaitForSecondsRealtime(0.08f);
+        yield return new WaitForSecondsRealtime(0.07f);
 
-        // Flash 2 (aftershock)
-        backgroundOverlayImage.color = new Color(0.75f, 0.78f, 0.95f, 0.25f);
-        yield return new WaitForSecondsRealtime(0.08f);
+        // Second rolling rumble strike
+        backgroundOverlayImage.color = new Color(0.72f, 0.76f, 0.95f, 0.22f);
+        yield return new WaitForSecondsRealtime(0.09f);
         backgroundOverlayImage.color = originalColor;
 
         lightningCoroutine = null;
