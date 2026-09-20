@@ -102,7 +102,7 @@ namespace FeaturesTime.UI
 
             if (phaseText != null)
             {
-                phaseText.text = isNight ? "🌙 MALAM HARI" : "☀️ SIANG HARI";
+                phaseText.text = isNight ? "🌙 NIGHT" : "☀️ DAY";
                 phaseText.color = isNight ? new Color(1f, 0.45f, 0.45f) : new Color(1f, 0.95f, 0.70f);
             }
 
@@ -116,12 +116,12 @@ namespace FeaturesTime.UI
                 if (isNight)
                 {
                     waveText.gameObject.SetActive(true);
-                    waveText.text = totalWaves > 1 ? $"Wave: {currentWave} / {totalWaves}" : "Waspada Monster!";
+                    waveText.text = totalWaves > 1 ? $"Wave: {currentWave} / {totalWaves}" : "Beware of Monsters!";
                 }
                 else
                 {
                     waveText.gameObject.SetActive(true);
-                    waveText.text = "Aman & Bertani";
+                    waveText.text = "Safe & Farming";
                 }
             }
 
@@ -241,7 +241,7 @@ namespace FeaturesTime.UI
             phaseText.fontSize = 15f;
             phaseText.fontStyle = FontStyles.Bold;
             phaseText.alignment = TextAlignmentOptions.Center;
-            phaseText.text = "☀️ SIANG HARI";
+            phaseText.text = "☀️ DAY";
 
             // Wave & Enemies Row
             GameObject waveObj = new GameObject("WaveText", typeof(RectTransform), typeof(TextMeshProUGUI));

@@ -47,7 +47,7 @@ namespace FeaturesFarming
 
         private void HandlePhaseChanged(TimeManager.DayPhase newPhase)
         {
-            Debug.Log($"[FarmingManager] Fase waktu berubah ke {newPhase}. Memperbarui label petak kebun...");
+            Debug.Log($"[FarmingManager] Phase changed to {newPhase}. Updating farm tiles...");
             foreach (var tile in farmTiles)
             {
                 if (tile != null)

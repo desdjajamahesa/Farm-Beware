@@ -45,7 +45,7 @@ public class DayTransitionUI : MonoBehaviour
     private IEnumerator TransitionRoutine(int newDay)
     {
         if (dayText != null)
-            dayText.text = "Pagi Hari";
+            dayText.text = "Morning";
 
         // Blokir semua klik selama transisi berlangsung.
         transitionCanvasGroup.blocksRaycasts = true;

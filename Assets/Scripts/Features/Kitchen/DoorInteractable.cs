@@ -37,6 +37,51 @@ public class DoorInteractable : MonoBehaviour, IInteractable
     [Tooltip("Apakah menggunakan efek fade saat teleport")]
     [SerializeField] private bool useFadeEffect = true;
 
+    [Header("Dynamic Destination Labels")]
+    [Tooltip("Label displayed when player is outside approaching to enter (e.g. 'Bedroom', 'House')")]
+    [SerializeField] private string enterLabel = "Bedroom";
+
+    [Tooltip("Label displayed when player is inside approaching to exit (e.g. 'Living Room', 'Outside')")]
+    [SerializeField] private string exitLabel = "Living Room";
+
+    private WorldLabel worldLabel;
+    private PlayerControl cachedPlayer;
+
+    private void Awake()
+    {
+        worldLabel = GetComponent<WorldLabel>();
+        if (worldLabel == null)
+            worldLabel = GetComponentInChildren<WorldLabel>();
+        if (worldLabel == null)
+            worldLabel = gameObject.AddComponent<WorldLabel>();
+    }
+
+    private void Start()
+    {
+        if (cachedPlayer == null)
+            cachedPlayer = FindFirstObjectByType<PlayerControl>();
+        UpdateDynamicLabel();
+    }
+
+    private void Update()
+    {
+        if (cachedPlayer == null)
+            cachedPlayer = FindFirstObjectByType<PlayerControl>();
+
+        UpdateDynamicLabel();
+    }
+
+    public void UpdateDynamicLabel()
+    {
+        if (worldLabel == null || spawnPointInside == null || spawnPointOutside == null || cachedPlayer == null) return;
+
+        float distToInside = Vector3.Distance(cachedPlayer.transform.position, spawnPointInside.position);
+        float distToOutside = Vector3.Distance(cachedPlayer.transform.position, spawnPointOutside.position);
+        bool isInside = distToInside < distToOutside;
+
+        worldLabel.displayName = isInside ? exitLabel : enterLabel;
+    }
+
     public void Interact(GameObject interactor)
     {
         if (spawnPointInside == null || spawnPointOutside == null)

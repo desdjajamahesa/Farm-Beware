@@ -142,15 +142,15 @@ namespace FeaturesFarming
         {
             if (interactor == null) return;
 
-            // Aturan gameplay: Bertani hanya dapat dilakukan saat siang hari (Day Phase).
+            // Gameplay rule: Farming is only allowed during the daytime (Day Phase).
             if (TimeManager.Instance != null && TimeManager.Instance.currentPhase == TimeManager.DayPhase.Night)
             {
-                Debug.LogWarning("[FarmlandTile] Hanya bisa bertani di siang hari!");
+                Debug.LogWarning("[FarmlandTile] Farming is only allowed during the day!");
                 if (PlayerUI.FloatingCombatTextManager.Instance != null)
                 {
                     PlayerUI.FloatingCombatTextManager.Instance.SpawnText(
                         transform.position + Vector3.up * 1.2f,
-                        "Hanya bisa bertani di siang hari!",
+                        "Farming is only allowed during the day!",
                         new Color(1f, 0.4f, 0.4f));
                 }
                 return;
@@ -373,10 +373,10 @@ namespace FeaturesFarming
         {
             if (worldLabel == null) return;
 
-            // Saat malam hari, tampilkan keterangan bahwa aktivitas bertani sedang tidak diizinkan
+            // At night, display that farming activities are only permitted during daytime
             if (TimeManager.Instance != null && TimeManager.Instance.currentPhase == TimeManager.DayPhase.Night)
             {
-                worldLabel.displayName = "🌙 Hanya bisa bertani di siang hari";
+                worldLabel.displayName = "🌙 Can only farm during the day";
                 return;
             }
 
