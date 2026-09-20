@@ -3086,7 +3086,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 25d535644e7085146969390a49aa021d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::FeaturesInteraction.PlayerInteractor
-  interactRadius: 1.8
+  interactRadius: 2
   interactableLayer:
     serializedVersion: 2
     m_Bits: 4294967295
@@ -63528,8 +63528,8 @@ MonoBehaviour:
     quantity: 10
   - item: {fileID: 11400000, guid: 94e04a066ceb6a949b7bbe14a0a12b2c, type: 2}
     quantity: 10
-  - item: {fileID: 0}
-    quantity: 0
+  - item: {fileID: 11400000, guid: db06be8654e988b4ea9a81c755fd1d3c, type: 2}
+    quantity: 1
   maxCapacity: 24
   blockTrophyItems: 0
   hasHotbar: 0

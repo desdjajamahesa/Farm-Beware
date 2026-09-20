@@ -89,6 +89,12 @@ public class HoverLabelController : MonoBehaviour
                 lastHighlight.SetHighlight(true);
         }
 
+        var farmland = target.GetComponent<FeaturesFarming.FarmlandTile>() ?? target.GetComponentInChildren<FeaturesFarming.FarmlandTile>();
+        if (farmland != null && interactor != null)
+        {
+            farmland.UpdateLabelText(interactor.gameObject);
+        }
+
         WorldLabel label = target.GetComponent<WorldLabel>() ?? target.GetComponentInChildren<WorldLabel>();
         string displayName = label != null ? label.GetDisplayName() : target.name;
 
@@ -112,7 +118,6 @@ public class HoverLabelController : MonoBehaviour
 
         if (ItemDisplayUI.Instance != null)
         {
-            ItemDisplayUI.Instance.ShowWorldHover(name);
             ItemDisplayUI.Instance.ShowInteractPrompt(name);
         }
     }
@@ -143,7 +148,6 @@ public class HoverLabelController : MonoBehaviour
 
         if (ItemDisplayUI.Instance != null)
         {
-            ItemDisplayUI.Instance.HideWorldHover();
             ItemDisplayUI.Instance.HideInteractPrompt();
         }
     }

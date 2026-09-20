@@ -6,32 +6,19 @@ namespace FeaturesInteraction
     public class PlayerInteractor : MonoBehaviour
     {
         [Header("Deteksi Interaksi")]
-        // Radius diperkecil agar interaksi lebih presisi.
-        [SerializeField] private float interactRadius = 1.8f;
+        // Radius interaksi presisi yang nyaman (default 2.0f).
+        [SerializeField] private float interactRadius = 2.0f;
 
         [Header("Layer Interactable")]
         public LayerMask interactableLayer = ~0;
 
-        [Header("Line-of-Sight (Wall Occlusion)")]
-        [Tooltip("Layer mask tembok/dinding untuk pengecekan garis pandang.")]
-        [SerializeField] private LayerMask wallLayerMask = 0;
-
-        [Tooltip("Tinggi titik asal raycast dari posisi player (setinggi dada/mata).")]
-        [SerializeField] private float losEyeHeight = 1.0f;
-
         private IInteractable currentInteractable;
+        private Collider playerCollider;
 
         private void Awake()
         {
             this.enabled = true;
-
-            // Auto-detect Wall layer jika belum di-set di Inspector
-            if (wallLayerMask.value == 0)
-            {
-                int wallLayer = LayerMask.NameToLayer("Wall");
-                if (wallLayer >= 0)
-                    wallLayerMask = 1 << wallLayer;
-            }
+            playerCollider = GetComponent<Collider>();
         }
 
         void Update()
@@ -54,7 +41,8 @@ namespace FeaturesInteraction
 
         private IInteractable FindClosestInteractable()
         {
-            Collider[] hits = Physics.OverlapSphere(transform.position, interactRadius, interactableLayer.value);
+            Vector3 playerCenter = transform.position + Vector3.up * 0.8f;
+            Collider[] hits = Physics.OverlapSphere(playerCenter, interactRadius, interactableLayer.value);
 
             IInteractable best = null;
             float bestDist = float.MaxValue;
@@ -75,17 +63,18 @@ namespace FeaturesInteraction
                 if (!IsInSameZone(targetTransform))
                     continue;
 
-                // LINE-OF-SIGHT CHECK: Pastikan tidak ada tembok menghalangi
-                if (!HasLineOfSight(hit, targetTransform, interactable))
+                // Pintu (DoorInteractable) tertanam pada kusen/bukaan dinding sehingga dikecualikan dari pemblokiran raycast dinding
+                bool isDoor = (interactable is DoorInteractable) || targetTransform.GetComponentInParent<DoorInteractable>() != null;
+                if (!isDoor && IsObstructedByWall(targetTransform))
                     continue;
 
                 // CAN-INTERACT CHECK: Tanyakan ke objek apakah bisa diinteraksikan saat ini
                 if (!interactable.CanInteract(gameObject))
                     continue;
 
-                Vector3 chestPosition = transform.position + Vector3.up * losEyeHeight;
-                Vector3 targetPoint = hit != null ? hit.bounds.center : targetTransform.position;
-                float dist = (targetPoint - chestPosition).sqrMagnitude;
+                // Jarak dihitung dari titik terdekat collider target ke pusat tubuh pemain
+                Vector3 closestPoint = hit.ClosestPoint(playerCenter);
+                float dist = (closestPoint - playerCenter).sqrMagnitude;
                 if (dist < bestDist)
                 {
                     bestDist = dist;
@@ -96,48 +85,32 @@ namespace FeaturesInteraction
             return best;
         }
 
-        /// <summary>
-        /// Memeriksa apakah ada garis pandang langsung (tidak terhalang tembok/dinding)
-        /// dari posisi mata pemain ke titik pusat collider target.
-        /// Untuk DoorInteractable (pintu yang tertanam pada dinding), dinding tempat pintu terpasang
-        /// diabaikan agar pintu tetap dapat diakses, namun dinding lain tetap memblokir.
-        /// </summary>
-        private bool HasLineOfSight(Collider targetCollider, Transform targetTransform, IInteractable interactable)
+        private bool IsObstructedByWall(Transform target)
         {
-            if (wallLayerMask.value == 0)
-                return true; // Tidak ada wall layer, skip check
-
-            Vector3 eyePosition = transform.position + Vector3.up * losEyeHeight;
-            Vector3 targetPoint = targetCollider != null ? targetCollider.bounds.center : targetTransform.position;
-
-            Vector3 dir = targetPoint - eyePosition;
+            Vector3 origin = transform.position + Vector3.up * 0.8f;
+            Vector3 targetCenter = target.position + Vector3.up * 0.5f;
+            Vector3 dir = targetCenter - origin;
             float dist = dir.magnitude;
-            if (dist < 0.001f)
-                return true;
 
-            // Gunakan RaycastAll untuk memeriksa semua dinding yang terlalui oleh garis pandang
-            RaycastHit[] hits = Physics.RaycastAll(eyePosition, dir.normalized, dist, wallLayerMask.value, QueryTriggerInteraction.Ignore);
-            if (hits == null || hits.Length == 0)
-                return true;
+            if (dist < 0.1f) return false;
 
-            // Jika objek interaksi adalah DoorInteractable (pintu):
-            // Dinding yang bersinggungan langsung dengan kusen/pintu ini adalah bagian dari bukaan pintu,
-            // sehingga tidak memblokir interaksi ke pintu itu sendiri.
-            if (interactable is DoorInteractable)
+            if (Physics.Raycast(origin, dir.normalized, out RaycastHit hit, dist, ~LayerMask.GetMask("Ignore Raycast"), QueryTriggerInteraction.Ignore))
             {
-                Bounds doorBounds = targetCollider != null ? targetCollider.bounds : new Bounds(targetTransform.position, Vector3.one);
-                foreach (var hit in hits)
+                // Jika terkena collider solid yang bukan bagian dari target dan bukan collider player
+                if (hit.collider != null && hit.collider != playerCollider)
                 {
-                    if (!hit.collider.bounds.Intersects(doorBounds))
+                    if (!hit.collider.transform.IsChildOf(target) && !target.IsChildOf(hit.collider.transform))
                     {
-                        return false; // Ada dinding lain yang menghalangi pandangan ke pintu
+                        // Hanya blokir jika permukaan yang tertabrak adalah bidang vertikal/dinding
+                        float wallAngle = Vector3.Angle(hit.normal, Vector3.up);
+                        if (wallAngle > 45f && wallAngle < 135f)
+                        {
+                            return true; // Terhalang dinding solid
+                        }
                     }
                 }
-                return true;
             }
 
-            // Untuk objek non-pintu (furniture, kasur, dsb):
-            // Setiap dinding yang tertabrak berarti objek berada di balik tembok
             return false;
         }
 
@@ -147,22 +120,20 @@ namespace FeaturesInteraction
             var targetZone = target.GetComponentInParent<InteractionZone>();
             if (targetZone == null) return true; // No zone = always accessible
 
-            // Jika target berada di dalam zona, pemain HARUS berada di zona yang sama
-            if (currentZone == null)
+            // Objek berada di dalam zona tertentu (mis. Bedroom).
+            // Player harus berada di dalam zona yang sama.
+            if (currentZone == targetZone) return true;
+
+            // Fallback: periksa apakah posisi player saat ini berada di dalam bounds collider zone tersebut
+            Vector3 playerPos = transform.position;
+            if (targetZone.ContainsPoint(playerPos) || targetZone.ContainsPoint(playerPos + Vector3.up * 0.5f))
             {
-                // Pemain tidak di zona mana pun — cek fallback apakah posisi pemain ada di bounds zona target
-                Vector3 playerPos = transform.position;
-                if (targetZone.ContainsPoint(playerPos) || targetZone.ContainsPoint(playerPos + Vector3.up * 0.5f))
-                {
-                    currentZone = targetZone;
-                    return true;
-                }
-                // Pemain di luar zona target → tolak interaksi
-                return false;
+                currentZone = targetZone;
+                return true;
             }
 
-            // Pemain di zona tertentu, izinkan hanya jika zona sama
-            return currentZone == targetZone;
+            // Player berada di luar zona kamar/koleksi -> tolak interaksi tembus kamar
+            return false;
         }
 
         private void OnTriggerEnter(Collider other)

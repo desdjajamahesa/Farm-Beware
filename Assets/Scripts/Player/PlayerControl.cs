@@ -32,9 +32,17 @@ public class PlayerControl : MonoBehaviour
     private PlayerEquipment playerEquipment;
     private PlayerBuffManager buffManager;
 
+    [Header("Physics Movement")]
+    [SerializeField] private float acceleration = 35f;
+    [SerializeField] private float deceleration = 25f;
+    [SerializeField] private float airControl = 12f;
+
     // Status internal
     private bool isGrounded;
     private bool isRunning;
+    private bool isJumping;
+    private float groundBufferTimer;
+    private const float GroundBufferDuration = 0.12f;
 
     // Wall slide helpers
     private Vector3 contactWallNormal = Vector3.zero;
@@ -214,11 +222,15 @@ public class PlayerControl : MonoBehaviour
             return;
         }
 
+        // Pertahankan komponen kecepatan vertikal (gravitasi/lompatan)
+        Vector3 currentHorizontalVel = new Vector3(rb.linearVelocity.x, 0f, rb.linearVelocity.z);
+        Vector3 targetHorizontalVel = Vector3.zero;
+
         if (inputVector.magnitude >= 0.1f)
         {
             Vector3 moveDirection = Quaternion.Euler(0, 45f, 0) * inputVector;
             float speedMultiplier = buffManager != null ? buffManager.GetSpeedMultiplier() : 1f;
-            float currentSpeed = (isRunning ? runSpeed : walkSpeed) * speedMultiplier;
+            float maxSpeed = (isRunning ? runSpeed : walkSpeed) * speedMultiplier;
             Vector3 desiredMove = moveDirection;
 
             // 1. Wall Sliding via kontak fisika aktif
@@ -241,7 +253,7 @@ public class PlayerControl : MonoBehaviour
                 Vector3 p1 = transform.position + playerCollider.center + Vector3.up * halfHeight;
                 Vector3 p2 = transform.position + playerCollider.center - Vector3.up * Mathf.Max(halfHeight - 0.1f, 0f);
                 float radius = playerCollider.radius;
-                float castDist = currentSpeed * Time.fixedDeltaTime + 0.15f;
+                float castDist = maxSpeed * Time.fixedDeltaTime + 0.15f;
 
                 // Pass 1: Deteksi dan defleksikan arah ke dinding pertama
                 if (Physics.CapsuleCast(p1, p2, radius * 0.95f, desiredMove, out RaycastHit hit, castDist, ~LayerMask.GetMask("Ignore Raycast"), QueryTriggerInteraction.Ignore))
@@ -285,9 +297,15 @@ public class PlayerControl : MonoBehaviour
                 }
             }
 
-            // Terapkan kecepatan linier mulus
-            Vector3 targetVelocity = desiredMove * currentSpeed;
-            rb.linearVelocity = new Vector3(targetVelocity.x, rb.linearVelocity.y, targetVelocity.z);
+            // Penyesuaian kecepatan saat berputar tajam (>90 derajat) memberi kesan bobot inersia tubuh
+            float angleDiff = Vector3.Angle(transform.forward, desiredMove);
+            float turnSpeedFactor = 1f;
+            if (angleDiff > 90f)
+            {
+                turnSpeedFactor = Mathf.Lerp(0.65f, 1f, (180f - angleDiff) / 90f);
+            }
+
+            targetHorizontalVel = desiredMove * (maxSpeed * turnSpeedFactor);
 
             // Rotasi karakter menghadap arah pergerakan / sliding
             if (desiredMove.sqrMagnitude > 0.001f)
@@ -297,11 +315,20 @@ public class PlayerControl : MonoBehaviour
                 rb.MoveRotation(Quaternion.Slerp(rb.rotation, targetRotation, turnSpeed * Time.fixedDeltaTime));
             }
         }
+
+        // Terapkan akselerasi / deselerasi inersia yang halus
+        float accelRate;
+        if (isGrounded)
+        {
+            accelRate = (targetHorizontalVel.sqrMagnitude > 0.001f) ? acceleration : deceleration;
+        }
         else
         {
-            // Pengereman alami saat tidak ada input (mempertahankan kecepatan jatuh Y)
-            rb.linearVelocity = new Vector3(0, rb.linearVelocity.y, 0);
+            accelRate = airControl;
         }
+
+        Vector3 newHorizontalVel = Vector3.MoveTowards(currentHorizontalVel, targetHorizontalVel, accelRate * Time.fixedDeltaTime);
+        rb.linearVelocity = new Vector3(newHorizontalVel.x, rb.linearVelocity.y, newHorizontalVel.z);
 
         // Redam sisa angular velocity fisik
         rb.angularVelocity = Vector3.zero;
@@ -461,11 +488,24 @@ public class PlayerControl : MonoBehaviour
             animator.SetBool("Sprinting", false);
         }
 
-        // Jalankan animasi secara penuh tanpa terpotong prematur
+        // Tunggu frame berikutnya agar transisi animator ke PlantSeed dimulai
+        yield return null;
+
         float timer = 0f;
         while (timer < plantDuration)
         {
             timer += Time.deltaTime;
+
+            // Jika animasi sudah selesai dan bertransisi kembali ke Idle/Moving setelah minimal 0.5 detik
+            if (timer > 0.5f && animator != null)
+            {
+                var stateInfo = animator.GetCurrentAnimatorStateInfo(0);
+                if (!stateInfo.IsName("PlantSeed") && !animator.GetNextAnimatorStateInfo(0).IsName("PlantSeed"))
+                {
+                    break;
+                }
+            }
+
             yield return null;
         }
 
@@ -530,6 +570,8 @@ public class PlayerControl : MonoBehaviour
         if (isGrounded)
         {
             isGrounded = false;
+            isJumping = true;
+            groundBufferTimer = 0f;
             if (animator != null) animator.SetBool("Grounded", false);
 
             // Reset kecepatan Y agar lompatan konsisten, lalu dorong ke atas
@@ -594,16 +636,60 @@ public class PlayerControl : MonoBehaviour
 
     private void CheckGrounded()
     {
-        // Jika karakter sedang bergerak ke atas karena dorongan lompat, abaikan raycast tanah
-        if (rb != null && rb.linearVelocity.y > 0.1f)
+        // Jika sedang fase awal lompat (bergerak ke atas karena dorongan lompat), abaikan ground check
+        if (isJumping)
         {
-            isGrounded = false;
-            return;
+            if (rb != null && rb.linearVelocity.y <= 0f)
+            {
+                // Sudah mencapai puncak loncatan dan mulai jatuh
+                isJumping = false;
+            }
+            else
+            {
+                isGrounded = false;
+                groundBufferTimer = 0f;
+                return;
+            }
         }
 
-        // Menembakkan sinar ke bawah (sedikit dari atas kaki) untuk mengecek tanah
-        // Jarak sinar 0.25f.
-        Vector3 origin = transform.position + (Vector3.up * 0.1f);
-        isGrounded = Physics.Raycast(origin, Vector3.down, 0.25f);
+        // SphereCast ke bawah untuk mendeteksi tanah secara akurat di tanjakan/tangga
+        // Mulai sedikit di atas kaki karakter (y = 0.25f), radius 0.2f, jarak cast 0.25f
+        float sphereRadius = 0.2f;
+        Vector3 origin = transform.position + Vector3.up * (sphereRadius + 0.05f);
+        float castDistance = 0.25f;
+
+        bool hitGround = Physics.SphereCast(
+            origin,
+            sphereRadius,
+            Vector3.down,
+            out RaycastHit hit,
+            castDistance,
+            ~LayerMask.GetMask("Ignore Raycast"),
+            QueryTriggerInteraction.Ignore
+        );
+
+        // Abaikan jika collider yang terkena adalah collider diri sendiri
+        if (hitGround && playerCollider != null && hit.collider == playerCollider)
+        {
+            hitGround = false;
+        }
+
+        if (hitGround)
+        {
+            isGrounded = true;
+            groundBufferTimer = GroundBufferDuration;
+        }
+        else
+        {
+            if (groundBufferTimer > 0f)
+            {
+                groundBufferTimer -= Time.deltaTime;
+                isGrounded = true;
+            }
+            else
+            {
+                isGrounded = false;
+            }
+        }
     }
 }

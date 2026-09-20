@@ -162,6 +162,18 @@ namespace FeaturesFarming
             switch (currentState)
             {
                 case TileState.Untilled:
+                    if (!IsHoldingHoe(interactor))
+                    {
+                        Debug.LogWarning("[FarmlandTile] Requires a Hoe in hand to till soil!");
+                        if (PlayerUI.FloatingCombatTextManager.Instance != null)
+                        {
+                            PlayerUI.FloatingCombatTextManager.Instance.SpawnText(
+                                transform.position + Vector3.up * 1.2f,
+                                "Requires Hoe to till soil!",
+                                new Color(1f, 0.6f, 0.2f));
+                        }
+                        return;
+                    }
                     TillSoil();
                     break;
 
@@ -383,7 +395,10 @@ namespace FeaturesFarming
             switch (currentState)
             {
                 case TileState.Untilled:
-                    worldLabel.displayName = "Till Soil";
+                    if (IsHoldingHoe(interactor))
+                        worldLabel.displayName = "Till Soil";
+                    else
+                        worldLabel.displayName = "Wild Soil (Requires Hoe)";
                     break;
 
                 case TileState.Tilled:
@@ -407,6 +422,34 @@ namespace FeaturesFarming
                     worldLabel.displayName = $"Harvest {plantedSeed?.itemName ?? "Crop"}!";
                     break;
             }
+        }
+
+        private bool IsHoldingHoe(GameObject interactor)
+        {
+            if (interactor == null)
+            {
+                // Fallback: cari player aktif di scene
+                var player = FindFirstObjectByType<PlayerControl>();
+                if (player != null) interactor = player.gameObject;
+            }
+
+            if (interactor == null) return false;
+            var inv = interactor.GetComponent<InventoryComponent>();
+            if (inv == null) return false;
+
+            int idx = inv.selectedHotbarIndex;
+            if (idx >= 0 && idx < inv.slots.Count)
+            {
+                var slot = inv.slots[idx];
+                if (slot != null && !slot.IsEmpty && slot.item != null)
+                {
+                    if (slot.item is ToolItemData tool && tool.isHoe)
+                        return true;
+                    if (slot.item.itemId == "tool_hoe" || slot.item.name.ToLower().Contains("hoe") || slot.item.name.ToLower().Contains("cangkul"))
+                        return true;
+                }
+            }
+            return false;
         }
 
         private SeedItemData GetHeldSeed(GameObject interactor)
