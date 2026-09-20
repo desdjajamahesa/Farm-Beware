@@ -32,6 +32,7 @@ namespace FeaturesFarming
             if (TimeManager.Instance != null)
             {
                 TimeManager.Instance.OnDayChanged += HandleDayChanged;
+                TimeManager.Instance.OnPhaseChanged += HandlePhaseChanged;
             }
         }
 
@@ -40,6 +41,19 @@ namespace FeaturesFarming
             if (TimeManager.Instance != null)
             {
                 TimeManager.Instance.OnDayChanged -= HandleDayChanged;
+                TimeManager.Instance.OnPhaseChanged -= HandlePhaseChanged;
+            }
+        }
+
+        private void HandlePhaseChanged(TimeManager.DayPhase newPhase)
+        {
+            Debug.Log($"[FarmingManager] Fase waktu berubah ke {newPhase}. Memperbarui label petak kebun...");
+            foreach (var tile in farmTiles)
+            {
+                if (tile != null)
+                {
+                    tile.UpdateLabelText(null);
+                }
             }
         }
 

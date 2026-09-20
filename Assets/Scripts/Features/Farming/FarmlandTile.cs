@@ -67,6 +67,27 @@ namespace FeaturesFarming
             EnsureCollider();
         }
 
+        private void OnEnable()
+        {
+            if (TimeManager.Instance != null)
+            {
+                TimeManager.Instance.OnPhaseChanged += HandlePhaseChanged;
+            }
+        }
+
+        private void OnDisable()
+        {
+            if (TimeManager.Instance != null)
+            {
+                TimeManager.Instance.OnPhaseChanged -= HandlePhaseChanged;
+            }
+        }
+
+        private void HandlePhaseChanged(TimeManager.DayPhase newPhase)
+        {
+            UpdateLabelText(null);
+        }
+
         private void Start()
         {
             UpdateVisuals();
@@ -120,6 +141,21 @@ namespace FeaturesFarming
         public void Interact(GameObject interactor)
         {
             if (interactor == null) return;
+
+            // Aturan gameplay: Bertani hanya dapat dilakukan saat siang hari (Day Phase).
+            if (TimeManager.Instance != null && TimeManager.Instance.currentPhase == TimeManager.DayPhase.Night)
+            {
+                Debug.LogWarning("[FarmlandTile] Hanya bisa bertani di siang hari!");
+                if (PlayerUI.FloatingCombatTextManager.Instance != null)
+                {
+                    PlayerUI.FloatingCombatTextManager.Instance.SpawnText(
+                        transform.position + Vector3.up * 1.2f,
+                        "Hanya bisa bertani di siang hari!",
+                        new Color(1f, 0.4f, 0.4f));
+                }
+                return;
+            }
+
             InventoryComponent playerInventory = interactor.GetComponent<InventoryComponent>();
             PlayerControl playerControl = interactor.GetComponent<PlayerControl>();
 
@@ -336,6 +372,13 @@ namespace FeaturesFarming
         public void UpdateLabelText(GameObject interactor)
         {
             if (worldLabel == null) return;
+
+            // Saat malam hari, tampilkan keterangan bahwa aktivitas bertani sedang tidak diizinkan
+            if (TimeManager.Instance != null && TimeManager.Instance.currentPhase == TimeManager.DayPhase.Night)
+            {
+                worldLabel.displayName = "🌙 Hanya bisa bertani di siang hari";
+                return;
+            }
 
             switch (currentState)
             {
