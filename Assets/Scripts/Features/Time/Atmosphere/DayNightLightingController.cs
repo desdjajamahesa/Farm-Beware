@@ -17,7 +17,7 @@ namespace FeaturesTime.Atmosphere
 
         [Header("Transition Settings")]
         [Tooltip("Durasi transisi interpolasi halus (lerp) dalam detik.")]
-        [SerializeField] private float transitionDuration = 2.5f;
+        [SerializeField] private float transitionDuration = 2.0f;
 
         [Header("Day Preset (Siang Hari - Hangat & Damai)")]
         [SerializeField] private Color dayLightColor = new Color(1.0f, 0.95f, 0.88f);
@@ -33,16 +33,16 @@ namespace FeaturesTime.Atmosphere
         [SerializeField] private Color dayCameraBackground = new Color(0.12f, 0.15f, 0.20f);
 
         [Header("Night Preset (Malam Hari - Clear & Atmospheric Moonlight)")]
-        [SerializeField] private Color nightLightColor = new Color(0.65f, 0.75f, 0.95f);   // Sinar bulan perak kebiruan seimbang
+        [SerializeField] private Color nightLightColor = new Color(0.65f, 0.76f, 0.94f);   // Sinar bulan perak kebiruan seimbang
         [SerializeField] private float nightLightIntensity = 0.45f;                         // Cahaya bulan cukup terang agar gameplay nyaman
         [SerializeField] private Vector3 nightLightRotation = new Vector3(38f, 135f, 0f);   // Sudut moonlight
-        [SerializeField] private Color nightAmbientSky = new Color(0.28f, 0.34f, 0.48f);    // Langit malam seimbang & jelas
-        [SerializeField] private Color nightAmbientEquator = new Color(0.22f, 0.26f, 0.38f); // Horizon malam
-        [SerializeField] private Color nightAmbientGround = new Color(0.16f, 0.20f, 0.28f); // Tanah malam terang dan terlihat jelas
+        [SerializeField] private Color nightAmbientSky = new Color(0.26f, 0.32f, 0.46f);    // Langit malam seimbang & jelas
+        [SerializeField] private Color nightAmbientEquator = new Color(0.20f, 0.24f, 0.36f); // Horizon malam
+        [SerializeField] private Color nightAmbientGround = new Color(0.15f, 0.18f, 0.26f); // Tanah malam terang dan terlihat jelas
         [SerializeField] private bool nightFogEnabled = true;
-        [SerializeField] private Color nightFogColor = new Color(0.10f, 0.14f, 0.22f);     // Kabut malam lembut
-        [SerializeField] private float nightFogStart = 50f;  // Fog di luar area gameplay
-        [SerializeField] private float nightFogEnd = 110f;   // Gradasi perimeter
+        [SerializeField] private Color nightFogColor = new Color(0.10f, 0.14f, 0.24f);     // Kabut malam lembut
+        [SerializeField] private float nightFogStart = 52f;  // Fog di luar area gameplay
+        [SerializeField] private float nightFogEnd = 115f;   // Gradasi perimeter
         [SerializeField] private Color nightCameraBackground = new Color(0.06f, 0.09f, 0.16f); // Background malam jelas
 
         private Camera mainCamera;

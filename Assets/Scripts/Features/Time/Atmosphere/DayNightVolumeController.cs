@@ -20,11 +20,11 @@ namespace FeaturesTime.Atmosphere
         [SerializeField] private Volume nightVolume;
 
         [Header("Transition Settings")]
-        [SerializeField] private float transitionDuration = 2.5f;
+        [SerializeField] private float transitionDuration = 2.0f;
 
         [Header("Vignette")]
         [SerializeField] private float dayVignetteIntensity = 0.20f;
-        [SerializeField] private float nightVignetteIntensity = 0.18f;
+        [SerializeField] private float nightVignetteIntensity = 0.16f;
         [SerializeField] private float dayVignetteSmoothness = 0.30f;
         [SerializeField] private float nightVignetteSmoothness = 0.35f;
 
@@ -32,7 +32,7 @@ namespace FeaturesTime.Atmosphere
         [SerializeField] private float daySaturation = 0f;
         [SerializeField] private float nightSaturation = 0f; // Jaga warna alami tanpa desaturasi berlebih
         [SerializeField] private float dayContrast = 0f;
-        [SerializeField] private float nightContrast = 0f; // Nolkan contrast crush agar bayangan malam tidak hitam mati
+        [SerializeField] private float nightContrast = 2f;  // Sedikit kontras untuk kejernihan tanpa menghancurkan bayangan
         [SerializeField] private Color dayColorFilter = Color.white;
         [SerializeField] private Color nightColorFilter = new Color(0.92f, 0.94f, 1.0f); // Tint biru malam lembut
 
@@ -40,7 +40,7 @@ namespace FeaturesTime.Atmosphere
         [SerializeField] private float dayBloomThreshold = 1.15f;
         [SerializeField] private float nightBloomThreshold = 0.95f;
         [SerializeField] private float dayBloomIntensity = 0.25f;
-        [SerializeField] private float nightBloomIntensity = 0.30f;
+        [SerializeField] private float nightBloomIntensity = 0.28f;
 
         private Vignette vignette;
         private ColorAdjustments colorAdjustments;

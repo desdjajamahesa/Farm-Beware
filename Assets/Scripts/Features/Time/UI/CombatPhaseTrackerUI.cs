@@ -84,9 +84,10 @@ namespace FeaturesTime.UI
 
         private void UpdateDayText(int day)
         {
+            // Permintaan pengguna: tidak menampilkan informasi hari (DAY X / 5), cukup keterangan Siang / Malam.
             if (dayText != null)
             {
-                dayText.text = $"DAY {day} / 5";
+                dayText.gameObject.SetActive(false);
             }
         }
 
@@ -94,10 +95,15 @@ namespace FeaturesTime.UI
         {
             bool isNight = (phase == TimeManager.DayPhase.Night);
 
+            if (dayText != null)
+            {
+                dayText.gameObject.SetActive(false);
+            }
+
             if (phaseText != null)
             {
-                phaseText.text = isNight ? "🌙 NIGHT: SURVIVE!" : "☀️ DAY: PREPARE & FARM";
-                phaseText.color = isNight ? new Color(1f, 0.4f, 0.4f) : new Color(1f, 0.95f, 0.7f);
+                phaseText.text = isNight ? "🌙 MALAM HARI" : "☀️ SIANG HARI";
+                phaseText.color = isNight ? new Color(1f, 0.45f, 0.45f) : new Color(1f, 0.95f, 0.70f);
             }
 
             if (phaseBadgeBackground != null)
@@ -110,12 +116,12 @@ namespace FeaturesTime.UI
                 if (isNight)
                 {
                     waveText.gameObject.SetActive(true);
-                    waveText.text = $"Wave: {currentWave} / {totalWaves}";
+                    waveText.text = totalWaves > 1 ? $"Wave: {currentWave} / {totalWaves}" : "Waspada Monster!";
                 }
                 else
                 {
                     waveText.gameObject.SetActive(true);
-                    waveText.text = "Safe Zone (Daytime)";
+                    waveText.text = "Aman & Bertani";
                 }
             }
 
@@ -217,32 +223,25 @@ namespace FeaturesTime.UI
             phaseBadgeBackground = badgeObj.GetComponent<Image>();
             phaseBadgeBackground.color = dayBadgeColor;
 
-            // Day Text
+            // Day Text (Dinonaktifkan sesuai permintaan pengguna)
             GameObject dayObj = new GameObject("DayText", typeof(RectTransform), typeof(TextMeshProUGUI));
             dayObj.transform.SetParent(badgeObj.transform, false);
-            RectTransform dayRt = dayObj.GetComponent<RectTransform>();
-            dayRt.anchorMin = new Vector2(0.05f, 0.65f);
-            dayRt.anchorMax = new Vector2(0.95f, 0.95f);
-            dayRt.offsetMin = Vector2.zero;
-            dayRt.offsetMax = Vector2.zero;
+            dayObj.SetActive(false);
             dayText = dayObj.GetComponent<TextMeshProUGUI>();
-            dayText.fontSize = 14f;
-            dayText.fontStyle = FontStyles.Bold;
-            dayText.alignment = TextAlignmentOptions.Center;
-            dayText.text = "DAY 1 / 5";
 
-            // Phase Text
+            // Phase Text (Utama)
             GameObject phaseObj = new GameObject("PhaseText", typeof(RectTransform), typeof(TextMeshProUGUI));
             phaseObj.transform.SetParent(badgeObj.transform, false);
             RectTransform phaseRt = phaseObj.GetComponent<RectTransform>();
-            phaseRt.anchorMin = new Vector2(0.05f, 0.35f);
-            phaseRt.anchorMax = new Vector2(0.95f, 0.65f);
+            phaseRt.anchorMin = new Vector2(0.05f, 0.45f);
+            phaseRt.anchorMax = new Vector2(0.95f, 0.92f);
             phaseRt.offsetMin = Vector2.zero;
             phaseRt.offsetMax = Vector2.zero;
             phaseText = phaseObj.GetComponent<TextMeshProUGUI>();
-            phaseText.fontSize = 11f;
+            phaseText.fontSize = 15f;
+            phaseText.fontStyle = FontStyles.Bold;
             phaseText.alignment = TextAlignmentOptions.Center;
-            phaseText.text = "☀️ DAY: PREPARE & FARM";
+            phaseText.text = "☀️ SIANG HARI";
 
             // Wave & Enemies Row
             GameObject waveObj = new GameObject("WaveText", typeof(RectTransform), typeof(TextMeshProUGUI));
