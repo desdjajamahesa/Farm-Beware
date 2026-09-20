@@ -27328,11 +27328,13 @@ MonoBehaviour:
   buffManager: {fileID: 0}
   buffSlotPrefab: {fileID: 0}
   containerTransform: {fileID: 0}
-  healthBuffIcon: {fileID: 0}
-  staminaBuffIcon: {fileID: 0}
-  speedBuffIcon: {fileID: 0}
-  attackDamageBuffIcon: {fileID: 0}
-  attackSpeedBuffIcon: {fileID: 0}
+  healthBuffIcon: {fileID: 21300000, guid: 923bb55921914df3bd6301ff764d2075, type: 3}
+  healthRegenBuffIcon: {fileID: 21300000, guid: f6d804daacbf41b2b3dc25d63abcc5e9, type: 3}
+  staminaBuffIcon: {fileID: 21300000, guid: 3b2d9c9e435d4cd6a8f8cc6a9317701a, type: 3}
+  staminaRegenBuffIcon: {fileID: 21300000, guid: 42a56eecd9c9437d8aa3f3ecf7e3038a, type: 3}
+  speedBuffIcon: {fileID: 21300000, guid: 03954ebcac684779b13f93be2b7360a7, type: 3}
+  attackDamageBuffIcon: {fileID: 21300000, guid: 8c51a09f34ef4cf4a8c54e8253a4e628, type: 3}
+  attackSpeedBuffIcon: {fileID: 21300000, guid: 58d0df90af92484a885783e273de7dd5, type: 3}
 --- !u!43 &668314571
 Mesh:
   m_ObjectHideFlags: 0
