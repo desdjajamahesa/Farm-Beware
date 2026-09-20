@@ -131,7 +131,16 @@ namespace FeaturesFarming
             }
 
             if (targetMat != null)
+            {
                 soilRenderer.sharedMaterial = targetMat;
+
+                // Sinkronkan cache material pada Highlightable agar tidak me-revert ke untilled saat un-hover
+                var highlight = GetComponent<FeaturesInteraction.Highlightable>() ?? GetComponentInParent<FeaturesInteraction.Highlightable>();
+                if (highlight != null)
+                {
+                    highlight.UpdateOriginalMaterial(soilRenderer, targetMat);
+                }
+            }
         }
 
         private void HideAllCrops()

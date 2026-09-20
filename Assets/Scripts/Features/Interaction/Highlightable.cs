@@ -25,6 +25,9 @@ namespace FeaturesInteraction
             highlightMaterial = mat;
         }
 
+        private bool isHighlighted;
+        public bool IsHighlighted => isHighlighted;
+
         public void SetHighlight(bool on)
         {
             EnsureHighlightMaterial();
@@ -33,6 +36,7 @@ namespace FeaturesInteraction
                 return;
 
             CacheRenderers();
+            isHighlighted = on;
 
             for (int i = 0; i < cachedRenderers.Length; i++)
             {
@@ -56,6 +60,39 @@ namespace FeaturesInteraction
                             mats[m] = originalMaterials[i][m];
                         r.sharedMaterials = mats;
                     }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Memperbarui cache material asli untuk renderer tertentu.
+        /// Digunakan saat material dasar objek diubah secara dinamis (misal: tanah dicangkul/disiram/tanaman tumbuh)
+        /// agar saat un-highlight (SetHighlight false), renderer mengembalikan material baru, bukan material lama.
+        /// </summary>
+        public void UpdateOriginalMaterial(Renderer targetRenderer, Material newMaterial)
+        {
+            if (targetRenderer == null || newMaterial == null) return;
+
+            CacheRenderers();
+
+            for (int i = 0; i < cachedRenderers.Length; i++)
+            {
+                if (cachedRenderers[i] == targetRenderer)
+                {
+                    if (originalMaterials != null && i < originalMaterials.Length)
+                    {
+                        for (int m = 0; m < originalMaterials[i].Length; m++)
+                        {
+                            originalMaterials[i][m] = newMaterial;
+                        }
+                    }
+
+                    // Jika saat ini TIDAK sedang di-highlight, langsung terapkan material baru
+                    if (!isHighlighted)
+                    {
+                        targetRenderer.sharedMaterial = newMaterial;
+                    }
+                    return;
                 }
             }
         }
