@@ -123,18 +123,29 @@ public class PlayerStats : MonoBehaviour
         }
     }
 
+    private float lastNotifiedHunger = -999f;
+    private float lastNotifiedThirst = -999f;
+
     private void DrainHungerAndThirst(float deltaTime)
     {
         if (currentHunger > 0)
         {
             currentHunger = Mathf.Clamp(currentHunger - hungerDrainRate * deltaTime, 0, maxHunger);
-            OnHungerChanged?.Invoke(currentHunger, maxHunger);
+            if (Mathf.Abs(currentHunger - lastNotifiedHunger) >= 0.2f || currentHunger <= 0)
+            {
+                lastNotifiedHunger = currentHunger;
+                OnHungerChanged?.Invoke(currentHunger, maxHunger);
+            }
         }
 
         if (currentThirst > 0)
         {
             currentThirst = Mathf.Clamp(currentThirst - thirstDrainRate * deltaTime, 0, maxThirst);
-            OnThirstChanged?.Invoke(currentThirst, maxThirst);
+            if (Mathf.Abs(currentThirst - lastNotifiedThirst) >= 0.2f || currentThirst <= 0)
+            {
+                lastNotifiedThirst = currentThirst;
+                OnThirstChanged?.Invoke(currentThirst, maxThirst);
+            }
         }
     }
 

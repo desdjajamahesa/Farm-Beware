@@ -295,6 +295,13 @@ public class MainMenuController : MonoBehaviour
             closedAny = true;
         }
 
+        // 6. Merchant Shop
+        if (FeaturesEconomy.MerchantShopUI.Instance != null && FeaturesEconomy.MerchantShopUI.Instance.IsOpen)
+        {
+            FeaturesEconomy.MerchantShopUI.Instance.CloseShop();
+            closedAny = true;
+        }
+
         return closedAny;
     }
 

@@ -193,7 +193,7 @@ public class SinkManager : MonoBehaviour
                 progressFillImage.fillAmount = processor.WashProgress;
 
             float remaining = Mathf.Ceil(processor.WashDurationPerItem * (1f - processor.WashProgress));
-            UpdateStatus($"Mencuci... ({remaining:F0}s)");
+            UpdateStatus($"Washing... ({remaining:F0}s)");
         }
         else
         {
@@ -203,24 +203,24 @@ public class SinkManager : MonoBehaviour
                 if (processor.OutputSlot != null && !processor.OutputSlot.IsEmpty &&
                     processor.OutputSlot.quantity >= processor.OutputSlot.item.maxStack)
                 {
-                    UpdateStatus("Slot hasil penuh");
+                    UpdateStatus("Output slot full");
                 }
                 else
                 {
-                    UpdateStatus("Menunggu...");
+                    UpdateStatus("Waiting...");
                 }
                 if (progressFillImage != null)
                     progressFillImage.fillAmount = 0f;
             }
             else if (processor.OutputSlot != null && !processor.OutputSlot.IsEmpty)
             {
-                UpdateStatus("Selesai! Ambil item bersih");
+                UpdateStatus("Done! Collect clean items");
                 if (progressFillImage != null)
                     progressFillImage.fillAmount = 0f;
             }
             else
             {
-                UpdateStatus("Taruh item kotor di slot kiri");
+                UpdateStatus("Place dirty items in the left slot");
                 if (progressFillImage != null)
                     progressFillImage.fillAmount = 0f;
             }
@@ -513,7 +513,7 @@ public class SinkManager : MonoBehaviour
 
         if (!IsDirty(itemToMove))
         {
-            UpdateStatus("Hanya item kotor yang bisa dicuci");
+            UpdateStatus("Only dirty items can be washed");
             ShowItemDescription(itemToMove);
             return;
         }
@@ -549,20 +549,20 @@ public class SinkManager : MonoBehaviour
 
         if (!IsDirty(itemToMove))
         {
-            UpdateStatus("Item ini tidak kotor!");
+            UpdateStatus("This item is not dirty!");
             return false;
         }
 
         if (!inputSlot.IsEmpty && inputSlot.item != itemToMove)
         {
-            UpdateStatus("Slot input terisi item lain!");
+            UpdateStatus("Input slot contains a different item!");
             return false;
         }
 
         int inputCapacity = itemToMove.maxStack - inputSlot.quantity;
         if (inputCapacity <= 0)
         {
-            UpdateStatus("Slot input penuh");
+            UpdateStatus("Input slot is full");
             return false;
         }
         if (amountToMove > inputCapacity)
@@ -628,7 +628,7 @@ public class SinkManager : MonoBehaviour
             int added = playerInventory.AddItemAmount(cleanItem, qty);
             if (added <= 0)
             {
-                UpdateStatus("Inventori penuh!");
+                UpdateStatus("Inventory is full!");
                 return false;
             }
             outputSlot.quantity -= added;
@@ -648,7 +648,7 @@ public class SinkManager : MonoBehaviour
         RefreshSlotVisuals();
         processor.StartWashing();
         SyncProgressUI();
-        UpdateStatus("Item bersih masuk tas");
+        UpdateStatus("Clean items moved to inventory");
         return true;
     }
 
@@ -694,7 +694,7 @@ public class SinkManager : MonoBehaviour
             int added = playerInventory.AddItemAmount(itemToMove, qty);
             if (added <= 0)
             {
-                UpdateStatus("Inventori penuh! Tidak bisa mengembalikan item.");
+                UpdateStatus("Inventory is full! Cannot return item.");
                 return false;
             }
             inputSlot.quantity -= added;
@@ -713,7 +713,7 @@ public class SinkManager : MonoBehaviour
         PopulatePlayerInventory();
         RefreshSlotVisuals();
         SyncProgressUI();
-        UpdateStatus("Item kotor dikembalikan ke tas");
+        UpdateStatus("Dirty items returned to inventory");
 
         return true;
     }

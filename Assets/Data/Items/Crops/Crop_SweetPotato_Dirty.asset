@@ -17,8 +17,8 @@ MonoBehaviour:
   category: 2
   rarity: 0
   itemIcon: {fileID: 21300000, guid: a654020b401582f4abf3f188f95d7fb9, type: 3}
-  description: Ubi jalar kotor berlumpur yang baru dipanen dari ladang. Cuci di wastafel
-    dapur sebelum dimasak.
+  description: Muddy, unwashed sweet potato freshly harvested from the field.
+    Wash at the kitchen sink before cooking or selling.
   maxStack: 20
   type: 1
   buyPrice: 150

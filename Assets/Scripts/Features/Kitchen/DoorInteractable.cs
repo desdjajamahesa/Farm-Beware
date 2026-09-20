@@ -52,6 +52,10 @@ public class DoorInteractable : MonoBehaviour, IInteractable
         if (player == null)
             return;
 
+        // Kunci gerakan pemain selama proses teleport
+        player.StopMovement();
+        player.isInputLocked = true;
+
         // Deteksi posisi player: bandingkan jarak ke spawnPointInside vs spawnPointOutside
         // Jika lebih dekat ke luar -> target adalah ke dalam (spawnPointInside)
         // Jika lebih dekat ke dalam -> target adalah ke luar (spawnPointOutside)
@@ -68,6 +72,7 @@ public class DoorInteractable : MonoBehaviour, IInteractable
         else
         {
             TeleportPlayer(player, targetSpawn.position);
+            player.isInputLocked = false; // Langsung buka kunci jika tanpa fade
         }
 
         Debug.Log($"[DoorInteractable] Player teleported to " + (isInside ? "outside" : "inside") + " via " + gameObject.name);
@@ -86,6 +91,10 @@ public class DoorInteractable : MonoBehaviour, IInteractable
 
         // Fade back to clear
         yield return FadeManager.Instance.FadeOut(fadeDuration);
+
+        // Buka kunci gerakan setelah fade selesai
+        if (player != null)
+            player.isInputLocked = false;
     }
 
     private void TeleportPlayer(PlayerControl player, Vector3 targetPosition)

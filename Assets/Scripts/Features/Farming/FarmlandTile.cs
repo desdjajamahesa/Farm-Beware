@@ -46,6 +46,10 @@ namespace FeaturesFarming
         [SerializeField] private CropVisualController visualController;
         [SerializeField] private WorldLabel worldLabel;
         [SerializeField] private Highlightable highlightable;
+        [SerializeField] private CropGrowthCountdownUI countdownUI;
+
+        private bool isPlantingAction = false;
+        private bool isHarvestingAction = false;
 
         private void Awake()
         {
@@ -55,6 +59,10 @@ namespace FeaturesFarming
                 worldLabel = GetComponent<WorldLabel>();
             if (highlightable == null)
                 highlightable = GetComponent<Highlightable>();
+            if (countdownUI == null)
+                countdownUI = GetComponent<CropGrowthCountdownUI>();
+            if (countdownUI == null)
+                countdownUI = gameObject.AddComponent<CropGrowthCountdownUI>();
 
             EnsureCollider();
         }
@@ -63,7 +71,10 @@ namespace FeaturesFarming
         {
             UpdateVisuals();
             UpdateLabelText(null);
+            UpdateCountdownUI();
         }
+
+        private int lastVisualStage = -1;
 
         private void Update()
         {
@@ -73,9 +84,21 @@ namespace FeaturesFarming
                 currentTimer += Time.deltaTime;
                 growthProgress = Mathf.Clamp01(currentTimer / Mathf.Max(1f, growthDuration));
 
-                // Perbarui visual secara berkala
-                if (visualController != null)
-                    visualController.UpdateVisuals(currentState, plantedSeed, growthProgress);
+                // Perbarui visual HANYA saat berpindah tahap pertumbuhan (hemat CPU/GC 99.9%)
+                int currentStage = (growthProgress >= 1f) ? 2 : (growthProgress >= 0.5f ? 1 : 0);
+                if (currentStage != lastVisualStage)
+                {
+                    lastVisualStage = currentStage;
+                    if (visualController != null)
+                        visualController.UpdateVisuals(currentState, plantedSeed, growthProgress);
+                }
+
+                // Perbarui UI countdown lingkaran di atas tanaman
+                if (countdownUI != null)
+                {
+                    float remainingSec = Mathf.Max(0f, growthDuration - currentTimer);
+                    countdownUI.UpdateTileState(currentState, growthProgress, remainingSec, plantedSeed.itemName);
+                }
 
                 if (currentTimer >= growthDuration)
                 {
@@ -115,13 +138,12 @@ namespace FeaturesFarming
                     break;
 
                 case TileState.PlantedWatered:
-                    // Sudah tersiram, berikan info status
                     float remainingSec = Mathf.Max(0f, growthDuration - currentTimer);
-                    Debug.Log($"[FarmlandTile] Tanaman sedang bertumbuh... ({Mathf.CeilToInt(remainingSec)}s tersisa)");
+                    Debug.Log($"[FarmlandTile] Crop is growing... ({Mathf.CeilToInt(remainingSec)}s remaining)");
                     break;
 
                 case TileState.ReadyToHarvest:
-                    HarvestCrop(playerInventory);
+                    HarvestCrop(playerInventory, playerControl);
                     break;
             }
 
@@ -131,81 +153,111 @@ namespace FeaturesFarming
         private void TillSoil()
         {
             SetState(TileState.Tilled);
-            Debug.Log("[FarmlandTile] Tanah berhasil dicangkul. Siap untuk ditanami benih.");
+            Debug.Log("[FarmlandTile] Soil tilled. Ready for seeds.");
         }
 
         private void TryPlantSeed(InventoryComponent inventory, PlayerControl playerControl)
         {
-            if (inventory == null) return;
+            if (inventory == null || isPlantingAction) return;
 
-            // Cek slot hotbar aktif pemain
             int hotbarIdx = inventory.selectedHotbarIndex;
             InventorySlot activeSlot = (hotbarIdx >= 0 && hotbarIdx < inventory.slots.Count) ? inventory.slots[hotbarIdx] : null;
 
             if (activeSlot == null || activeSlot.IsEmpty || activeSlot.item is not SeedItemData seed)
             {
-                Debug.LogWarning("[FarmlandTile] Harap pilih benih tanaman (Sweet Potato / Taro Seed) pada slot hotbar aktif pemain!");
+                Debug.LogWarning("[FarmlandTile] Please select a seed (Sweet Potato / Taro Seed) in your active hotbar slot!");
                 return;
             }
 
-            // Mainkan animasi menanam jika player control tersedia
+            StartCoroutine(RoutinePlantSeedToTile(inventory, seed, playerControl));
+        }
+
+        private IEnumerator RoutinePlantSeedToTile(InventoryComponent inventory, SeedItemData seed, PlayerControl playerControl)
+        {
+            isPlantingAction = true;
+
             if (playerControl != null)
             {
                 playerControl.TriggerPlantAnimation();
             }
 
-            // Kurangi 1 kuantiti benih dari inventori
-            inventory.RemoveItem(seed, 1);
+            // Sinkronkan pemunculan bibit saat tangan pemain membungkuk ke tanah (~0.5s)
+            yield return new WaitForSeconds(0.5f);
 
-            // Simpan bibit yang ditanam
-            plantedSeed = seed;
-            growthDuration = seed.growthDuration > 0f ? seed.growthDuration : 30f;
-            currentTimer = 0f;
-            growthProgress = 0f;
+            if (inventory != null && seed != null)
+            {
+                inventory.RemoveItem(seed, 1);
+                plantedSeed = seed;
+                growthDuration = seed.growthDuration > 0f ? seed.growthDuration : 30f;
+                currentTimer = 0f;
+                growthProgress = 0f;
 
-            SetState(TileState.PlantedDry);
-            Debug.Log($"[FarmlandTile] Berhasil menanam {seed.itemName}. Petak butuh disiram air!");
+                SetState(TileState.PlantedDry);
+                Debug.Log($"[FarmlandTile] Successfully planted {seed.itemName}. Requires watering!");
+            }
+
+            isPlantingAction = false;
         }
 
         private void WaterCrop()
         {
             SetState(TileState.PlantedWatered);
-            Debug.Log("[FarmlandTile] Tanaman berhasil disiram! Pertumbuhan dimulai.");
+            Debug.Log("[FarmlandTile] Crop watered! Growth countdown started.");
         }
 
-        private void HarvestCrop(InventoryComponent inventory)
+        private void HarvestCrop(InventoryComponent inventory, PlayerControl playerControl)
         {
-            if (plantedSeed == null || inventory == null) return;
+            if (plantedSeed == null || inventory == null || isHarvestingAction) return;
+            StartCoroutine(RoutineHarvestCrop(inventory, playerControl));
+        }
 
-            ItemData dropItem = plantedSeed.cropYield;
+        private IEnumerator RoutineHarvestCrop(InventoryComponent inventory, PlayerControl playerControl)
+        {
+            isHarvestingAction = true;
 
-            // Jika mengutamakan varian kotor (Dirty Crop) untuk siklus cuci di wastafel:
-            if (yieldDirtyVariant)
+            if (playerControl != null)
             {
-                ItemData dirtyVariant = ResolveDirtyVariant(dropItem);
-                if (dirtyVariant != null)
+                playerControl.TriggerHarvestAnimation();
+            }
+
+            // Tunggu ~0.6 detik saat tangan pemain meraih tanaman di tanah
+            yield return new WaitForSeconds(0.6f);
+
+            if (plantedSeed != null)
+            {
+                ItemData dropItem = plantedSeed.cropYield;
+
+                if (yieldDirtyVariant)
                 {
-                    dropItem = dirtyVariant;
+                    ItemData dirtyVariant = ResolveDirtyVariant(dropItem);
+                    if (dirtyVariant != null)
+                    {
+                        dropItem = dirtyVariant;
+                    }
                 }
-            }
 
-            if (dropItem == null)
-            {
-                Debug.LogError("[FarmlandTile] CropYield pada benih ini bernilai null!");
-                return;
-            }
+                if (dropItem != null)
+                {
+                    int yieldCount = Random.Range(plantedSeed.minYield, plantedSeed.maxYield + 1);
+                    if (yieldCount < 1) yieldCount = 1;
 
-            int yieldCount = Random.Range(plantedSeed.minYield, plantedSeed.maxYield + 1);
-            if (yieldCount < 1) yieldCount = 1;
-
-            bool added = inventory.AddItem(dropItem, yieldCount);
-            if (added)
-            {
-                Debug.Log($"[FarmlandTile] Panen berhasil! Mendapatkan {yieldCount}x {dropItem.itemName}. Bawa ke wastafel dapur untuk dicuci.");
-            }
-            else
-            {
-                Debug.LogWarning($"[FarmlandTile] Inventori penuh! Sebagian hasil panen tidak dapat masuk.");
+                    bool added = inventory.AddItem(dropItem, yieldCount);
+                    if (added)
+                    {
+                        Debug.Log($"[FarmlandTile] Harvest successful! Obtained {yieldCount}x {dropItem.itemName}.");
+                        if (PlayerUI.FloatingCombatTextManager.Instance != null && playerControl != null)
+                        {
+                            PlayerUI.FloatingCombatTextManager.Instance.SpawnText(
+                                transform.position + Vector3.up * 1.2f,
+                                $"+{yieldCount} {dropItem.itemName}",
+                                new Color(0.25f, 0.90f, 0.35f));
+                        }
+                    }
+                    else
+                    {
+                        Debug.LogWarning("[FarmlandTile] Inventory full! Could not collect harvest.");
+                    }
+                }
             }
 
             // Reset petak kembali ke kondisi Tilled
@@ -213,6 +265,8 @@ namespace FeaturesFarming
             currentTimer = 0f;
             growthProgress = 0f;
             SetState(TileState.Tilled);
+
+            isHarvestingAction = false;
         }
 
         private ItemData ResolveDirtyVariant(ItemData cleanOrDirtyItem)
@@ -236,8 +290,19 @@ namespace FeaturesFarming
         public void SetState(TileState newState)
         {
             currentState = newState;
+            lastVisualStage = -1;
             UpdateVisuals();
             UpdateLabelText(null);
+            UpdateCountdownUI();
+        }
+
+        private void UpdateCountdownUI()
+        {
+            if (countdownUI != null)
+            {
+                float remainingSec = Mathf.Max(0f, growthDuration - currentTimer);
+                countdownUI.UpdateTileState(currentState, growthProgress, remainingSec, plantedSeed != null ? plantedSeed.itemName : "");
+            }
         }
 
         public void ForceInstantHarvestReady()
@@ -246,7 +311,7 @@ namespace FeaturesFarming
             currentTimer = growthDuration;
             growthProgress = 1f;
             SetState(TileState.ReadyToHarvest);
-            Debug.Log("[FarmlandTile] [DEBUG] Tanaman dipaksa matang seketika (Ready to Harvest).");
+            Debug.Log("[FarmlandTile] [DEBUG] Crop forced to ready for harvest.");
         }
 
         /// <summary>
@@ -264,7 +329,7 @@ namespace FeaturesFarming
             else if (currentState == TileState.PlantedDry)
             {
                 // Belum disiram, tidak bertumbuh
-                Debug.Log("[FarmlandTile] Tanaman kering tidak bertumbuh semalam karena belum disiram.");
+                Debug.Log("[FarmlandTile] Dry crops did not grow overnight because they were not watered.");
             }
         }
 
@@ -275,28 +340,28 @@ namespace FeaturesFarming
             switch (currentState)
             {
                 case TileState.Untilled:
-                    worldLabel.displayName = "Cangkul Tanah";
+                    worldLabel.displayName = "Till Soil";
                     break;
 
                 case TileState.Tilled:
                     SeedItemData heldSeed = GetHeldSeed(interactor);
                     if (heldSeed != null)
-                        worldLabel.displayName = $"Tanam {heldSeed.itemName}";
+                        worldLabel.displayName = $"Plant {heldSeed.itemName}";
                     else
-                        worldLabel.displayName = "Petak Bersih (Pilih Benih di Hotbar)";
+                        worldLabel.displayName = "Tilled Soil (Select Seed in Hotbar)";
                     break;
 
                 case TileState.PlantedDry:
-                    worldLabel.displayName = $"Siram {plantedSeed?.itemName ?? "Tanaman"}";
+                    worldLabel.displayName = $"Water {plantedSeed?.itemName ?? "Crop"}";
                     break;
 
                 case TileState.PlantedWatered:
                     float remaining = Mathf.Max(0f, growthDuration - currentTimer);
-                    worldLabel.displayName = $"{plantedSeed?.itemName ?? "Tanaman"} ({Mathf.CeilToInt(remaining)}s)";
+                    worldLabel.displayName = $"{plantedSeed?.itemName ?? "Crop"} ({Mathf.CeilToInt(remaining)}s)";
                     break;
 
                 case TileState.ReadyToHarvest:
-                    worldLabel.displayName = $"Panen {plantedSeed?.itemName ?? "Tanaman"}!";
+                    worldLabel.displayName = $"Harvest {plantedSeed?.itemName ?? "Crop"}!";
                     break;
             }
         }

@@ -86,7 +86,7 @@ namespace FeaturesTime.UI
         {
             if (dayText != null)
             {
-                dayText.text = $"HARI {day} / 5";
+                dayText.text = $"DAY {day} / 5";
             }
         }
 
@@ -96,7 +96,7 @@ namespace FeaturesTime.UI
 
             if (phaseText != null)
             {
-                phaseText.text = isNight ? "🌙 MALAM: BERTAHAN HIDUP!" : "☀️ SIANG: PERSIAPAN & BERTANI";
+                phaseText.text = isNight ? "🌙 NIGHT: SURVIVE!" : "☀️ DAY: PREPARE & FARM";
                 phaseText.color = isNight ? new Color(1f, 0.4f, 0.4f) : new Color(1f, 0.95f, 0.7f);
             }
 
@@ -115,7 +115,7 @@ namespace FeaturesTime.UI
                 else
                 {
                     waveText.gameObject.SetActive(true);
-                    waveText.text = "Zona Aman (Siang Hari)";
+                    waveText.text = "Safe Zone (Daytime)";
                 }
             }
 
@@ -124,7 +124,7 @@ namespace FeaturesTime.UI
                 if (isNight)
                 {
                     enemiesText.gameObject.SetActive(true);
-                    enemiesText.text = $"Musuh: {enemiesRemaining}";
+                    enemiesText.text = $"Enemies: {enemiesRemaining}";
                 }
                 else
                 {
@@ -150,7 +150,7 @@ namespace FeaturesTime.UI
 
             if (enemiesText != null && TimeManager.Instance != null && TimeManager.Instance.currentPhase == TimeManager.DayPhase.Night)
             {
-                enemiesText.text = $"Musuh: {enemiesRemaining}";
+                enemiesText.text = $"Enemies: {enemiesRemaining}";
             }
         }
 
@@ -229,7 +229,7 @@ namespace FeaturesTime.UI
             dayText.fontSize = 14f;
             dayText.fontStyle = FontStyles.Bold;
             dayText.alignment = TextAlignmentOptions.Center;
-            dayText.text = "HARI 1 / 5";
+            dayText.text = "DAY 1 / 5";
 
             // Phase Text
             GameObject phaseObj = new GameObject("PhaseText", typeof(RectTransform), typeof(TextMeshProUGUI));
@@ -242,7 +242,7 @@ namespace FeaturesTime.UI
             phaseText = phaseObj.GetComponent<TextMeshProUGUI>();
             phaseText.fontSize = 11f;
             phaseText.alignment = TextAlignmentOptions.Center;
-            phaseText.text = "☀️ SIANG: PERSIAPAN & BERTANI";
+            phaseText.text = "☀️ DAY: PREPARE & FARM";
 
             // Wave & Enemies Row
             GameObject waveObj = new GameObject("WaveText", typeof(RectTransform), typeof(TextMeshProUGUI));
@@ -255,7 +255,7 @@ namespace FeaturesTime.UI
             waveText = waveObj.GetComponent<TextMeshProUGUI>();
             waveText.fontSize = 10f;
             waveText.alignment = TextAlignmentOptions.Left;
-            waveText.text = "Zona Aman (Siang)";
+            waveText.text = "Safe Zone (Daytime)";
 
             GameObject enemyObj = new GameObject("EnemyText", typeof(RectTransform), typeof(TextMeshProUGUI));
             enemyObj.transform.SetParent(badgeObj.transform, false);

@@ -83,6 +83,8 @@ public class PlayerControl : MonoBehaviour
             playerInventory.HasHotbar = true;
         playerStats = GetComponent<PlayerStats>();
         buffManager = GetComponent<PlayerBuffManager>();
+        if (GetComponent<FeaturesEconomy.PlayerWallet>() == null)
+            gameObject.AddComponent<FeaturesEconomy.PlayerWallet>();
         playerEquipment = GetComponent<PlayerEquipment>();
         if (playerEquipment == null)
             playerEquipment = gameObject.AddComponent<PlayerEquipment>();
@@ -118,7 +120,21 @@ public class PlayerControl : MonoBehaviour
     void Update()
     {
         // Kunci input: hentikan inventory/hotbar/gerak/animator saat terkunci.
-        if (isInputLocked) return;
+        if (isInputLocked)
+        {
+            // Pastikan velocity benar-benar nol dan animasi idle saat UI terbuka
+            inputVector = Vector3.zero;
+            isRunning = false;
+            if (rb != null)
+                rb.linearVelocity = new Vector3(0f, rb.linearVelocity.y, 0f);
+            if (animator != null)
+            {
+                animator.SetFloat("Vel", 0f, 0.05f, Time.deltaTime);
+                animator.SetBool("Idle", true);
+                animator.SetBool("Sprinting", false);
+            }
+            return;
+        }
 
         // Saat menanam benih atau menyerang, karakter diam di tempat (tidak bisa bergerak/berlari/lompat/interact)
         if (isPlanting || isAttacking)
@@ -417,6 +433,15 @@ public class PlayerControl : MonoBehaviour
         StartCoroutine(RoutinePlantSeed());
     }
 
+    /// <summary>
+    /// Memanggil animasi memanen/mengambil tanaman dari tanah.
+    /// </summary>
+    public void TriggerHarvestAnimation()
+    {
+        if (isPlanting || isAttacking) return;
+        StartCoroutine(RoutinePlantSeed());
+    }
+
     private IEnumerator RoutinePlantSeed()
     {
         isPlanting = true;
@@ -436,24 +461,11 @@ public class PlayerControl : MonoBehaviour
             animator.SetBool("Sprinting", false);
         }
 
-        // Tunggu frame berikutnya agar transisi animator ke PlantSeed dimulai
-        yield return null;
-
+        // Jalankan animasi secara penuh tanpa terpotong prematur
         float timer = 0f;
         while (timer < plantDuration)
         {
             timer += Time.deltaTime;
-
-            // Jika animasi sudah selesai dan bertransisi kembali ke Idle/Moving setelah minimal 0.5 detik
-            if (timer > 0.5f && animator != null)
-            {
-                var stateInfo = animator.GetCurrentAnimatorStateInfo(0);
-                if (!stateInfo.IsName("PlantSeed") && !animator.GetNextAnimatorStateInfo(0).IsName("PlantSeed"))
-                {
-                    break;
-                }
-            }
-
             yield return null;
         }
 
@@ -528,6 +540,24 @@ public class PlayerControl : MonoBehaviour
 
     private int lastInteractFrame = -1;
 
+    /// <summary>
+    /// Menghentikan gerakan pemain secara paksa.
+    /// Dipanggil saat memulai interaksi agar pemain tidak sliding/bergerak.
+    /// </summary>
+    public void StopMovement()
+    {
+        inputVector = Vector3.zero;
+        isRunning = false;
+        if (rb != null)
+            rb.linearVelocity = new Vector3(0f, rb.linearVelocity.y, 0f);
+        if (animator != null)
+        {
+            animator.SetFloat("Vel", 0f);
+            animator.SetBool("Idle", true);
+            animator.SetBool("Sprinting", false);
+        }
+    }
+
     public void TriggerInteract()
     {
         if (Time.frameCount == lastInteractFrame || isPlanting || isAttacking) return;
@@ -545,6 +575,8 @@ public class PlayerControl : MonoBehaviour
 
         if (interactor != null)
         {
+            // Hentikan gerakan pemain sebelum memulai interaksi
+            StopMovement();
             // Perintahkan "Tangan" untuk menjalankan logikanya
             interactor.OnInteractInput(); 
         }

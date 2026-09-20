@@ -17,8 +17,8 @@ MonoBehaviour:
   category: 2
   rarity: 0
   itemIcon: {fileID: 21300000, guid: 30218acc4e636d649af511c94a4d336f, type: 3}
-  description: Talas kotor berlumpur yang baru dipanen. Cuci di wastafel dapur untuk
-    mendapatkan talas bersih siap olah.
+  description: Muddy, unwashed taro freshly harvested from the field.
+    Wash at the kitchen sink to get clean, cookable taro.
   maxStack: 20
   type: 1
   buyPrice: 200

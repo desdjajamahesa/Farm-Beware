@@ -63,6 +63,15 @@ public class HoverLabelController : MonoBehaviour
             return;
         }
 
+        // Sembunyikan saat player input terkunci (UI modal sedang terbuka: toko, masak, inventori, dll.)
+        var pc = GetComponent<PlayerControl>();
+        if (pc == null) pc = GetComponentInParent<PlayerControl>();
+        if (pc != null && pc.isInputLocked)
+        {
+            ClearAll();
+            return;
+        }
+
         GameObject target = interactor.CurrentTarget;
         if (target == null)
         {

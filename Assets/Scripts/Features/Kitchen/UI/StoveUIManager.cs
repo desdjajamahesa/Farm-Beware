@@ -258,7 +258,7 @@ public class StoveUIManager : MonoBehaviour
             cookButtonImage.color = canCook ? canCookColor : cannotCookColor;
 
         if (cookButtonText != null && !isCooking)
-            cookButtonText.text = canCook ? "Masak!" : "Bahan Kurang";
+            cookButtonText.text = canCook ? "Cook!" : "Missing Ingredients";
     }
 
     private void UpdateIngredientDisplay(KitchenRecipe recipe)
@@ -309,7 +309,7 @@ public class StoveUIManager : MonoBehaviour
         {
             elapsed += Time.deltaTime;
             float remaining = Mathf.Ceil(duration - elapsed);
-            if (cookButtonText != null) cookButtonText.text = $"Memasak... ({remaining}s)";
+            if (cookButtonText != null) cookButtonText.text = $"Cooking... ({remaining}s)";
             yield return null;
         }
 

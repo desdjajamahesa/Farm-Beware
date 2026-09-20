@@ -21,8 +21,23 @@ namespace FeaturesInteraction
             // Hanya bisa tidur saat malam hari; siang hari interaksi dibatalkan.
             if (TimeManager.Instance.currentPhase == TimeManager.DayPhase.Day)
             {
-                Debug.Log("Masih siang, belum bisa tidur!");
+                Debug.Log("[BedInteractable] It's still daytime. You can only sleep at night!");
+                if (PlayerUI.FloatingCombatTextManager.Instance != null && interactor != null)
+                {
+                    PlayerUI.FloatingCombatTextManager.Instance.SpawnText(
+                        transform.position + Vector3.up * 1.2f,
+                        "Can only sleep at night!",
+                        new Color(1f, 0.8f, 0.3f));
+                }
                 return;
+            }
+
+            // Kunci gerakan pemain selama proses tidur
+            PlayerControl pc = interactor.GetComponent<PlayerControl>();
+            if (pc != null)
+            {
+                pc.StopMovement();
+                pc.isInputLocked = true;
             }
 
             // Malam: pulihkan HP pemain bila komponen PlayerStats tersedia.
@@ -32,6 +47,10 @@ namespace FeaturesInteraction
 
             // Teruskan ke backend waktu: transisi ke hari berikutnya (fase Day).
             TimeManager.Instance.AdvanceToNextDay();
+
+            // Buka kunci setelah transisi selesai
+            if (pc != null)
+                pc.isInputLocked = false;
         }
     }
 }

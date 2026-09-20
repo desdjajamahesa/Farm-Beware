@@ -114,10 +114,18 @@ public class PlayerEquipment : MonoBehaviour
         FindHandSocketIfNeeded();
     }
 
+    private ItemData lastEquippedItem;
+    private bool isInitialized = false;
+
     private void Start()
     {
         // Refresh visual saat awal mulai game
-        RefreshCurrentEquipment();
+        if (inventory != null)
+        {
+            lastEquippedItem = CurrentEquippedItem;
+            UpdateEquipmentVisual(inventory.selectedHotbarIndex);
+        }
+        isInitialized = true;
     }
 
     private void OnEnable()
@@ -128,7 +136,7 @@ public class PlayerEquipment : MonoBehaviour
         if (inventory != null)
         {
             inventory.OnInventoryChanged += RefreshCurrentEquipment;
-            inventory.OnHotbarSelected += UpdateEquipmentVisual;
+            inventory.OnHotbarSelected += OnHotbarSlotChanged;
         }
     }
 
@@ -137,14 +145,45 @@ public class PlayerEquipment : MonoBehaviour
         if (inventory != null)
         {
             inventory.OnInventoryChanged -= RefreshCurrentEquipment;
-            inventory.OnHotbarSelected -= UpdateEquipmentVisual;
+            inventory.OnHotbarSelected -= OnHotbarSlotChanged;
         }
     }
 
+    /// <summary>
+    /// Dipanggil saat isi inventori berubah (mengambil/menaruh item di chest, memindahkan item di tas, pickup).
+    /// Memicu animasi equip jika item di tangan pemain berubah.
+    /// </summary>
     public void RefreshCurrentEquipment()
     {
+        if (inventory == null) return;
+
+        ItemData currentItem = CurrentEquippedItem;
+        bool itemChanged = (currentItem != lastEquippedItem);
+
+        UpdateEquipmentVisual(inventory.selectedHotbarIndex);
+
+        if (isInitialized && itemChanged && animator != null && !string.IsNullOrEmpty(equipTriggerName))
+        {
+            if (currentItem != null)
+            {
+                animator.SetTrigger(equipTriggerName);
+            }
+        }
+
+        lastEquippedItem = currentItem;
+    }
+
+    /// <summary>
+    /// Dipanggil saat pemain mengganti slot hotbar (1-4, mouse scroll).
+    /// Mengganti model seketika TANPA memicu animasi equip agar tidak mengganggu gerakan jalan/lari.
+    /// </summary>
+    public void OnHotbarSlotChanged(int hotbarIndex)
+    {
+        UpdateEquipmentVisual(hotbarIndex);
         if (inventory != null)
-            UpdateEquipmentVisual(inventory.selectedHotbarIndex);
+        {
+            lastEquippedItem = CurrentEquippedItem;
+        }
     }
 
     public void UpdateEquipmentVisual(int hotbarIndex)
@@ -159,12 +198,6 @@ public class PlayerEquipment : MonoBehaviour
 
         InventorySlot slot = inventory.slots[hotbarIndex];
 
-        // Panggil animasi equip pada Animator selama hotbar dipilih (atau slot terisi)
-        if (animator == null) animator = GetComponentInChildren<Animator>();
-        if (animator != null && !string.IsNullOrEmpty(equipTriggerName))
-        {
-            animator.SetTrigger(equipTriggerName);
-        }
 
         if (slot == null || slot.item == null)
             return;

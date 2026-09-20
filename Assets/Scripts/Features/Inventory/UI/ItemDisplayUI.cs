@@ -31,6 +31,7 @@ public class ItemDisplayUI : MonoBehaviour
 
     private Coroutine hideHotbarCoroutine;
     private RectTransform tooltipBg;
+    private RectTransform interactPromptBg;
 
     void Awake()
     {
@@ -43,6 +44,9 @@ public class ItemDisplayUI : MonoBehaviour
 
         if (mouseTooltipText != null)
             BuildTooltipBackground();
+
+        if (interactPromptText != null)
+            BuildInteractPromptBackground();
     }
 
     void Update()
@@ -112,6 +116,13 @@ public class ItemDisplayUI : MonoBehaviour
         if (worldHoverText == null)
             return;
 
+        // Jika interact prompt sedang aktif, sembunyikan worldHoverText agar tidak duplikat
+        if (interactPromptText != null && interactPromptText.gameObject.activeSelf)
+        {
+            worldHoverText.gameObject.SetActive(false);
+            return;
+        }
+
         worldHoverText.text = name;
         worldHoverText.gameObject.SetActive(true);
     }
@@ -131,8 +142,19 @@ public class ItemDisplayUI : MonoBehaviour
         if (interactPromptText == null)
             return;
 
-        interactPromptText.text = "E — " + displayName;
+        // Sembunyikan worldHoverText agar tidak tampil bertumpuk ganda
+        if (worldHoverText != null)
+        {
+            worldHoverText.gameObject.SetActive(false);
+        }
+
+        interactPromptText.text = $"<b>[ E ]</b>  {displayName}";
         interactPromptText.gameObject.SetActive(true);
+
+        if (interactPromptBg != null)
+        {
+            interactPromptBg.gameObject.SetActive(true);
+        }
     }
 
     public void HideInteractPrompt()
@@ -142,6 +164,11 @@ public class ItemDisplayUI : MonoBehaviour
 
         interactPromptText.text = "";
         interactPromptText.gameObject.SetActive(false);
+
+        if (interactPromptBg != null)
+        {
+            interactPromptBg.gameObject.SetActive(false);
+        }
     }
 
     public void ShowHotbarPopup(string itemName)
@@ -211,6 +238,38 @@ public class ItemDisplayUI : MonoBehaviour
         bgRT.sizeDelta = textRect.sizeDelta + new Vector2(20f, 12f);
 
         tooltipBg = bgRT;
+        bgGO.SetActive(false);
+    }
+
+    private void BuildInteractPromptBackground()
+    {
+        if (interactPromptBg != null || interactPromptText == null)
+            return;
+
+        RectTransform textRect = interactPromptText.rectTransform;
+        Canvas canvas = textRect.GetComponentInParent<Canvas>();
+        RectTransform canvasRect = canvas != null ? canvas.GetComponent<RectTransform>() : null;
+        if (canvasRect == null)
+            return;
+
+        var bgGO = new GameObject("UI_InteractPromptBG", typeof(RectTransform));
+        bgGO.transform.SetParent(canvasRect, false);
+        // Posisikan tepat sebelum interactPromptText dalam urutan sibling agar berada di belakangnya
+        int textSiblingIndex = textRect.GetSiblingIndex();
+        bgGO.transform.SetSiblingIndex(Mathf.Max(0, textSiblingIndex));
+
+        var bgImg = bgGO.AddComponent<Image>();
+        bgImg.color = new Color(0.06f, 0.08f, 0.12f, 0.88f); // Deep dark pill
+        bgImg.raycastTarget = false;
+
+        RectTransform bgRT = bgGO.GetComponent<RectTransform>();
+        bgRT.anchorMin = textRect.anchorMin;
+        bgRT.anchorMax = textRect.anchorMax;
+        bgRT.pivot = textRect.pivot;
+        bgRT.anchoredPosition = textRect.anchoredPosition;
+        bgRT.sizeDelta = new Vector2(480f, 44f);
+
+        interactPromptBg = bgRT;
         bgGO.SetActive(false);
     }
 }

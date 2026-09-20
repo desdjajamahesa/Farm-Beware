@@ -4,10 +4,10 @@ using UnityEngine;
 namespace FeaturesTime.Atmosphere
 {
     /// <summary>
-    /// Mengontrol transisi visual pencahayaan (Directional Light, Ambient Light, dan Kabut Linear)
-    /// secara dinamis antara fase Siang (Day) dan Malam (Night).
-    /// Menggunakan Linear Fog agar area gameplay di sekitar kamera tetap terang dan playable,
-    /// sedangkan kabut horor menyelimuti area kejauhan/perimeter.
+    /// Mengontrol transisi visual pencahayaan (Directional Light, Ambient Light, Kabut Linear,
+    /// dan Camera Background) secara dinamis antara fase Siang (Day) dan Malam (Night).
+    /// Dikalibrasi untuk kamera Orthographic (jarak ~50m ke tanah) agar fog linear
+    /// tidak menyelimuti area gameplay; kabut hanya tampil di perimeter layar.
     /// </summary>
     public class DayNightLightingController : MonoBehaviour
     {
@@ -30,19 +30,22 @@ namespace FeaturesTime.Atmosphere
         [SerializeField] private Color dayFogColor = new Color(0.65f, 0.72f, 0.80f);
         [SerializeField] private float dayFogStart = 35f;
         [SerializeField] private float dayFogEnd = 120f;
+        [SerializeField] private Color dayCameraBackground = new Color(0.12f, 0.15f, 0.20f);
 
-        [Header("Night Preset (Malam Hari - Terang Bulan Moody & Playable)")]
-        [SerializeField] private Color nightLightColor = new Color(0.48f, 0.62f, 0.82f); // Sinar bulan perak kebiruan
-        [SerializeField] private float nightLightIntensity = 0.52f; // Cukup terang untuk bertarung dan eksplorasi
-        [SerializeField] private Vector3 nightLightRotation = new Vector3(55f, 130f, 0f);
-        [SerializeField] private Color nightAmbientSky = new Color(0.32f, 0.38f, 0.50f);
-        [SerializeField] private Color nightAmbientEquator = new Color(0.24f, 0.28f, 0.38f);
-        [SerializeField] private Color nightAmbientGround = new Color(0.18f, 0.20f, 0.28f); // Tanah tetap jelas terlihat
+        [Header("Night Preset (Malam Hari - Clear & Atmospheric Moonlight)")]
+        [SerializeField] private Color nightLightColor = new Color(0.65f, 0.75f, 0.95f);   // Sinar bulan perak kebiruan seimbang
+        [SerializeField] private float nightLightIntensity = 0.45f;                         // Cahaya bulan cukup terang agar gameplay nyaman
+        [SerializeField] private Vector3 nightLightRotation = new Vector3(38f, 135f, 0f);   // Sudut moonlight
+        [SerializeField] private Color nightAmbientSky = new Color(0.28f, 0.34f, 0.48f);    // Langit malam seimbang & jelas
+        [SerializeField] private Color nightAmbientEquator = new Color(0.22f, 0.26f, 0.38f); // Horizon malam
+        [SerializeField] private Color nightAmbientGround = new Color(0.16f, 0.20f, 0.28f); // Tanah malam terang dan terlihat jelas
         [SerializeField] private bool nightFogEnabled = true;
-        [SerializeField] private Color nightFogColor = new Color(0.10f, 0.14f, 0.22f);
-        [SerializeField] private float nightFogStart = 22f; // Area dekat karakter bebas kabut buta
-        [SerializeField] private float nightFogEnd = 65f;   // Kabut merayap di kejauhan/pinggir layar
+        [SerializeField] private Color nightFogColor = new Color(0.10f, 0.14f, 0.22f);     // Kabut malam lembut
+        [SerializeField] private float nightFogStart = 50f;  // Fog di luar area gameplay
+        [SerializeField] private float nightFogEnd = 110f;   // Gradasi perimeter
+        [SerializeField] private Color nightCameraBackground = new Color(0.06f, 0.09f, 0.16f); // Background malam jelas
 
+        private Camera mainCamera;
         private Coroutine transitionCoroutine;
 
         private void Awake()
@@ -59,6 +62,7 @@ namespace FeaturesTime.Atmosphere
                 }
             }
 
+            mainCamera = Camera.main;
             RenderSettings.fogMode = FogMode.Linear;
         }
 
@@ -116,6 +120,8 @@ namespace FeaturesTime.Atmosphere
             float targetFogStart = isNight ? nightFogStart : dayFogStart;
             float targetFogEnd = isNight ? nightFogEnd : dayFogEnd;
 
+            Color targetCamBg = isNight ? nightCameraBackground : dayCameraBackground;
+
             RenderSettings.fog = true;
             RenderSettings.fogMode = FogMode.Linear;
 
@@ -130,6 +136,9 @@ namespace FeaturesTime.Atmosphere
             Color startFogColor = RenderSettings.fogColor;
             float startFogStart = RenderSettings.fogStartDistance;
             float startFogEnd = RenderSettings.fogEndDistance;
+
+            if (mainCamera == null) mainCamera = Camera.main;
+            Color startCamBg = mainCamera != null ? mainCamera.backgroundColor : targetCamBg;
 
             float elapsed = 0f;
             while (elapsed < transitionDuration)
@@ -152,6 +161,11 @@ namespace FeaturesTime.Atmosphere
                 RenderSettings.fogStartDistance = Mathf.Lerp(startFogStart, targetFogStart, t);
                 RenderSettings.fogEndDistance = Mathf.Lerp(startFogEnd, targetFogEnd, t);
 
+                if (mainCamera != null)
+                {
+                    mainCamera.backgroundColor = Color.Lerp(startCamBg, targetCamBg, t);
+                }
+
                 yield return null;
             }
 
@@ -170,6 +184,11 @@ namespace FeaturesTime.Atmosphere
             RenderSettings.fogColor = targetFogColor;
             RenderSettings.fogStartDistance = targetFogStart;
             RenderSettings.fogEndDistance = targetFogEnd;
+
+            if (mainCamera != null)
+            {
+                mainCamera.backgroundColor = targetCamBg;
+            }
 
             transitionCoroutine = null;
         }
@@ -194,6 +213,12 @@ namespace FeaturesTime.Atmosphere
             RenderSettings.fogColor = isNight ? nightFogColor : dayFogColor;
             RenderSettings.fogStartDistance = isNight ? nightFogStart : dayFogStart;
             RenderSettings.fogEndDistance = isNight ? nightFogEnd : dayFogEnd;
+
+            if (mainCamera == null) mainCamera = Camera.main;
+            if (mainCamera != null)
+            {
+                mainCamera.backgroundColor = isNight ? nightCameraBackground : dayCameraBackground;
+            }
         }
     }
 }

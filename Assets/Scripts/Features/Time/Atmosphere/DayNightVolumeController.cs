@@ -6,8 +6,9 @@ using UnityEngine.Rendering.Universal;
 namespace FeaturesTime.Atmosphere
 {
     /// <summary>
-    /// Mengatur Post-Processing Volume URP secara dinamis untuk menciptakan nuansa horor saat malam hari.
-    /// Mendukung transisi berat (weight lerp) pada Night Volume khusus atau modifikasi runtime parameter Volume.
+    /// Mengatur Post-Processing Volume URP secara dinamis untuk menciptakan nuansa
+    /// cinematic dark-fantasy saat malam hari dan suasana hangat-damai di siang hari.
+    /// Mengontrol: Vignette, ColorAdjustments (saturation, contrast, color filter), dan Bloom.
     /// </summary>
     public class DayNightVolumeController : MonoBehaviour
     {
@@ -21,14 +22,29 @@ namespace FeaturesTime.Atmosphere
         [Header("Transition Settings")]
         [SerializeField] private float transitionDuration = 2.5f;
 
-        [Header("Single Profile Dynamic Overrides (Jika tidak menggunakan 2 Volume terpisah)")]
+        [Header("Vignette")]
         [SerializeField] private float dayVignetteIntensity = 0.20f;
-        [SerializeField] private float nightVignetteIntensity = 0.26f;
+        [SerializeField] private float nightVignetteIntensity = 0.18f;
+        [SerializeField] private float dayVignetteSmoothness = 0.30f;
+        [SerializeField] private float nightVignetteSmoothness = 0.35f;
+
+        [Header("Color Adjustments")]
         [SerializeField] private float daySaturation = 0f;
-        [SerializeField] private float nightSaturation = -10f;
+        [SerializeField] private float nightSaturation = 0f; // Jaga warna alami tanpa desaturasi berlebih
+        [SerializeField] private float dayContrast = 0f;
+        [SerializeField] private float nightContrast = 0f; // Nolkan contrast crush agar bayangan malam tidak hitam mati
+        [SerializeField] private Color dayColorFilter = Color.white;
+        [SerializeField] private Color nightColorFilter = new Color(0.92f, 0.94f, 1.0f); // Tint biru malam lembut
+
+        [Header("Bloom")]
+        [SerializeField] private float dayBloomThreshold = 1.15f;
+        [SerializeField] private float nightBloomThreshold = 0.95f;
+        [SerializeField] private float dayBloomIntensity = 0.25f;
+        [SerializeField] private float nightBloomIntensity = 0.30f;
 
         private Vignette vignette;
         private ColorAdjustments colorAdjustments;
+        private Bloom bloom;
         private Coroutine transitionCoroutine;
 
         private void Awake()
@@ -50,7 +66,23 @@ namespace FeaturesTime.Atmosphere
             if (baseVolume != null && baseVolume.profile != null)
             {
                 baseVolume.profile.TryGet(out vignette);
-                baseVolume.profile.TryGet(out colorAdjustments);
+                baseVolume.profile.TryGet(out bloom);
+
+                // Jika ColorAdjustments belum ada di profile, buat otomatis
+                if (!baseVolume.profile.TryGet(out colorAdjustments))
+                {
+                    colorAdjustments = baseVolume.profile.Add<ColorAdjustments>(true);
+                    colorAdjustments.saturation.overrideState = true;
+                    colorAdjustments.contrast.overrideState = true;
+                    colorAdjustments.colorFilter.overrideState = true;
+                }
+                else
+                {
+                    // Pastikan override state aktif
+                    colorAdjustments.saturation.overrideState = true;
+                    colorAdjustments.contrast.overrideState = true;
+                    colorAdjustments.colorFilter.overrideState = true;
+                }
             }
         }
 
@@ -95,12 +127,24 @@ namespace FeaturesTime.Atmosphere
             bool isNight = (targetPhase == TimeManager.DayPhase.Night);
             float targetNightWeight = isNight ? 1f : 0f;
 
-            float targetVignette = isNight ? nightVignetteIntensity : dayVignetteIntensity;
+            // Target values
+            float targetVigIntensity = isNight ? nightVignetteIntensity : dayVignetteIntensity;
+            float targetVigSmoothness = isNight ? nightVignetteSmoothness : dayVignetteSmoothness;
             float targetSat = isNight ? nightSaturation : daySaturation;
+            float targetCon = isNight ? nightContrast : dayContrast;
+            Color targetFilter = isNight ? nightColorFilter : dayColorFilter;
+            float targetBloomThres = isNight ? nightBloomThreshold : dayBloomThreshold;
+            float targetBloomInt = isNight ? nightBloomIntensity : dayBloomIntensity;
 
+            // Start values
             float startNightWeight = nightVolume != null ? nightVolume.weight : 0f;
-            float startVignette = vignette != null ? vignette.intensity.value : targetVignette;
+            float startVigIntensity = vignette != null ? vignette.intensity.value : targetVigIntensity;
+            float startVigSmoothness = vignette != null ? vignette.smoothness.value : targetVigSmoothness;
             float startSat = colorAdjustments != null ? colorAdjustments.saturation.value : targetSat;
+            float startCon = colorAdjustments != null ? colorAdjustments.contrast.value : targetCon;
+            Color startFilter = colorAdjustments != null ? colorAdjustments.colorFilter.value : targetFilter;
+            float startBloomThres = bloom != null ? bloom.threshold.value : targetBloomThres;
+            float startBloomInt = bloom != null ? bloom.intensity.value : targetBloomInt;
 
             float elapsed = 0f;
             while (elapsed < transitionDuration)
@@ -115,25 +159,48 @@ namespace FeaturesTime.Atmosphere
 
                 if (vignette != null)
                 {
-                    vignette.intensity.value = Mathf.Lerp(startVignette, targetVignette, t);
+                    vignette.intensity.value = Mathf.Lerp(startVigIntensity, targetVigIntensity, t);
+                    vignette.smoothness.value = Mathf.Lerp(startVigSmoothness, targetVigSmoothness, t);
                 }
 
                 if (colorAdjustments != null)
                 {
                     colorAdjustments.saturation.value = Mathf.Lerp(startSat, targetSat, t);
+                    colorAdjustments.contrast.value = Mathf.Lerp(startCon, targetCon, t);
+                    colorAdjustments.colorFilter.value = Color.Lerp(startFilter, targetFilter, t);
+                }
+
+                if (bloom != null)
+                {
+                    bloom.threshold.value = Mathf.Lerp(startBloomThres, targetBloomThres, t);
+                    bloom.intensity.value = Mathf.Lerp(startBloomInt, targetBloomInt, t);
                 }
 
                 yield return null;
             }
 
+            // Final snap
             if (nightVolume != null)
                 nightVolume.weight = targetNightWeight;
 
             if (vignette != null)
-                vignette.intensity.value = targetVignette;
+            {
+                vignette.intensity.value = targetVigIntensity;
+                vignette.smoothness.value = targetVigSmoothness;
+            }
 
             if (colorAdjustments != null)
+            {
                 colorAdjustments.saturation.value = targetSat;
+                colorAdjustments.contrast.value = targetCon;
+                colorAdjustments.colorFilter.value = targetFilter;
+            }
+
+            if (bloom != null)
+            {
+                bloom.threshold.value = targetBloomThres;
+                bloom.intensity.value = targetBloomInt;
+            }
 
             transitionCoroutine = null;
         }
@@ -150,11 +217,20 @@ namespace FeaturesTime.Atmosphere
             if (vignette != null)
             {
                 vignette.intensity.value = isNight ? nightVignetteIntensity : dayVignetteIntensity;
+                vignette.smoothness.value = isNight ? nightVignetteSmoothness : dayVignetteSmoothness;
             }
 
             if (colorAdjustments != null)
             {
                 colorAdjustments.saturation.value = isNight ? nightSaturation : daySaturation;
+                colorAdjustments.contrast.value = isNight ? nightContrast : dayContrast;
+                colorAdjustments.colorFilter.value = isNight ? nightColorFilter : dayColorFilter;
+            }
+
+            if (bloom != null)
+            {
+                bloom.threshold.value = isNight ? nightBloomThreshold : dayBloomThreshold;
+                bloom.intensity.value = isNight ? nightBloomIntensity : dayBloomIntensity;
             }
         }
     }
