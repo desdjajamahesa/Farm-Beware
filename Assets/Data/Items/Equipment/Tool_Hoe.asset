@@ -13,12 +13,12 @@ MonoBehaviour:
   m_Name: Tool_Hoe
   m_EditorClassIdentifier: Assembly-CSharp::ToolItemData
   itemId: tool_hoe
-  itemName: Cangkul
+  itemName: Hoe
   category: 6
   rarity: 0
   itemIcon: {fileID: 21300000, guid: da8589e6752645549aae0f26d793ec02, type: 3}
-  description: Alat pertanian untuk mencangkul dan menggemburkan tanah liar agar
-    siap ditanami benih.
+  description: A farming tool used to till and aerate wild soil, preparing it for
+    planting seeds.
   maxStack: 1
   type: 2
   buyPrice: 500
