@@ -195,20 +195,32 @@ public class PlayerControl : MonoBehaviour
             playerStats.UseStamina(playerStats.staminaDrainRate * Time.deltaTime);
         }
 
-        // 5. Sinkronisasi Animator
+        // 5. Sinkronisasi Animator secara natural
         if (animator != null)
         {
+            // Kecepatan horizontal fisik aktual agar langkah kaki sinkron (mencegah efek kaki selip)
+            Vector3 horizVel = rb != null ? new Vector3(rb.linearVelocity.x, 0f, rb.linearVelocity.z) : Vector3.zero;
+            float currentSpeed = horizVel.magnitude;
+
             float targetSpeed = 0f;
-            if (isMoving)
+            if (isMoving && currentSpeed > 0.1f)
             {
-                targetSpeed = isRunning ? 1.0f : 0.5f;
+                if (isRunning)
+                {
+                    targetSpeed = Mathf.Clamp(currentSpeed / runSpeed, 0.5f, 1.0f);
+                }
+                else
+                {
+                    targetSpeed = Mathf.Clamp((currentSpeed / walkSpeed) * 0.5f, 0.1f, 0.5f);
+                }
             }
 
-            // Gunakan dampTime (0.1f) agar perubahan kecepatan dan langkah kaki bertransisi mulus
-            animator.SetFloat("Vel", targetSpeed, 0.1f, Time.deltaTime);
+            // Gunakan dampTime 0.12f agar perubahan kecepatan dan langkah kaki bertransisi mulus
+            animator.SetFloat("Vel", targetSpeed, 0.12f, Time.deltaTime);
             animator.SetBool("Grounded", isGrounded);
-            animator.SetBool("Idle", !isMoving);
-            animator.SetBool("Sprinting", isRunning);
+            // Idle aktif jika pemain tidak memberi input dan kecepatan tubuh sudah melambat
+            animator.SetBool("Idle", !isMoving && currentSpeed < 0.25f);
+            animator.SetBool("Sprinting", isRunning && currentSpeed > walkSpeed * 0.8f);
         }
     }
 
