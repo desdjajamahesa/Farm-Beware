@@ -171,9 +171,18 @@ public class ItemDisplayUI : MonoBehaviour
             interactPromptTMP.text = formatted;
 
             if (interactPromptRoot != null)
+            {
                 interactPromptRoot.SetActive(true);
+                var rect = interactPromptRoot.GetComponent<RectTransform>();
+                if (rect != null)
+                {
+                    UnityEngine.UI.LayoutRebuilder.ForceRebuildLayoutImmediate(rect);
+                }
+            }
             else
+            {
                 interactPromptTMP.gameObject.SetActive(true);
+            }
 
             if (interactPromptCanvasGroup != null)
                 interactPromptCanvasGroup.alpha = 1f;

@@ -95,6 +95,12 @@ public class HoverLabelController : MonoBehaviour
             farmland.UpdateLabelText(interactor.gameObject);
         }
 
+        var door = target.GetComponent<DoorInteractable>() ?? target.GetComponentInChildren<DoorInteractable>();
+        if (door != null)
+        {
+            door.UpdateDynamicLabel();
+        }
+
         WorldLabel label = target.GetComponent<WorldLabel>() ?? target.GetComponentInChildren<WorldLabel>();
         string displayName = label != null ? label.GetDisplayName() : target.name;
 

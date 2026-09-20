@@ -73,6 +73,12 @@ public class DoorInteractable : MonoBehaviour, IInteractable
 
     public void UpdateDynamicLabel()
     {
+        if (worldLabel == null)
+            worldLabel = GetComponent<WorldLabel>() ?? GetComponentInChildren<WorldLabel>();
+
+        if (cachedPlayer == null)
+            cachedPlayer = FindFirstObjectByType<PlayerControl>();
+
         if (worldLabel == null || spawnPointInside == null || spawnPointOutside == null || cachedPlayer == null) return;
 
         float distToInside = Vector3.Distance(cachedPlayer.transform.position, spawnPointInside.position);

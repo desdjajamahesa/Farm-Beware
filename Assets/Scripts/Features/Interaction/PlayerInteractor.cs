@@ -6,8 +6,8 @@ namespace FeaturesInteraction
     public class PlayerInteractor : MonoBehaviour
     {
         [Header("Deteksi Interaksi")]
-        // Radius interaksi presisi yang nyaman (default 2.0f).
-        [SerializeField] private float interactRadius = 2.0f;
+        // Radius interaksi presisi dan dekat (default 1.5f).
+        [SerializeField] private float interactRadius = 1.5f;
 
         [Header("Layer Interactable")]
         public LayerMask interactableLayer = ~0;
@@ -49,11 +49,12 @@ namespace FeaturesInteraction
 
             foreach (Collider hit in hits)
             {
-                // Cek IInteractable di collider ini, di parent-nya, atau di children-nya
-                IInteractable interactable = hit.GetComponentInParent<IInteractable>();
-                if (interactable == null)
-                    interactable = hit.GetComponentInChildren<IInteractable>();
+                // Abaikan trigger collider zona ruangan (misal BedroomZone)
+                if (hit.GetComponent<InteractionZone>() != null)
+                    continue;
 
+                // Cek IInteractable pada collider itu sendiri atau di parent-nya (jangan cari ke children agar tidak salah target ke objek lain di dalam container)
+                IInteractable interactable = hit.GetComponent<IInteractable>() ?? hit.GetComponentInParent<IInteractable>();
                 if (interactable == null) continue;
 
                 // Hitung posisi representatif objek interaktif
@@ -74,10 +75,30 @@ namespace FeaturesInteraction
 
                 // Jarak dihitung dari titik terdekat collider target ke pusat tubuh pemain
                 Vector3 closestPoint = hit.ClosestPoint(playerCenter);
-                float dist = (closestPoint - playerCenter).sqrMagnitude;
-                if (dist < bestDist)
+                Vector3 toTarget = closestPoint - playerCenter;
+                Vector3 toTargetH = Vector3.ProjectOnPlane(toTarget, Vector3.up);
+                float distSq = toTarget.sqrMagnitude;
+
+                // Orientasi hadap pemain: prioritaskan objek di depan pemain
+                float dot = 1.0f;
+                if (toTargetH.sqrMagnitude > 0.04f)
                 {
-                    bestDist = dist;
+                    dot = Vector3.Dot(transform.forward, toTargetH.normalized);
+                }
+
+                // Abaikan objek yang jelas-jelas berada di belakang pemain (kecuali jika sangat menempel)
+                if (dot < -0.15f && distSq > 0.36f)
+                {
+                    continue;
+                }
+
+                // Bobot arah: objek di depan mendapat penalti skor lebih rendah (lebih diprioritaskan)
+                float dirFactor = Mathf.Lerp(1.25f, 0.75f, (dot + 1f) * 0.5f);
+                float effectiveScore = distSq * dirFactor;
+
+                if (effectiveScore < bestDist)
+                {
+                    bestDist = effectiveScore;
                     best = interactable;
                 }
             }
