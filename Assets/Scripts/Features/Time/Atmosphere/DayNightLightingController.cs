@@ -32,13 +32,13 @@ namespace FeaturesTime.Atmosphere
         [SerializeField] private float dayFogEnd = 120f;
         [SerializeField] private Color dayCameraBackground = new Color(0.12f, 0.15f, 0.20f);
 
-        [Header("Night Preset (Malam Hari - Clear & Atmospheric Moonlight)")]
-        [SerializeField] private Color nightLightColor = new Color(0.65f, 0.76f, 0.94f);   // Sinar bulan perak kebiruan seimbang
-        [SerializeField] private float nightLightIntensity = 0.45f;                         // Cahaya bulan cukup terang agar gameplay nyaman
-        [SerializeField] private Vector3 nightLightRotation = new Vector3(38f, 135f, 0f);   // Sudut moonlight
-        [SerializeField] private Color nightAmbientSky = new Color(0.26f, 0.32f, 0.46f);    // Langit malam seimbang & jelas
-        [SerializeField] private Color nightAmbientEquator = new Color(0.20f, 0.24f, 0.36f); // Horizon malam
-        [SerializeField] private Color nightAmbientGround = new Color(0.15f, 0.18f, 0.26f); // Tanah malam terang dan terlihat jelas
+        [Header("Night Preset (Malam Hari - Atmospheric Moonlight & Rim)")]
+        [SerializeField] private Color nightLightColor = new Color(0.72f, 0.82f, 0.96f);   // Cool Soft Moonlight
+        [SerializeField] private float nightLightIntensity = 0.35f;                         // Moonlight 0.35f
+        [SerializeField] private Vector3 nightLightRotation = new Vector3(55f, 35f, 0f);   // Pitch 55, Yaw 35
+        [SerializeField] private Color nightAmbientSky = new Color(0.20f, 0.24f, 0.32f);    // Cool Night Sky
+        [SerializeField] private Color nightAmbientEquator = new Color(0.14f, 0.16f, 0.22f); // Soft Horizon Fill
+        [SerializeField] private Color nightAmbientGround = new Color(0.09f, 0.10f, 0.13f); // Ground Neutral
         [SerializeField] private bool nightFogEnabled = true;
         [SerializeField] private Color nightFogColor = new Color(0.10f, 0.14f, 0.24f);     // Kabut malam lembut
         [SerializeField] private float nightFogStart = 52f;  // Fog di luar area gameplay
@@ -63,6 +63,7 @@ namespace FeaturesTime.Atmosphere
             }
 
             mainCamera = Camera.main;
+            RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Trilight;
             RenderSettings.fogMode = FogMode.Linear;
         }
 
