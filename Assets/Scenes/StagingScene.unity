@@ -44499,6 +44499,7 @@ MonoBehaviour:
   itemsForSale:
   - {fileID: 11400000, guid: 1555ed878052ac44c8b9e2fe43cbdf9a, type: 2}
   - {fileID: 11400000, guid: 204c190b81a6c054f8d1fe0f0c2a7a80, type: 2}
+  - {fileID: 11400000, guid: 68b7b9b656a45ff418f01157cf45b298, type: 2}
   shopPanel: {fileID: 1580090855}
   goldBalanceText: {fileID: 432447270}
   buyContentContainer: {fileID: 1293405340}
@@ -45381,7 +45382,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9becad50e4bcb8048b09d03057866a26, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::FeaturesEconomy.MerchantTableInteractable
-  stockItems: []
+  stockItems:
+  - {fileID: 11400000, guid: 204c190b81a6c054f8d1fe0f0c2a7a80, type: 2}
+  - {fileID: 11400000, guid: 1555ed878052ac44c8b9e2fe43cbdf9a, type: 2}
+  - {fileID: 11400000, guid: 68b7b9b656a45ff418f01157cf45b298, type: 2}
 --- !u!114 &1094367071
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -69552,9 +69556,9 @@ MonoBehaviour:
     quantity: 20
   - item: {fileID: 11400000, guid: 2da20757d972f5e4387c2eab16885a48, type: 2}
     quantity: 1
-  - item: {fileID: 11400000, guid: 204c190b81a6c054f8d1fe0f0c2a7a80, type: 2}
+  - item: {fileID: 11400000, guid: 68b7b9b656a45ff418f01157cf45b298, type: 2}
     quantity: 20
-  - item: {fileID: 11400000, guid: 1555ed878052ac44c8b9e2fe43cbdf9a, type: 2}
+  - item: {fileID: 11400000, guid: 3c12369d530350548bbca2f40c270693, type: 2}
     quantity: 20
   - item: {fileID: 11400000, guid: 631a56d8258854a40afd2bc5508e5304, type: 2}
     quantity: 15
@@ -69580,7 +69584,19 @@ MonoBehaviour:
     quantity: 10
   - item: {fileID: 11400000, guid: db06be8654e988b4ea9a81c755fd1d3c, type: 2}
     quantity: 1
-  maxCapacity: 24
+  - item: {fileID: 11400000, guid: c55242fdf6330d84ea289b07c31b6e10, type: 2}
+    quantity: 20
+  - item: {fileID: 11400000, guid: 283857b9de52c7042a09c161091cc3bb, type: 2}
+    quantity: 10
+  - item: {fileID: 11400000, guid: 758f856859069264095930ad5c8b43ed, type: 2}
+    quantity: 10
+  - item: {fileID: 0}
+    quantity: 15
+  - item: {fileID: 0}
+    quantity: 10
+  - item: {fileID: 0}
+    quantity: 0
+  maxCapacity: 30
   blockTrophyItems: 0
   hasHotbar: 0
   allowedFoodCategories: 
@@ -82921,8 +82937,9 @@ MonoBehaviour:
   containerCanvas: {fileID: 1912017809}
   floatingTextPrefab: {fileID: 0}
   damageColor: {r: 0.95, g: 0.22, b: 0.22, a: 1}
+  criticalDamageColor: {r: 1, g: 0.7, b: 0.15, a: 1}
   healColor: {r: 0.25, g: 0.9, b: 0.35, a: 1}
-  buffNoticeColor: {r: 0.95, g: 0.85, b: 0.25, a: 1}
+  noticeColor: {r: 0.95, g: 0.88, b: 0.35, a: 1}
 --- !u!1 &1912589483
 GameObject:
   m_ObjectHideFlags: 0

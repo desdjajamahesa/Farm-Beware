@@ -122,9 +122,21 @@ namespace FeaturesEconomy
 
         private void LoadSeedCatalog()
         {
-            if (itemsForSale != null && itemsForSale.Count > 0) return;
+            if (itemsForSale == null) itemsForSale = new List<ItemData>();
 
-            itemsForSale = new List<ItemData>();
+            // Muat dari ItemDatabase agar benih baru (seperti Seed_Corn) otomatis masuk katalog pedagang
+            var db = Resources.Load<ItemDatabase>("Database/ItemDatabase");
+            if (db != null && db.allItems != null)
+            {
+                foreach (var item in db.allItems)
+                {
+                    if (item != null && item.category == ItemCategory.Seed && !itemsForSale.Contains(item))
+                    {
+                        itemsForSale.Add(item);
+                    }
+                }
+            }
+
             var allItems = Resources.FindObjectsOfTypeAll<ItemData>();
             foreach (var item in allItems)
             {
@@ -135,17 +147,14 @@ namespace FeaturesEconomy
             }
 
 #if UNITY_EDITOR
-            if (itemsForSale.Count == 0)
+            string[] guids = UnityEditor.AssetDatabase.FindAssets("t:ItemData");
+            foreach (string guid in guids)
             {
-                string[] guids = UnityEditor.AssetDatabase.FindAssets("t:ItemData");
-                foreach (string guid in guids)
+                string path = UnityEditor.AssetDatabase.GUIDToAssetPath(guid);
+                var item = UnityEditor.AssetDatabase.LoadAssetAtPath<ItemData>(path);
+                if (item != null && item.category == ItemCategory.Seed && !itemsForSale.Contains(item))
                 {
-                    string path = UnityEditor.AssetDatabase.GUIDToAssetPath(guid);
-                    var item = UnityEditor.AssetDatabase.LoadAssetAtPath<ItemData>(path);
-                    if (item != null && item.category == ItemCategory.Seed && !itemsForSale.Contains(item))
-                    {
-                        itemsForSale.Add(item);
-                    }
+                    itemsForSale.Add(item);
                 }
             }
 #endif
