@@ -206,8 +206,14 @@ namespace FeaturesCombat
 
             float dist = Vector3.Distance(transform.position, playerTarget.position);
 
+            // Pada mode malam (Night Brawl), monster selalu agresif langsung mengejar dan memburu pemain tanpa batas jarak aggro
+            bool isNightActive = (TimeManager.Instance != null && TimeManager.Instance.currentPhase == TimeManager.DayPhase.Night) ||
+                                 (NightBrawlManager.Instance != null && NightBrawlManager.Instance.IsNightBrawlActive);
+
+            bool isAggroed = isNightActive || (dist <= aggroRange);
+
             // Cek AI behaviour
-            if (dist <= aggroRange)
+            if (isAggroed)
             {
                 LookAtTarget(playerTarget.position);
 

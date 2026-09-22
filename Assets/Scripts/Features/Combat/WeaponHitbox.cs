@@ -178,7 +178,17 @@ namespace FeaturesCombat
         {
             if (!hitTargets.Add(target)) return;
 
-            target.TakeDamage(currentDamage, hitPoint, attackDirection);
+            int effectiveDamage = currentDamage;
+            if (attacker != null)
+            {
+                var stats = attacker.GetComponent<PlayerStats>() ?? attacker.GetComponentInParent<PlayerStats>();
+                if (stats != null && stats.isGodMode)
+                {
+                    effectiveDamage = 9999;
+                }
+            }
+
+            target.TakeDamage(effectiveDamage, hitPoint, attackDirection);
 
             // Terapkan knockback pada Rigidbody musuh jika ada
             Rigidbody targetRb = targetObj.GetComponent<Rigidbody>() ?? targetObj.GetComponentInParent<Rigidbody>();
@@ -191,10 +201,12 @@ namespace FeaturesCombat
             // Munculkan floating combat text
             if (FloatingCombatTextManager.Instance != null)
             {
+                Color textColor = effectiveDamage >= 9999 ? new Color(1f, 0.85f, 0.15f) : new Color(1f, 0.25f, 0.2f);
+                string text = effectiveDamage >= 9999 ? "💥 9999" : $"-{effectiveDamage}";
                 FloatingCombatTextManager.Instance.SpawnText(
                     hitPoint + Vector3.up * 0.8f,
-                    $"-{currentDamage}",
-                    new Color(1f, 0.25f, 0.2f));
+                    text,
+                    textColor);
             }
         }
     }

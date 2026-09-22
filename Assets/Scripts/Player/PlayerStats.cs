@@ -38,6 +38,9 @@ public class PlayerStats : MonoBehaviour, FeaturesCombat.IDamageable
     public float damageInterval = 3f;
     private float nextDamageTime;
 
+    [Header("Debug & Cheats")]
+    public bool isGodMode = false;
+
     private float lastStaminaUseTime;
 
     private int baseMaxHealth;
@@ -120,7 +123,40 @@ public class PlayerStats : MonoBehaviour, FeaturesCombat.IDamageable
             {
                 UseStamina(25f);
             }
+
+            if (UnityEngine.InputSystem.Keyboard.current.gKey.wasPressedThisFrame)
+            {
+                ToggleGodMode();
+            }
         }
+    }
+
+    public void ToggleGodMode()
+    {
+        isGodMode = !isGodMode;
+        if (isGodMode)
+        {
+            currentHealth = maxHealth;
+            currentStamina = maxStamina;
+            currentHunger = maxHunger;
+            currentThirst = maxThirst;
+            OnHealthChanged?.Invoke(currentHealth, maxHealth);
+            OnStaminaChanged?.Invoke(currentStamina, maxStamina);
+            OnHungerChanged?.Invoke(currentHunger, maxHunger);
+            OnThirstChanged?.Invoke(currentThirst, maxThirst);
+        }
+
+        string msg = isGodMode ? "🛡️ GOD MODE: ON (Invincible + 1-Hit Kill)" : "🛡️ GOD MODE: OFF";
+        Color col = isGodMode ? new Color(1f, 0.85f, 0.15f) : new Color(0.7f, 0.7f, 0.7f);
+
+        if (PlayerUI.FloatingCombatTextManager.Instance != null)
+        {
+            PlayerUI.FloatingCombatTextManager.Instance.SpawnText(
+                transform.position + Vector3.up * 2f,
+                msg,
+                col);
+        }
+        Debug.Log($"[PlayerStats] {msg}");
     }
 
     private float lastNotifiedHunger = -999f;
@@ -128,6 +164,12 @@ public class PlayerStats : MonoBehaviour, FeaturesCombat.IDamageable
 
     private void DrainHungerAndThirst(float deltaTime)
     {
+        if (isGodMode)
+        {
+            currentHunger = maxHunger;
+            currentThirst = maxThirst;
+            return;
+        }
         if (currentHunger > 0)
         {
             currentHunger = Mathf.Clamp(currentHunger - hungerDrainRate * deltaTime, 0, maxHunger);
@@ -175,7 +217,7 @@ public class PlayerStats : MonoBehaviour, FeaturesCombat.IDamageable
 
     public void TakeDamage(int amount)
     {
-        if (amount <= 0) return;
+        if (isGodMode || amount <= 0) return;
         currentHealth = Mathf.Clamp(currentHealth - amount, 0, maxHealth);
         OnHealthChanged?.Invoke(currentHealth, maxHealth);
         OnDamageTaken?.Invoke(amount);
@@ -191,6 +233,13 @@ public class PlayerStats : MonoBehaviour, FeaturesCombat.IDamageable
     // --- STAMINA METHODS ---
     public bool UseStamina(float amount)
     {
+        if (isGodMode)
+        {
+            currentStamina = maxStamina;
+            OnStaminaChanged?.Invoke(currentStamina, maxStamina);
+            return true;
+        }
+
         if (currentStamina > 0)
         {
             currentStamina = Mathf.Clamp(currentStamina - amount, 0, maxStamina);
