@@ -33,6 +33,10 @@ public class TimeManager : MonoBehaviour
     public int currentDay { get; private set; } = 1;
     public DayPhase currentPhase { get; private set; } = DayPhase.Day;
 
+    // Status penyelesaian encounter malam (Night Brawl).
+    // Diset false saat malam dimulai, dan diubah menjadi true saat seluruh wave malam dikalahkan.
+    public bool isNightEncounterCleared { get; set; } = false;
+
     // Event sinyal (data-driven) untuk listener UI/backend lain.
     public event Action<int> OnDayChanged;
     public event Action<DayPhase> OnPhaseChanged;
@@ -67,6 +71,7 @@ public class TimeManager : MonoBehaviour
     {
         currentDay++;
         currentPhase = DayPhase.Day;
+        isNightEncounterCleared = false;
 
         OnDayChanged?.Invoke(currentDay);
         OnPhaseChanged?.Invoke(currentPhase);
@@ -74,15 +79,22 @@ public class TimeManager : MonoBehaviour
         Debug.Log($"Day changed to {currentDay}, Phase: {currentPhase}");
     }
 
-    // Lompat ke fase malam; no-op bila sudah malam.
-    public void SkipToNight()
+    // Memulai fase malam (dipanggil dari kasur saat siang atau dari spawner).
+    public void StartNightPhase()
     {
         if (currentPhase == DayPhase.Night)
             return;
 
         currentPhase = DayPhase.Night;
+        isNightEncounterCleared = false;
         OnPhaseChanged?.Invoke(currentPhase);
 
-        Debug.Log($"Phase changed to {currentPhase}");
+        Debug.Log($"Phase changed to {currentPhase} (Night Brawl begins!)");
+    }
+
+    // Lompat ke fase malam; no-op bila sudah malam.
+    public void SkipToNight()
+    {
+        StartNightPhase();
     }
 }
