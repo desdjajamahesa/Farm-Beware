@@ -245,6 +245,44 @@ public class StoveUIManager : MonoBehaviour
                 countText.color = owned >= required ? haveEnoughColor : notEnoughColor;
             }
         }
+
+        // Tampilkan baris kebutuhan air bila resep memerlukan air
+        if (recipe.waterRequired > 0f)
+        {
+            GameObject waterRowGO = Instantiate(ingredientRowPrefab, ingredientContainer, false);
+            waterRowGO.transform.localScale = Vector3.one;
+            waterRowGO.SetActive(true);
+            spawnedIngredientRows.Add(waterRowGO);
+
+            var icon = waterRowGO.transform.Find("Icon")?.GetComponent<Image>();
+            if (icon != null)
+            {
+                var db = Resources.Load<ItemDatabase>("Database/ItemDatabase");
+                var waterItem = db != null ? db.GetItem("food_bottle_water") : null;
+                if (waterItem != null && waterItem.itemIcon != null)
+                {
+                    icon.sprite = waterItem.itemIcon;
+                    icon.enabled = true;
+                }
+                else
+                {
+                    icon.color = new Color(0.3f, 0.7f, 1f, 1f);
+                }
+            }
+
+            var nameText = waterRowGO.transform.Find("Name")?.GetComponent<TextMeshProUGUI>();
+            if (nameText != null)
+                nameText.text = "Clean Water";
+
+            float ownedWater = FeaturesKitchen.PlayerWaterBottle.Instance != null ? FeaturesKitchen.PlayerWaterBottle.Instance.CurrentWater : 0f;
+            float reqWater = recipe.waterRequired;
+            var countText = waterRowGO.transform.Find("Count")?.GetComponent<TextMeshProUGUI>();
+            if (countText != null)
+            {
+                countText.text = $"{Mathf.FloorToInt(ownedWater)}/{reqWater:F0} L";
+                countText.color = ownedWater >= reqWater ? haveEnoughColor : notEnoughColor;
+            }
+        }
     }
 
     private void UpdateCookButton()
@@ -270,10 +308,23 @@ public class StoveUIManager : MonoBehaviour
     {
         if (selectedRecipe == null || playerInventory == null) return false;
 
+        // Validasi ketersediaan air di botol
+        if (selectedRecipe.waterRequired > 0f)
+        {
+            var bottle = FeaturesKitchen.PlayerWaterBottle.Instance;
+            if (bottle == null || !bottle.HasWater(selectedRecipe.waterRequired))
+                return false;
+        }
+
         var ingredients = selectedRecipe.GetAllIngredients();
         foreach (var ingredient in ingredients)
         {
             if (ingredient.item == null) continue;
+
+            // Jika item adalah bottle_water dan resep menggunakan sistem waterRequired, abaikan pengecekan slot biasa
+            if (ingredient.item.itemId == "food_bottle_water" && selectedRecipe.waterRequired > 0f)
+                continue;
+
             if (playerInventory.CountItem(ingredient.item) < ingredient.quantity)
                 return false;
         }
@@ -290,12 +341,22 @@ public class StoveUIManager : MonoBehaviour
     {
         isCooking = true;
 
-        // 1. Konsumsi bahan di awal
+        // 1. Konsumsi bahan dan air di awal
+        if (recipe.waterRequired > 0f && FeaturesKitchen.PlayerWaterBottle.Instance != null)
+        {
+            FeaturesKitchen.PlayerWaterBottle.Instance.ConsumeWater(recipe.waterRequired);
+        }
+
         var ingredients = recipe.GetAllIngredients();
         foreach (var ingredient in ingredients)
         {
             if (ingredient.item != null)
+            {
+                if (ingredient.item.itemId == "food_bottle_water" && recipe.waterRequired > 0f)
+                    continue;
+
                 playerInventory.RemoveItem(ingredient.item, ingredient.quantity);
+            }
         }
         UpdateIngredientDisplay(recipe);
 

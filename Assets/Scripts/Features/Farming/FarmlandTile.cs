@@ -182,7 +182,7 @@ namespace FeaturesFarming
                     break;
 
                 case TileState.PlantedDry:
-                    WaterCrop();
+                    TryWaterCrop(interactor);
                     break;
 
                 case TileState.PlantedWatered:
@@ -247,6 +247,35 @@ namespace FeaturesFarming
             isPlantingAction = false;
         }
 
+        private void TryWaterCrop(GameObject interactor)
+        {
+            const float waterRequired = 10f;
+            var bottle = FeaturesKitchen.PlayerWaterBottle.Instance;
+
+            if (bottle != null && bottle.ConsumeWater(waterRequired))
+            {
+                WaterCrop();
+                if (PlayerUI.FloatingCombatTextManager.Instance != null)
+                {
+                    PlayerUI.FloatingCombatTextManager.Instance.SpawnText(
+                        transform.position + Vector3.up * 1.2f,
+                        $"💧 Watered (-{waterRequired:F0}L Water)",
+                        new Color(0.35f, 0.75f, 1f));
+                }
+                return;
+            }
+
+            // Peringatan bila botol air kosong atau kurang dari 10L
+            if (PlayerUI.FloatingCombatTextManager.Instance != null)
+            {
+                PlayerUI.FloatingCombatTextManager.Instance.SpawnText(
+                    transform.position + Vector3.up * 1.2f,
+                    $"Need {waterRequired:F0}L Water! Refill at Kitchen Sink.",
+                    new Color(1f, 0.5f, 0.2f));
+            }
+            Debug.LogWarning("[FarmlandTile] Cannot water crop: Player water bottle is empty or has less than 10L!");
+        }
+
         private void WaterCrop()
         {
             SetState(TileState.PlantedWatered);
@@ -290,14 +319,33 @@ namespace FeaturesFarming
                     if (yieldCount < 1) yieldCount = 1;
 
                     bool added = inventory.AddItem(dropItem, yieldCount);
+
+                    // Drop benih bonus sesuai tabel spesifikasi ekonomi MVP
+                    int seedBonusCount = CalculateSeedDrop(plantedSeed);
+                    bool seedAdded = false;
+                    if (seedBonusCount > 0)
+                    {
+                        seedAdded = inventory.AddItem(plantedSeed, seedBonusCount);
+                    }
+
+                    // Catat hasil panen ke DailyEconomyManager
+                    if (FeaturesEconomy.DailyEconomyManager.Instance != null)
+                    {
+                        FeaturesEconomy.DailyEconomyManager.Instance.RecordCropHarvested(dropItem, yieldCount);
+                    }
+
                     if (added)
                     {
-                        Debug.Log($"[FarmlandTile] Harvest successful! Obtained {yieldCount}x {dropItem.itemName}.");
+                        string harvestMsg = (seedAdded && seedBonusCount > 0)
+                            ? $"+{yieldCount} {dropItem.itemName}, +{seedBonusCount} {plantedSeed.itemName}"
+                            : $"+{yieldCount} {dropItem.itemName}";
+
+                        Debug.Log($"[FarmlandTile] Harvest successful! Obtained {yieldCount}x {dropItem.itemName} and {seedBonusCount}x seeds.");
                         if (PlayerUI.FloatingCombatTextManager.Instance != null && playerControl != null)
                         {
                             PlayerUI.FloatingCombatTextManager.Instance.SpawnText(
                                 transform.position + Vector3.up * 1.2f,
-                                $"+{yieldCount} {dropItem.itemName}",
+                                harvestMsg,
                                 new Color(0.25f, 0.90f, 0.35f));
                         }
                     }
@@ -315,6 +363,42 @@ namespace FeaturesFarming
             SetState(TileState.Tilled);
 
             isHarvestingAction = false;
+        }
+
+        private int CalculateSeedDrop(SeedItemData seed)
+        {
+            if (seed == null) return 0;
+            string seedName = (seed.itemName ?? "").ToLower();
+            string id = (seed.itemId ?? "").ToLower();
+            float roll = Random.value;
+
+            // Sweet Potato: 1-4 Seeds (60% / 20% / 10% / 10%)
+            if (seedName.Contains("sweet potato") || id.Contains("sweetpotato") || id.Contains("sweet_potato"))
+            {
+                if (roll < 0.60f) return 1;
+                if (roll < 0.80f) return 2;
+                if (roll < 0.90f) return 3;
+                return 4;
+            }
+
+            // Taro: 1-3 Seeds (70% / 20% / 10%)
+            if (seedName.Contains("taro") || id.Contains("taro"))
+            {
+                if (roll < 0.70f) return 1;
+                if (roll < 0.90f) return 2;
+                return 3;
+            }
+
+            // Corn: 1-3 Seeds (70% / 20% / 10%)
+            if (seedName.Contains("corn") || id.Contains("corn") || seedName.Contains("jagung"))
+            {
+                if (roll < 0.70f) return 1;
+                if (roll < 0.90f) return 2;
+                return 3;
+            }
+
+            // Fallback: 1 benih
+            return roll < 0.75f ? 1 : 2;
         }
 
         private ItemData ResolveDirtyVariant(ItemData cleanOrDirtyItem)
@@ -410,7 +494,8 @@ namespace FeaturesFarming
                     break;
 
                 case TileState.PlantedDry:
-                    worldLabel.displayName = $"Water {plantedSeed?.itemName ?? "Crop"}";
+                    float currentLitre = FeaturesKitchen.PlayerWaterBottle.Instance != null ? FeaturesKitchen.PlayerWaterBottle.Instance.CurrentWater : 0f;
+                    worldLabel.displayName = $"Water {plantedSeed?.itemName ?? "Crop"} (10L | {Mathf.FloorToInt(currentLitre)}/100L)";
                     break;
 
                 case TileState.PlantedWatered:

@@ -39,6 +39,10 @@ public class SinkManager : MonoBehaviour
     [Tooltip("TMP text for item description at bottom of LeftContent.")]
     [SerializeField] private TextMeshProUGUI itemDescriptionText;
 
+    [Header("Refill Water Bottle")]
+    [SerializeField] private Button refillWaterButton;
+    [SerializeField] private TextMeshProUGUI refillWaterButtonText;
+
     private InventoryComponent playerInventory;
     private List<GameObject> spawnedSlots = new List<GameObject>();
 
@@ -72,6 +76,8 @@ public class SinkManager : MonoBehaviour
             if (outputCountText == null)
                 outputCountText = outputSlotUI.Find("Count")?.GetComponent<TextMeshProUGUI>();
         }
+
+        EnsureRefillWaterButton();
     }
 
     public void SetPlayerInventory(InventoryComponent inv)
@@ -178,6 +184,91 @@ public class SinkManager : MonoBehaviour
     {
         RefreshSlotVisuals();
         SyncProgressUI();
+        EnsureRefillWaterButton();
+        UpdateRefillButtonState();
+    }
+
+    public void EnsureRefillWaterButton()
+    {
+        if (refillWaterButton != null) return;
+
+        var existing = transform.Find("Btn_RefillWater") ?? transform.Find("LeftContent/Btn_RefillWater") ?? transform.Find("TopBar/Btn_RefillWater");
+        if (existing != null)
+        {
+            refillWaterButton = existing.GetComponent<Button>();
+            refillWaterButtonText = existing.GetComponentInChildren<TextMeshProUGUI>();
+            if (refillWaterButton != null)
+            {
+                refillWaterButton.onClick.RemoveAllListeners();
+                refillWaterButton.onClick.AddListener(OnRefillWaterClicked);
+            }
+            return;
+        }
+
+        Transform targetParent = transform.Find("LeftContent") ?? transform.Find("TopBar") ?? transform;
+
+        GameObject btnGO = new GameObject("Btn_RefillWater", typeof(RectTransform), typeof(Image), typeof(Button));
+        btnGO.transform.SetParent(targetParent, false);
+
+        var rt = btnGO.GetComponent<RectTransform>();
+        rt.anchorMin = new Vector2(0.5f, 0f);
+        rt.anchorMax = new Vector2(0.5f, 0f);
+        rt.pivot = new Vector2(0.5f, 0f);
+        rt.anchoredPosition = new Vector2(0f, 16f);
+        rt.sizeDelta = new Vector2(210f, 36f);
+
+        var img = btnGO.GetComponent<Image>();
+        img.color = new Color(0.12f, 0.42f, 0.65f, 1f);
+
+        refillWaterButton = btnGO.GetComponent<Button>();
+        refillWaterButton.onClick.AddListener(OnRefillWaterClicked);
+
+        GameObject textGO = new GameObject("Text", typeof(RectTransform), typeof(TextMeshProUGUI));
+        textGO.transform.SetParent(btnGO.transform, false);
+        var textRT = textGO.GetComponent<RectTransform>();
+        textRT.anchorMin = Vector2.zero;
+        textRT.anchorMax = Vector2.one;
+        textRT.sizeDelta = Vector2.zero;
+
+        refillWaterButtonText = textGO.GetComponent<TextMeshProUGUI>();
+        refillWaterButtonText.text = "💧 Refill Water (100L)";
+        refillWaterButtonText.fontSize = 13;
+        refillWaterButtonText.fontStyle = FontStyles.Bold;
+        refillWaterButtonText.alignment = TextAlignmentOptions.Center;
+        refillWaterButtonText.color = Color.white;
+
+        UpdateRefillButtonState();
+    }
+
+    public void OnRefillWaterClicked()
+    {
+        var bottle = FeaturesKitchen.PlayerWaterBottle.Instance;
+        if (bottle != null)
+        {
+            bottle.RefillWater(100f);
+            if (PlayerUI.FloatingCombatTextManager.Instance != null)
+            {
+                var player = FindFirstObjectByType<PlayerControl>();
+                Vector3 pos = player != null ? player.transform.position + Vector3.up * 1.5f : transform.position;
+                PlayerUI.FloatingCombatTextManager.Instance.SpawnText(
+                    pos,
+                    "💧 Water Bottle Refilled (100/100 L)!",
+                    new Color(0.25f, 0.85f, 1f));
+            }
+            UpdateRefillButtonState();
+        }
+    }
+
+    public void UpdateRefillButtonState()
+    {
+        if (refillWaterButtonText == null) return;
+        var bottle = FeaturesKitchen.PlayerWaterBottle.Instance;
+        if (bottle != null)
+        {
+            refillWaterButtonText.text = bottle.CurrentWater >= bottle.MaxWater
+                ? $"💧 Bottle Full ({Mathf.FloorToInt(bottle.CurrentWater)}/100L)"
+                : $"💧 Refill Bottle ({Mathf.FloorToInt(bottle.CurrentWater)}/100L)";
+        }
     }
 
     /// <summary>

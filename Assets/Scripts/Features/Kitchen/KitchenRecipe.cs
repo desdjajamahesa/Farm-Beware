@@ -49,6 +49,10 @@ public class KitchenRecipe : ScriptableObject
     [Tooltip("Durasi proses dalam detik (untuk Sink; Genshin Stove = instan).")]
     public float processTime = 3f;
 
+    [Header("Water Requirements")]
+    [Tooltip("Jumlah air yang dibutuhkan untuk memasak resep ini (Liter). Contoh: Dumpling = 15, Porridge = 10, Stew = 20.")]
+    public float waterRequired = 0f;
+
     // === ACCESSORS ===
 
     /// <summary>True jika resep pakai multi-bahan (Genshin mode).</summary>

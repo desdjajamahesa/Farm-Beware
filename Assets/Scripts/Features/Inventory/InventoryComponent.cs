@@ -345,6 +345,36 @@ public class InventoryComponent : MonoBehaviour
 
         if (item.type == ItemData.ItemType.Consumable && item is FoodItemData food)
         {
+            // Penanganan khusus botol air isi ulang (100L): minum per tegukan (25L) tanpa menghancurkan botol
+            if (item.itemId == "food_bottle_water")
+            {
+                var bottle = FeaturesKitchen.PlayerWaterBottle.Instance;
+                if (bottle != null)
+                {
+                    if (bottle.CurrentWater <= 0.01f)
+                    {
+                        if (PlayerUI.FloatingCombatTextManager.Instance != null)
+                        {
+                            PlayerUI.FloatingCombatTextManager.Instance.SpawnText(
+                                transform.position + Vector3.up * 1.5f,
+                                "Water bottle is empty! Refill at Kitchen Sink.",
+                                new Color(1f, 0.5f, 0.2f));
+                        }
+                        return;
+                    }
+
+                    bottle.DrinkSip(25f);
+                    if (PlayerUI.FloatingCombatTextManager.Instance != null)
+                    {
+                        PlayerUI.FloatingCombatTextManager.Instance.SpawnText(
+                            transform.position + Vector3.up * 1.5f,
+                            $"💧 Gulp! (+25 Hydration | {Mathf.FloorToInt(bottle.CurrentWater)}/100L)",
+                            new Color(0.2f, 0.85f, 1f));
+                    }
+                    return;
+                }
+            }
+
             // Terapkan efek penyembuhan, nutrisi lapar & haus, serta buff status
             PlayerStats playerStats = GetComponent<PlayerStats>();
             PlayerBuffManager buffManager = GetComponent<PlayerBuffManager>();

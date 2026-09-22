@@ -1,4 +1,5 @@
 using UnityEngine;
+using FeaturesEconomy;
 
 namespace FeaturesInteraction
 {
@@ -116,22 +117,31 @@ namespace FeaturesInteraction
             if (stats != null)
                 stats.Heal(sleepHealAmount);
 
-            // Teruskan ke backend waktu: transisi ke hari berikutnya (fase Day).
-            TimeManager.Instance.AdvanceToNextDay();
+            int completedDay = TimeManager.Instance.currentDay;
 
-            if (PlayerUI.FloatingCombatTextManager.Instance != null && interactor != null)
+            // Tampilkan laporan pagi operasi perkebunan & hasil Night Brawl sebelum transisi hari baru
+            if (DailyReportModalUI.Instance != null)
             {
-                PlayerUI.FloatingCombatTextManager.Instance.SpawnText(
-                    transform.position + Vector3.up * 1.2f,
-                    $"☀️ Good morning! Day {TimeManager.Instance.currentDay} begins.",
-                    new Color(1f, 0.9f, 0.3f));
+                DailyReportModalUI.Instance.ShowReport(completedDay, () =>
+                {
+                    TimeManager.Instance.AdvanceToNextDay();
+                    if (PlayerUI.FloatingCombatTextManager.Instance != null && interactor != null)
+                    {
+                        PlayerUI.FloatingCombatTextManager.Instance.SpawnText(
+                            transform.position + Vector3.up * 1.2f,
+                            $"☀️ Day {TimeManager.Instance.currentDay} begins!",
+                            new Color(1f, 0.9f, 0.3f));
+                    }
+                    UpdateLabel();
+                });
             }
-
-            // Buka kunci setelah transisi selesai
-            if (pc != null)
-                pc.isInputLocked = false;
-
-            UpdateLabel();
+            else
+            {
+                TimeManager.Instance.AdvanceToNextDay();
+                if (pc != null)
+                    pc.isInputLocked = false;
+                UpdateLabel();
+            }
         }
     }
 }

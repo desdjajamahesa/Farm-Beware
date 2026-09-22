@@ -126,9 +126,9 @@ namespace FeaturesEconomy
 
             // Muat dari ItemDatabase agar benih baru (seperti Seed_Corn) otomatis masuk katalog pedagang
             var db = Resources.Load<ItemDatabase>("Database/ItemDatabase");
-            if (db != null && db.allItems != null)
+            if (db != null && db.GetAllItems() != null)
             {
-                foreach (var item in db.allItems)
+                foreach (var item in db.GetAllItems())
                 {
                     if (item != null && item.category == ItemCategory.Seed && !itemsForSale.Contains(item))
                     {
@@ -487,10 +487,11 @@ namespace FeaturesEconomy
             CreateItemIcon(rowGO.transform, item.itemIcon);
 
             // 2. Info Text (Name, Owned Count, Unit Price)
+            int unitPrice = DailyEconomyManager.Instance != null ? DailyEconomyManager.Instance.GetCropSellPrice(item) : (item.sellPrice > 0 ? item.sellPrice : 50);
             GameObject infoGO = new GameObject("Info", typeof(RectTransform), typeof(TextMeshProUGUI));
             infoGO.transform.SetParent(rowGO.transform, false);
             var infoTmp = infoGO.GetComponent<TextMeshProUGUI>();
-            infoTmp.text = $"<b>{item.itemName}</b>  <color=#00E5FF>(x{ownedCount} in bag)</color>\n<color=#98FB98>+{item.sellPrice:N0} G each</color>";
+            infoTmp.text = $"<b>{item.itemName}</b>  <color=#00E5FF>(x{ownedCount} in bag)</color>\n<color=#98FB98>+{unitPrice:N0} G (Market Rate)</color>";
             infoTmp.fontSize = 15;
             infoTmp.color = Color.white;
             infoTmp.alignment = TextAlignmentOptions.MidlineLeft;
@@ -506,7 +507,7 @@ namespace FeaturesEconomy
             });
 
             // 4. Sell All Button
-            int totalGain = item.sellPrice * ownedCount;
+            int totalGain = unitPrice * ownedCount;
             CreateResponsiveButton(rowGO.transform, $"Sell All (+{totalGain:N0}G)", 150, new Color(0.85f, 0.38f, 0.15f, 1f), true, () =>
             {
                 TrySellItem(item, ownedCount);
@@ -650,11 +651,16 @@ namespace FeaturesEconomy
             int sellCount = Mathf.Min(count, owned);
             if (sellCount <= 0) return;
 
-            int earnedGold = item.sellPrice * sellCount;
+            int unitPrice = DailyEconomyManager.Instance != null ? DailyEconomyManager.Instance.GetCropSellPrice(item) : (item.sellPrice > 0 ? item.sellPrice : 50);
+            int earnedGold = unitPrice * sellCount;
             bool removed = playerInventory.RemoveItem(item, sellCount);
             if (removed)
             {
                 PlayerWallet.Instance.AddGold(earnedGold);
+                if (DailyEconomyManager.Instance != null)
+                {
+                    DailyEconomyManager.Instance.RecordCropSold(item, sellCount, earnedGold);
+                }
                 ShowFloatingNotify($"+{earnedGold:N0} G (Sold {sellCount}x {item.itemName})", new Color(1f, 0.85f, 0.2f));
                 UpdateGoldDisplay(PlayerWallet.Instance.CurrentGold);
                 RefreshSellList();

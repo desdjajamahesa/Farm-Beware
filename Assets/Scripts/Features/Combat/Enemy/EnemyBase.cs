@@ -537,6 +537,11 @@ namespace FeaturesCombat
                 if (PlayerWallet.Instance != null)
                 {
                     PlayerWallet.Instance.AddGold(goldAmount);
+                    if (FeaturesEconomy.DailyEconomyManager.Instance != null)
+                    {
+                        FeaturesEconomy.DailyEconomyManager.Instance.RecordCombatGold(goldAmount);
+                    }
+
                     if (FloatingCombatTextManager.Instance != null)
                     {
                         FloatingCombatTextManager.Instance.SpawnText(

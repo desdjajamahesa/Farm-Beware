@@ -27,3 +27,4 @@ MonoBehaviour:
   output: {fileID: 11400000, guid: e5c0cc36a791d204eb3a2a9643b7a9a3, type: 2}
   outputCount: 1
   processTime: 3
+  waterRequired: 10
