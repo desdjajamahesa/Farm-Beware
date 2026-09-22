@@ -92,8 +92,13 @@ public class PlayerEquipment : MonoBehaviour
         if (animator != null && !string.IsNullOrEmpty(attackTriggerName))
         {
             float atkSpdMultiplier = buffManager != null ? buffManager.GetAttackSpeedMultiplier() : 1f;
-            animator.speed = atkSpdMultiplier;
+            var upgradeState = FeaturesWorkbench.PlayerWeaponUpgradeState.Instance ?? GetComponent<FeaturesWorkbench.PlayerWeaponUpgradeState>();
+            if (upgradeState != null && upgradeState.sweetPotatoPathUnlocked)
+            {
+                atkSpdMultiplier *= 1.20f;
+            }
 
+            animator.speed = atkSpdMultiplier;
             animator.SetTrigger(attackTriggerName);
 
             // Kurangi stamina saat serangan berhasil dilakukan
@@ -102,8 +107,8 @@ public class PlayerEquipment : MonoBehaviour
                 playerStats.UseStamina(attackStaminaCost);
             }
 
-            int baseDmg = (item is ToolItemData toolData) ? toolData.baseDamage : 15;
-            float knockback = (item is ToolItemData toolKb) ? toolKb.knockbackForce : 5f;
+            int baseDmg = (item is ToolItemData toolData) ? (upgradeState != null ? upgradeState.baseDamage : toolData.baseDamage) : 15;
+            float knockback = (item is ToolItemData toolKb) ? (upgradeState != null ? upgradeState.baseKnockback : toolKb.knockbackForce) : 5f;
             float dmgMultiplier = buffManager != null ? buffManager.GetAttackDamageMultiplier() : 1f;
             int finalDamage = Mathf.RoundToInt(baseDmg * dmgMultiplier);
 

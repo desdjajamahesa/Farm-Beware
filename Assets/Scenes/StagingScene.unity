@@ -3027,6 +3027,7 @@ GameObject:
   - component: {fileID: 81193526}
   - component: {fileID: 81193527}
   - component: {fileID: 81193528}
+  - component: {fileID: 81193529}
   m_Layer: 0
   m_Name: Player
   m_TagString: Player
@@ -3303,6 +3304,24 @@ MonoBehaviour:
   centerBoost: 0
   localOffset: {x: 0, y: 0, z: 0}
   isPrimarySource: 1
+--- !u!114 &81193529
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 81193515}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7a95435acbb33a242b8767f1870dc697, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FeaturesWorkbench.PlayerWeaponUpgradeState
+  weaponLevel: 1
+  baseDamage: 25
+  baseKnockback: 7
+  sweetPotatoPathUnlocked: 0
+  taroPathUnlocked: 0
+  cornPathUnlocked: 0
 --- !u!1 &83035679
 GameObject:
   m_ObjectHideFlags: 0
@@ -54254,6 +54273,9 @@ GameObject:
   m_Component:
   - component: {fileID: 1317059821}
   - component: {fileID: 1317059822}
+  - component: {fileID: 1317059825}
+  - component: {fileID: 1317059824}
+  - component: {fileID: 1317059823}
   m_Layer: 0
   m_Name: Garage_Workbench
   m_TagString: Untagged
@@ -54303,6 +54325,44 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 2.625, y: 0.96875, z: 1.0625}
   m_Center: {x: 0, y: -0.390625, z: 0.03125}
+--- !u!114 &1317059823
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1317059820}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f5c46b36a1557054c99cedf6b80a0734, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FeaturesInteraction.Highlightable
+  highlightMaterial: {fileID: 0}
+--- !u!114 &1317059824
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1317059820}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 761f22a0b375f934083e5d5dd0307b14, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FeaturesWorkbench.WorkbenchInteractable
+--- !u!114 &1317059825
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1317059820}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ece06dd238bd35446a7735224afd633f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FeaturesInteraction.WorldLabel
+  displayName: Workbench (Weapon Upgrade)
 --- !u!1 &1321139503
 GameObject:
   m_ObjectHideFlags: 0
