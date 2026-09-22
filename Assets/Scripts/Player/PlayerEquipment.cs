@@ -91,6 +91,9 @@ public class PlayerEquipment : MonoBehaviour
 
         if (animator != null && !string.IsNullOrEmpty(attackTriggerName))
         {
+            float atkSpdMultiplier = buffManager != null ? buffManager.GetAttackSpeedMultiplier() : 1f;
+            animator.speed = atkSpdMultiplier;
+
             animator.SetTrigger(attackTriggerName);
 
             // Kurangi stamina saat serangan berhasil dilakukan
@@ -99,10 +102,54 @@ public class PlayerEquipment : MonoBehaviour
                 playerStats.UseStamina(attackStaminaCost);
             }
 
+            int baseDmg = (item is ToolItemData toolData) ? toolData.baseDamage : 15;
+            float knockback = (item is ToolItemData toolKb) ? toolKb.knockbackForce : 5f;
+            float dmgMultiplier = buffManager != null ? buffManager.GetAttackDamageMultiplier() : 1f;
+            int finalDamage = Mathf.RoundToInt(baseDmg * dmgMultiplier);
+
+            StartCoroutine(RoutineSwingHitbox(finalDamage, knockback, atkSpdMultiplier));
+
             return true;
         }
 
         return false;
+    }
+
+    private System.Collections.IEnumerator RoutineSwingHitbox(int damage, float knockback, float speedMultiplier)
+    {
+        float delay = 0.15f / Mathf.Max(0.5f, speedMultiplier);
+        float duration = 0.25f / Mathf.Max(0.5f, speedMultiplier);
+
+        yield return new WaitForSeconds(delay);
+
+        FeaturesCombat.WeaponHitbox hitbox = null;
+        if (currentWeaponModel != null)
+        {
+            hitbox = currentWeaponModel.GetComponentInChildren<FeaturesCombat.WeaponHitbox>();
+            if (hitbox == null)
+            {
+                var col = currentWeaponModel.GetComponent<Collider>() ?? currentWeaponModel.AddComponent<BoxCollider>();
+                col.isTrigger = true;
+                hitbox = currentWeaponModel.AddComponent<FeaturesCombat.WeaponHitbox>();
+            }
+        }
+
+        if (hitbox != null)
+        {
+            hitbox.Activate(gameObject, damage, knockback, transform.forward);
+        }
+
+        yield return new WaitForSeconds(duration);
+
+        if (hitbox != null)
+        {
+            hitbox.Deactivate();
+        }
+
+        if (animator != null)
+        {
+            animator.speed = 1f;
+        }
     }
 
     private void Awake()

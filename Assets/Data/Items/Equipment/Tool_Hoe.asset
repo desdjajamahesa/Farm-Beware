@@ -26,5 +26,7 @@ MonoBehaviour:
   isDirty: 0
   cleanVariant: {fileID: 0}
   equipPrefab: {fileID: 136473597011710049, guid: 623ced75452ea0b4cadce1404da7a08a, type: 3}
-  isWeapon: 0
+  isWeapon: 1
   isHoe: 1
+  baseDamage: 12
+  knockbackForce: 4

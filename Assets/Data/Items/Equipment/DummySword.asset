@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ItemData
   itemId: dummysword
   itemName: Dummy Sword
-  category: 3
+  category: 6
   rarity: 0
   itemIcon: {fileID: 10905, guid: 0000000000000000f000000000000000, type: 0}
   description: 
@@ -26,3 +26,6 @@ MonoBehaviour:
   cleanVariant: {fileID: 0}
   equipPrefab: {fileID: 8479986625188135542, guid: 6b2794aaa34bd4e40a29b00fdc58afca, type: 3}
   isWeapon: 1
+  isHoe: 0
+  baseDamage: 25
+  knockbackForce: 7

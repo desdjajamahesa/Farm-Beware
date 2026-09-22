@@ -1,7 +1,7 @@
 using System;
 using UnityEngine;
 
-public class PlayerStats : MonoBehaviour
+public class PlayerStats : MonoBehaviour, FeaturesCombat.IDamageable
 {
     // Event Darah, Stamina, Hunger & Thirst
     public event Action<int, int> OnHealthChanged;
@@ -180,6 +180,13 @@ public class PlayerStats : MonoBehaviour
         OnHealthChanged?.Invoke(currentHealth, maxHealth);
         OnDamageTaken?.Invoke(amount);
     }
+
+    public void TakeDamage(int damage, Vector3 hitPoint, Vector3 hitDirection)
+    {
+        TakeDamage(damage);
+    }
+
+    public bool IsDead => currentHealth <= 0;
 
     // --- STAMINA METHODS ---
     public bool UseStamina(float amount)
