@@ -29,8 +29,31 @@ namespace FeaturesTime.UI
 
         private Coroutine pulseCoroutine;
 
+        private static CombatPhaseTrackerUI _instance;
+        public static CombatPhaseTrackerUI Instance
+        {
+            get
+            {
+                if (_instance == null)
+                {
+                    CombatPhaseTrackerUI[] found = FindObjectsByType<CombatPhaseTrackerUI>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+                    if (found != null && found.Length > 0)
+                        _instance = found[0];
+                }
+                return _instance;
+            }
+            private set => _instance = value;
+        }
+
         private void Awake()
         {
+            if (_instance != null && _instance != this)
+            {
+                Destroy(gameObject);
+                return;
+            }
+            _instance = this;
+
             EnsureUIReferences();
         }
 
