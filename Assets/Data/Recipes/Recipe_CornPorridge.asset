@@ -1,0 +1,26 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5335ef365cb29a940816d2e56467f4a9, type: 3}
+  m_Name: Recipe_CornPorridge
+  m_EditorClassIdentifier: Assembly-CSharp::KitchenRecipe
+  input: {fileID: 0}
+  recipeName: Corn Porridge
+  ingredients:
+  - item: {fileID: 11400000, guid: c55242fdf6330d84ea289b07c31b6e10, type: 2}
+    quantity: 2
+  - item: {fileID: 11400000, guid: 18736835b0621ad478537e2fa98f4c07, type: 2}
+    quantity: 1
+  recipeIcon: {fileID: 21300000, guid: a657df07df6525346941fb6f64e74d5f, type: 3}
+  description: Boil fresh corn with clean water to create a nourishing bowl of porridge.
+  output: {fileID: 11400000, guid: 283857b9de52c7042a09c161091cc3bb, type: 2}
+  outputCount: 1
+  processTime: 1.5

@@ -23,6 +23,7 @@ namespace FeaturesFarming
         [SerializeField] private GameObject growingVisual;
         [SerializeField] private GameObject matureSweetPotatoVisual;
         [SerializeField] private GameObject matureTaroVisual;
+        [SerializeField] private GameObject matureCornVisual;
 
         [Header("Juice & Feedback")]
         [SerializeField] private float bounceSpeed = 3f;
@@ -69,17 +70,22 @@ namespace FeaturesFarming
             }
 
             // Sembunyikan semua dulu
-            if (sproutVisual != null) sproutVisual.SetActive(false);
-            if (growingVisual != null) growingVisual.SetActive(false);
-            if (matureSweetPotatoVisual != null) matureSweetPotatoVisual.SetActive(false);
-            if (matureTaroVisual != null) matureTaroVisual.SetActive(false);
+            HideAllCrops();
 
             bool isTaro = seed.itemName.ToLower().Contains("taro") || seed.itemId.ToLower().Contains("taro");
+            bool isCorn = seed.itemName.ToLower().Contains("corn") || seed.itemId.ToLower().Contains("corn");
 
             if (state == TileState.ReadyToHarvest || progress >= 1f)
             {
                 // Tahap 3: Matang (Mature)
-                if (isTaro)
+                if (isCorn)
+                {
+                    if (matureCornVisual != null)
+                        matureCornVisual.SetActive(true);
+                    else if (matureSweetPotatoVisual != null)
+                        matureSweetPotatoVisual.SetActive(true);
+                }
+                else if (isTaro)
                 {
                     if (matureTaroVisual != null) matureTaroVisual.SetActive(true);
                 }
@@ -198,6 +204,11 @@ namespace FeaturesFarming
                 {
                     var t = cropContainer.Find("Mature_Taro");
                     if (t != null) matureTaroVisual = t.gameObject;
+                }
+                if (matureCornVisual == null)
+                {
+                    var t = cropContainer.Find("Mature_Corn");
+                    if (t != null) matureCornVisual = t.gameObject;
                 }
             }
         }
