@@ -18,13 +18,14 @@ public class PlayerEquipment : MonoBehaviour
     [SerializeField] private float attackStaminaCost = 15f;
 
     [Tooltip("Jika dicentang, animasi serang tetap berjalan meskipun pemain sedang tidak memegang senjata (tangan kosong).")]
-    [SerializeField] private bool allowBareHandsAttack = false;
+    [SerializeField] private bool allowBareHandsAttack = true;
 
     private GameObject currentWeaponModel;
     private InventoryComponent inventory;
     private Animator animator;
     private PlayerStats playerStats;
     private PlayerBuffManager buffManager;
+    private Coroutine currentSwingCoroutine;
 
     public float AttackDamageMultiplier => buffManager != null ? buffManager.GetAttackDamageMultiplier() : 1f;
     public float AttackSpeedMultiplier => buffManager != null ? buffManager.GetAttackSpeedMultiplier() : 1f;
@@ -33,6 +34,7 @@ public class PlayerEquipment : MonoBehaviour
     {
         get
         {
+            if (inventory == null) inventory = GetComponent<InventoryComponent>();
             if (inventory == null) return null;
             int idx = inventory.selectedHotbarIndex;
             if (idx >= 0 && idx < inventory.slots.Count)
@@ -53,7 +55,7 @@ public class PlayerEquipment : MonoBehaviour
         if (animator != null)
         {
             var state = animator.GetCurrentAnimatorStateInfo(0);
-            if ((state.IsName("attack") || state.IsName(attackTriggerName)) && state.normalizedTime < 0.75f)
+            if ((state.IsName("attack") || state.IsName(attackTriggerName)) && state.normalizedTime < 0.70f)
             {
                 return false;
             }
@@ -68,23 +70,21 @@ public class PlayerEquipment : MonoBehaviour
 
         ItemData item = CurrentEquippedItem;
 
-        // 1. Jika tangan kosong (tidak ada item di slot hotbar aktif)
+        // Validasi senjata atau bare hands
         if (item == null)
         {
             if (!allowBareHandsAttack)
             {
-                Debug.Log("[PlayerEquipment] Tidak bisa menyerang: Harus memegang senjata/pedang (slot hotbar kosong).");
+                Debug.Log("[PlayerEquipment] Tidak bisa menyerang: Tangan kosong.");
                 return false;
             }
         }
-        // 2. Jika ada item, cek apakah item tersebut adalah senjata (isWeapon == true)
         else
         {
             bool isWeapon = (item is ToolItemData tool && tool.isWeapon);
-
             if (!isWeapon && !allowBareHandsAttack)
             {
-                Debug.Log($"[PlayerEquipment] Item '{item.itemName}' bukan senjata (isWeapon = false), tidak bisa menyerang.");
+                Debug.Log($"[PlayerEquipment] Item '{item.itemName}' bukan senjata, tidak bisa menyerang.");
                 return false;
             }
         }
@@ -107,12 +107,31 @@ public class PlayerEquipment : MonoBehaviour
                 playerStats.UseStamina(attackStaminaCost);
             }
 
-            int baseDmg = (item is ToolItemData toolData) ? (upgradeState != null ? upgradeState.baseDamage : toolData.baseDamage) : 15;
-            float knockback = (item is ToolItemData toolKb) ? (upgradeState != null ? upgradeState.baseKnockback : toolKb.knockbackForce) : 5f;
+            int baseDmg;
+            float knockback;
+
+            if (item is ToolItemData toolData)
+            {
+                baseDmg = (upgradeState != null) ? upgradeState.baseDamage : toolData.baseDamage;
+                knockback = (upgradeState != null) ? upgradeState.baseKnockback : toolData.knockbackForce;
+            }
+            else
+            {
+                // Tangan kosong atau item umum: damage dasar
+                baseDmg = 8;
+                knockback = 3.5f;
+            }
+
             float dmgMultiplier = buffManager != null ? buffManager.GetAttackDamageMultiplier() : 1f;
             int finalDamage = Mathf.RoundToInt(baseDmg * dmgMultiplier);
 
-            StartCoroutine(RoutineSwingHitbox(finalDamage, knockback, atkSpdMultiplier));
+            if (currentSwingCoroutine != null)
+            {
+                StopCoroutine(currentSwingCoroutine);
+                currentSwingCoroutine = null;
+            }
+
+            currentSwingCoroutine = StartCoroutine(RoutineSwingHitbox(finalDamage, knockback, atkSpdMultiplier));
 
             return true;
         }
@@ -122,8 +141,8 @@ public class PlayerEquipment : MonoBehaviour
 
     private System.Collections.IEnumerator RoutineSwingHitbox(int damage, float knockback, float speedMultiplier)
     {
-        float delay = 0.15f / Mathf.Max(0.5f, speedMultiplier);
-        float duration = 0.25f / Mathf.Max(0.5f, speedMultiplier);
+        float delay = 0.12f / Mathf.Max(0.5f, speedMultiplier);
+        float duration = 0.28f / Mathf.Max(0.5f, speedMultiplier);
 
         yield return new WaitForSeconds(delay);
 
@@ -143,6 +162,11 @@ public class PlayerEquipment : MonoBehaviour
         {
             hitbox.Activate(gameObject, damage, knockback, transform.forward);
         }
+        else
+        {
+            // Fallback bare-hands / no-model melee sweep
+            PerformDirectMeleeSweep(damage, knockback);
+        }
 
         yield return new WaitForSeconds(duration);
 
@@ -154,6 +178,48 @@ public class PlayerEquipment : MonoBehaviour
         if (animator != null)
         {
             animator.speed = 1f;
+        }
+
+        currentSwingCoroutine = null;
+    }
+
+    /// <summary>
+    /// Sapuan langsung tanpa model senjata fisik (mis. saat bertarung tangan kosong).
+    /// </summary>
+    private void PerformDirectMeleeSweep(int damage, float knockback)
+    {
+        Vector3 origin = transform.position + Vector3.up * 0.8f;
+        Vector3 forwardDir = transform.forward;
+        Vector3 sweepCenter = origin + forwardDir * 1.0f;
+        Collider[] hits = Physics.OverlapSphere(sweepCenter, 1.5f, ~0, QueryTriggerInteraction.Collide);
+
+        var hitSet = new System.Collections.Generic.HashSet<FeaturesCombat.IDamageable>();
+        foreach (var c in hits)
+        {
+            if (c == null || c.gameObject == gameObject || c.transform.IsChildOf(transform)) continue;
+
+            Vector3 toTarget = c.transform.position - origin;
+            toTarget.y = 0f;
+            if (toTarget.sqrMagnitude > 0.04f && Vector3.Dot(forwardDir, toTarget.normalized) < 0.2f)
+                continue;
+
+            var target = c.GetComponent<FeaturesCombat.IDamageable>() ?? c.GetComponentInParent<FeaturesCombat.IDamageable>();
+            if (target != null && !target.IsDead && hitSet.Add(target))
+            {
+                Vector3 hitPoint = c.ClosestPoint(sweepCenter);
+                target.TakeDamage(damage, hitPoint, forwardDir);
+
+                Rigidbody targetRb = c.GetComponent<Rigidbody>() ?? c.GetComponentInParent<Rigidbody>();
+                if (targetRb != null && !targetRb.isKinematic)
+                {
+                    targetRb.AddForce((forwardDir + Vector3.up * 0.25f).normalized * knockback, ForceMode.Impulse);
+                }
+
+                if (PlayerUI.FloatingCombatTextManager.Instance != null)
+                {
+                    PlayerUI.FloatingCombatTextManager.Instance.SpawnText(hitPoint + Vector3.up * 0.8f, $"-{damage}", new Color(1f, 0.25f, 0.2f));
+                }
+            }
         }
     }
 
@@ -243,6 +309,9 @@ public class PlayerEquipment : MonoBehaviour
         DestroyCurrentWeapon();
 
         if (inventory == null)
+            inventory = GetComponent<InventoryComponent>();
+
+        if (inventory == null)
             return;
 
         if (hotbarIndex < 0 || hotbarIndex >= inventory.slots.Count)
@@ -267,6 +336,23 @@ public class PlayerEquipment : MonoBehaviour
         spawned.transform.localRotation = Quaternion.identity;
         currentWeaponModel = spawned;
         currentWeaponModel.transform.localScale = tool.equipPrefab.transform.localScale;
+
+        // Pastikan model senjata yang di-spawn memiliki WeaponHitbox, trigger collider, dan kinematic Rigidbody
+        var hitbox = currentWeaponModel.GetComponentInChildren<FeaturesCombat.WeaponHitbox>();
+        if (hitbox == null)
+        {
+            var col = currentWeaponModel.GetComponent<Collider>() ?? currentWeaponModel.AddComponent<BoxCollider>();
+            col.isTrigger = true;
+            hitbox = currentWeaponModel.AddComponent<FeaturesCombat.WeaponHitbox>();
+        }
+
+        var rb = currentWeaponModel.GetComponent<Rigidbody>();
+        if (rb == null)
+        {
+            rb = currentWeaponModel.AddComponent<Rigidbody>();
+        }
+        rb.isKinematic = true;
+        rb.useGravity = false;
     }
 
     private void FindHandSocketIfNeeded()
@@ -295,7 +381,20 @@ public class PlayerEquipment : MonoBehaviour
     {
         if (currentWeaponModel != null)
         {
-            Destroy(currentWeaponModel);
+            var hitbox = currentWeaponModel.GetComponentInChildren<FeaturesCombat.WeaponHitbox>();
+            if (hitbox != null)
+            {
+                hitbox.Deactivate();
+            }
+
+            if (Application.isPlaying)
+            {
+                Destroy(currentWeaponModel);
+            }
+            else
+            {
+                DestroyImmediate(currentWeaponModel);
+            }
             currentWeaponModel = null;
         }
     }

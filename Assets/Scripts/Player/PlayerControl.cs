@@ -390,12 +390,21 @@ public class PlayerControl : MonoBehaviour
 
     // --- LOGIKA AKSI ---
 
-    // Klik Kiri Mouse / Serang: Panggil animasi serangan jika item yang dipegang adalah senjata dan kunci pergerakan selama ayunan.
+    // Klik Kiri Mouse / Tombol F / Serang: Panggil animasi serangan jika item yang dipegang adalah senjata dan kunci pergerakan selama ayunan.
     private void HandleAttackInput()
     {
         if (isInputLocked || isPlanting || isAttacking) return;
 
-        if (Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame)
+        bool mouseClicked = Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame;
+        // Abaikan klik mouse jika pointer sedang berada di atas elemen UI (modal/inventory/hotbar)
+        if (mouseClicked && UnityEngine.EventSystems.EventSystem.current != null && UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject())
+        {
+            mouseClicked = false;
+        }
+
+        bool fKeyPressed = Keyboard.current != null && Keyboard.current.fKey.wasPressedThisFrame;
+
+        if (mouseClicked || fKeyPressed)
         {
             if (playerEquipment == null)
                 playerEquipment = GetComponent<PlayerEquipment>();

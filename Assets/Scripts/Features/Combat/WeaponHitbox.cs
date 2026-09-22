@@ -18,6 +18,11 @@ namespace FeaturesCombat
         [Header("Audio / Hit FX (Optional)")]
         [SerializeField] private AudioClip hitSound;
 
+        [Header("Sweep Detection Settings")]
+        [SerializeField] private float sweepForwardOffset = 1.0f;
+        [SerializeField] private float sweepRadius = 1.6f;
+        [SerializeField] private float minForwardDot = 0.2f; // Minimum dot product to ensure frontal arc (rejects behind player)
+
         private GameObject attacker;
         private int currentDamage;
         private float currentKnockback;
@@ -34,6 +39,28 @@ namespace FeaturesCombat
             {
                 hitboxCollider.isTrigger = true;
                 hitboxCollider.enabled = false;
+            }
+
+            // Pastikan memiliki Kinematic Rigidbody agar PhysX merouting OnTriggerEnter langsung ke GameObject ini
+            Rigidbody rb = GetComponent<Rigidbody>();
+            if (rb == null)
+            {
+                rb = gameObject.AddComponent<Rigidbody>();
+                rb.isKinematic = true;
+                rb.useGravity = false;
+            }
+            else
+            {
+                rb.isKinematic = true;
+                rb.useGravity = false;
+            }
+        }
+
+        private void Update()
+        {
+            if (isActive)
+            {
+                PerformSweepCheck();
             }
         }
 
@@ -53,6 +80,9 @@ namespace FeaturesCombat
             {
                 hitboxCollider.enabled = true;
             }
+
+            // Lakukan sweep proaktif seketika saat ayunan dimulai
+            PerformSweepCheck();
         }
 
         /// <summary>
@@ -69,6 +99,54 @@ namespace FeaturesCombat
             }
         }
 
+        /// <summary>
+        /// Pemeriksaan sapuan bola (OverlapSphere) di depan penyerang untuk menjamin registrasi pukulan
+        /// terlepas dari rotasi bone animasi atau tipisnya collider fisik.
+        /// Memvalidasi sudut hadap (cone check) agar musuh di belakang penyerang tidak terkena hit.
+        /// </summary>
+        public void PerformSweepCheck()
+        {
+            if (!isActive) return;
+
+            Vector3 origin = (attacker != null) ? attacker.transform.position + Vector3.up * 0.8f : transform.position;
+            Vector3 forwardDir = (attacker != null) ? attacker.transform.forward : (attackDirection != Vector3.zero ? attackDirection : transform.forward);
+            Vector3 sweepCenter = origin + forwardDir * sweepForwardOffset;
+
+            // Eksplisit LayerMask: mencakup semua collider kecuali trigger non-damageable
+            Collider[] overlaps = Physics.OverlapSphere(sweepCenter, sweepRadius, ~0, QueryTriggerInteraction.Collide);
+
+            foreach (var col in overlaps)
+            {
+                if (col == null) continue;
+
+                // Abaikan penyerang sendiri
+                if (attacker != null && (col.gameObject == attacker || col.transform.IsChildOf(attacker.transform)))
+                    continue;
+
+                // Cone Check: Pastikan target berada di depan penyerang (sudut hadap frontal)
+                Vector3 toTarget = col.transform.position - origin;
+                toTarget.y = 0f;
+                if (toTarget.sqrMagnitude > 0.04f)
+                {
+                    Vector3 normDir = toTarget.normalized;
+                    float dot = Vector3.Dot(forwardDir, normDir);
+                    if (dot < minForwardDot)
+                    {
+                        // Target berada di belakang atau samping luar jangkauan sudut serang
+                        continue;
+                    }
+                }
+
+                IDamageable target = col.GetComponent<IDamageable>() ?? col.GetComponentInParent<IDamageable>();
+                if (target == null || target.IsDead) continue;
+
+                if (hitTargets.Contains(target)) continue;
+
+                Vector3 hitPoint = col.ClosestPoint(sweepCenter);
+                ProcessHit(target, col.gameObject, hitPoint);
+            }
+        }
+
         private void OnTriggerEnter(Collider other)
         {
             if (!isActive || other == null) return;
@@ -77,17 +155,33 @@ namespace FeaturesCombat
             if (attacker != null && (other.gameObject == attacker || other.transform.IsChildOf(attacker.transform)))
                 return;
 
+            // Validasi arah hadap juga pada trigger fisik
+            Vector3 origin = (attacker != null) ? attacker.transform.position : transform.position;
+            Vector3 forwardDir = (attacker != null) ? attacker.transform.forward : attackDirection;
+            Vector3 toTarget = other.transform.position - origin;
+            toTarget.y = 0f;
+            if (toTarget.sqrMagnitude > 0.04f)
+            {
+                if (Vector3.Dot(forwardDir, toTarget.normalized) < minForwardDot)
+                    return;
+            }
+
             IDamageable target = other.GetComponent<IDamageable>() ?? other.GetComponentInParent<IDamageable>();
             if (target == null || target.IsDead || hitTargets.Contains(target))
                 return;
 
-            hitTargets.Add(target);
-
             Vector3 hitPoint = other.ClosestPoint(transform.position);
+            ProcessHit(target, other.gameObject, hitPoint);
+        }
+
+        private void ProcessHit(IDamageable target, GameObject targetObj, Vector3 hitPoint)
+        {
+            if (!hitTargets.Add(target)) return;
+
             target.TakeDamage(currentDamage, hitPoint, attackDirection);
 
             // Terapkan knockback pada Rigidbody musuh jika ada
-            Rigidbody targetRb = other.GetComponent<Rigidbody>() ?? other.GetComponentInParent<Rigidbody>();
+            Rigidbody targetRb = targetObj.GetComponent<Rigidbody>() ?? targetObj.GetComponentInParent<Rigidbody>();
             if (targetRb != null && !targetRb.isKinematic)
             {
                 Vector3 knockbackDir = (attackDirection + Vector3.up * 0.25f).normalized;

@@ -30,6 +30,8 @@ namespace FeaturesCombat
         private bool isWaveInProgress = false;
         private Coroutine waveLoopCoroutine;
 
+        public event System.Action<EnemyBase> OnEnemySpawned;
+        public IReadOnlyList<EnemyBase> ActiveEnemies => activeEnemies;
         public int ActiveEnemiesCount => activeEnemies.Count;
         public bool IsNightBrawlActive => isWaveInProgress;
 
@@ -195,6 +197,7 @@ namespace FeaturesCombat
                 if (enemy != null)
                 {
                     activeEnemies.Add(enemy);
+                    OnEnemySpawned?.Invoke(enemy);
                 }
             }
 
@@ -249,43 +252,38 @@ namespace FeaturesCombat
                     list.Add(EnemyType.TuberMaw);
                     list.Add(EnemyType.TuberMaw);
                     list.Add(EnemyType.TaroBrute);
-                    list.Add(EnemyType.TaroBrute);
                     list.Add(EnemyType.CornMusketeer);
+                    list.Add(EnemyType.CyclopsTuberMaw);
                 }
             }
             else if (day == 4)
             {
-                if (wave == 1)
+                if (wave <= 2)
                 {
-                    list.Add(EnemyType.TuberMaw);
-                    list.Add(EnemyType.TuberMaw);
                     list.Add(EnemyType.CornMusketeer);
-                }
-                else if (wave == 2)
-                {
-                    list.Add(EnemyType.TaroBrute);
-                    list.Add(EnemyType.TaroBrute);
                     list.Add(EnemyType.CornMusketeer);
+                    list.Add(EnemyType.TaroBrute);
+                    list.Add(EnemyType.TuberMaw);
                 }
                 else if (wave == 3)
                 {
                     list.Add(EnemyType.TuberMaw);
+                    list.Add(EnemyType.TuberMaw);
                     list.Add(EnemyType.TaroBrute);
                     list.Add(EnemyType.CornMusketeer);
-                    list.Add(EnemyType.CornMusketeer);
+                    list.Add(EnemyType.TaroBrute);
                 }
                 else
                 {
-                    // Wave 4: First Boss (Cyclops) + 4 Normal Enemies
-                    list.Add(EnemyType.CyclopsTuberMaw);
-                    list.Add(EnemyType.TuberMaw);
-                    list.Add(EnemyType.TuberMaw);
-                    list.Add(EnemyType.CornMusketeer);
+                    list.Add(EnemyType.TaroColossus);
                     list.Add(EnemyType.TaroBrute);
+                    list.Add(EnemyType.CornMusketeer);
+                    list.Add(EnemyType.TuberMaw);
                 }
             }
-            else // Day 5 or higher
+            else
             {
+                // Day 5: 5 Waves
                 if (wave <= 3)
                 {
                     list.Add(EnemyType.TuberMaw);
@@ -317,20 +315,64 @@ namespace FeaturesCombat
             return list;
         }
 
-        private Vector3 CalculateRandomSpawnPoint()
+        /// <summary>
+        /// Mengecek apakah sebuah koordinat dunia berada di dalam interior rumah.
+        /// Batas rumah: X: [9.5, 31.5], Z: [4.5, 26.5].
+        /// </summary>
+        public static bool IsInsideHouse(Vector3 pos)
         {
-            float angle = UnityEngine.Random.Range(0f, 360f) * Mathf.Deg2Rad;
-            float dist = UnityEngine.Random.Range(spawnRadiusMin, spawnRadiusMax);
-            Vector3 offset = new Vector3(Mathf.Cos(angle) * dist, 0f, Mathf.Sin(angle) * dist);
-            Vector3 target = arenaCenter + offset;
+            return pos.x >= 9.0f && pos.x <= 32.0f && pos.z >= 4.0f && pos.z <= 27.0f;
+        }
 
-            // Raycast ke tanah agar menempel di permukaan terrain/lantai
-            if (Physics.Raycast(target + Vector3.up * 10f, Vector3.down, out RaycastHit hit, 25f))
+        /// <summary>
+        /// Menghasilkan titik spawn acak yang dijamin 100% berada di luar rumah (outdoor).
+        /// Memilih dari 4 sektor outdoor di sekitar kebun dan pekarangan, lalu memproyeksikannya ke permukaan tanah.
+        /// </summary>
+        public Vector3 CalculateRandomSpawnPoint()
+        {
+            Vector3 candidate = Vector3.zero;
+            int attempts = 0;
+
+            while (attempts < 20)
             {
-                return hit.point + Vector3.up * 0.5f;
+                attempts++;
+                int sector = UnityEngine.Random.Range(0, 4);
+                switch (sector)
+                {
+                    case 0: // Sektor Utara: Pekarangan & Perkebunan Jagung/Ubi (Z: 33 s.d. 44, X: 12 s.d. 30)
+                        candidate = new Vector3(UnityEngine.Random.Range(12f, 30f), 10f, UnityEngine.Random.Range(33f, 44f));
+                        break;
+                    case 1: // Sektor Timur: Rimba Liar (X: 34 s.d. 44, Z: 10 s.d. 32)
+                        candidate = new Vector3(UnityEngine.Random.Range(34f, 44f), 10f, UnityEngine.Random.Range(10f, 32f));
+                        break;
+                    case 2: // Sektor Barat: Kebun Buah Luar Garasi (X: 2 s.d. 8, Z: 12 s.d. 28)
+                        candidate = new Vector3(UnityEngine.Random.Range(2f, 8f), 10f, UnityEngine.Random.Range(12f, 28f));
+                        break;
+                    case 3: // Sektor Selatan: Hutan Belakang (X: 12 s.d. 30, Z: -2 s.d. 3.5)
+                        candidate = new Vector3(UnityEngine.Random.Range(12f, 30f), 10f, UnityEngine.Random.Range(-2f, 3.5f));
+                        break;
+                }
+
+                if (!IsInsideHouse(candidate))
+                {
+                    break;
+                }
             }
 
-            return target;
+            // Fallback deterministik jika anomali
+            if (IsInsideHouse(candidate))
+            {
+                candidate = new Vector3(21.5f, 10f, 38f); // Jalur utara perkebunan
+            }
+
+            // Raycast ke tanah agar menempel tepat di permukaan terrain
+            if (Physics.Raycast(candidate, Vector3.down, out RaycastHit hit, 30f))
+            {
+                return hit.point + Vector3.up * 0.1f;
+            }
+
+            candidate.y = 0.5f;
+            return candidate;
         }
 
         private void HandleEnemyDied(EnemyBase enemy)
