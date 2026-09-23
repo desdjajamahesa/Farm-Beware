@@ -17,8 +17,10 @@ namespace FeaturesCombat
 
         [Header("Arena Center & Spawn Bounds")]
         [SerializeField] private Vector3 arenaCenter = new Vector3(20f, 0.5f, 30f);
+#pragma warning disable 0414
         [SerializeField] private float spawnRadiusMin = 8f;
         [SerializeField] private float spawnRadiusMax = 15f;
+#pragma warning restore 0414
 
         [Header("Wave Progress")]
         [SerializeField] private int currentDay = 1;

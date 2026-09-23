@@ -200,6 +200,21 @@ namespace FarmBeware.Editor.Rendering
             EditorGUILayout.EndVertical();
         }
 
+        private static int GetBatchingValue(SerializedProperty p)
+        {
+            if (p == null) return 0;
+            if (p.propertyType == SerializedPropertyType.Integer) return p.intValue;
+            if (p.propertyType == SerializedPropertyType.Boolean) return p.boolValue ? 1 : 0;
+            return 0;
+        }
+
+        private static void SetBatchingValue(SerializedProperty p, int val)
+        {
+            if (p == null) return;
+            if (p.propertyType == SerializedPropertyType.Integer) p.intValue = val;
+            else if (p.propertyType == SerializedPropertyType.Boolean) p.boolValue = val != 0;
+        }
+
         public static void GetStandaloneBatching(out int staticBatching, out int dynamicBatching)
         {
             staticBatching = 0;
@@ -217,8 +232,8 @@ namespace FarmBeware.Editor.Rendering
                     var elem = prop.GetArrayElementAtIndex(i);
                     if (elem.FindPropertyRelative("m_BuildTarget")?.stringValue == "Standalone")
                     {
-                        staticBatching = elem.FindPropertyRelative("m_StaticBatching")?.intValue ?? 0;
-                        dynamicBatching = elem.FindPropertyRelative("m_DynamicBatching")?.intValue ?? 0;
+                        staticBatching = GetBatchingValue(elem.FindPropertyRelative("m_StaticBatching"));
+                        dynamicBatching = GetBatchingValue(elem.FindPropertyRelative("m_DynamicBatching"));
                         break;
                     }
                 }
@@ -240,8 +255,8 @@ namespace FarmBeware.Editor.Rendering
                     var elem = prop.GetArrayElementAtIndex(i);
                     if (elem.FindPropertyRelative("m_BuildTarget")?.stringValue == "Standalone")
                     {
-                        elem.FindPropertyRelative("m_StaticBatching").intValue = staticBatching;
-                        elem.FindPropertyRelative("m_DynamicBatching").intValue = dynamicBatching;
+                        SetBatchingValue(elem.FindPropertyRelative("m_StaticBatching"), staticBatching);
+                        SetBatchingValue(elem.FindPropertyRelative("m_DynamicBatching"), dynamicBatching);
                         found = true;
                         break;
                     }
@@ -253,8 +268,8 @@ namespace FarmBeware.Editor.Rendering
                     prop.InsertArrayElementAtIndex(index);
                     var newElem = prop.GetArrayElementAtIndex(index);
                     newElem.FindPropertyRelative("m_BuildTarget").stringValue = "Standalone";
-                    newElem.FindPropertyRelative("m_StaticBatching").intValue = staticBatching;
-                    newElem.FindPropertyRelative("m_DynamicBatching").intValue = dynamicBatching;
+                    SetBatchingValue(newElem.FindPropertyRelative("m_StaticBatching"), staticBatching);
+                    SetBatchingValue(newElem.FindPropertyRelative("m_DynamicBatching"), dynamicBatching);
                 }
 
                 so.ApplyModifiedProperties();

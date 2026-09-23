@@ -23,12 +23,14 @@ public class DoorInteractable : MonoBehaviour, IInteractable
     [Tooltip("Spawn point ketika player berada di LUAR (masuk ke dalam)")]
     [SerializeField] private Transform spawnPointOutside;
 
+#pragma warning disable 0414
     [Header("Detection")]
     [Tooltip("Axis to use for inside/outside detection")]
     [SerializeField] private ThresholdAxis thresholdAxis = ThresholdAxis.Z;
     
     [Tooltip("Threshold value on selected axis: player coordinate > threshold = inside (for X/Z), player coordinate < threshold = inside (for Y)")]
     [SerializeField] private float insideThreshold = 14.0f;
+#pragma warning restore 0414
 
     [Header("Fade Effect")]
     [Tooltip("Durasi fade in/out (detik)")]

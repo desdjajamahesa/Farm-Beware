@@ -193,7 +193,7 @@ namespace FeaturesCamera
 
             // Unlock input, keep cursor free
             if (playerControl == null)
-                playerControl = FindObjectOfType<PlayerControl>();
+                playerControl = FindFirstObjectByType<PlayerControl>();
             if (playerControl != null)
             {
                 playerControl.isInputLocked = false;
@@ -276,7 +276,7 @@ namespace FeaturesCamera
 
             // Lock input, free cursor
             if (playerControl == null)
-                playerControl = FindObjectOfType<PlayerControl>();
+                playerControl = FindFirstObjectByType<PlayerControl>();
             if (playerControl != null)
                 playerControl.isInputLocked = true;
 

@@ -49,12 +49,14 @@ namespace FeaturesWardrobe
         [Tooltip("Wardrobe screen camera (untuk fallback enable/disable saja — pose diatur di scene).")]
         [SerializeField] private Camera wardrobeCamera;
 
+#pragma warning disable 0414
         [Header("Mirror Positioning")]
         [Tooltip("Jarak player dari permukaan cermin saat buka wardrobe.")]
         [SerializeField] private float playerMirrorDistance = 3.5f;
 
         [Tooltip("Geser lateral player ke kiri dari sumbu cermin (meter).")]
         [SerializeField] private float lateralShift = 0.8f;
+#pragma warning restore 0414
 
         [Header("Animation")]
         [Tooltip("Durasi UI fade in/out (detik).")]
@@ -89,8 +91,10 @@ namespace FeaturesWardrobe
         [Tooltip("Animator on the chest lid (child 'lid' of Wardrobe). Controls open/close animation via 'IsOpen' bool.")]
         [SerializeField] private Animator chestLidAnimator;
 
+#pragma warning disable 0414
         [Header("Debug")]
         [SerializeField] private bool debugCameraAudit = false;
+#pragma warning restore 0414
 
         private bool isInWardrobeMode;
         public static bool IsInWardrobeMode { get; private set; }
@@ -153,7 +157,7 @@ namespace FeaturesWardrobe
             InitializeWardrobeItems();
 
             // Re-resolve in case a prefab swap invalidated earlier lookups.
-            if (playerControl == null) playerControl = FindObjectOfType<PlayerControl>();
+            if (playerControl == null) playerControl = FindFirstObjectByType<PlayerControl>();
 
             if (playerControl != null)
             {
@@ -357,7 +361,7 @@ namespace FeaturesWardrobe
             //    even when CameraManager's serialized playerControl ref is null.
             try
             {
-                var player = UnityEngine.Object.FindObjectOfType<PlayerControl>();
+                var player = UnityEngine.Object.FindFirstObjectByType<PlayerControl>();
                 if (player != null)
                 {
                     var t = player.GetType();
@@ -619,13 +623,13 @@ namespace FeaturesWardrobe
 
             // Self-healing: if the Player prefab was replaced and serialized
             // references were lost, resolve them dynamically.
-            if (playerControl == null) playerControl = FindObjectOfType<PlayerControl>();
-            if (playerOutfit == null) playerOutfit = FindObjectOfType<PlayerOutfit>();
-            if (playerInteractor == null) playerInteractor = FindObjectOfType<PlayerInteractor>();
-            if (hoverLabelController == null) hoverLabelController = FindObjectOfType<HoverLabelController>();
-            if (wardrobeUI == null) wardrobeUI = FindObjectOfType<WardrobeUI>();
+            if (playerControl == null) playerControl = FindFirstObjectByType<PlayerControl>();
+            if (playerOutfit == null) playerOutfit = FindFirstObjectByType<PlayerOutfit>();
+            if (playerInteractor == null) playerInteractor = FindFirstObjectByType<PlayerInteractor>();
+            if (hoverLabelController == null) hoverLabelController = FindFirstObjectByType<HoverLabelController>();
+            if (wardrobeUI == null) wardrobeUI = FindFirstObjectByType<WardrobeUI>();
             if (mainCamera == null && Camera.main != null) mainCamera = Camera.main;
-            if (mirrorCamera == null) mirrorCamera = FindObjectOfType<MirrorCamera>();
+            if (mirrorCamera == null) mirrorCamera = FindFirstObjectByType<MirrorCamera>();
 
             // Enforce initial state: UI hidden, mirror cam off for performance.
             if (mirrorCamera != null)

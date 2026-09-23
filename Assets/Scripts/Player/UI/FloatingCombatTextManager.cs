@@ -199,7 +199,7 @@ namespace PlayerUI
             tmp.fontSize = 26f;
             tmp.fontStyle = FontStyles.Bold;
             tmp.alignment = TextAlignmentOptions.Center;
-            tmp.enableWordWrapping = false;
+            tmp.textWrappingMode = TextWrappingModes.NoWrap;
             tmp.raycastTarget = false;
             tmp.outlineWidth = 0.28f;
             tmp.outlineColor = new Color32(15, 15, 15, 255);

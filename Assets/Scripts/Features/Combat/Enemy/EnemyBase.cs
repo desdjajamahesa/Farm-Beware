@@ -52,6 +52,7 @@ namespace FeaturesCombat
         private bool isPerformingSkill = false;
         private bool isBurrowed = false;
         private bool isRootGuarded = false;
+        public bool IsRootGuarded => isRootGuarded;
         private int originalArmor;
 
         private void Awake()

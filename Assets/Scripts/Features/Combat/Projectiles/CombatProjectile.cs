@@ -44,7 +44,6 @@ namespace FeaturesCombat.Projectiles
 
         private Vector3 moveDirection = Vector3.forward;
         private float spawnTime = 0f;
-        private bool isInitialized = false;
 
         private void Awake()
         {
@@ -80,7 +79,6 @@ namespace FeaturesCombat.Projectiles
             speed = projSpeed;
             lightColor = color;
             spawnTime = Time.time;
-            isInitialized = true;
 
             EnsurePointLightConfiguration();
         }

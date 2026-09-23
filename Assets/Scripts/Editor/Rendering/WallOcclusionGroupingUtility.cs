@@ -43,7 +43,7 @@ namespace FarmBeware.Editor.Rendering
                     if (mirrorOcc == null)
                         mirrorOcc = mirrorObj.AddComponent<WallOccluder>();
 
-                    var westGroupTrans = bedroomWall.Find("Group_Bedroom_West");
+                    var westGroupTrans = bedroomWall.transform.Find("Group_Bedroom_West");
                     var westGroup = westGroupTrans != null ? westGroupTrans.GetComponent<WallOcclusionGroup>() : null;
                     if (westGroup != null)
                     {

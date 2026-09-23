@@ -30,8 +30,10 @@ public class KitchenStationProgressOverlay : MonoBehaviour
     [SerializeField] private float maxHeight = 0.7f;
     [Tooltip("Bila true, overlay menghadap kamera (billboard, terkunci sumbu Y = tetap naik ke atas).")]
     [SerializeField] private bool useBillboard = true;
+#pragma warning disable 0414
     [Tooltip("Tag kamera utama untuk billboard.")]
     [SerializeField] private string billboardCameraTag = "MainCamera";
+#pragma warning restore 0414
 
     [Header("Feedback Selesai")]
     [Tooltip("Lama panel 'Selesai!' tampil sebelum overlay disembunyikan.")]

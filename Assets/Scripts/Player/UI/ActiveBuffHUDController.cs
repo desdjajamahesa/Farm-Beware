@@ -220,7 +220,7 @@ namespace PlayerUI
             timerTmp.fontStyle = FontStyles.Bold;
             timerTmp.alignment = TextAlignmentOptions.Center;
             timerTmp.color = Color.white;
-            timerTmp.enableWordWrapping = false;
+            timerTmp.textWrappingMode = TextWrappingModes.NoWrap;
             timerTmp.raycastTarget = false;
 
             BuffSlotUI slotUi = slotObj.AddComponent<BuffSlotUI>();
