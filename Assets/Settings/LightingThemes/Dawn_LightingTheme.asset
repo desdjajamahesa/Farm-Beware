@@ -1,0 +1,36 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3b9f6d3de2a2d80429610b8e375be20b, type: 3}
+  m_Name: Dawn_LightingTheme
+  m_EditorClassIdentifier: Assembly-CSharp::FeaturesRendering.Lighting.EnvironmentLightingTheme
+  themeName: Dawn Crisp Morning
+  associatedPhase: 0
+  colorTemperatureKelvin: 4800
+  lightColorFilter: {r: 0.95, g: 0.88, b: 0.82, a: 1}
+  mainLightIntensity: 0.9
+  mainLightEulerAngles: {x: 25, y: -60, z: 0}
+  ambientSkyColor: {r: 0.58, g: 0.62, b: 0.7, a: 1}
+  ambientEquatorColor: {r: 0.48, g: 0.45, b: 0.42, a: 1}
+  ambientGroundColor: {r: 0.3, g: 0.28, b: 0.25, a: 1}
+  apvIntensityMultiplier: 0.9
+  reflectionIntensity: 1
+  fogEnabled: 1
+  fogMode: 1
+  fogColor: {r: 0.6, g: 0.65, b: 0.72, a: 1}
+  fogStartDistance: 30
+  fogEndDistance: 105
+  fogDensity: 0.01
+  exposureCompensationEV: -0.1
+  contrast: 8
+  colorFilter: {r: 1, g: 1, b: 1, a: 1}
+  bloomIntensity: 0.25
+  cameraBackgroundColor: {r: 0.12, g: 0.15, b: 0.2, a: 1}

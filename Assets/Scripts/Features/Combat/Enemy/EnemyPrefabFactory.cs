@@ -70,12 +70,56 @@ namespace FeaturesCombat
             go.transform.localScale = scale;
             go.tag = "Untagged";
 
-            // Atur material
+            // Tentukan parameter Fresnel Rim Light per varian musuh untuk keterbacaan malam
+            Color rimColor;
+            float rimPower;
+
+            switch (type)
+            {
+                case EnemyType.TuberMaw:
+                    rimColor = new Color(1.8f, 0.2f, 1.3f);
+                    rimPower = 3.5f;
+                    break;
+                case EnemyType.CyclopsTuberMaw:
+                    rimColor = new Color(2.5f, 0.1f, 0.2f);
+                    rimPower = 2.8f;
+                    break;
+                case EnemyType.TaroBrute:
+                    rimColor = new Color(1.6f, 0.9f, 0.2f);
+                    rimPower = 4.0f;
+                    break;
+                case EnemyType.TaroColossus:
+                    rimColor = new Color(2.2f, 1.2f, 0.3f);
+                    rimPower = 3.0f;
+                    break;
+                case EnemyType.CornMusketeer:
+                    rimColor = new Color(0.3f, 1.8f, 1.2f);
+                    rimPower = 4.2f;
+                    break;
+                case EnemyType.TheRanger:
+                    rimColor = new Color(2.5f, 1.5f, 0.1f);
+                    rimPower = 2.5f;
+                    break;
+                default:
+                    rimColor = Color.white;
+                    rimPower = 3.5f;
+                    break;
+            }
+
+            // Atur material dengan shader MonsterFresnelLit
             var renderer = go.GetComponent<Renderer>();
             if (renderer != null)
             {
-                Material mat = new Material(Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard"));
+                Shader shader = Shader.Find("FarmBeware/Monster/MonsterFresnelLit") 
+                                ?? Shader.Find("Universal Render Pipeline/Lit") 
+                                ?? Shader.Find("Standard");
+
+                Material mat = new Material(shader);
                 mat.color = bodyColor;
+                if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", bodyColor);
+                if (mat.HasProperty("_FresnelColor")) mat.SetColor("_FresnelColor", rimColor);
+                if (mat.HasProperty("_FresnelPower")) mat.SetFloat("_FresnelPower", rimPower);
+                if (mat.HasProperty("_FresnelIntensity")) mat.SetFloat("_FresnelIntensity", 2.0f);
                 renderer.material = mat;
             }
 
