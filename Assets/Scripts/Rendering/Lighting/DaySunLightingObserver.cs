@@ -34,12 +34,12 @@ namespace FeaturesRendering.Lighting
         [SerializeField] private EnvironmentLightingTheme nightTheme;
 
         [Header("Phase 3: Night Lighting (Combat Readability)")]
-        [Tooltip("Intensitas Directional Light di malam hari (rentang aman 0.1 - 0.2 lux agar layar tidak hitam kelam).")]
-        [Range(0.05f, 0.3f)]
-        [SerializeField] private float nightIntensity = 0.15f;
+        [Tooltip("Intensitas Directional Light di malam hari.")]
+        [Range(0.05f, 1.0f)]
+        [SerializeField] private float nightIntensity = 0.6f;
 
-        [Tooltip("Warna spektrum cahaya bulan malam hari (biru-keunguan lembut).")]
-        [SerializeField] private Color nightMoonlightColor = new Color(0.20f, 0.26f, 0.48f);
+        [Tooltip("Warna spektrum cahaya bulan malam hari (biru dingin).")]
+        [SerializeField] private Color nightMoonlightColor = new Color(0.18f, 0.28f, 0.65f);
 
         [Tooltip("Sudut rotasi Directional Light di malam hari (Pitch 55°, Yaw 35°).")]
         [SerializeField] private Vector3 nightEulerAngles = new Vector3(55f, 35f, 0f);
@@ -267,12 +267,12 @@ namespace FeaturesRendering.Lighting
             currentAzimuth = nightEulerAngles.y;
             currentElevation = nightEulerAngles.x;
             currentIntensity = nightIntensity;
-            currentKelvin = 8500f;
+            currentKelvin = 11500f;
 
             if (nightTheme != null)
             {
                 currentEvaluatedColor = nightTheme.GetEvaluatedLightColor();
-                currentIntensity = Mathf.Clamp(nightTheme.MainLightIntensity, 0.1f, 0.25f);
+                currentIntensity = Mathf.Clamp(nightTheme.MainLightIntensity, 0.05f, 1.0f);
                 ApplyToLight(nightTheme.MainLightEulerAngles.x, nightTheme.MainLightEulerAngles.y, currentEvaluatedColor, currentIntensity);
 
                 // Sinkronisasi Ambient & APV Sky Occlusion

@@ -33,8 +33,8 @@ namespace FeaturesTime.Atmosphere
         [SerializeField] private Color dayCameraBackground = new Color(0.12f, 0.15f, 0.20f);
 
         [Header("Night Preset (Malam Hari - Atmospheric Moonlight & Rim)")]
-        [SerializeField] private Color nightLightColor = new Color(0.72f, 0.82f, 0.96f);   // Cool Soft Moonlight
-        [SerializeField] private float nightLightIntensity = 0.35f;                         // Moonlight 0.35f
+        [SerializeField] private Color nightLightColor = new Color(0.55f, 0.75f, 1.0f);    // Colder Crisp Moonlight
+        [SerializeField] private float nightLightIntensity = 0.6f;                          // Moonlight 0.6f
         [SerializeField] private Vector3 nightLightRotation = new Vector3(55f, 35f, 0f);   // Pitch 55, Yaw 35
         [SerializeField] private Color nightAmbientSky = new Color(0.20f, 0.24f, 0.32f);    // Cool Night Sky
         [SerializeField] private Color nightAmbientEquator = new Color(0.14f, 0.16f, 0.22f); // Soft Horizon Fill

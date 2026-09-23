@@ -14,9 +14,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::FeaturesRendering.Lighting.EnvironmentLightingTheme
   themeName: Night Atmospheric Moonlight
   associatedPhase: 3
-  colorTemperatureKelvin: 8500
-  lightColorFilter: {r: 0.72, g: 0.82, b: 0.96, a: 1}
-  mainLightIntensity: 0.35
+  colorTemperatureKelvin: 11500
+  lightColorFilter: {r: 0.58, g: 0.76, b: 1, a: 1}
+  mainLightIntensity: 0.6
   mainLightEulerAngles: {x: 55, y: 35, z: 0}
   ambientSkyColor: {r: 0.2, g: 0.24, b: 0.32, a: 1}
   ambientEquatorColor: {r: 0.14, g: 0.16, b: 0.22, a: 1}
