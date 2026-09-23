@@ -230,6 +230,7 @@ public class PlayerEquipment : MonoBehaviour
         playerStats = GetComponent<PlayerStats>();
         buffManager = GetComponent<PlayerBuffManager>();
         FindHandSocketIfNeeded();
+        DestroyCurrentWeapon();
     }
 
     private ItemData lastEquippedItem;
@@ -396,6 +397,31 @@ public class PlayerEquipment : MonoBehaviour
                 DestroyImmediate(currentWeaponModel);
             }
             currentWeaponModel = null;
+        }
+
+        // Safeguard mutlak: Pastikan SELURUH child di handSocket dibersihkan agar tidak ada
+        // model senjata stray (seperti prefab yang tersimpan di scene) yang tertinggal atau menumpuk dobel.
+        FindHandSocketIfNeeded();
+        if (handSocket != null)
+        {
+            for (int i = handSocket.childCount - 1; i >= 0; i--)
+            {
+                var child = handSocket.GetChild(i).gameObject;
+                var hitbox = child.GetComponentInChildren<FeaturesCombat.WeaponHitbox>();
+                if (hitbox != null)
+                {
+                    hitbox.Deactivate();
+                }
+
+                if (Application.isPlaying)
+                {
+                    Destroy(child);
+                }
+                else
+                {
+                    DestroyImmediate(child);
+                }
+            }
         }
     }
 }
