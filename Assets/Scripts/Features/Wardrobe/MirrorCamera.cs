@@ -156,7 +156,8 @@ namespace FeaturesWardrobe
         private void BindSurfaceTexture()
         {
             if (surfaceRenderer == null || mirrorTexture == null) return;
-            surfaceRenderer.material.mainTexture = mirrorTexture;
+            if (surfaceRenderer.sharedMaterial != null)
+                surfaceRenderer.sharedMaterial.mainTexture = mirrorTexture;
         }
 
         private void LateUpdate()

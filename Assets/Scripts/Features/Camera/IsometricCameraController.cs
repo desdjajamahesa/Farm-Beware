@@ -76,13 +76,6 @@ namespace FeaturesCamera
                 cam.orthographic = isOrthographic;
                 cam.orthographicSize = orthographicSize;
             }
-
-            // Ensure WallOcclusionFader is present (from CameraController)
-            if (GetComponent<WallOcclusionFader>() == null)
-            {
-                WallOcclusionFader fader = gameObject.AddComponent<WallOcclusionFader>();
-                fader.target = target;
-            }
         }
 
         private void LateUpdate()

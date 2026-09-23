@@ -55,6 +55,15 @@ namespace FeaturesCamera
 
         [Header("Linked Renderers (for attached objects like mirrors)")]
         [SerializeField] private List<Renderer> additionalRenderers = new List<Renderer>();
+        public List<Renderer> AdditionalRenderers => additionalRenderers;
+
+        [Tooltip("If true, linked additional renderers (such as attached wall mirrors) will fade to 0 alpha and disable completely when this wall fades.")]
+        [SerializeField] private bool hideAdditionalRenderersOnFade = true;
+        public bool HideAdditionalRenderersOnFade
+        {
+            get => hideAdditionalRenderersOnFade;
+            set => hideAdditionalRenderersOnFade = value;
+        }
 
         private List<Material[]> additionalOriginalMaterialsList = new List<Material[]>();
         private List<Material[]> additionalTransparentMaterialsList = new List<Material[]>();
@@ -92,8 +101,21 @@ namespace FeaturesCamera
             if (mat.HasProperty("_DstBlend")) mat.SetFloat("_DstBlend", (float)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
             if (mat.HasProperty("_ZWrite")) mat.SetFloat("_ZWrite", 0f);
             if (mat.HasProperty("_Cull")) mat.SetFloat("_Cull", (float)UnityEngine.Rendering.CullMode.Off);
+
+            // Disable specular highlights and environment reflections on transparent materials to avoid glares/solid-looking reflections
+            if (mat.HasProperty("_EnvironmentReflections")) mat.SetFloat("_EnvironmentReflections", 0f);
+            if (mat.HasProperty("_SpecularHighlights")) mat.SetFloat("_SpecularHighlights", 0f);
+            if (mat.HasProperty("_Smoothness")) mat.SetFloat("_Smoothness", 0f);
+            if (mat.HasProperty("_Metallic")) mat.SetFloat("_Metallic", 0f);
+            if (mat.HasProperty("_SrcBlendAlpha")) mat.SetFloat("_SrcBlendAlpha", 1f);
+            if (mat.HasProperty("_DstBlendAlpha")) mat.SetFloat("_DstBlendAlpha", (float)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+
             mat.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
-            mat.EnableKeyword("_ALPHAPREMULTIPLY_ON");
+            mat.DisableKeyword("_ALPHAPREMULTIPLY_ON");
+            mat.DisableKeyword("_ALPHAMODULATE_ON");
+            mat.EnableKeyword("_ENVIRONMENTREFLECTIONS_OFF");
+            mat.EnableKeyword("_SPECULARHIGHLIGHTS_OFF");
+            mat.EnableKeyword("_RECEIVE_SHADOWS_OFF");
             mat.renderQueue = 3000;
         }
 
@@ -281,8 +303,20 @@ namespace FeaturesCamera
             }
 
             // Apply alpha to additional renderers
-            if (additionalRenderers != null)
+            if (additionalRenderers != null && additionalRenderers.Count > 0)
             {
+                float addTargetAlpha = hideAdditionalRenderersOnFade ? 0f : transparentAlpha;
+                float addCurrentAlpha;
+                if (hideAdditionalRenderersOnFade)
+                {
+                    float denom = Mathf.Max(0.01f, 1f - transparentAlpha);
+                    addCurrentAlpha = Mathf.Clamp01((currentAlpha - transparentAlpha) / denom);
+                }
+                else
+                {
+                    addCurrentAlpha = currentAlpha;
+                }
+
                 for (int i = 0; i < additionalRenderers.Count; i++)
                 {
                     var rend = additionalRenderers[i];
@@ -300,13 +334,13 @@ namespace FeaturesCamera
                             if (transMats[m].HasProperty("_BaseColor"))
                             {
                                 Color c = transMats[m].GetColor("_BaseColor");
-                                c.a = currentAlpha;
+                                c.a = addCurrentAlpha;
                                 transMats[m].SetColor("_BaseColor", c);
                             }
                             if (transMats[m].HasProperty("_Color"))
                             {
                                 Color c = transMats[m].GetColor("_Color");
-                                c.a = currentAlpha;
+                                c.a = addCurrentAlpha;
                                 transMats[m].SetColor("_Color", c);
                             }
                         }
@@ -325,6 +359,70 @@ namespace FeaturesCamera
                         if (i < additionalUsingTransparentList.Count)
                             additionalUsingTransparentList[i] = false;
                     }
+
+                    if (addTargetAlpha <= 0.01f)
+                    {
+                        bool shouldBeEnabled = addCurrentAlpha > 0.01f;
+                        if (rend.enabled != shouldBeEnabled)
+                            rend.enabled = shouldBeEnabled;
+                    }
+                    else if (!rend.enabled)
+                    {
+                        rend.enabled = true;
+                    }
+                }
+            }
+
+            if (meshRenderer != null)
+            {
+                if (transparentAlpha <= 0.01f)
+                {
+                    bool shouldBeEnabled = currentAlpha > 0.01f;
+                    if (meshRenderer.enabled != shouldBeEnabled)
+                        meshRenderer.enabled = shouldBeEnabled;
+                }
+                else if (!meshRenderer.enabled)
+                {
+                    meshRenderer.enabled = true;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Instantly snaps this wall and all attached renderers back to fully opaque with zero transition latency.
+        /// Useful during camera mode switches (e.g. Wardrobe or Trophy mode).
+        /// </summary>
+        public void ForceOpaque()
+        {
+            currentAlpha = 1f;
+            isOccluding = false;
+
+            if (meshRenderer != null)
+            {
+                meshRenderer.enabled = true;
+                if (originalMaterials != null && originalMaterials.Length > 0)
+                {
+                    meshRenderer.sharedMaterials = originalMaterials;
+                    isUsingTransparentMaterials = false;
+                }
+            }
+
+            if (additionalRenderers != null)
+            {
+                for (int i = 0; i < additionalRenderers.Count; i++)
+                {
+                    var rend = additionalRenderers[i];
+                    if (rend != null)
+                    {
+                        rend.enabled = true;
+                        var origMats = i < additionalOriginalMaterialsList.Count ? additionalOriginalMaterialsList[i] : null;
+                        if (origMats != null && origMats.Length > 0)
+                        {
+                            rend.sharedMaterials = origMats;
+                        }
+                        if (i < additionalUsingTransparentList.Count)
+                            additionalUsingTransparentList[i] = false;
+                    }
                 }
             }
         }
@@ -332,10 +430,14 @@ namespace FeaturesCamera
         // Reset to original state (call on scene unload or disable)
         private void OnDisable()
         {
-            if (meshRenderer != null && originalMaterials != null && originalMaterials.Length > 0)
+            if (meshRenderer != null)
             {
-                meshRenderer.sharedMaterials = originalMaterials;
-                isUsingTransparentMaterials = false;
+                meshRenderer.enabled = true;
+                if (originalMaterials != null && originalMaterials.Length > 0)
+                {
+                    meshRenderer.sharedMaterials = originalMaterials;
+                    isUsingTransparentMaterials = false;
+                }
             }
 
             // Restore additional renderers
@@ -344,6 +446,7 @@ namespace FeaturesCamera
                 for (int i = 0; i < additionalRenderers.Count; i++)
                 {
                     var rend = additionalRenderers[i];
+                    if (rend != null) rend.enabled = true;
                     var origMats = i < additionalOriginalMaterialsList.Count ? additionalOriginalMaterialsList[i] : null;
                     if (rend != null && origMats != null && origMats.Length > 0)
                     {

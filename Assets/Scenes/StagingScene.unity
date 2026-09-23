@@ -1058,6 +1058,7 @@ MonoBehaviour:
   transparentMaterial: {fileID: 1357899121}
   group: {fileID: 1276875805}
   additionalRenderers: []
+  hideAdditionalRenderersOnFade: 1
 --- !u!23 &25351844
 MeshRenderer:
   m_ObjectHideFlags: 0
@@ -2216,6 +2217,7 @@ MonoBehaviour:
   transparentMaterial: {fileID: 42943202}
   group: {fileID: 1276875805}
   additionalRenderers: []
+  hideAdditionalRenderersOnFade: 1
 --- !u!23 &59098194
 MeshRenderer:
   m_ObjectHideFlags: 0
@@ -2643,6 +2645,7 @@ MonoBehaviour:
   transparentMaterial: {fileID: 0}
   group: {fileID: 761381727}
   additionalRenderers: []
+  hideAdditionalRenderersOnFade: 1
 --- !u!65 &70767822
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -2853,7 +2856,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 366.52112, y: -1180}
+  m_AnchoredPosition: {x: 366.99994, y: -1180}
   m_SizeDelta: {x: 160, y: 240}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &72883230
@@ -4116,6 +4119,7 @@ MonoBehaviour:
   transparentMaterial: {fileID: 0}
   group: {fileID: 554778303}
   additionalRenderers: []
+  hideAdditionalRenderersOnFade: 1
 --- !u!64 &98527908
 MeshCollider:
   m_ObjectHideFlags: 0
@@ -5106,7 +5110,8 @@ MonoBehaviour:
   - {fileID: 1012392948}
   - {fileID: 753845431}
   - {fileID: 1090587544}
-  - {fileID: 273969143}
+  linkedGroups:
+  - {fileID: 1958229852}
 --- !u!1 &132834842
 GameObject:
   m_ObjectHideFlags: 0
@@ -6285,6 +6290,7 @@ MonoBehaviour:
   transparentMaterial: {fileID: 0}
   group: {fileID: 0}
   additionalRenderers: []
+  hideAdditionalRenderersOnFade: 1
 --- !u!65 &152747991
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -6360,6 +6366,7 @@ MonoBehaviour:
   transparentMaterial: {fileID: 0}
   group: {fileID: 1060727043}
   additionalRenderers: []
+  hideAdditionalRenderersOnFade: 1
 --- !u!64 &153331971
 MeshCollider:
   m_ObjectHideFlags: 0
@@ -7185,6 +7192,8 @@ MonoBehaviour:
   - {fileID: 1690503521}
   - {fileID: 1249493784}
   - {fileID: 1884471389}
+  linkedGroups:
+  - {fileID: 1060727043}
 --- !u!1 &169000101
 GameObject:
   m_ObjectHideFlags: 0
@@ -7261,6 +7270,7 @@ MonoBehaviour:
   transparentMaterial: {fileID: 224959433}
   group: {fileID: 1276875805}
   additionalRenderers: []
+  hideAdditionalRenderersOnFade: 1
 --- !u!23 &169000105
 MeshRenderer:
   m_ObjectHideFlags: 0
@@ -7559,7 +7569,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 366.52112, y: -920}
+  m_AnchoredPosition: {x: 366.99994, y: -920}
   m_SizeDelta: {x: 160, y: 240}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &175027724
@@ -8228,6 +8238,7 @@ MonoBehaviour:
   transparentMaterial: {fileID: 472069719}
   group: {fileID: 1958229852}
   additionalRenderers: []
+  hideAdditionalRenderersOnFade: 1
 --- !u!23 &187590654
 MeshRenderer:
   m_ObjectHideFlags: 0
@@ -8934,6 +8945,7 @@ MonoBehaviour:
   transparentMaterial: {fileID: 0}
   group: {fileID: 0}
   additionalRenderers: []
+  hideAdditionalRenderersOnFade: 1
 --- !u!65 &194664896
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -9688,6 +9700,7 @@ MonoBehaviour:
   transparentMaterial: {fileID: 0}
   group: {fileID: 1028268456}
   additionalRenderers: []
+  hideAdditionalRenderersOnFade: 1
 --- !u!65 &212239109
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -9823,6 +9836,7 @@ MonoBehaviour:
   transparentMaterial: {fileID: 0}
   group: {fileID: 534610650}
   additionalRenderers: []
+  hideAdditionalRenderersOnFade: 1
 --- !u!64 &213091142
 MeshCollider:
   m_ObjectHideFlags: 0
@@ -10127,6 +10141,7 @@ MonoBehaviour:
   transparentMaterial: {fileID: 0}
   group: {fileID: 761381727}
   additionalRenderers: []
+  hideAdditionalRenderersOnFade: 1
 --- !u!65 &217522103
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -10632,7 +10647,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 186.52112, y: -920}
+  m_AnchoredPosition: {x: 186.99994, y: -920}
   m_SizeDelta: {x: 160, y: 240}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &229796525
@@ -12071,6 +12086,7 @@ MonoBehaviour:
   transparentMaterial: {fileID: 0}
   group: {fileID: 1028268456}
   additionalRenderers: []
+  hideAdditionalRenderersOnFade: 1
 --- !u!65 &258689441
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -12806,6 +12822,7 @@ MonoBehaviour:
   transparentMaterial: {fileID: 0}
   group: {fileID: 534610650}
   additionalRenderers: []
+  hideAdditionalRenderersOnFade: 1
 --- !u!65 &273082203
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -12898,9 +12915,8 @@ GameObject:
   - component: {fileID: 273969142}
   - component: {fileID: 273969141}
   - component: {fileID: 273969140}
-  - component: {fileID: 273969143}
   - component: {fileID: 273969144}
-  m_Layer: 12
+  m_Layer: 0
   m_Name: Mirror
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -13001,25 +13017,6 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 273969138}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
---- !u!114 &273969143
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 273969138}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: ef61ab698c979384f80e6ffdbb85087e, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::FeaturesCamera.WallOccluder
-  transparentAlpha: 0.15
-  fadeSpeed: 8
-  meshRenderer: {fileID: 273969141}
-  originalMaterial: {fileID: 0}
-  transparentMaterial: {fileID: 0}
-  group: {fileID: 125877810}
-  additionalRenderers: []
 --- !u!114 &273969144
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -13270,6 +13267,7 @@ MonoBehaviour:
   transparentMaterial: {fileID: 0}
   group: {fileID: 1028268456}
   additionalRenderers: []
+  hideAdditionalRenderersOnFade: 1
 --- !u!64 &288504945
 MeshCollider:
   m_ObjectHideFlags: 0
@@ -17737,6 +17735,7 @@ MonoBehaviour:
   transparentMaterial: {fileID: 0}
   group: {fileID: 0}
   additionalRenderers: []
+  hideAdditionalRenderersOnFade: 1
 --- !u!65 &385688504
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -17940,6 +17939,7 @@ MonoBehaviour:
   transparentMaterial: {fileID: 0}
   group: {fileID: 554778303}
   additionalRenderers: []
+  hideAdditionalRenderersOnFade: 1
 --- !u!65 &391542870
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -19710,6 +19710,7 @@ MonoBehaviour:
   - {fileID: 1200400468}
   - {fileID: 1954854646}
   - {fileID: 1622629290}
+  linkedGroups: []
 --- !u!1 &445267384
 GameObject:
   m_ObjectHideFlags: 0
@@ -19987,6 +19988,7 @@ MonoBehaviour:
   transparentMaterial: {fileID: 990634622}
   group: {fileID: 1276875805}
   additionalRenderers: []
+  hideAdditionalRenderersOnFade: 1
 --- !u!23 &447287421
 MeshRenderer:
   m_ObjectHideFlags: 0
@@ -20641,7 +20643,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 186.52112, y: -400}
+  m_AnchoredPosition: {x: 186.99994, y: -400}
   m_SizeDelta: {x: 160, y: 240}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &458199353
@@ -22457,7 +22459,7 @@ BoxCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Size: {x: 6, y: 4, z: 7}
+  m_Size: {x: 7, y: 4, z: 8}
   m_Center: {x: 0, y: 1, z: 0}
 --- !u!4 &518510562
 Transform:
@@ -22701,7 +22703,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 186.52112, y: -140}
+  m_AnchoredPosition: {x: 186.99994, y: -140}
   m_SizeDelta: {x: 160, y: 240}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &522144339
@@ -23193,6 +23195,7 @@ MonoBehaviour:
   - {fileID: 850003817}
   - {fileID: 1674067710}
   - {fileID: 964184162}
+  linkedGroups: []
 --- !u!1 &536595241
 GameObject:
   m_ObjectHideFlags: 0
@@ -23232,7 +23235,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 546.5211, y: -140}
+  m_AnchoredPosition: {x: 546.99994, y: -140}
   m_SizeDelta: {x: 160, y: 240}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &536595243
@@ -23410,7 +23413,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 546.5211, y: -400}
+  m_AnchoredPosition: {x: 546.99994, y: -400}
   m_SizeDelta: {x: 160, y: 240}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &539684466
@@ -24269,6 +24272,7 @@ MonoBehaviour:
   - {fileID: 971502574}
   - {fileID: 895591658}
   - {fileID: 1146918720}
+  linkedGroups: []
 --- !u!1 &557005182
 GameObject:
   m_ObjectHideFlags: 0
@@ -24808,6 +24812,7 @@ MonoBehaviour:
   transparentMaterial: {fileID: 0}
   group: {fileID: 1060727043}
   additionalRenderers: []
+  hideAdditionalRenderersOnFade: 1
 --- !u!65 &565560450
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -26275,6 +26280,7 @@ MonoBehaviour:
   transparentMaterial: {fileID: 941202439}
   group: {fileID: 125877810}
   additionalRenderers: []
+  hideAdditionalRenderersOnFade: 1
 --- !u!23 &605658029
 MeshRenderer:
   m_ObjectHideFlags: 0
@@ -26707,6 +26713,7 @@ MonoBehaviour:
   transparentMaterial: {fileID: 0}
   group: {fileID: 1060727043}
   additionalRenderers: []
+  hideAdditionalRenderersOnFade: 1
 --- !u!65 &626053811
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -30377,6 +30384,7 @@ MonoBehaviour:
   transparentMaterial: {fileID: 0}
   group: {fileID: 0}
   additionalRenderers: []
+  hideAdditionalRenderersOnFade: 1
 --- !u!65 &686573328
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -31020,6 +31028,7 @@ MonoBehaviour:
   transparentMaterial: {fileID: 0}
   group: {fileID: 168725341}
   additionalRenderers: []
+  hideAdditionalRenderersOnFade: 1
 --- !u!64 &709180333
 MeshCollider:
   m_ObjectHideFlags: 0
@@ -31685,6 +31694,7 @@ MonoBehaviour:
   transparentMaterial: {fileID: 0}
   group: {fileID: 445262685}
   additionalRenderers: []
+  hideAdditionalRenderersOnFade: 1
 --- !u!64 &728292692
 MeshCollider:
   m_ObjectHideFlags: 0
@@ -32757,6 +32767,7 @@ MonoBehaviour:
   transparentMaterial: {fileID: 1021523120}
   group: {fileID: 125877810}
   additionalRenderers: []
+  hideAdditionalRenderersOnFade: 1
 --- !u!23 &753845432
 MeshRenderer:
   m_ObjectHideFlags: 0
@@ -32922,6 +32933,7 @@ MonoBehaviour:
   transparentMaterial: {fileID: 0}
   group: {fileID: 554778303}
   additionalRenderers: []
+  hideAdditionalRenderersOnFade: 1
 --- !u!65 &757318435
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -33052,6 +33064,7 @@ MonoBehaviour:
   - {fileID: 2095734739}
   - {fileID: 70767821}
   - {fileID: 217522102}
+  linkedGroups: []
 --- !u!1 &761811246
 GameObject:
   m_ObjectHideFlags: 0
@@ -34169,6 +34182,7 @@ MonoBehaviour:
   transparentMaterial: {fileID: 0}
   group: {fileID: 0}
   additionalRenderers: []
+  hideAdditionalRenderersOnFade: 1
 --- !u!65 &788722561
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -34319,7 +34333,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 186.52112, y: -660}
+  m_AnchoredPosition: {x: 186.99994, y: -660}
   m_SizeDelta: {x: 160, y: 240}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &789833613
@@ -36590,6 +36604,7 @@ MonoBehaviour:
   transparentMaterial: {fileID: 0}
   group: {fileID: 534610650}
   additionalRenderers: []
+  hideAdditionalRenderersOnFade: 1
 --- !u!65 &850003818
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -37692,6 +37707,7 @@ MonoBehaviour:
   transparentMaterial: {fileID: 1384370274}
   group: {fileID: 1683471100}
   additionalRenderers: []
+  hideAdditionalRenderersOnFade: 1
 --- !u!23 &886558269
 MeshRenderer:
   m_ObjectHideFlags: 0
@@ -37933,6 +37949,7 @@ MonoBehaviour:
   transparentMaterial: {fileID: 0}
   group: {fileID: 554778303}
   additionalRenderers: []
+  hideAdditionalRenderersOnFade: 1
 --- !u!65 &895591659
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -38472,6 +38489,7 @@ MonoBehaviour:
   transparentMaterial: {fileID: 0}
   group: {fileID: 0}
   additionalRenderers: []
+  hideAdditionalRenderersOnFade: 1
 --- !u!65 &902752720
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -39462,6 +39480,7 @@ MonoBehaviour:
   transparentMaterial: {fileID: 0}
   group: {fileID: 0}
   additionalRenderers: []
+  hideAdditionalRenderersOnFade: 1
 --- !u!65 &919060128
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -39920,6 +39939,7 @@ MonoBehaviour:
   transparentMaterial: {fileID: 0}
   group: {fileID: 554778303}
   additionalRenderers: []
+  hideAdditionalRenderersOnFade: 1
 --- !u!65 &932444387
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -40074,6 +40094,7 @@ MonoBehaviour:
   transparentMaterial: {fileID: 1092590159}
   group: {fileID: 1683471100}
   additionalRenderers: []
+  hideAdditionalRenderersOnFade: 1
 --- !u!23 &933034836
 MeshRenderer:
   m_ObjectHideFlags: 0
@@ -41727,6 +41748,7 @@ MonoBehaviour:
   transparentMaterial: {fileID: 0}
   group: {fileID: 534610650}
   additionalRenderers: []
+  hideAdditionalRenderersOnFade: 1
 --- !u!65 &964184163
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -42018,6 +42040,7 @@ MonoBehaviour:
   transparentMaterial: {fileID: 0}
   group: {fileID: 554778303}
   additionalRenderers: []
+  hideAdditionalRenderersOnFade: 1
 --- !u!65 &971502575
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -44075,7 +44098,8 @@ MonoBehaviour:
   transparentMaterial: {fileID: 429999571}
   group: {fileID: 125877810}
   additionalRenderers:
-  - {fileID: 0}
+  - {fileID: 273969141}
+  hideAdditionalRenderersOnFade: 1
 --- !u!23 &1012392949
 MeshRenderer:
   m_ObjectHideFlags: 0
@@ -44489,6 +44513,7 @@ MonoBehaviour:
   transparentMaterial: {fileID: 0}
   group: {fileID: 0}
   additionalRenderers: []
+  hideAdditionalRenderersOnFade: 1
 --- !u!65 &1013187758
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -45058,6 +45083,7 @@ MonoBehaviour:
   - {fileID: 1343949429}
   - {fileID: 288504944}
   - {fileID: 258689440}
+  linkedGroups: []
 --- !u!1 &1031549507
 GameObject:
   m_ObjectHideFlags: 0
@@ -46020,6 +46046,8 @@ MonoBehaviour:
   - {fileID: 1572907241}
   - {fileID: 565560449}
   - {fileID: 626053810}
+  linkedGroups:
+  - {fileID: 168725341}
 --- !u!1 &1062150304
 GameObject:
   m_ObjectHideFlags: 0
@@ -47542,6 +47570,7 @@ MonoBehaviour:
   transparentMaterial: {fileID: 0}
   group: {fileID: 0}
   additionalRenderers: []
+  hideAdditionalRenderersOnFade: 1
 --- !u!65 &1089726145
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -47757,7 +47786,7 @@ GameObject:
   - component: {fileID: 1090587539}
   - component: {fileID: 1090587538}
   - component: {fileID: 1090587544}
-  m_Layer: 0
+  m_Layer: 12
   m_Name: BedroomDoor
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -47924,6 +47953,7 @@ MonoBehaviour:
   transparentMaterial: {fileID: 0}
   group: {fileID: 125877810}
   additionalRenderers: []
+  hideAdditionalRenderersOnFade: 1
 --- !u!1 &1092589292
 GameObject:
   m_ObjectHideFlags: 0
@@ -49643,6 +49673,7 @@ MonoBehaviour:
   transparentMaterial: {fileID: 0}
   group: {fileID: 168725341}
   additionalRenderers: []
+  hideAdditionalRenderersOnFade: 1
 --- !u!65 &1130795682
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -50097,6 +50128,7 @@ MonoBehaviour:
   transparentMaterial: {fileID: 0}
   group: {fileID: 554778303}
   additionalRenderers: []
+  hideAdditionalRenderersOnFade: 1
 --- !u!65 &1146918721
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -50230,6 +50262,7 @@ MonoBehaviour:
   transparentMaterial: {fileID: 0}
   group: {fileID: 761381727}
   additionalRenderers: []
+  hideAdditionalRenderersOnFade: 1
 --- !u!65 &1147956704
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -51771,7 +51804,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 186.52112, y: -1440}
+  m_AnchoredPosition: {x: 186.99994, y: -1440}
   m_SizeDelta: {x: 160, y: 240}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1184264224
@@ -52221,6 +52254,7 @@ MonoBehaviour:
   transparentMaterial: {fileID: 0}
   group: {fileID: 445262685}
   additionalRenderers: []
+  hideAdditionalRenderersOnFade: 1
 --- !u!65 &1200400469
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -53046,6 +53080,7 @@ MonoBehaviour:
   transparentMaterial: {fileID: 0}
   group: {fileID: 534610650}
   additionalRenderers: []
+  hideAdditionalRenderersOnFade: 1
 --- !u!65 &1226533421
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -53372,7 +53407,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 366.52112, y: -1440}
+  m_AnchoredPosition: {x: 366.99994, y: -1440}
   m_SizeDelta: {x: 160, y: 240}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1239744806
@@ -53722,6 +53757,7 @@ MonoBehaviour:
   transparentMaterial: {fileID: 0}
   group: {fileID: 168725341}
   additionalRenderers: []
+  hideAdditionalRenderersOnFade: 1
 --- !u!65 &1249493785
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -54306,6 +54342,7 @@ MonoBehaviour:
   - {fileID: 447287420}
   - {fileID: 59098193}
   - {fileID: 25351843}
+  linkedGroups: []
 --- !u!65 &1277145909
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -55612,7 +55649,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 186.52112, y: -1180}
+  m_AnchoredPosition: {x: 186.99994, y: -1180}
   m_SizeDelta: {x: 160, y: 240}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1301606482
@@ -58243,6 +58280,7 @@ MonoBehaviour:
   transparentMaterial: {fileID: 0}
   group: {fileID: 1028268456}
   additionalRenderers: []
+  hideAdditionalRenderersOnFade: 1
 --- !u!65 &1343949430
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -63580,6 +63618,7 @@ MonoBehaviour:
   transparentMaterial: {fileID: 1771342999}
   group: {fileID: 1276875805}
   additionalRenderers: []
+  hideAdditionalRenderersOnFade: 1
 --- !u!23 &1491748125
 MeshRenderer:
   m_ObjectHideFlags: 0
@@ -64005,6 +64044,7 @@ MonoBehaviour:
   transparentMaterial: {fileID: 0}
   group: {fileID: 1028268456}
   additionalRenderers: []
+  hideAdditionalRenderersOnFade: 1
 --- !u!65 &1507081781
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -71250,6 +71290,7 @@ MonoBehaviour:
   transparentMaterial: {fileID: 567479744}
   group: {fileID: 1958229852}
   additionalRenderers: []
+  hideAdditionalRenderersOnFade: 1
 --- !u!23 &1530413498
 MeshRenderer:
   m_ObjectHideFlags: 0
@@ -72003,7 +72044,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 366.52112, y: -400}
+  m_AnchoredPosition: {x: 366.99994, y: -400}
   m_SizeDelta: {x: 160, y: 240}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1546696127
@@ -72579,6 +72620,7 @@ MonoBehaviour:
   transparentMaterial: {fileID: 638490513}
   group: {fileID: 1958229852}
   additionalRenderers: []
+  hideAdditionalRenderersOnFade: 1
 --- !u!23 &1551618013
 MeshRenderer:
   m_ObjectHideFlags: 0
@@ -73609,6 +73651,7 @@ MonoBehaviour:
   transparentMaterial: {fileID: 0}
   group: {fileID: 1060727043}
   additionalRenderers: []
+  hideAdditionalRenderersOnFade: 1
 --- !u!65 &1572907242
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -74827,7 +74870,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 366.52112, y: -660}
+  m_AnchoredPosition: {x: 366.99994, y: -660}
   m_SizeDelta: {x: 160, y: 240}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1611888780
@@ -75080,6 +75123,7 @@ MonoBehaviour:
   transparentMaterial: {fileID: 0}
   group: {fileID: 445262685}
   additionalRenderers: []
+  hideAdditionalRenderersOnFade: 1
 --- !u!65 &1622629291
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -76113,6 +76157,7 @@ MonoBehaviour:
   transparentMaterial: {fileID: 1042279110}
   group: {fileID: 1958229852}
   additionalRenderers: []
+  hideAdditionalRenderersOnFade: 1
 --- !u!23 &1648403813
 MeshRenderer:
   m_ObjectHideFlags: 0
@@ -77356,7 +77401,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 546.5211, y: -920}
+  m_AnchoredPosition: {x: 546.99994, y: -920}
   m_SizeDelta: {x: 160, y: 240}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1669445328
@@ -77656,6 +77701,7 @@ MonoBehaviour:
   transparentMaterial: {fileID: 0}
   group: {fileID: 534610650}
   additionalRenderers: []
+  hideAdditionalRenderersOnFade: 1
 --- !u!65 &1674067711
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -78017,6 +78063,7 @@ MonoBehaviour:
   - {fileID: 886558268}
   - {fileID: 933034835}
   - {fileID: 1837979956}
+  linkedGroups: []
 --- !u!21 &1685877956
 Material:
   serializedVersion: 8
@@ -78470,6 +78517,7 @@ MonoBehaviour:
   transparentMaterial: {fileID: 0}
   group: {fileID: 168725341}
   additionalRenderers: []
+  hideAdditionalRenderersOnFade: 1
 --- !u!65 &1690503522
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -82174,6 +82222,7 @@ MonoBehaviour:
   transparentMaterial: {fileID: 0}
   group: {fileID: 0}
   additionalRenderers: []
+  hideAdditionalRenderersOnFade: 1
 --- !u!65 &1765674224
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -83576,6 +83625,7 @@ MonoBehaviour:
   transparentMaterial: {fileID: 0}
   group: {fileID: 534610650}
   additionalRenderers: []
+  hideAdditionalRenderersOnFade: 1
 --- !u!65 &1803978363
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -84679,6 +84729,7 @@ MonoBehaviour:
   transparentMaterial: {fileID: 1685877956}
   group: {fileID: 1683471100}
   additionalRenderers: []
+  hideAdditionalRenderersOnFade: 1
 --- !u!23 &1837979957
 MeshRenderer:
   m_ObjectHideFlags: 0
@@ -86148,6 +86199,7 @@ MonoBehaviour:
   transparentMaterial: {fileID: 0}
   group: {fileID: 168725341}
   additionalRenderers: []
+  hideAdditionalRenderersOnFade: 1
 --- !u!65 &1884471390
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -89426,6 +89478,7 @@ MonoBehaviour:
   transparentMaterial: {fileID: 0}
   group: {fileID: 445262685}
   additionalRenderers: []
+  hideAdditionalRenderersOnFade: 1
 --- !u!65 &1954854647
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -89557,6 +89610,8 @@ MonoBehaviour:
   - {fileID: 187590653}
   - {fileID: 1530413497}
   - {fileID: 1551618012}
+  linkedGroups:
+  - {fileID: 125877810}
 --- !u!1 &1960032005
 GameObject:
   m_ObjectHideFlags: 0
@@ -90067,6 +90122,7 @@ MonoBehaviour:
   transparentMaterial: {fileID: 301220889}
   group: {fileID: 1958229852}
   additionalRenderers: []
+  hideAdditionalRenderersOnFade: 1
 --- !u!23 &1977632867
 MeshRenderer:
   m_ObjectHideFlags: 0
@@ -91259,6 +91315,14 @@ MonoBehaviour:
   - 1.5
   fanRayCount: 3
   maxFanAngle: 4
+  unoccludeDelay: 0.25
+  raySphereRadius: 0.15
+  roomTriggers:
+  - roomName: Bedroom
+    triggerCollider: {fileID: 518510561}
+    foregroundGroups:
+    - {fileID: 125877810}
+    - {fileID: 1958229852}
   debugDrawRays: 1
 --- !u!4 &2021113456
 Transform:
@@ -91795,7 +91859,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 366.52112, y: -140}
+  m_AnchoredPosition: {x: 366.99994, y: -140}
   m_SizeDelta: {x: 160, y: 240}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &2036034307
@@ -93853,6 +93917,7 @@ MonoBehaviour:
   transparentMaterial: {fileID: 0}
   group: {fileID: 0}
   additionalRenderers: []
+  hideAdditionalRenderersOnFade: 1
 --- !u!65 &2083301949
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -94306,6 +94371,7 @@ MonoBehaviour:
   transparentMaterial: {fileID: 0}
   group: {fileID: 761381727}
   additionalRenderers: []
+  hideAdditionalRenderersOnFade: 1
 --- !u!65 &2095734740
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -95038,7 +95104,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 546.5211, y: -660}
+  m_AnchoredPosition: {x: 546.99994, y: -660}
   m_SizeDelta: {x: 160, y: 240}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &2101938310

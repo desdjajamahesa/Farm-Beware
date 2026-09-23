@@ -18,6 +18,10 @@ namespace FeaturesCamera
         [Tooltip("All modular wall segments and corners belonging to this wall side.")]
         public List<WallOccluder> occluders = new List<WallOccluder>();
 
+        [Header("Linked Groups")]
+        [Tooltip("Other wall groups that should fade together with this group (e.g. South and West foreground walls of the same room).")]
+        public List<WallOcclusionGroup> linkedGroups = new List<WallOcclusionGroup>();
+
         private void Awake()
         {
             RegisterMembers();

@@ -35,6 +35,10 @@ public class WallOcclusionFader : MonoBehaviour
 
     void LateUpdate()
     {
+        // Defer to WallOcclusionManager if active to avoid conflicting material modifications
+        if (FeaturesCamera.WallOcclusionManager.Instance != null)
+            return;
+
         if (target == null)
         {
             FindTarget();
