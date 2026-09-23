@@ -13,10 +13,10 @@ using UnityEngine.UI;
 public class UIAnimationHandler : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler, IPointerDownHandler, IPointerUpHandler, IPointerClickHandler
 {
     [Header("Hover Scale & Tint")]
-    [SerializeField] private float hoverScale = 1.02f;
+    [SerializeField] private float hoverScale = 1.08f;
     [SerializeField] private float hoverDuration = 0.12f;
     [SerializeField] private Color hoverTintColor = new Color(1.15f, 1.15f, 1.15f, 1f);
-    [SerializeField] private bool enableScaleAnimation = false;
+    [SerializeField] private bool enableScaleAnimation = true;
 
     [Header("Hover Indicator & Glow")]
     [SerializeField] private CanvasGroup glowCanvasGroup;
@@ -25,8 +25,10 @@ public class UIAnimationHandler : MonoBehaviour, IPointerEnterHandler, IPointerE
 
     [Header("Press Animation")]
     [SerializeField] private bool enablePressAnimation = true;
-    [SerializeField] private float pressScale = 0.97f;
-    [SerializeField] private float pressDuration = 0.06f;
+    [SerializeField] private float pressScale = 0.92f;
+    [SerializeField] private float pressDuration = 0.08f;
+
+    private bool ShouldAnimateScale => enableScaleAnimation || (glowCanvasGroup == null && hoverIndicator == null);
 
     private Vector3 originalScale;
     private Color originalColor;
@@ -46,7 +48,8 @@ public class UIAnimationHandler : MonoBehaviour, IPointerEnterHandler, IPointerE
 
     void Awake()
     {
-        originalScale = transform.localScale;
+        if (originalScale == Vector3.zero)
+            originalScale = transform.localScale != Vector3.zero ? transform.localScale : Vector3.one;
         targetImage = GetComponent<Image>();
         if (targetImage != null) originalColor = targetImage.color;
         
@@ -56,8 +59,9 @@ public class UIAnimationHandler : MonoBehaviour, IPointerEnterHandler, IPointerE
 
     void OnEnable()
     {
-        originalScale = Vector3.one;
-        transform.localScale = Vector3.one;
+        if (originalScale == Vector3.zero)
+            originalScale = transform.localScale != Vector3.zero ? transform.localScale : Vector3.one;
+        transform.localScale = (isHovered && ShouldAnimateScale) ? originalScale * hoverScale : originalScale;
         if (targetImage != null) originalColor = targetImage.color;
         
         InitGlow();
@@ -138,7 +142,7 @@ public class UIAnimationHandler : MonoBehaviour, IPointerEnterHandler, IPointerE
         if (isPressed) return;
         isHovered = true;
 
-        if (enableScaleAnimation)
+        if (ShouldAnimateScale)
             AnimateToScale(originalScale * hoverScale, hoverDuration);
 
         if (targetImage != null)
@@ -155,7 +159,7 @@ public class UIAnimationHandler : MonoBehaviour, IPointerEnterHandler, IPointerE
         isHovered = false;
         if (!isPressed)
         {
-            if (enableScaleAnimation)
+            if (ShouldAnimateScale)
                 AnimateToScale(originalScale, hoverDuration);
 
             if (targetImage != null)
@@ -182,7 +186,7 @@ public class UIAnimationHandler : MonoBehaviour, IPointerEnterHandler, IPointerE
         if (eventData.button != PointerEventData.InputButton.Left) return;
         isPressed = false;
 
-        Vector3 target = (isHovered && enableScaleAnimation) ? originalScale * hoverScale : originalScale;
+        Vector3 target = (isHovered && ShouldAnimateScale) ? originalScale * hoverScale : originalScale;
         if (enablePressAnimation)
             AnimateToScale(target, pressDuration);
 
@@ -198,8 +202,12 @@ public class UIAnimationHandler : MonoBehaviour, IPointerEnterHandler, IPointerE
     {
         if (eventData.button != PointerEventData.InputButton.Left) return;
 
-        // Snappy click punch bounce
-        StartCoroutine(ClickPunchRoutine());
+        // Snappy click punch bounce for items without continuous hover scale
+        if (!ShouldAnimateScale && enablePressAnimation)
+        {
+            if (currentScaleAnim != null) StopCoroutine(currentScaleAnim);
+            currentScaleAnim = StartCoroutine(ClickPunchRoutine());
+        }
     }
 
     private IEnumerator ClickPunchRoutine()

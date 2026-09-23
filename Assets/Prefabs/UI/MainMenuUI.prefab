@@ -992,6 +992,11 @@ MonoBehaviour:
   hoverScale: 1.08
   hoverDuration: 0.15
   hoverTintColor: {r: 1.15, g: 1.15, b: 1.15, a: 1}
+  enableScaleAnimation: 1
+  glowCanvasGroup: {fileID: 0}
+  hoverIndicator: {fileID: 0}
+  glowFadeDuration: 0.14
+  enablePressAnimation: 1
   pressScale: 0.92
   pressDuration: 0.08
 --- !u!1 &1777108592270686740
@@ -1323,12 +1328,14 @@ MonoBehaviour:
   menuCanvasGroup: {fileID: 9099890269086512585}
   startButton: {fileID: 7226652787624124099}
   settingsButton: {fileID: 4167223706904843304}
+  checkpointButton: {fileID: 0}
   quitButton: {fileID: 1534362674815966816}
+  quitDesktopButton: {fileID: 0}
   settingsBackButton: {fileID: 123298983510447138}
-  titleText: {fileID: 0}
   titleRoot: {fileID: 4077315703534168134}
-  backgroundOverlay: {fileID: 0}
+  titleText: {fileID: 0}
   backgroundContainer: {fileID: 8613053271167811749}
+  backgroundOverlay: {fileID: 0}
   titleFloatAmplitude: 5
   titleFloatSpeed: 0.8
   titleScaleBreathAmount: 0.015
@@ -1355,34 +1362,25 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::HorrorMenuAnimator
   backgroundRect: {fileID: 3268150442215453458}
+  signpostPanel: {fileID: 0}
   bgParallaxStrength: 18
   parallaxSmoothSpeed: 4
   titleRect: {fileID: 5323468229452273666}
   titleGlowGroup: {fileID: 7815104084518121809}
-  titleFloatSpeed: 0.8
-  titleFloatAmount: 8
   titleBreathSpeed: 1.2
   titleBreathScale: 0.025
   twitchIntervalMin: 4
   twitchIntervalMax: 9
-  glowingEyes: []
-  eyeBlinkDuration: 0.18
+  pumpkinRect: {fileID: 0}
+  pumpkinGlowGroup: {fileID: 0}
+  pumpkinFlameFlickerSpeed: 7
+  cornfieldEyesRect: {fileID: 0}
+  cornfieldEyesGroup: {fileID: 0}
   eyePulseSpeed: 1.5
-  fogLayers: []
-  fogDriftSpeeds:
-  - -25
-  - -40
-  - -15
-  fogWaveSpeed: 0.6
-  fogWaveHeight: 12
-  fogResetThreshold: 1400
-  buttonRects:
-  - {fileID: 9051040542201003195}
-  - {fileID: 5019902855800635969}
-  - {fileID: 8635824043941837366}
-  buttonSwaySpeed: 1.2
-  buttonSwayAngle: 1.2
-  buttonFloatAmount: 4
+  eyeBlinkIntervalMin: 3.5
+  eyeBlinkIntervalMax: 7.5
+  scarecrowBreathSpeed: 0.7
+  scarecrowBreathAmount: 0.008
   backgroundOverlayImage: {fileID: 7746797301605528302}
   minLightningInterval: 12
   maxLightningInterval: 28
@@ -1837,6 +1835,11 @@ MonoBehaviour:
   hoverScale: 1.08
   hoverDuration: 0.15
   hoverTintColor: {r: 1.15, g: 1.15, b: 1.15, a: 1}
+  enableScaleAnimation: 1
+  glowCanvasGroup: {fileID: 0}
+  hoverIndicator: {fileID: 0}
+  glowFadeDuration: 0.14
+  enablePressAnimation: 1
   pressScale: 0.92
   pressDuration: 0.08
 --- !u!1 &3460083964715046547
@@ -3351,6 +3354,11 @@ MonoBehaviour:
   hoverScale: 1.08
   hoverDuration: 0.15
   hoverTintColor: {r: 1.15, g: 1.15, b: 1.15, a: 1}
+  enableScaleAnimation: 1
+  glowCanvasGroup: {fileID: 0}
+  hoverIndicator: {fileID: 0}
+  glowFadeDuration: 0.14
+  enablePressAnimation: 1
   pressScale: 0.92
   pressDuration: 0.08
 --- !u!1 &5552524549679727680
@@ -5255,6 +5263,11 @@ MonoBehaviour:
   hoverScale: 1.08
   hoverDuration: 0.15
   hoverTintColor: {r: 1.15, g: 1.15, b: 1.15, a: 1}
+  enableScaleAnimation: 1
+  glowCanvasGroup: {fileID: 0}
+  hoverIndicator: {fileID: 0}
+  glowFadeDuration: 0.14
+  enablePressAnimation: 1
   pressScale: 0.92
   pressDuration: 0.08
 --- !u!1 &8613053271167811749
