@@ -14,15 +14,15 @@ OcclusionCullingSettings:
 RenderSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 10
-  m_Fog: 1
-  m_FogColor: {r: 0.1, g: 0.14, b: 0.24, a: 1}
+  m_Fog: 0
+  m_FogColor: {r: 0.65, g: 0.72, b: 0.8, a: 1}
   m_FogMode: 1
   m_FogDensity: 0.01
-  m_LinearFogStart: 52
-  m_LinearFogEnd: 115
-  m_AmbientSkyColor: {r: 0.2, g: 0.24, b: 0.32, a: 1}
-  m_AmbientEquatorColor: {r: 0.14, g: 0.16, b: 0.22, a: 1}
-  m_AmbientGroundColor: {r: 0.09, g: 0.1, b: 0.13, a: 1}
+  m_LinearFogStart: 35
+  m_LinearFogEnd: 120
+  m_AmbientSkyColor: {r: 0.92, g: 0.94, b: 1, a: 1}
+  m_AmbientEquatorColor: {r: 0.8, g: 0.82, b: 0.88, a: 1}
+  m_AmbientGroundColor: {r: 0.65, g: 0.67, b: 0.72, a: 1}
   m_AmbientIntensity: 1
   m_AmbientMode: 1
   m_SubtractiveShadowColor: {r: 0.42, g: 0.478, b: 0.627, a: 1}
@@ -2600,7 +2600,7 @@ GameObject:
   - component: {fileID: 70767823}
   - component: {fileID: 70767822}
   - component: {fileID: 70767821}
-  m_Layer: 0
+  m_Layer: 12
   m_Name: Wall_East_2m_N
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -4072,7 +4072,7 @@ GameObject:
   - component: {fileID: 98527909}
   - component: {fileID: 98527908}
   - component: {fileID: 98527907}
-  m_Layer: 0
+  m_Layer: 12
   m_Name: DoorFrame_North
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -4272,11 +4272,11 @@ Light:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 99922427}
-  m_Enabled: 1
+  m_Enabled: 0
   serializedVersion: 12
   m_Type: 0
   m_Color: {r: 1, g: 0.6816786, b: 0.4031851, a: 1}
-  m_Intensity: 12.5
+  m_Intensity: 0
   m_Range: 18
   m_SpotAngle: 130
   m_InnerSpotAngle: 80
@@ -6259,7 +6259,7 @@ GameObject:
   - component: {fileID: 153331972}
   - component: {fileID: 153331971}
   - component: {fileID: 153331970}
-  m_Layer: 0
+  m_Layer: 12
   m_Name: Corner_NW
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -7883,11 +7883,11 @@ Light:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 186275819}
-  m_Enabled: 1
+  m_Enabled: 0
   serializedVersion: 12
   m_Type: 0
   m_Color: {r: 1, g: 0.82615465, b: 0.68635714, a: 1}
-  m_Intensity: 11.5
+  m_Intensity: 0
   m_Range: 18
   m_SpotAngle: 130
   m_InnerSpotAngle: 80
@@ -8213,11 +8213,11 @@ Light:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 190562727}
-  m_Enabled: 1
+  m_Enabled: 0
   serializedVersion: 12
   m_Type: 0
   m_Color: {r: 1, g: 0.66799015, b: 0.37381548, a: 1}
-  m_Intensity: 11.5
+  m_Intensity: 0
   m_Range: 18
   m_SpotAngle: 130
   m_InnerSpotAngle: 80
@@ -9532,7 +9532,7 @@ GameObject:
   - component: {fileID: 212239110}
   - component: {fileID: 212239109}
   - component: {fileID: 212239108}
-  m_Layer: 0
+  m_Layer: 12
   m_Name: Wall_North_2m_1
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -9666,7 +9666,7 @@ GameObject:
   - component: {fileID: 213091143}
   - component: {fileID: 213091142}
   - component: {fileID: 213091141}
-  m_Layer: 0
+  m_Layer: 12
   m_Name: Corner_SE
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -9969,7 +9969,7 @@ GameObject:
   - component: {fileID: 217522104}
   - component: {fileID: 217522103}
   - component: {fileID: 217522102}
-  m_Layer: 0
+  m_Layer: 12
   m_Name: Wall_East_1m_End
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -11864,7 +11864,7 @@ GameObject:
   - component: {fileID: 258689439}
   - component: {fileID: 258689438}
   - component: {fileID: 258689437}
-  m_Layer: 0
+  m_Layer: 12
   m_Name: KitchenDoor
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -12492,118 +12492,6 @@ MonoBehaviour:
     - rid: 5793365490345443452
       type: {class: Cube, ns: UnityEngine.ProBuilder.Shapes, asm: Unity.ProBuilder}
       data: 
---- !u!1 &264759902 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: -3477864577585124648, guid: 25aa32f3e6d43aa42ab0e91973626cac, type: 3}
-  m_PrefabInstance: {fileID: 300144535}
-  m_PrefabAsset: {fileID: 0}
---- !u!23 &264759904 stripped
-MeshRenderer:
-  m_CorrespondingSourceObject: {fileID: 8280704227580990285, guid: 25aa32f3e6d43aa42ab0e91973626cac, type: 3}
-  m_PrefabInstance: {fileID: 300144535}
-  m_PrefabAsset: {fileID: 0}
---- !u!114 &264759906
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 264759902}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: ef61ab698c979384f80e6ffdbb85087e, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::FeaturesCamera.WallOccluder
-  transparentAlpha: 0.15
-  fadeSpeed: 8
-  meshRenderer: {fileID: 264759904}
-  originalMaterial: {fileID: 2100000, guid: de56cc5f6a8d59d4e933d9f494c6b0a2, type: 2}
-  transparentMaterial: {fileID: 0}
-  additionalRenderers: []
---- !u!65 &264759914
-BoxCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 264759902}
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_IsTrigger: 0
-  m_ProvidesContacts: 0
-  m_Enabled: 1
-  serializedVersion: 3
-  m_Size: {x: 6.3098946, y: 3.13, z: 0.30999994}
-  m_Center: {x: -4.9100533, y: 1.56, z: 2.91}
---- !u!65 &264759915
-BoxCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 264759902}
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_IsTrigger: 0
-  m_ProvidesContacts: 0
-  m_Enabled: 1
-  serializedVersion: 3
-  m_Size: {x: 8.25, y: 3.13, z: 0.31}
-  m_Center: {x: -3.94, y: 1.56, z: -3.59}
---- !u!65 &264759916
-BoxCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 264759902}
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_IsTrigger: 0
-  m_ProvidesContacts: 0
-  m_Enabled: 1
-  serializedVersion: 3
-  m_Size: {x: 0.25, y: 3.13, z: 6.81}
-  m_Center: {x: -7.93, y: 1.56, z: -0.34}
---- !u!65 &264759917
-BoxCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 264759902}
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_IsTrigger: 0
-  m_ProvidesContacts: 0
-  m_Enabled: 1
-  serializedVersion: 3
-  m_Size: {x: 0.24843407, y: 3.125, z: 6.8125}
-  m_Center: {x: 0.06328297, y: 1.5625, z: -0.34375}
 --- !u!1001 &267363321
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -12758,7 +12646,7 @@ GameObject:
   - component: {fileID: 273082204}
   - component: {fileID: 273082203}
   - component: {fileID: 273082202}
-  m_Layer: 0
+  m_Layer: 12
   m_Name: Window_South_2m
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -13220,7 +13108,7 @@ GameObject:
   - component: {fileID: 288504946}
   - component: {fileID: 288504945}
   - component: {fileID: 288504944}
-  m_Layer: 0
+  m_Layer: 12
   m_Name: DoorFrame_North
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -13908,24 +13796,10 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 2100000, guid: de56cc5f6a8d59d4e933d9f494c6b0a2, type: 2}
     m_RemovedComponents: []
-    m_RemovedGameObjects: []
+    m_RemovedGameObjects:
+    - {fileID: -3477864577585124648, guid: 25aa32f3e6d43aa42ab0e91973626cac, type: 3}
     m_AddedGameObjects: []
-    m_AddedComponents:
-    - targetCorrespondingSourceObject: {fileID: -3477864577585124648, guid: 25aa32f3e6d43aa42ab0e91973626cac, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 264759906}
-    - targetCorrespondingSourceObject: {fileID: -3477864577585124648, guid: 25aa32f3e6d43aa42ab0e91973626cac, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 264759916}
-    - targetCorrespondingSourceObject: {fileID: -3477864577585124648, guid: 25aa32f3e6d43aa42ab0e91973626cac, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 264759915}
-    - targetCorrespondingSourceObject: {fileID: -3477864577585124648, guid: 25aa32f3e6d43aa42ab0e91973626cac, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 264759914}
-    - targetCorrespondingSourceObject: {fileID: -3477864577585124648, guid: 25aa32f3e6d43aa42ab0e91973626cac, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 264759917}
+    m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 25aa32f3e6d43aa42ab0e91973626cac, type: 3}
 --- !u!4 &300144536 stripped
 Transform:
@@ -15573,7 +15447,7 @@ Camera:
   m_Enabled: 1
   serializedVersion: 2
   m_ClearFlags: 2
-  m_BackGroundColor: {r: 0.06, g: 0.09, b: 0.16, a: 1}
+  m_BackGroundColor: {r: 0.12, g: 0.15, b: 0.2, a: 1}
   m_projectionMatrixMode: 1
   m_GateFitMode: 2
   m_FOVAxisMode: 0
@@ -17902,7 +17776,7 @@ GameObject:
   - component: {fileID: 391542871}
   - component: {fileID: 391542870}
   - component: {fileID: 391542869}
-  m_Layer: 0
+  m_Layer: 12
   m_Name: Wall_North_2m_2
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -18323,8 +18197,8 @@ Light:
   m_Enabled: 1
   serializedVersion: 12
   m_Type: 1
-  m_Color: {r: 1, g: 0.93134546, b: 0.8715508, a: 1}
-  m_Intensity: 1.1481254
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_Intensity: 1.3
   m_Range: 10
   m_SpotAngle: 30
   m_InnerSpotAngle: 21.80208
@@ -18386,7 +18260,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 410087039}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.0072420714, y: 0.88725895, z: -0.46100423, w: 0.013938251}
+  m_LocalRotation: {x: 0.48296294, y: -0.22414388, z: 0.12940954, w: 0.8365163}
   m_LocalPosition: {x: 0, y: 3, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
@@ -19777,11 +19651,11 @@ Light:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 446349626}
-  m_Enabled: 1
+  m_Enabled: 0
   serializedVersion: 12
   m_Type: 2
   m_Color: {r: 1, g: 0.66799015, b: 0.37381548, a: 1}
-  m_Intensity: 2.5
+  m_Intensity: 0
   m_Range: 18
   m_SpotAngle: 30
   m_InnerSpotAngle: 21.80208
@@ -24612,7 +24486,7 @@ GameObject:
   - component: {fileID: 565560451}
   - component: {fileID: 565560450}
   - component: {fileID: 565560449}
-  m_Layer: 0
+  m_Layer: 12
   m_Name: Window_West_2m
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -24774,11 +24648,11 @@ Light:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 566079768}
-  m_Enabled: 1
+  m_Enabled: 0
   serializedVersion: 12
   m_Type: 0
   m_Color: {r: 1, g: 0.78711385, b: 0.613822, a: 1}
-  m_Intensity: 12.5
+  m_Intensity: 0
   m_Range: 18
   m_SpotAngle: 130
   m_InnerSpotAngle: 80
@@ -26509,7 +26383,7 @@ GameObject:
   - component: {fileID: 626053812}
   - component: {fileID: 626053811}
   - component: {fileID: 626053810}
-  m_Layer: 0
+  m_Layer: 12
   m_Name: Wall_West_End_N
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -30820,7 +30694,7 @@ GameObject:
   - component: {fileID: 709180334}
   - component: {fileID: 709180333}
   - component: {fileID: 709180332}
-  m_Layer: 0
+  m_Layer: 12
   m_Name: Corner_SW
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -31484,7 +31358,7 @@ GameObject:
   - component: {fileID: 728292693}
   - component: {fileID: 728292692}
   - component: {fileID: 728292691}
-  m_Layer: 0
+  m_Layer: 12
   m_Name: Corner_NE
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -32549,7 +32423,7 @@ Transform:
   m_GameObject: {fileID: 753845428}
   serializedVersion: 2
   m_LocalRotation: {x: -0.50000006, y: 0.49999997, z: 0.50000006, w: 0.49999997}
-  m_LocalPosition: {x: 3.1499977, y: 2.18, z: -2.7799988}
+  m_LocalPosition: {x: 3.1499977, y: 1.75, z: -2.7799988}
   m_LocalScale: {x: 0.99999994, y: 0.1, z: 1.7499993}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -32671,7 +32545,7 @@ GameObject:
   - component: {fileID: 757318433}
   - component: {fileID: 757318432}
   - component: {fileID: 757318431}
-  m_Layer: 0
+  m_Layer: 12
   m_Name: WarehouseDoor
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -36335,7 +36209,7 @@ GameObject:
   - component: {fileID: 850003819}
   - component: {fileID: 850003818}
   - component: {fileID: 850003817}
-  m_Layer: 0
+  m_Layer: 12
   m_Name: Wall_South_2m_3
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -37676,7 +37550,7 @@ GameObject:
   - component: {fileID: 895591660}
   - component: {fileID: 895591659}
   - component: {fileID: 895591658}
-  m_Layer: 0
+  m_Layer: 12
   m_Name: Wall_North_2m_4
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -39660,7 +39534,7 @@ GameObject:
   - component: {fileID: 932444388}
   - component: {fileID: 932444387}
   - component: {fileID: 932444386}
-  m_Layer: 0
+  m_Layer: 12
   m_Name: Wall_North_2m_1
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -41465,7 +41339,7 @@ GameObject:
   - component: {fileID: 964184164}
   - component: {fileID: 964184163}
   - component: {fileID: 964184162}
-  m_Layer: 0
+  m_Layer: 12
   m_Name: Wall_South_End_5
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -41755,7 +41629,7 @@ GameObject:
   - component: {fileID: 971502576}
   - component: {fileID: 971502575}
   - component: {fileID: 971502574}
-  m_Layer: 0
+  m_Layer: 12
   m_Name: Wall_North_2m_3
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -43340,11 +43214,11 @@ Light:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1003723077}
-  m_Enabled: 1
+  m_Enabled: 0
   serializedVersion: 12
   m_Type: 0
   m_Color: {r: 1, g: 0.7550344, b: 0.5522611, a: 1}
-  m_Intensity: 13.5
+  m_Intensity: 0
   m_Range: 18
   m_SpotAngle: 130
   m_InnerSpotAngle: 80
@@ -44400,11 +44274,11 @@ Light:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1020543016}
-  m_Enabled: 1
+  m_Enabled: 0
   serializedVersion: 12
   m_Type: 2
   m_Color: {r: 1, g: 0.82615465, b: 0.68635714, a: 1}
-  m_Intensity: 2.6
+  m_Intensity: 0
   m_Range: 18
   m_SpotAngle: 30
   m_InnerSpotAngle: 21.80208
@@ -45352,11 +45226,11 @@ Light:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1042791851}
-  m_Enabled: 1
+  m_Enabled: 0
   serializedVersion: 12
   m_Type: 2
   m_Color: {r: 1, g: 0.57391727, b: 0.15356405, a: 1}
-  m_Intensity: 3.2
+  m_Intensity: 0
   m_Range: 18
   m_SpotAngle: 30
   m_InnerSpotAngle: 21.80208
@@ -47489,8 +47363,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ea1c453d6faf4e4468a0a4b76440433f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DoorInteractable
-  spawnPointInside: {fileID: 0}
-  spawnPointOutside: {fileID: 0}
+  spawnPointInside: {fileID: 918278902}
+  spawnPointOutside: {fileID: 1885017756}
   thresholdAxis: 0
   insideThreshold: 15.22
   fadeDuration: 0.5
@@ -47935,11 +47809,11 @@ Light:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1097657418}
-  m_Enabled: 1
+  m_Enabled: 0
   serializedVersion: 12
   m_Type: 2
   m_Color: {r: 1, g: 0.694903, b: 0.431048, a: 1}
-  m_Intensity: 4.5
+  m_Intensity: 0
   m_Range: 18
   m_SpotAngle: 30
   m_InnerSpotAngle: 21.80208
@@ -49255,7 +49129,7 @@ GameObject:
   - component: {fileID: 1130795683}
   - component: {fileID: 1130795682}
   - component: {fileID: 1130795681}
-  m_Layer: 0
+  m_Layer: 12
   m_Name: Wall_South_2m_1
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -49708,7 +49582,7 @@ GameObject:
   - component: {fileID: 1146918722}
   - component: {fileID: 1146918721}
   - component: {fileID: 1146918720}
-  m_Layer: 0
+  m_Layer: 12
   m_Name: Wall_North_End_5
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -49840,7 +49714,7 @@ GameObject:
   - component: {fileID: 1147956705}
   - component: {fileID: 1147956704}
   - component: {fileID: 1147956703}
-  m_Layer: 0
+  m_Layer: 12
   m_Name: Wall_East_2m_S
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -51730,11 +51604,11 @@ Light:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1197673326}
-  m_Enabled: 1
+  m_Enabled: 0
   serializedVersion: 12
   m_Type: 2
   m_Color: {r: 1, g: 0.82615465, b: 0.68635714, a: 1}
-  m_Intensity: 2.5
+  m_Intensity: 0
   m_Range: 18
   m_SpotAngle: 30
   m_InnerSpotAngle: 21.80208
@@ -51830,7 +51704,7 @@ GameObject:
   - component: {fileID: 1200400470}
   - component: {fileID: 1200400469}
   - component: {fileID: 1200400468}
-  m_Layer: 0
+  m_Layer: 12
   m_Name: Wall_East_2m_S
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -52296,11 +52170,11 @@ Light:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1209247571}
-  m_Enabled: 1
+  m_Enabled: 0
   serializedVersion: 12
   m_Type: 2
   m_Color: {r: 1, g: 0.78711385, b: 0.613822, a: 1}
-  m_Intensity: 2.7
+  m_Intensity: 0
   m_Range: 18
   m_SpotAngle: 30
   m_InnerSpotAngle: 21.80208
@@ -52654,7 +52528,7 @@ GameObject:
   - component: {fileID: 1226533422}
   - component: {fileID: 1226533421}
   - component: {fileID: 1226533420}
-  m_Layer: 0
+  m_Layer: 12
   m_Name: Wall_South_2m_1
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -53329,7 +53203,7 @@ GameObject:
   - component: {fileID: 1249493786}
   - component: {fileID: 1249493785}
   - component: {fileID: 1249493784}
-  m_Layer: 0
+  m_Layer: 12
   m_Name: Wall_South_2m_3
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -54042,11 +53916,11 @@ Light:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1283867376}
-  m_Enabled: 1
+  m_Enabled: 0
   serializedVersion: 12
   m_Type: 0
   m_Color: {r: 1, g: 0.6538038, b: 0.34276658, a: 1}
-  m_Intensity: 11
+  m_Intensity: 0
   m_Range: 18
   m_SpotAngle: 130
   m_InnerSpotAngle: 80
@@ -57798,7 +57672,7 @@ GameObject:
   - component: {fileID: 1343949431}
   - component: {fileID: 1343949430}
   - component: {fileID: 1343949429}
-  m_Layer: 0
+  m_Layer: 12
   m_Name: Wall_North_1.5m_3
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -60367,11 +60241,11 @@ Light:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1418242829}
-  m_Enabled: 1
+  m_Enabled: 0
   serializedVersion: 12
   m_Type: 0
   m_Color: {r: 1, g: 0.66799015, b: 0.37381548, a: 1}
-  m_Intensity: 13
+  m_Intensity: 0
   m_Range: 18
   m_SpotAngle: 130
   m_InnerSpotAngle: 80
@@ -62155,11 +62029,11 @@ Light:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1472712721}
-  m_Enabled: 1
+  m_Enabled: 0
   serializedVersion: 12
   m_Type: 0
   m_Color: {r: 1, g: 0.57391727, b: 0.15356405, a: 1}
-  m_Intensity: 14.054883
+  m_Intensity: 0
   m_Range: 18
   m_SpotAngle: 130
   m_InnerSpotAngle: 80
@@ -63555,7 +63429,7 @@ GameObject:
   - component: {fileID: 1507081782}
   - component: {fileID: 1507081781}
   - component: {fileID: 1507081780}
-  m_Layer: 0
+  m_Layer: 12
   m_Name: Wall_North_2m_2
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -73155,7 +73029,7 @@ GameObject:
   - component: {fileID: 1572907243}
   - component: {fileID: 1572907242}
   - component: {fileID: 1572907241}
-  m_Layer: 0
+  m_Layer: 12
   m_Name: Wall_West_2m_S
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -74625,7 +74499,7 @@ GameObject:
   - component: {fileID: 1622629292}
   - component: {fileID: 1622629291}
   - component: {fileID: 1622629290}
-  m_Layer: 0
+  m_Layer: 12
   m_Name: Wall_East_End_N
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -77199,7 +77073,7 @@ GameObject:
   - component: {fileID: 1674067712}
   - component: {fileID: 1674067711}
   - component: {fileID: 1674067710}
-  m_Layer: 0
+  m_Layer: 12
   m_Name: Wall_South_2m_4
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -77963,7 +77837,7 @@ GameObject:
   - component: {fileID: 1690503523}
   - component: {fileID: 1690503522}
   - component: {fileID: 1690503521}
-  m_Layer: 0
+  m_Layer: 12
   m_Name: Wall_South_2m_2
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -78266,11 +78140,11 @@ Light:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1697181014}
-  m_Enabled: 1
+  m_Enabled: 0
   serializedVersion: 12
   m_Type: 0
   m_Color: {r: 1, g: 0.82615465, b: 0.68635714, a: 1}
-  m_Intensity: 11.802332
+  m_Intensity: 0
   m_Range: 18
   m_SpotAngle: 130
   m_InnerSpotAngle: 80
@@ -78790,11 +78664,11 @@ Light:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1716673683}
-  m_Enabled: 1
+  m_Enabled: 0
   serializedVersion: 12
   m_Type: 0
   m_Color: {r: 1, g: 0.694903, b: 0.431048, a: 1}
-  m_Intensity: 18
+  m_Intensity: 0
   m_Range: 18
   m_SpotAngle: 130
   m_InnerSpotAngle: 80
@@ -83067,7 +82941,7 @@ GameObject:
   - component: {fileID: 1803978364}
   - component: {fileID: 1803978363}
   - component: {fileID: 1803978362}
-  m_Layer: 0
+  m_Layer: 12
   m_Name: Wall_South_2m_2
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -84458,11 +84332,11 @@ Light:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1859136449}
-  m_Enabled: 1
+  m_Enabled: 0
   serializedVersion: 12
   m_Type: 2
   m_Color: {r: 1, g: 0.7550344, b: 0.5522611, a: 1}
-  m_Intensity: 3
+  m_Intensity: 0
   m_Range: 18
   m_SpotAngle: 30
   m_InnerSpotAngle: 21.80208
@@ -84605,11 +84479,11 @@ Light:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1860587559}
-  m_Enabled: 1
+  m_Enabled: 0
   serializedVersion: 12
   m_Type: 2
   m_Color: {r: 1, g: 0.6538038, b: 0.34276658, a: 1}
-  m_Intensity: 2.4
+  m_Intensity: 0
   m_Range: 18
   m_SpotAngle: 30
   m_InnerSpotAngle: 21.80208
@@ -85633,7 +85507,7 @@ GameObject:
   - component: {fileID: 1884471391}
   - component: {fileID: 1884471390}
   - component: {fileID: 1884471389}
-  m_Layer: 0
+  m_Layer: 12
   m_Name: Wall_South_End_4
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -88910,7 +88784,7 @@ GameObject:
   - component: {fileID: 1954854648}
   - component: {fileID: 1954854647}
   - component: {fileID: 1954854646}
-  m_Layer: 0
+  m_Layer: 12
   m_Name: Window_East_2m
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -89070,11 +88944,11 @@ Light:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1960032005}
-  m_Enabled: 1
+  m_Enabled: 0
   serializedVersion: 12
   m_Type: 2
   m_Color: {r: 1, g: 0.66799015, b: 0.37381548, a: 1}
-  m_Intensity: 2.8
+  m_Intensity: 0
   m_Range: 18
   m_SpotAngle: 30
   m_InnerSpotAngle: 21.80208
@@ -92518,11 +92392,11 @@ Light:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2065431978}
-  m_Enabled: 1
+  m_Enabled: 0
   serializedVersion: 12
   m_Type: 2
   m_Color: {r: 1, g: 0.6816786, b: 0.4031851, a: 1}
-  m_Intensity: 2.8
+  m_Intensity: 0
   m_Range: 18
   m_SpotAngle: 30
   m_InnerSpotAngle: 21.80208
@@ -93736,7 +93610,7 @@ GameObject:
   - component: {fileID: 2095734741}
   - component: {fileID: 2095734740}
   - component: {fileID: 2095734739}
-  m_Layer: 0
+  m_Layer: 12
   m_Name: Wall_East_2m_Mid
   m_TagString: Untagged
   m_Icon: {fileID: 0}
