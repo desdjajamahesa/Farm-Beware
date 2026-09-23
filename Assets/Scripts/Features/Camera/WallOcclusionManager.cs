@@ -176,7 +176,21 @@ namespace FeaturesCamera
                         var occluder = col.GetComponent<WallOccluder>();
                         if (occluder != null)
                         {
-                            newOccluding.Add(occluder);
+                            if (occluder.Group != null && occluder.Group.occluders != null)
+                            {
+                                var members = occluder.Group.occluders;
+                                for (int m = 0; m < members.Count; m++)
+                                {
+                                    if (members[m] != null)
+                                    {
+                                        newOccluding.Add(members[m]);
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                newOccluding.Add(occluder);
+                            }
                         }
                     }
                 }

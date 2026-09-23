@@ -22,6 +22,22 @@ namespace FeaturesCamera
         [SerializeField] private Material originalMaterial;
         [SerializeField] private Material transparentMaterial;
 
+        [Header("Grouping")]
+        [Tooltip("The wall group this segment belongs to. When occluded, all segments in this group fade together.")]
+        [SerializeField] private WallOcclusionGroup group;
+        public WallOcclusionGroup Group
+        {
+            get
+            {
+                if (group == null && transform.parent != null)
+                {
+                    group = transform.parent.GetComponent<WallOcclusionGroup>();
+                }
+                return group;
+            }
+            set => group = value;
+        }
+
         // Multi-material support
         private Material[] originalMaterials;
         private Material[] transparentMaterials;
