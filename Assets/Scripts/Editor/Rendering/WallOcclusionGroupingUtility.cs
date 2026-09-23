@@ -31,6 +31,33 @@ namespace FarmBeware.Editor.Rendering
                     { "Bedroom_North", new string[] { "Wall_North", "Corner_NW", "Corner_NE" } },
                     { "Bedroom_East", new string[] { "Wall_East", "Window_East_2m" } }
                 }, ref occludersGrouped);
+
+                // Link attached Bedroom Mirror to Bedroom_West group
+                var mirrorObj = GameObject.Find("_WORLD/Zones/Bedroom/Wardrobe/Mirror") ?? GameObject.Find("Mirror");
+                if (mirrorObj != null)
+                {
+                    int wallLayer = LayerMask.NameToLayer("Wall");
+                    if (wallLayer != -1) mirrorObj.layer = wallLayer;
+
+                    var mirrorOcc = mirrorObj.GetComponent<WallOccluder>();
+                    if (mirrorOcc == null)
+                        mirrorOcc = mirrorObj.AddComponent<WallOccluder>();
+
+                    var westGroupTrans = bedroomWall.Find("Group_Bedroom_West");
+                    var westGroup = westGroupTrans != null ? westGroupTrans.GetComponent<WallOcclusionGroup>() : null;
+                    if (westGroup != null)
+                    {
+                        if (!westGroup.occluders.Contains(mirrorOcc))
+                        {
+                            westGroup.occluders.Add(mirrorOcc);
+                            occludersGrouped++;
+                        }
+                        mirrorOcc.Group = westGroup;
+                        EditorUtility.SetDirty(westGroup);
+                        EditorUtility.SetDirty(mirrorOcc);
+                    }
+                    EditorUtility.SetDirty(mirrorObj);
+                }
             }
 
             // 2. Kitchen

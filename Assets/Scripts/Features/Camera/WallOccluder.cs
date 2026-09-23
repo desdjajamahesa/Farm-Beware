@@ -245,7 +245,32 @@ namespace FeaturesCamera
 
                 if (currentAlpha < 1f && !isUsingTransparentMaterials)
                 {
-                    meshRenderer.materials = transparentMaterials;
+                    // Sync latest textures (e.g. for dynamic textures like mirror render textures)
+                    if (originalMaterials != null)
+                    {
+                        for (int i = 0; i < Mathf.Min(originalMaterials.Length, transparentMaterials.Length); i++)
+                        {
+                            var orig = originalMaterials[i];
+                            var trans = transparentMaterials[i];
+                            if (orig != null && trans != null)
+                            {
+                                if (orig.HasProperty("_BaseMap") && trans.HasProperty("_BaseMap"))
+                                {
+                                    var tex = orig.GetTexture("_BaseMap");
+                                    if (tex != null && trans.GetTexture("_BaseMap") != tex)
+                                        trans.SetTexture("_BaseMap", tex);
+                                }
+                                else if (orig.HasProperty("_MainTex") && trans.HasProperty("_MainTex"))
+                                {
+                                    var tex = orig.GetTexture("_MainTex");
+                                    if (tex != null && trans.GetTexture("_MainTex") != tex)
+                                        trans.SetTexture("_MainTex", tex);
+                                }
+                            }
+                        }
+                    }
+
+                    meshRenderer.sharedMaterials = transparentMaterials;
                     isUsingTransparentMaterials = true;
                 }
                 else if (currentAlpha >= 1f && isUsingTransparentMaterials)
@@ -290,7 +315,7 @@ namespace FeaturesCamera
                     bool isTrans = i < additionalUsingTransparentList.Count && additionalUsingTransparentList[i];
                     if (currentAlpha < 1f && !isTrans)
                     {
-                        rend.materials = transMats;
+                        rend.sharedMaterials = transMats;
                         if (i < additionalUsingTransparentList.Count)
                             additionalUsingTransparentList[i] = true;
                     }

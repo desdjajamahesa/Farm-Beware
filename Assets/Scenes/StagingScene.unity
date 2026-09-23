@@ -5106,6 +5106,7 @@ MonoBehaviour:
   - {fileID: 1012392948}
   - {fileID: 753845431}
   - {fileID: 1090587544}
+  - {fileID: 273969143}
 --- !u!1 &132834842
 GameObject:
   m_ObjectHideFlags: 0
@@ -12899,7 +12900,7 @@ GameObject:
   - component: {fileID: 273969140}
   - component: {fileID: 273969143}
   - component: {fileID: 273969144}
-  m_Layer: 0
+  m_Layer: 12
   m_Name: Mirror
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -13017,7 +13018,7 @@ MonoBehaviour:
   meshRenderer: {fileID: 273969141}
   originalMaterial: {fileID: 0}
   transparentMaterial: {fileID: 0}
-  group: {fileID: 0}
+  group: {fileID: 125877810}
   additionalRenderers: []
 --- !u!114 &273969144
 MonoBehaviour:
