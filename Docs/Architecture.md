@@ -123,3 +123,68 @@ Core backend component attached to the Player, Test Chest, Refrigerator, and Kit
 To prevent conflicts between closing modals and opening the pause menu:
 1. **Priority 1 (Interactive Modal Panels)**: If any panel is active (`Panel_Stove`, `Panel_Sink`, `WardrobeUI`, `InventoryUI`, `ChestUI`), the first `ESC` press closes the panel and restores gameplay input.
 2. **Priority 2 (Pause Menu)**: `PauseMenuUI` intercepts `ESC` strictly when all gameplay modal panels are confirmed closed.
+
+---
+
+## 8. Graphics, Lighting & Rendering Architecture
+
+Farm-Beware features a modern high-fidelity rendering pipeline tailored for Unity 6000.3.20f1 URP:
+
+```
+                            ┌─────────────────────────────────────────┐
+                            │    Render Pipeline Asset: PC_RPAsset    │
+                            │  (RenderingMode: DeferredPlus, BRG: On) │
+                            └────────────────────┬────────────────────┘
+                                                 │
+                   ┌─────────────────────────────┼─────────────────────────────┐
+                   ▼                             ▼                             ▼
+        ┌─────────────────────┐       ┌─────────────────────┐       ┌─────────────────────┐
+        │     DEFERRED+       │       │ GPU RESIDENT DRAWER │       │    LIGHT LAYERS     │
+        │  Cluster Light Loop │       │ BatchRendererGroup  │       │  Exterior/Interior  │
+        │  100+ Point Lights  │       │ Static Batch Guard  │       │  Bitwise Isolation  │
+        └──────────┬──────────┘       └──────────┬──────────┘       └──────────┬──────────┘
+                   │                             │                             │
+                   └─────────────────────────────┼─────────────────────────────┘
+                                                 ▼
+                               ┌──────────────────────────────────┐
+                               │       CUSTOM SHADER PIPELINE     │
+                               ├──────────────────────────────────┤
+                               │ • MonsterFresnelLit (ForwardOnly)│
+                               │ • DitheredBuildingLit (Bayer 4x4)│
+                               │ • WorldSpaceVisionMask (Blit)    │
+                               └──────────────────────────────────┘
+```
+
+### 8.1 Rendering Path & GPU Submission
+- **Deferred+ Clustering**: Configured on `PC_Renderer.asset` (`RenderingMode.DeferredPlus`). Employs a 3D clustered tile grid for lighting calculations, allowing dozens of concurrent point and spot lights (lanterns, monster spells, house lights) with negligible per-light draw call overhead.
+- **GPU Resident Drawer (BRG)**: `UniversalRenderPipelineAsset.gpuResidentDrawerMode` is set to `InstancedDrawing`. Mesh and transform data reside persistently in GPU VRAM.
+- **Static Batching Guard**: Legacy Unity Static Batching is explicitly disabled on Standalone platforms via `URPGraphicsConfigurationValidator.cs` to prevent CPU RAM duplication and fragmented draw batches that defeat BRG instancing.
+
+### 8.2 Atmosphere & Time-of-Day Lighting Pipeline
+- **Event-Driven Observers**: Lighting transitions do NOT execute in `Update()`. Controllers subscribe directly to `TimeManager.Instance.OnPhaseChanged`.
+- **Day Phase (`DaySunLightingObserver.cs`, `DayNightLightingController.cs`)**:
+  - High sun elevation ($50^\circ$), color progression from cool noon (5500K) to warm dusk (3200K).
+  - Orthographic soft shadows with Camera-Relative Culling enabled.
+  - Adaptive Probe Volumes (APV) support with real-time Sky Occlusion.
+- **Night Phase (`HouseSafeZoneLighting.cs`, `NightBrawlManager.cs`)**:
+  - Sun dims into a cool moonlight fill ($0.1–0.2\text{ lux}$, soft bluish spectrum `(0.72, 0.82, 0.96)`).
+  - Safe-zone amber point lights automatically ignite around player structures.
+
+### 8.3 Combat Readability: Monster Fresnel Shading (`MonsterFresnelLit.shader`)
+- Specially tailored for dark isometric combat environments.
+- Evaluates a grazing-angle Fresnel equation in world space: $\text{Rim} = \text{pow}(1 - (\mathbf{N}_{WS} \cdot \mathbf{V}_{WS}), \text{Power}) \times \text{Intensity}$.
+- **Deferred+ Pass Mandate**: Utilizes `Tags { "LightMode" = "UniversalForwardOnly" }`. In Deferred+ mode, standard `UniversalForward` passes on opaque objects are omitted by the GBuffer pass; using `UniversalForwardOnly` guarantees the monster's opaque mesh is rendered on top of Deferred buffers while preserving full `ShadowCaster` projections.
+
+### 8.4 Interiors & Screen-Door Transparency (`DitheredBuildingLit.shader`)
+- **Strict Opaque Tagging**: Retains `RenderType = "Opaque"`, `Queue = "Geometry"`, and `ZWrite On`. Traditional Alpha Blending is strictly prohibited to preserve depth prepass integrity, Z-sorting with furniture, and physical shadow maps.
+- **Normalized Bayer $4 \times 4$ Dither Matrix**: Screen-space dither discard operation based on `fmod(abs(screenPos.xy), 4.0)` compared against `(1.0 - _DitherFade)`.
+- **Consistent Shadow Pass**: The dither clip function is mirrored identically in the `ShadowCaster` pass, ensuring exterior building silhouettes continue casting accurate shadows even when roofs fade for the camera.
+- **HouseInteriorTrigger (`HouseInteriorTrigger.cs`)**: Interpolates `_DitherFade` using `MaterialPropertyBlock` instances to prevent material cloning in RAM.
+
+### 8.5 Light Layers Segregation (`LightLayerAssignmentUtility.cs`)
+- Prevents light leakage between indoor and outdoor environments without expensive raytracing:
+  - **Light Layer 0 (Exterior)**: Directional Light (Sun/Moon), outdoor terrain, crops, fencing.
+  - **Light Layer 1 (Interior)**: `InteriorLamp_*`, `Light_Interior_*`, indoor floor meshes, indoor furniture.
+  - **Light Layer 0+1 (Transition)**: Door frames, entry thresholds.
+- Accessible via Editor Window: `Tools > Farm-Beware > Rendering > Light Layer Assignment Utility`.
+

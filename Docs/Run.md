@@ -80,3 +80,20 @@ AI agents and automated workflows communicate through the Unity MCP server:
 - **World Zones**: `_WORLD/Zones` (`Bedroom`, `Kitchen`, `LivingRoom_Foyer`, `Garage`, `Warehouse`, `MiddleArea_Stairs`).
 - **Gameplay Anchors**: `_GAMEPLAY/SpawnPoints` and `_GAMEPLAY/Testing/TestChest` (populated with 21 active MVP test items).
 - **User Interface**: `_UI/UI_Canvas` (holds all HUDs, modal panels, and menus).
+
+---
+
+## 6. Rendering & Lighting Editor Tools
+
+Access specialized graphics utilities from the Unity Editor top menu bar under `Tools > Farm-Beware > Rendering`:
+
+1. **URP & BRG Validator** (`URPGraphicsConfigurationValidator.cs`):
+   - Menu: `Tools > Farm-Beware > Rendering > URP & BRG Validator`
+   - Validates that the active Renderer uses `DeferredPlus`, GPU Resident Drawer is set to `InstancedDrawing`, SRP Batcher is active, and Static Batching is safely disabled to prevent CPU RAM duplication.
+2. **Light Layer Assignment Utility** (`LightLayerAssignmentUtility.cs`):
+   - Menu: `Tools > Farm-Beware > Rendering > Light Layer Assignment Utility`
+   - Provides one-click scene audits and automated segregation:
+     - Assigns `Directional Light` to **Light Layer 0 (Exterior)**.
+     - Assigns all `InteriorLamp_*` and `Light_Interior_*` to **Light Layer 1 (Interior)**.
+     - Guarantees zero light leaking between outdoor night moonlight and indoor warm lighting.
+

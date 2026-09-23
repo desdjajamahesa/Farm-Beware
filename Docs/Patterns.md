@@ -107,6 +107,33 @@ All stackable items enforce a hard ceiling of 20 units per inventory slot:
 - Stackable items (crops, food, ingredients, materials, seeds, monster drops): `maxStack = 20`.
 - Non-stackable equipment (weapons, tools, trophies): `maxStack = 1`.
 
+### 1.8 Event-Driven Lighting Observers
+Lighting transitions (sun rotation, color temperature, safe-zone lamps) must never poll or evaluate per-frame in `Update()`. They must listen directly to `TimeManager.Instance.OnPhaseChanged`:
+```csharp
+private void OnEnable()
+{
+    if (TimeManager.Instance != null)
+        TimeManager.Instance.OnPhaseChanged += HandlePhaseChanged;
+}
+private void OnDisable()
+{
+    if (TimeManager.Instance != null)
+        TimeManager.Instance.OnPhaseChanged -= HandlePhaseChanged;
+}
+```
+
+### 1.9 MaterialPropertyBlock for Dynamic Parameter Fading
+Never instantiate material copies via `renderer.material` for dynamic parameter updates (such as building dither fading or hit flashes). Always use `MaterialPropertyBlock` to preserve GPU Resident Drawer instancing and prevent RAM leaks:
+```csharp
+private static readonly int DitherFadeID = Shader.PropertyToID("_DitherFade");
+private MaterialPropertyBlock propertyBlock;
+
+// In Awake: propertyBlock = new MaterialPropertyBlock();
+targetRenderer.GetPropertyBlock(propertyBlock);
+propertyBlock.SetFloat(DitherFadeID, targetFade);
+targetRenderer.SetPropertyBlock(propertyBlock);
+```
+
 ---
 
 ## 2. Coding Standards & Conventions
@@ -154,3 +181,7 @@ private void Awake()
 5. ❌ **Hardcoded Layer Indices**: Never hardcode integers for physics layers; use `LayerMask.NameToLayer("LayerName")` or `LayerMask.GetMask("LayerName")`.
 6. ❌ **Disabling Cameras via `SetActive(false)`**: Disable the `Camera` component instead (`camera.enabled = false`) to avoid AudioListener conflicts and hierarchy churn.
 7. ❌ **Blind Editor Automation Scripts**: Never create ad-hoc `Assets/Editor/*Setup*.cs` menu scripts that blindly alter scene hierarchy. Use targeted MCP commands.
+8. ❌ **Alpha Blended Building Materials**: Never use `Transparent` render queue (`ZWrite Off`) for buildings, roofs, or walls. Always use Bayer $4 \times 4$ Dithered Alpha Clipping (`RenderType = Opaque`, `ZWrite On`) to preserve depth buffer and physical shadow map projection.
+9. ❌ **`UniversalForward` in Deferred+ Pipelines**: Never tag custom opaque forward shaders with `Tags { "LightMode" = "UniversalForward" }` in Deferred+. Use `Tags { "LightMode" = "UniversalForwardOnly" }` so that geometry is rendered by the forward-only opaque pass rather than dropped by the GBuffer pass.
+10. ❌ **Static Batching in GPU Resident Drawer (BRG) Pipelines**: Never enable Unity Static Batching when using BRG (`gpuResidentDrawerMode: InstancedDrawing`). Static batching duplicates vertex data into CPU RAM and fractures instanced draw batches.
+

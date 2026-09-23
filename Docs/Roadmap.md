@@ -61,6 +61,27 @@ Development roadmap, milestone tracking, and feature goals for **Farm-Beware** b
 
 ---
 
+### Milestone 1.5: Graphics & Lighting Pipeline Architecture (COMPLETED ✅)
+- [x] **Phase 1: Foundation (Deferred+ & GPU Resident Drawer)**:
+  - Switched exclusively to **Deferred+** cluster rendering path in `PC_Renderer.asset` via Unity 6 Render Graph API.
+  - Enabled **GPU Resident Drawer (BRG)** (`gpuResidentDrawerMode: InstancedDrawing`) and SRP Batcher.
+  - Implemented `URPGraphicsConfigurationValidator.cs` (`Tools > Farm-Beware > Rendering > URP & BRG Validator`) with automated Static Batching guard to protect CPU RAM and instanced drawing.
+- [x] **Phase 2: Day Lighting (Atmosphere & Soft Shadows)**:
+  - Orthographic soft shadows with Camera-Relative Culling enabled in URP Asset.
+  - Mathematical sun rotation and color temperature progression (5500K noon to 3200K golden dusk) via event-driven observer `DaySunLightingObserver.cs`.
+  - Comprehensive documentation in `Docs/APV_Sky_Occlusion_Baking_Guide.md` and test suite `DayLightingValidationHarness.cs`.
+- [x] **Phase 3: Night Lighting & Combat Readability**:
+  - Seamless night transition synced with legacy "N" shortcut in `TimeManager.cs`.
+  - Directional Light moonlight dimming (0.1–0.2 lux, cool blue tint `(0.72, 0.82, 0.96)`).
+  - Combat readability shader `MonsterFresnelLit.shader` with grazing-angle HDR rim emission and `UniversalForwardOnly` pass for Deferred+ compatibility.
+  - Stress testing harness `GPUResidentDrawerStressTest.cs` validating 100+ clustered deferred point lights without GPU stalls.
+- [x] **Phase 4: Interiors & Light Segregation**:
+  - Custom Bayer $4 \times 4$ screen-door transparency shader `DitheredBuildingLit.shader` (`RenderType = Opaque`, `ZWrite On`) preserving exterior shadow projection and depth buffer.
+  - Smooth trigger component `HouseInteriorTrigger.cs` interpolating `_DitherFade` via `MaterialPropertyBlock` (zero material duplication).
+  - Bitwise URP Light Layers isolation tool `LightLayerAssignmentUtility.cs` preventing exterior moonlight (Layer 0) and interior amber lamps (Layer 1) from leaking.
+
+---
+
 ### Milestone 2: Farming System (NEXT PRIORITY ⏳)
 - [ ] **Soil Grid & Tilling**: Tillable, waterable crop tiles with visual state feedback.
 - [ ] **Crop Growth Cycles**:
