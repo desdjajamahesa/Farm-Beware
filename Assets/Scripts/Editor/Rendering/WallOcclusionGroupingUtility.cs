@@ -153,7 +153,7 @@ namespace FarmBeware.Editor.Rendering
                 {
                     { "Kitchen_South", new string[] { "Wall_South", "Corner_SW" } },
                     { "Kitchen_West", new string[] { "Wall_West", "Window_West_2m", "Corner_NW" } },
-                    { "Kitchen_North", new string[] { "Wall_North", "DoorFrame_North", "KitchenDoor" } },
+                    { "Kitchen_North", new string[] { "Wall_North", "DoorFrame_North" } },
                     { "Kitchen_East", new string[] { "Wall_East" } }
                 }, ref occludersGrouped);
 
@@ -180,7 +180,7 @@ namespace FarmBeware.Editor.Rendering
                 {
                     { "Warehouse_South", new string[] { "Wall_South", "Window_South_2m", "Corner_SE" } },
                     { "Warehouse_East", new string[] { "Wall_East", "Window_East_2m", "Corner_NE" } },
-                    { "Warehouse_North", new string[] { "Wall_North", "DoorFrame_North", "WarehouseDoor" } }
+                    { "Warehouse_North", new string[] { "Wall_North", "DoorFrame_North" } }
                 }, ref occludersGrouped);
             }
 
