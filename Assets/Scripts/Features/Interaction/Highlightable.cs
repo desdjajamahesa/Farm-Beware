@@ -36,6 +36,15 @@ namespace FeaturesInteraction
                 return;
 
             CacheRenderers();
+
+            // Jika objek ini sedang mengalami oklusi kamera (transparan agar pemain terlihat),
+            // jangan menimpa dengan highlight solid yang akan menutupi pemain lagi.
+            var selfOcc = GetComponent<FeaturesCamera.WallOccluder>() ?? GetComponentInParent<FeaturesCamera.WallOccluder>();
+            if (on && selfOcc != null && selfOcc.IsOccluding)
+            {
+                return;
+            }
+
             isHighlighted = on;
 
             for (int i = 0; i < cachedRenderers.Length; i++)
@@ -44,8 +53,12 @@ namespace FeaturesInteraction
                 if (r == null)
                     continue;
 
+                var rOcc = r.GetComponent<FeaturesCamera.WallOccluder>() ?? r.GetComponentInParent<FeaturesCamera.WallOccluder>();
                 if (on)
                 {
+                    if (rOcc != null && rOcc.IsOccluding)
+                        continue;
+
                     Material[] mats = new Material[r.sharedMaterials.Length];
                     for (int m = 0; m < mats.Length; m++)
                         mats[m] = highlightMaterial;
@@ -53,7 +66,13 @@ namespace FeaturesInteraction
                 }
                 else
                 {
-                    if (originalMaterials != null && i < originalMaterials.Length)
+                    if (rOcc != null && rOcc.IsOccluding)
+                    {
+                        // Jangan kembalikan ke material opaque jika dinding/pintu sedang transparan karena oklusi
+                        continue;
+                    }
+
+                    if (originalMaterials != null && i < originalMaterials.Length && originalMaterials[i] != null)
                     {
                         Material[] mats = new Material[originalMaterials[i].Length];
                         for (int m = 0; m < mats.Length; m++)
@@ -159,7 +178,17 @@ namespace FeaturesInteraction
             cachedRenderers = GetComponentsInChildren<Renderer>(true);
             originalMaterials = new Material[cachedRenderers.Length][];
             for (int i = 0; i < cachedRenderers.Length; i++)
-                originalMaterials[i] = cachedRenderers[i].sharedMaterials;
+            {
+                var occ = cachedRenderers[i].GetComponent<FeaturesCamera.WallOccluder>() ?? cachedRenderers[i].GetComponentInParent<FeaturesCamera.WallOccluder>();
+                if (occ != null && occ.OriginalMaterials != null && occ.OriginalMaterials.Length > 0)
+                {
+                    originalMaterials[i] = occ.OriginalMaterials;
+                }
+                else
+                {
+                    originalMaterials[i] = cachedRenderers[i].sharedMaterials;
+                }
+            }
         }
     }
 }

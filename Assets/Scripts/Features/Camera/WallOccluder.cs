@@ -48,6 +48,10 @@ namespace FeaturesCamera
         private bool isOccluding = false;
         private bool isInitialized = false;
 
+        public bool IsOccluding => isOccluding;
+        public float CurrentAlpha => currentAlpha;
+        public Material[] OriginalMaterials => originalMaterials;
+
         private void Awake()
         {
             Initialize();
@@ -80,9 +84,17 @@ namespace FeaturesCamera
             // Store original materials
             if (meshRenderer != null)
             {
-                originalMaterials = meshRenderer.sharedMaterials;
-                if (originalMaterial == null && originalMaterials != null && originalMaterials.Length > 0)
-                    originalMaterial = originalMaterials[0];
+                var mats = meshRenderer.sharedMaterials;
+                bool isClean = mats != null && mats.Length > 0 && mats[0] != null &&
+                    !mats[0].name.Contains("Transparent_Instance") &&
+                    !mats[0].name.Contains("Mat_Highlight");
+
+                if (isClean || originalMaterials == null || originalMaterials.Length == 0)
+                {
+                    originalMaterials = mats;
+                    if (originalMaterial == null && originalMaterials != null && originalMaterials.Length > 0)
+                        originalMaterial = originalMaterials[0];
+                }
             }
 
             // Create transparent material instance
@@ -265,7 +277,10 @@ namespace FeaturesCamera
                     }
                 }
 
-                if (currentAlpha < 1f && !isUsingTransparentMaterials)
+                bool needsTransparentMaterials = !isUsingTransparentMaterials ||
+                    (meshRenderer != null && (meshRenderer.sharedMaterials == null || meshRenderer.sharedMaterials.Length == 0 || meshRenderer.sharedMaterials[0] != transparentMaterials[0]));
+
+                if (currentAlpha < 1f && needsTransparentMaterials)
                 {
                     // Sync latest textures (e.g. for dynamic textures like mirror render textures)
                     if (originalMaterials != null)
@@ -347,7 +362,8 @@ namespace FeaturesCamera
                     }
 
                     bool isTrans = i < additionalUsingTransparentList.Count && additionalUsingTransparentList[i];
-                    if (currentAlpha < 1f && !isTrans)
+                    bool needsAddTrans = !isTrans || (rend.sharedMaterials == null || rend.sharedMaterials.Length == 0 || rend.sharedMaterials[0] != transMats[0]);
+                    if (currentAlpha < 1f && needsAddTrans)
                     {
                         rend.sharedMaterials = transMats;
                         if (i < additionalUsingTransparentList.Count)
