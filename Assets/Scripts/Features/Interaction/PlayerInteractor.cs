@@ -74,7 +74,9 @@ namespace FeaturesInteraction
                     continue;
 
                 // Jarak dihitung dari titik terdekat collider target ke pusat tubuh pemain
-                Vector3 closestPoint = hit.ClosestPoint(playerCenter);
+                Vector3 closestPoint = (hit is MeshCollider mc && !mc.convex) 
+                    ? hit.bounds.ClosestPoint(playerCenter) 
+                    : hit.ClosestPoint(playerCenter);
                 Vector3 toTarget = closestPoint - playerCenter;
                 Vector3 toTargetH = Vector3.ProjectOnPlane(toTarget, Vector3.up);
                 float distSq = toTarget.sqrMagnitude;
