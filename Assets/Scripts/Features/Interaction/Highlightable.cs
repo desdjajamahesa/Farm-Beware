@@ -175,7 +175,16 @@ namespace FeaturesInteraction
             if (cachedRenderers != null && cachedRenderers.Length > 0)
                 return;
 
-            cachedRenderers = GetComponentsInChildren<Renderer>(true);
+            var allRends = GetComponentsInChildren<Renderer>(true);
+            var list = new System.Collections.Generic.List<Renderer>();
+            for (int i = 0; i < allRends.Length; i++)
+            {
+                // Jangan highlight permukaan cermin atau kamera cermin
+                if (allRends[i].name.ToLower().Contains("mirror") || allRends[i].GetComponent<FeaturesWardrobe.MirrorCamera>() != null)
+                    continue;
+                list.Add(allRends[i]);
+            }
+            cachedRenderers = list.ToArray();
             originalMaterials = new Material[cachedRenderers.Length][];
             for (int i = 0; i < cachedRenderers.Length; i++)
             {

@@ -571,8 +571,8 @@ namespace FeaturesWardrobe
             if (mirrorCamera != null && mirrorCamera.MirrorSurface != null)
             {
                 Transform mirror = mirrorCamera.MirrorSurface;
-                // Posisikan player tepat di depan cermin (~1.97m di depan permukaan cermin)
-                target = mirror.position + mirror.forward * 1.97f;
+                float dist = playerMirrorDistance > 0.1f ? playerMirrorDistance : 1.4f;
+                target = mirror.position + mirror.forward * dist;
                 target.y = playerControl.transform.position.y;
                 // Hadapkan player menghadap cermin
                 facingMirror = Quaternion.LookRotation(-mirror.forward, Vector3.up);
@@ -630,6 +630,17 @@ namespace FeaturesWardrobe
             if (wardrobeUI == null) wardrobeUI = FindFirstObjectByType<WardrobeUI>();
             if (mainCamera == null && Camera.main != null) mainCamera = Camera.main;
             if (mirrorCamera == null) mirrorCamera = FindFirstObjectByType<MirrorCamera>();
+            if (playerHead == null && playerControl != null)
+            {
+                foreach (var t in playerControl.GetComponentsInChildren<Transform>(true))
+                {
+                    if (t.name.ToLower().Contains("head") && !t.name.ToLower().Contains("end"))
+                    {
+                        playerHead = t;
+                        break;
+                    }
+                }
+            }
 
             // Enforce initial state: UI hidden, mirror cam off for performance.
             if (mirrorCamera != null)

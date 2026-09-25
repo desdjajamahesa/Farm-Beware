@@ -124,31 +124,32 @@ namespace FeaturesWardrobe
             }
             else
             {
+                if (!mirrorTexture.IsCreated())
+                    mirrorTexture.Create();
                 _textureCreatedByScript = false; // Inspector-assigned
             }
 
             if (mirrorCamera != null)
+            {
                 mirrorCamera.targetTexture = mirrorTexture;
+                mirrorCamera.aspect = 0.5f;
+            }
         }
 
         private void ConfigureCamera()
         {
             if (mirrorCamera == null) return;
-
-            // Properties already set in Awake() for early initialization
-            // DO NOT enable camera here - WardrobeManager controls when to enable
-            // mirrorCamera.enabled = true; // REMOVED: causes auto-enable at startup
+            mirrorCamera.aspect = 0.5f;
         }
 
         /// <summary>Pastikan RenderTexture + targetTexture siap (idempoten). Dipanggil dari WardrobeManager saat Enter.</summary>
         public void EnsureInitialized()
         {
-            if (mirrorTexture == null)
-            {
-                InitializeRenderTexture();
-            }
+            InitializeRenderTexture();
             if (mirrorCamera != null && mirrorCamera.targetTexture != mirrorTexture)
                 mirrorCamera.targetTexture = mirrorTexture;
+            if (mirrorCamera != null)
+                mirrorCamera.aspect = 0.5f;
             BindSurfaceTexture();
         }
 
@@ -157,7 +158,11 @@ namespace FeaturesWardrobe
         {
             if (surfaceRenderer == null || mirrorTexture == null) return;
             if (surfaceRenderer.sharedMaterial != null)
+            {
                 surfaceRenderer.sharedMaterial.mainTexture = mirrorTexture;
+                if (surfaceRenderer.sharedMaterial.HasProperty("_BaseMap"))
+                    surfaceRenderer.sharedMaterial.SetTexture("_BaseMap", mirrorTexture);
+            }
         }
 
         private void LateUpdate()
