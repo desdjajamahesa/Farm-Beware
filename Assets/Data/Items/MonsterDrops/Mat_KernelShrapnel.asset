@@ -16,7 +16,7 @@ MonoBehaviour:
   itemName: Kernel Shrapnel
   category: 4
   rarity: 0
-  itemIcon: {fileID: 21300000, guid: 0c0afa65d1c023b45ba42ca745798a4c, type: 3}
+  itemIcon: {fileID: 21300000, guid: ce8c1f7f8f07490bbf5a7ba1baf5b9d7, type: 3}
   description: Sharp, crystallized corn kernels dropped by mutated Corn Musketeers.
     Used for weapon upgrades.
   maxStack: 20

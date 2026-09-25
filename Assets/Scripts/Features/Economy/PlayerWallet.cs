@@ -33,14 +33,16 @@ namespace FeaturesEconomy
 
         [Header("Starting Balance")]
         [Tooltip("Initial amount of gold the player starts with.")]
-        [SerializeField] private int startingGold = 500;
+        [SerializeField] private int startingGold = 0;
 
         [Header("Runtime Balance")]
-        [SerializeField] private int currentGold;
+        [SerializeField] private int currentGold = 0;
 
         public int CurrentGold => currentGold;
 
         public event Action<int> OnGoldChanged;
+
+        private bool hasInitialized = false;
 
         private void Awake()
         {
@@ -50,8 +52,11 @@ namespace FeaturesEconomy
                 return;
             }
             instance = this;
-            if (currentGold <= 0)
+            if (!hasInitialized)
+            {
                 currentGold = startingGold;
+                hasInitialized = true;
+            }
         }
 
         private void OnDestroy()

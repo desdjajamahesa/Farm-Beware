@@ -16,7 +16,7 @@ MonoBehaviour:
   itemName: Colossus Core
   category: 4
   rarity: 2
-  itemIcon: {fileID: 0}
+  itemIcon: {fileID: 21300000, guid: 75c13a94d5ce4177927e326d099326ed, type: 3}
   description: Vibrating core of the Taro Colossus boss. Unlocks Heavy Impact & Armor
     special weapon upgrades.
   maxStack: 20

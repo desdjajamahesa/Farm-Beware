@@ -563,7 +563,28 @@ namespace FeaturesCombat
             if (dropMaterial != null && UnityEngine.Random.value <= dropChance)
             {
                 int dropCount = UnityEngine.Random.Range(minDropCount, maxDropCount + 1);
-                WorldItemPickup.Spawn(transform.position, dropMaterial, dropCount);
+                if (playerTarget == null) FindPlayerTarget();
+
+                Vector3 tossDir;
+                if (playerTarget != null)
+                {
+                    // Terlempar menjauhi posisi pemain (ke belakang monster dari arah datangnya serangan pemain)
+                    tossDir = (transform.position - playerTarget.position);
+                }
+                else
+                {
+                    tossDir = -transform.forward;
+                }
+                tossDir.y = 0f;
+                if (tossDir.sqrMagnitude < 0.001f) tossDir = -transform.forward;
+                tossDir.Normalize();
+
+                for (int i = 0; i < dropCount; i++)
+                {
+                    float angle = UnityEngine.Random.Range(-35f, 35f);
+                    Vector3 spreadDir = Quaternion.Euler(0f, angle, 0f) * tossDir;
+                    WorldItemPickup.Spawn(transform.position, dropMaterial, 1, spreadDir);
+                }
             }
 
             OnAnyEnemyDied?.Invoke(this);

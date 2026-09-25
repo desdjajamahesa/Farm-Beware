@@ -16,7 +16,7 @@ MonoBehaviour:
   itemName: Cob Core
   category: 4
   rarity: 2
-  itemIcon: {fileID: 21300000, guid: 0c0afa65d1c023b45ba42ca745798a4c, type: 3}
+  itemIcon: {fileID: 21300000, guid: d8de71fbd5e04d88af6b4587eef01bbe, type: 3}
   description: The dense, pulsating core harvested from The Ranger boss. Unlocks
     special chain and splash effects.
   maxStack: 20

@@ -16,7 +16,7 @@ MonoBehaviour:
   itemName: Mutated Root
   category: 4
   rarity: 0
-  itemIcon: {fileID: 0}
+  itemIcon: {fileID: 21300000, guid: 6aa5c30509a148df90c6be1663d895e7, type: 3}
   description: Twitching root dropped by Tuber Maw. Forges weapons along the Speed
     & Mobility path.
   maxStack: 20

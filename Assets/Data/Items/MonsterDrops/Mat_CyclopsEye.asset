@@ -16,7 +16,7 @@ MonoBehaviour:
   itemName: Cyclops Eye
   category: 4
   rarity: 2
-  itemIcon: {fileID: 0}
+  itemIcon: {fileID: 21300000, guid: 4c9455a8d7684599a420356d1de75566, type: 3}
   description: Pulsing eye of the Cyclops Tuber Maw boss. Unlocks Precision & Tracking
     special weapon upgrades.
   maxStack: 20

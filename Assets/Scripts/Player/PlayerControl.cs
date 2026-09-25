@@ -242,6 +242,11 @@ public class PlayerControl : MonoBehaviour
         {
             Vector3 moveDirection = Quaternion.Euler(0, 45f, 0) * inputVector;
             float speedMultiplier = buffManager != null ? buffManager.GetSpeedMultiplier() : 1f;
+            var weaponUpgrade = FeaturesWorkbench.PlayerWeaponUpgradeState.Instance;
+            if (weaponUpgrade != null && weaponUpgrade.sweetPotatoPathUnlocked)
+            {
+                speedMultiplier *= 1.10f; // Sweet Potato Path: +10% Movement Speed
+            }
             float maxSpeed = (isRunning ? runSpeed : walkSpeed) * speedMultiplier;
             Vector3 desiredMove = moveDirection;
 

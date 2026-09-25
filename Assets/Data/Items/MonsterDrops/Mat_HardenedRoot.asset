@@ -16,7 +16,7 @@ MonoBehaviour:
   itemName: Hardened Root
   category: 4
   rarity: 0
-  itemIcon: {fileID: 0}
+  itemIcon: {fileID: 21300000, guid: ea5a000b439a43f99a5b2abf073ac9f5, type: 3}
   description: Dense petrified root from Taro Brute. Forges weapons along the Power
     & Defense path.
   maxStack: 20

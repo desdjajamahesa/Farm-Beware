@@ -218,6 +218,14 @@ public class PlayerStats : MonoBehaviour, FeaturesCombat.IDamageable
     public void TakeDamage(int amount)
     {
         if (isGodMode || amount <= 0) return;
+
+        var weaponUpgrade = FeaturesWorkbench.PlayerWeaponUpgradeState.Instance;
+        if (weaponUpgrade != null && weaponUpgrade.taroPathUnlocked)
+        {
+            // Taro Path: +15 Armor (Damage reduction, minimal 1 damage jika serangan terkena)
+            amount = Mathf.Max(1, amount - 15);
+        }
+
         currentHealth = Mathf.Clamp(currentHealth - amount, 0, maxHealth);
         OnHealthChanged?.Invoke(currentHealth, maxHealth);
         OnDamageTaken?.Invoke(amount);

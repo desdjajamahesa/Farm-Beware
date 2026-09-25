@@ -75,9 +75,46 @@ namespace FeaturesWorkbench
             };
         }
 
-        public bool UpgradeBaseLevel()
+        /// <summary>
+        /// Memeriksa apakah pemain memiliki Dummy Sword di inventori (atau di hotbar).
+        /// </summary>
+        public bool HasDummySword(InventoryComponent inv = null)
+        {
+            if (inv == null)
+            {
+                var player = GameObject.FindWithTag("Player") ?? GameObject.Find("Player");
+                if (player != null)
+                {
+                    inv = player.GetComponent<InventoryComponent>();
+                }
+            }
+
+            if (inv == null || inv.slots == null) return false;
+
+            foreach (var slot in inv.slots)
+            {
+                if (slot != null && !slot.IsEmpty && slot.item != null)
+                {
+                    if (string.Equals(slot.item.itemId, "dummysword", StringComparison.OrdinalIgnoreCase) ||
+                        string.Equals(slot.item.itemName, "Dummy Sword", StringComparison.OrdinalIgnoreCase))
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            return false;
+        }
+
+        public bool UpgradeBaseLevel(InventoryComponent inv = null)
         {
             if (weaponLevel >= 3) return false;
+
+            if (!HasDummySword(inv))
+            {
+                Debug.LogWarning("[PlayerWeaponUpgradeState] Gagal upgrade: Pemain tidak memiliki Dummy Sword di inventori!");
+                return false;
+            }
 
             int cost = GetNextUpgradeCost();
             if (PlayerWallet.Instance != null && PlayerWallet.Instance.SpendGold(cost))
@@ -104,11 +141,26 @@ namespace FeaturesWorkbench
         {
             if (inv == null || PlayerWallet.Instance == null) return false;
 
-            if (!PlayerWallet.Instance.CanAfford(goldCost)) return false;
-            if (requiredMat != null && inv.CountItem(requiredMat) < matCount) return false;
+            if (!HasDummySword(inv))
+            {
+                Debug.LogWarning($"[PlayerWeaponUpgradeState] Gagal unlock {pathName}: Pemain tidak memiliki Dummy Sword!");
+                return false;
+            }
+
+            if (requiredMat == null || inv.CountItem(requiredMat) < matCount)
+            {
+                Debug.LogWarning($"[PlayerWeaponUpgradeState] Gagal unlock {pathName}: Material '{requiredMat?.itemName ?? "null"}' tidak cukup di inventori!");
+                return false;
+            }
+
+            if (!PlayerWallet.Instance.CanAfford(goldCost))
+            {
+                Debug.LogWarning($"[PlayerWeaponUpgradeState] Gagal unlock {pathName}: Gold tidak cukup ({goldCost} Gold)!");
+                return false;
+            }
 
             PlayerWallet.Instance.SpendGold(goldCost);
-            if (requiredMat != null && matCount > 0)
+            if (matCount > 0)
             {
                 inv.RemoveItem(requiredMat, matCount);
             }

@@ -109,31 +109,40 @@ public class InventorySlotUI : MonoBehaviour, IDropHandler, IPointerClickHandler
         iconGO.AddComponent<DraggableItem>();
         iconImage = img;
 
-        // Spawn ulang teks quantity.
-        GameObject qtyGO = new GameObject("Quantity", typeof(RectTransform));
-        qtyGO.transform.SetParent(transform, false);
-        RectTransform qtyRT = qtyGO.GetComponent<RectTransform>();
-        // Jangkar ke pojok kanan-bawah
-        qtyRT.anchorMin = new Vector2(1, 0);
-        qtyRT.anchorMax = new Vector2(1, 0);
-        qtyRT.pivot = new Vector2(1, 0);
-        qtyRT.anchoredPosition = new Vector2(-6, 6);
-        qtyRT.sizeDelta = new Vector2(45, 26);
+        // Jangan tampilkan kuantiti untuk senjata karena jumlahnya pasti hanya 1.
+        // Untuk item stackable lainnya, tampilkan kuantiti jika jumlah > 1.
+        bool isWeapon = (slot.item.category == ItemCategory.Weapon)
+            || (slot.item is ToolItemData tool && tool.isWeapon)
+            || string.Equals(slot.item.itemId, "dummysword", System.StringComparison.OrdinalIgnoreCase);
 
-        Text qText = qtyGO.AddComponent<Text>();
-        qText.font = GetFont();
-        qText.fontSize = 20;
-        qText.fontStyle = FontStyle.Bold;
-        qText.color = Color.white;
-        qText.alignment = TextAnchor.LowerRight;
-        qText.raycastTarget = false;
-        qText.text = slot.quantity.ToString();
+        if (!isWeapon && slot.quantity > 1)
+        {
+            // Spawn ulang teks quantity.
+            GameObject qtyGO = new GameObject("Quantity", typeof(RectTransform));
+            qtyGO.transform.SetParent(transform, false);
+            RectTransform qtyRT = qtyGO.GetComponent<RectTransform>();
+            // Jangkar ke pojok kanan-bawah
+            qtyRT.anchorMin = new Vector2(1, 0);
+            qtyRT.anchorMax = new Vector2(1, 0);
+            qtyRT.pivot = new Vector2(1, 0);
+            qtyRT.anchoredPosition = new Vector2(-6, 6);
+            qtyRT.sizeDelta = new Vector2(45, 26);
 
-        var shadow = qtyGO.AddComponent<Shadow>();
-        shadow.effectColor = new Color(0f, 0f, 0f, 0.9f);
-        shadow.effectDistance = new Vector2(1.5f, -1.5f);
+            Text qText = qtyGO.AddComponent<Text>();
+            qText.font = GetFont();
+            qText.fontSize = 20;
+            qText.fontStyle = FontStyle.Bold;
+            qText.color = Color.white;
+            qText.alignment = TextAnchor.LowerRight;
+            qText.raycastTarget = false;
+            qText.text = slot.quantity.ToString();
 
-        quantityText = qText;
+            var shadow = qtyGO.AddComponent<Shadow>();
+            shadow.effectColor = new Color(0f, 0f, 0f, 0.9f);
+            shadow.effectDistance = new Vector2(1.5f, -1.5f);
+
+            quantityText = qText;
+        }
     }
 
     private static Font _font;
