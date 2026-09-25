@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a783b81893731074197062d5e7c46f15, type: 3}
+  m_Name: TrophyCube_Green
+  m_EditorClassIdentifier: Assembly-CSharp::ItemData
+  itemId: trophycube_green
+  itemName: Trophy Cube Green
+  category: 3
+  rarity: 0
+  itemIcon: {fileID: 1912599462, guid: 3dc1d22cf1644cc4da26d0bc4f0f1fdc, type: 3}
+  description: 
+  maxStack: 1
+  type: 3
+  buyPrice: 0
+  sellPrice: 0
+  isDirty: 0
+  cleanVariant: {fileID: 0}
+  placeablePrefab: {fileID: 5084433442380845697, guid: 0cfd086f9a0fead48b8decc7112a3f84, type: 3}

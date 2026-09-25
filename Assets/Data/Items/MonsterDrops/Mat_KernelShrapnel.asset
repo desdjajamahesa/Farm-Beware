@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ae5c125112b5be549a05d6bb0b7bba92, type: 3}
+  m_Name: Mat_KernelShrapnel
+  m_EditorClassIdentifier: Assembly-CSharp::ItemData
+  itemId: mat_kernel_shrapnel
+  itemName: Kernel Shrapnel
+  category: 4
+  rarity: 0
+  itemIcon: {fileID: 21300000, guid: ce8c1f7f8f07490bbf5a7ba1baf5b9d7, type: 3}
+  description: Sharp, crystallized corn kernels dropped by mutated Corn Musketeers.
+    Used for weapon upgrades.
+  maxStack: 20
+  type: 0
+  buyPrice: 0
+  sellPrice: 300
+  isDirty: 0
+  cleanVariant: {fileID: 0}

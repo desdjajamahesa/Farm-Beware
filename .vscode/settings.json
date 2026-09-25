@@ -60,12 +60,15 @@
         "*.asset": "yaml",
         "*.meta": "yaml",
         "*.prefab": "yaml",
-        "*.unity": "yaml",
+        "*.unity": "yaml"
     },
     "explorer.fileNesting.enabled": true,
     "explorer.fileNesting.patterns": {
         "*.sln": "*.csproj",
         "*.slnx": "*.csproj"
     },
-    "dotnet.defaultSolution": "Farm-Beware.slnx"
+    "dotnet.defaultSolution": "Farm-Beware.slnx",
+    "csharp-dev-tools.solutionViewer.selectedWorkspaceSolutions": [
+        "Farm-Beware.slnx"
+    ]
 }
