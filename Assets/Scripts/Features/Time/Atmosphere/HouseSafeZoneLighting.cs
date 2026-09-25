@@ -370,7 +370,7 @@ namespace FeaturesTime.Atmosphere
             });
         }
 
-        [ContextMenu("Enforce Physical Calibration (Range 18m, Spot 130, Layers)")]
+        [ContextMenu("Enforce Physical Calibration (Range 22m, Spot 135, Layers)")]
         public void EnforcePhysicalCalibration()
         {
             for (int i = 0; i < rooms.Count; i++)
@@ -379,9 +379,9 @@ namespace FeaturesTime.Atmosphere
                 if (r.downlight != null)
                 {
                     r.downlight.type = LightType.Spot;
-                    r.downlight.range = 18.0f;
-                    r.downlight.spotAngle = 130f;
-                    r.downlight.innerSpotAngle = 80f;
+                    r.downlight.range = 22.0f;
+                    r.downlight.spotAngle = 135f;
+                    r.downlight.innerSpotAngle = 85f;
                     r.downlight.shadows = LightShadows.Soft;
                     r.downlight.shadowStrength = 0.7f;
                     r.downlight.shadowNormalBias = 0.35f;
@@ -393,7 +393,7 @@ namespace FeaturesTime.Atmosphere
                 if (r.fillLight != null)
                 {
                     r.fillLight.type = LightType.Point;
-                    r.fillLight.range = 18.0f;
+                    r.fillLight.range = 20.0f;
                     r.fillLight.shadows = LightShadows.None;
                     r.fillLight.renderingLayerMask = 1 | 2; // Layer 1 (Default/Floor/Furniture) | Layer 2 (Interior)
                 }
