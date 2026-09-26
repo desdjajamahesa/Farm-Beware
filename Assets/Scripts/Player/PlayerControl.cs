@@ -21,6 +21,15 @@ public class PlayerControl : MonoBehaviour
     public float attackLockDuration = 1.1f;
     private bool isAttacking = false;
 
+    [Header("Pengaturan Pergerakan Saat Menyerang")]
+    [Tooltip("Pengali kecepatan jalan saat menyerang (misal: 0.4 = 40% dari walkSpeed). Karakter tetap bisa bergerak pelan.")]
+    [Range(0.1f, 1.0f)]
+    public float attackMoveSpeedMultiplier = 0.4f;
+
+    [Tooltip("Kecepatan rotasi karakter saat menyerang sehingga bisa berputar/membalik arah (bulak-balik).")]
+    [Range(5f, 30f)]
+    public float attackTurnSpeed = 18f;
+
     private CapsuleCollider playerCollider;
     private Rigidbody rb;
     private Animator animator;
@@ -144,8 +153,8 @@ public class PlayerControl : MonoBehaviour
             return;
         }
 
-        // Saat menanam benih atau menyerang, karakter diam di tempat (tidak bisa bergerak/berlari/lompat/interact)
-        if (isPlanting || isAttacking)
+        // Saat menanam benih, karakter diam di tempat (tidak bisa bergerak/berlari/lompat/interact)
+        if (isPlanting)
         {
             inputVector = Vector3.zero;
             isRunning = false;
@@ -158,13 +167,17 @@ public class PlayerControl : MonoBehaviour
             return;
         }
 
-        HandleInventoryInput();
-        HandleHotbarInput();
-        HandleAttackInput();
-
-        if (Keyboard.current != null && Keyboard.current.eKey.wasPressedThisFrame)
+        // Input aksi lain diblokir saat sedang mengeksekusi serangan
+        if (!isAttacking)
         {
-            TriggerInteract();
+            HandleInventoryInput();
+            HandleHotbarInput();
+            HandleAttackInput();
+
+            if (Keyboard.current != null && Keyboard.current.eKey.wasPressedThisFrame)
+            {
+                TriggerInteract();
+            }
         }
 
         // 1. Cek apakah karakter menginjak tanah
@@ -183,7 +196,7 @@ public class PlayerControl : MonoBehaviour
 
         // 3. Cek apakah pemain menahan tombol Shift untuk Lari (Sprint)
         bool isMoving = inputVector.magnitude >= 0.1f;
-        bool wantsToRun = Keyboard.current != null && (Keyboard.current.leftShiftKey.isPressed || Keyboard.current.rightShiftKey.isPressed);
+        bool wantsToRun = !isAttacking && Keyboard.current != null && (Keyboard.current.leftShiftKey.isPressed || Keyboard.current.rightShiftKey.isPressed);
 
         // Karakter hanya berlari jika bergerak, menekan shift, dan memiliki stamina
         isRunning = isMoving && wantsToRun && (playerStats == null || !playerStats.IsExhausted);
@@ -197,36 +210,45 @@ public class PlayerControl : MonoBehaviour
         // 5. Sinkronisasi Animator secara natural
         if (animator != null)
         {
-            // Kecepatan horizontal fisik aktual agar langkah kaki sinkron (mencegah efek kaki selip)
-            Vector3 horizVel = rb != null ? new Vector3(rb.linearVelocity.x, 0f, rb.linearVelocity.z) : Vector3.zero;
-            float currentSpeed = horizVel.magnitude;
-
-            float targetSpeed = 0f;
-            if (isMoving && currentSpeed > 0.1f)
+            if (isAttacking)
             {
-                if (isRunning)
-                {
-                    targetSpeed = Mathf.Clamp(currentSpeed / runSpeed, 0.5f, 1.0f);
-                }
-                else
-                {
-                    targetSpeed = Mathf.Clamp((currentSpeed / walkSpeed) * 0.5f, 0.1f, 0.5f);
-                }
+                animator.SetBool("Sprinting", false);
+                animator.SetBool("Grounded", isGrounded);
+                animator.SetFloat("Vel", isMoving ? 0.3f : 0f);
             }
+            else
+            {
+                // Kecepatan horizontal fisik aktual agar langkah kaki sinkron (mencegah efek kaki selip)
+                Vector3 horizVel = rb != null ? new Vector3(rb.linearVelocity.x, 0f, rb.linearVelocity.z) : Vector3.zero;
+                float currentSpeed = horizVel.magnitude;
 
-            // Gunakan dampTime 0.12f agar perubahan kecepatan dan langkah kaki bertransisi mulus
-            animator.SetFloat("Vel", targetSpeed, 0.12f, Time.deltaTime);
-            animator.SetBool("Grounded", isGrounded);
-            // Idle aktif jika pemain tidak memberi input dan kecepatan tubuh sudah melambat
-            animator.SetBool("Idle", !isMoving && currentSpeed < 0.25f);
-            animator.SetBool("Sprinting", isRunning && currentSpeed > walkSpeed * 0.8f);
+                float targetSpeed = 0f;
+                if (isMoving && currentSpeed > 0.1f)
+                {
+                    if (isRunning)
+                    {
+                        targetSpeed = Mathf.Clamp(currentSpeed / runSpeed, 0.5f, 1.0f);
+                    }
+                    else
+                    {
+                        targetSpeed = Mathf.Clamp((currentSpeed / walkSpeed) * 0.5f, 0.1f, 0.5f);
+                    }
+                }
+
+                // Gunakan dampTime 0.12f agar perubahan kecepatan dan langkah kaki bertransisi mulus
+                animator.SetFloat("Vel", targetSpeed, 0.12f, Time.deltaTime);
+                animator.SetBool("Grounded", isGrounded);
+                // Idle aktif jika pemain tidak memberi input dan kecepatan tubuh sudah melambat
+                animator.SetBool("Idle", !isMoving && currentSpeed < 0.25f);
+                animator.SetBool("Sprinting", isRunning && currentSpeed > walkSpeed * 0.8f);
+            }
         }
     }
 
     void FixedUpdate()
     {
-        // Kunci input: hentikan fisika pergerakan saat terkunci atau sedang menanam/menyerang
-        if (isInputLocked || isPlanting || isAttacking)
+        // Kunci input: hentikan fisika pergerakan saat terkunci atau sedang menanam benih
+        if (isInputLocked || isPlanting)
         {
             if (rb != null)
                 rb.linearVelocity = new Vector3(0f, rb.linearVelocity.y, 0f);
@@ -246,7 +268,13 @@ public class PlayerControl : MonoBehaviour
             {
                 speedMultiplier *= 1.10f; // Sweet Potato Path: +10% Movement Speed
             }
-            float maxSpeed = (isRunning ? runSpeed : walkSpeed) * speedMultiplier;
+
+            float baseSpeed = isRunning ? runSpeed : walkSpeed;
+            if (isAttacking)
+            {
+                baseSpeed = walkSpeed * attackMoveSpeedMultiplier;
+            }
+            float maxSpeed = baseSpeed * speedMultiplier;
             Vector3 desiredMove = moveDirection;
 
             // 1. Wall Sliding via kontak fisika aktif
@@ -328,7 +356,8 @@ public class PlayerControl : MonoBehaviour
             {
                 Vector3 lookEuler = Quaternion.LookRotation(desiredMove).eulerAngles;
                 Quaternion targetRotation = Quaternion.Euler(0f, lookEuler.y, 0f);
-                rb.MoveRotation(Quaternion.Slerp(rb.rotation, targetRotation, turnSpeed * Time.fixedDeltaTime));
+                float activeTurnSpeed = isAttacking ? attackTurnSpeed : turnSpeed;
+                rb.MoveRotation(Quaternion.Slerp(rb.rotation, targetRotation, activeTurnSpeed * Time.fixedDeltaTime));
             }
         }
 
@@ -426,20 +455,6 @@ public class PlayerControl : MonoBehaviour
     private IEnumerator RoutineAttack()
     {
         isAttacking = true;
-        inputVector = Vector3.zero;
-
-        if (rb != null)
-        {
-            rb.linearVelocity = new Vector3(0f, rb.linearVelocity.y, 0f);
-            rb.angularVelocity = Vector3.zero;
-        }
-
-        if (animator != null)
-        {
-            animator.SetFloat("Vel", 0f);
-            animator.SetBool("Idle", true);
-            animator.SetBool("Sprinting", false);
-        }
 
         // Tunggu satu frame agar transisi animator ke state attack dimulai
         yield return null;
