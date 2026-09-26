@@ -97,7 +97,18 @@ namespace FeaturesWardrobe
 #pragma warning restore 0414
 
         private bool isInWardrobeMode;
-        public static bool IsInWardrobeMode { get; private set; }
+        private static bool _isInWardrobeMode;
+        public static bool IsInWardrobeMode
+        {
+            get => _isInWardrobeMode && Instance != null && Instance.isInWardrobeMode;
+            private set => _isInWardrobeMode = value;
+        }
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetStatics()
+        {
+            _isInWardrobeMode = false;
+        }
         private Coroutine fadeCoroutine;
         private Vector3 playerOriginalPosition;
         private Quaternion playerOriginalRotation;
@@ -620,6 +631,8 @@ namespace FeaturesWardrobe
                 return;
             }
             Instance = this;
+            isInWardrobeMode = false;
+            _isInWardrobeMode = false;
 
             // Self-healing: if the Player prefab was replaced and serialized
             // references were lost, resolve them dynamically.
@@ -670,7 +683,19 @@ namespace FeaturesWardrobe
         private void OnDestroy()
         {
             if (Instance == this)
+            {
                 Instance = null;
+                _isInWardrobeMode = false;
+            }
+        }
+
+        private void OnDisable()
+        {
+            if (isInWardrobeMode)
+            {
+                ExitWardrobeMode();
+            }
+            _isInWardrobeMode = false;
         }
 
         #endregion

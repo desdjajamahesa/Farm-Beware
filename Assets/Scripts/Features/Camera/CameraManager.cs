@@ -237,6 +237,14 @@ namespace FeaturesCamera
             trophyCamera.gameObject.SetActive(true);
             trophyCamera.enabled = true;
 
+            // Ensure TrophyCamera uses calibrated framing if scene still has legacy uncalibrated offset
+            if (Vector3.Distance(trophyCamera.transform.localPosition, new Vector3(0f, 1.1f, 1.9f)) < 0.1f)
+            {
+                trophyCamera.transform.localPosition = new Vector3(0.75f, 0.1f, 2.6f);
+                trophyCamera.transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
+                trophyCamera.fieldOfView = 58f;
+            }
+
             // Lock input, free cursor
             if (playerControl != null)
                 playerControl.isInputLocked = true;
