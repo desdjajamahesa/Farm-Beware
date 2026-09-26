@@ -65,6 +65,15 @@ namespace FeaturesCombat
         }
 
         /// <summary>
+        /// Mengatur radius jangkauan deteksi hit agar sinkron dengan pengaturan PlayerEquipment.
+        /// </summary>
+        public void ConfigureHitRange(float hitRange)
+        {
+            sweepRadius = hitRange * 0.65f;
+            sweepForwardOffset = hitRange * 0.5f;
+        }
+
+        /// <summary>
         /// Mengaktifkan hitbox selama jendela ayunan aktif.
         /// </summary>
         public void Activate(GameObject attackerOwner, int damage, float knockback, Vector3 direction)

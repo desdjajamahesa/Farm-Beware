@@ -444,13 +444,17 @@ public class PlayerControl : MonoBehaviour
         // Tunggu satu frame agar transisi animator ke state attack dimulai
         yield return null;
 
+        float atkSpeed = (playerEquipment != null) ? Mathf.Max(0.5f, playerEquipment.AttackAnimationSpeed) : 1f;
+        float maxLock = attackLockDuration / atkSpeed;
+        float minLock = 0.35f / atkSpeed;
+
         float timer = 0f;
-        while (timer < attackLockDuration)
+        while (timer < maxLock)
         {
             timer += Time.deltaTime;
 
-            // Jika animator sudah selesai animasi serang dan bertransisi kembali ke Idle/Moving setelah minimal 0.4 detik
-            if (timer > 0.4f && animator != null)
+            // Jika animator sudah selesai animasi serang dan bertransisi kembali ke Idle/Moving setelah minimal minLock detik
+            if (timer > minLock && animator != null)
             {
                 var stateInfo = animator.GetCurrentAnimatorStateInfo(0);
                 if (!stateInfo.IsName("attack") && !animator.GetNextAnimatorStateInfo(0).IsName("attack"))
