@@ -9,7 +9,9 @@ public class PlayerEquipment : MonoBehaviour
     
     [Header("Pengaturan Animasi Equip & Attack")]
     [Tooltip("Nama Trigger parameter di Animator Controller (misal: \"Equip\", \"DrawItem\").")]
-    [SerializeField] private string equipTriggerName = "Equip";
+    #pragma warning disable CS0414
+    [SerializeField] private string equipTriggerName = "";
+#pragma warning restore CS0414
 
     [Tooltip("Nama Trigger parameter di Animator Controller untuk serangan pedang (misal: \"Attack\", \"Slash\").")]
     [SerializeField] private string attackTriggerName = "Attack";
@@ -234,7 +236,9 @@ public class PlayerEquipment : MonoBehaviour
     }
 
     private ItemData lastEquippedItem;
+    #pragma warning disable CS0414
     private bool isInitialized = false;
+#pragma warning restore CS0414
 
     private void Start()
     {
@@ -281,13 +285,7 @@ public class PlayerEquipment : MonoBehaviour
 
         UpdateEquipmentVisual(inventory.selectedHotbarIndex);
 
-        if (isInitialized && itemChanged && animator != null && !string.IsNullOrEmpty(equipTriggerName))
-        {
-            if (currentItem != null)
-            {
-                animator.SetTrigger(equipTriggerName);
-            }
-        }
+        // Animasi equip/pegang barang dinonaktifkan
 
         lastEquippedItem = currentItem;
     }

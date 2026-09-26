@@ -161,7 +161,6 @@ public class PlayerControl : MonoBehaviour
         HandleInventoryInput();
         HandleHotbarInput();
         HandleAttackInput();
-        HandlePlantSeedInput();
 
         if (Keyboard.current != null && Keyboard.current.eKey.wasPressedThisFrame)
         {
@@ -466,16 +465,6 @@ public class PlayerControl : MonoBehaviour
         isAttacking = false;
     }
 
-    // Tombol Q: Memainkan animasi menanam benih (PlantSeed) dan mengunci gerakan pemain sampai animasi selesai.
-    private void HandlePlantSeedInput()
-    {
-        if (isInputLocked || isPlanting || isAttacking || !isGrounded) return;
-
-        if (Keyboard.current != null && Keyboard.current.qKey.wasPressedThisFrame)
-        {
-            StartCoroutine(RoutinePlantSeed());
-        }
-    }
 
     /// <summary>
     /// Memanggil animasi menanam secara kontekstual (mis. saat berinteraksi dengan FarmlandTile).
