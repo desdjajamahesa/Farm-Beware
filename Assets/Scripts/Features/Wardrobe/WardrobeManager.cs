@@ -205,6 +205,14 @@ namespace FeaturesWardrobe
                 if (CameraManager.Instance != null)
                 {
                     CameraManager.Instance.SetMode(CameraManager.CameraMode.WardrobeMode, wardrobeRoot);
+
+                // Position wardrobeCamera at the mirror looking towards player front
+                if (wardrobeCamera != null && mirrorCamera != null && mirrorCamera.MirrorSurface != null)
+                {
+                    Transform mirror = mirrorCamera.MirrorSurface;
+                    wardrobeCamera.transform.position = mirror.position + mirror.right * 0.35f + mirror.forward * 0.1f + Vector3.up * -0.05f;
+                    wardrobeCamera.transform.rotation = Quaternion.LookRotation(mirror.forward, Vector3.up);
+                }
                 }
                 else
                 {
@@ -582,7 +590,7 @@ namespace FeaturesWardrobe
             if (mirrorCamera != null && mirrorCamera.MirrorSurface != null)
             {
                 Transform mirror = mirrorCamera.MirrorSurface;
-                float dist = playerMirrorDistance > 0.1f ? playerMirrorDistance : 1.4f;
+                float dist = playerMirrorDistance > 0.1f ? playerMirrorDistance : 1.8f;
                 target = mirror.position + mirror.forward * dist;
                 target.y = playerControl.transform.position.y;
                 // Hadapkan player menghadap cermin

@@ -34465,6 +34465,7 @@ Transform:
   m_Children:
   - {fileID: 502125278}
   - {fileID: 273969139}
+  - {fileID: 2101716604}
   m_Father: {fileID: 518510562}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1108908586
@@ -68899,8 +68900,7 @@ Transform:
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
-  m_Children:
-  - {fileID: 2101716604}
+  m_Children: []
   m_Father: {fileID: 9098951824941862069}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &2042797905
@@ -70867,13 +70867,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2101716603}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.0041110725, y: 0.9936777, z: -0.03880554, w: 0.105270565}
-  m_LocalPosition: {x: -2, y: 1.35, z: 3.5}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0.35, y: -0.05, z: 0.1}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 2037915621}
-  m_LocalEulerAnglesHint: {x: 9.4, y: -104.49, z: 0}
+  m_Father: {fileID: 1106865935}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!20 &2101716605
 Camera:
   m_ObjectHideFlags: 0
@@ -76817,7 +76817,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 4895548859270506428}
   serializedVersion: 2
-  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalRotation: {x: 0, y: 1, z: 0, w: 0}
   m_LocalPosition: {x: 1.4500008, y: 0.13, z: -3.1599998}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
@@ -76826,7 +76826,7 @@ Transform:
   - {fileID: 3264196078108814979}
   - {fileID: 2037915621}
   m_Father: {fileID: 518510562}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 180, z: 0}
 --- !u!114 &9098951824941862071
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -76881,7 +76881,7 @@ MonoBehaviour:
   mirrorCamera: {fileID: 273969144}
   mainCamera: {fileID: 330585545}
   wardrobeCamera: {fileID: 2101716605}
-  playerMirrorDistance: 1.35
+  playerMirrorDistance: 1.8
   lateralShift: 0.8
   uiFadeDuration: 0.3
   mirrorFallbackAnchor: {fileID: 0}
