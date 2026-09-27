@@ -15,7 +15,7 @@ namespace FeaturesCamera
         public float transparentAlpha = 0.15f;
 
         [Tooltip("Fade speed (higher = faster)")]
-        public float fadeSpeed = 8f;
+        public float fadeSpeed = 4.8f;
 
         [Header("References (auto-assigned if empty)")]
         [SerializeField] private MeshRenderer meshRenderer;
@@ -182,6 +182,7 @@ namespace FeaturesCamera
             }
 
             // Create transparent materials for additional renderers
+            var oldOrigList = new List<Material[]>(additionalOriginalMaterialsList);
             additionalOriginalMaterialsList.Clear();
             additionalTransparentMaterialsList.Clear();
             additionalUsingTransparentList.Clear();
@@ -196,11 +197,20 @@ namespace FeaturesCamera
                     continue;
                 }
 
-                Material[] origMats = rend.sharedMaterials;
+                Material[] origMats = null;
+                if (i < oldOrigList.Count && oldOrigList[i] != null && oldOrigList[i].Length > 0 &&
+                    oldOrigList[i][0] != null && !oldOrigList[i][0].name.Contains("Transparent_"))
+                {
+                    origMats = oldOrigList[i];
+                }
+                else
+                {
+                    origMats = rend.sharedMaterials;
+                }
                 additionalOriginalMaterialsList.Add(origMats);
 
-                Material[] addTransMats = new Material[origMats.Length];
-                for (int m = 0; m < origMats.Length; m++)
+                Material[] addTransMats = new Material[origMats != null ? origMats.Length : 0];
+                for (int m = 0; m < (origMats != null ? origMats.Length : 0); m++)
                 {
                     var orig = origMats[m];
                     if (orig == null) continue;
@@ -229,6 +239,15 @@ namespace FeaturesCamera
             }
         }
 
+        /// <summary>
+        /// Reinitializes materials and renderers. Call after modifying additionalRenderers at runtime or in editor.
+        /// </summary>
+        public void Reinitialize()
+        {
+            isInitialized = false;
+            Initialize();
+        }
+
         private void Update()
         {
             if (!isInitialized) Initialize();
@@ -247,6 +266,10 @@ namespace FeaturesCamera
         private void FadeAlpha()
         {
             if (!isInitialized) Initialize();
+            else if (additionalRenderers != null && additionalTransparentMaterialsList.Count != additionalRenderers.Count)
+            {
+                CreateTransparentMaterial();
+            }
 
             if (meshRenderer == null && (additionalRenderers == null || additionalRenderers.Count == 0)) return;
 

@@ -45,7 +45,7 @@ namespace FeaturesInteraction
                 ? customInteractMessage
                 : $"Berinteraksi dengan {furnitureType} ({gameObject.name})";
 
-            if (furnitureType == "Table" || furnitureType == "Merchant Table")
+            if (furnitureType == "Merchant Table")
             {
                 var merchant = GetComponent<FeaturesEconomy.MerchantTableInteractable>();
                 if (merchant == null)
@@ -53,6 +53,8 @@ namespace FeaturesInteraction
                 merchant.Interact(interactor);
                 return;
             }
+
+            Debug.Log($"[GenericFurnitureInteractable] {message}");
         }
 
         // Helper untuk setup cepat via Inspector

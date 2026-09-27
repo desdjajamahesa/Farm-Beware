@@ -197,6 +197,18 @@ namespace FeaturesCombat
         {
             if (IsDead || isPerformingSkill) return;
 
+            // 1. Batas Anti-Penetrasi Safe Zone: Cegah monster masuk/terselip ke dalam interior rumah modular
+            if (NightBrawlManager.IsInsideHouse(transform.position))
+            {
+                Vector3 safeOutdoor = NightBrawlManager.GetNearestOutdoorPosition(transform.position, 1.5f);
+                if (rb != null)
+                {
+                    rb.position = safeOutdoor;
+                    rb.linearVelocity = Vector3.zero;
+                }
+                transform.position = safeOutdoor;
+            }
+
             if (playerTarget == null)
             {
                 FindPlayerTarget();
@@ -205,31 +217,37 @@ namespace FeaturesCombat
 
             skillCooldownTimer += Time.deltaTime;
 
-            float dist = Vector3.Distance(transform.position, playerTarget.position);
+            bool isPlayerInsideHouse = NightBrawlManager.IsInsideHouse(playerTarget.position);
+            Vector3 effectiveTargetPos = isPlayerInsideHouse 
+                ? NightBrawlManager.GetNearestOutdoorPosition(playerTarget.position, 2.5f) 
+                : playerTarget.position;
+
+            float distToTarget = Vector3.Distance(transform.position, effectiveTargetPos);
+            float distToPlayer = Vector3.Distance(transform.position, playerTarget.position);
 
             // Pada mode malam (Night Brawl), monster selalu agresif langsung mengejar dan memburu pemain tanpa batas jarak aggro
             bool isNightActive = (TimeManager.Instance != null && TimeManager.Instance.currentPhase == TimeManager.DayPhase.Night) ||
                                  (NightBrawlManager.Instance != null && NightBrawlManager.Instance.IsNightBrawlActive);
 
-            bool isAggroed = isNightActive || (dist <= aggroRange);
+            bool isAggroed = isNightActive || (distToPlayer <= aggroRange && !isPlayerInsideHouse);
 
             // Cek AI behaviour
             if (isAggroed)
             {
-                LookAtTarget(playerTarget.position);
+                LookAtTarget(effectiveTargetPos);
 
-                // Cek eksekusi skill khusus jika cooldown siap
+                // Cek eksekusi skill khusus jika cooldown siap (hanya jika pemain tidak berada aman di dalam rumah)
                 if (skillCooldownTimer >= GetSkillCooldown())
                 {
-                    TryExecuteSkill(dist);
+                    TryExecuteSkill(distToPlayer);
                 }
-                else if (dist <= attackRange)
+                else if (!isPlayerInsideHouse && distToPlayer <= attackRange)
                 {
                     TryPerformAttack();
                 }
                 else if (moveSpeed > 0f && !isBurrowed)
                 {
-                    ChasePlayer();
+                    ChaseTarget(effectiveTargetPos);
                 }
             }
             else
@@ -242,9 +260,9 @@ namespace FeaturesCombat
             }
         }
 
-        private void ChasePlayer()
+        private void ChaseTarget(Vector3 targetPos)
         {
-            if (rb == null || playerTarget == null) return;
+            if (rb == null) return;
 
             // Jika HP sangat sekarat dan tipe TuberMaw, jalankan Tunnel Rush (lari menjauh)
             bool isLowHp = currentHealth <= maxHealth * 0.25f;
@@ -252,11 +270,11 @@ namespace FeaturesCombat
 
             if (isLowHp && enemyType == EnemyType.TuberMaw)
             {
-                moveDir = (transform.position - playerTarget.position).normalized;
+                moveDir = (transform.position - targetPos).normalized;
             }
             else
             {
-                moveDir = (playerTarget.position - transform.position).normalized;
+                moveDir = (targetPos - transform.position).normalized;
             }
 
             moveDir.y = 0f;
@@ -279,8 +297,8 @@ namespace FeaturesCombat
 
             lastAttackTime = Time.time;
 
-            // Berikan contact damage pada pemain
-            if (playerTarget != null)
+            // Berikan contact damage pada pemain jika pemain tidak berada di safe zone dalam rumah
+            if (playerTarget != null && !NightBrawlManager.IsInsideHouse(playerTarget.position))
             {
                 IDamageable playerDamageable = playerTarget.GetComponent<IDamageable>();
                 if (playerDamageable != null && !playerDamageable.IsDead)
@@ -348,23 +366,28 @@ namespace FeaturesCombat
             Vector3 startScale = transform.localScale;
             transform.localScale = new Vector3(startScale.x, 0.1f, startScale.z);
 
-            // Track posisi pemain selama 1.2 detik
+            // Track posisi pemain selama 1.2 detik (dibatasi di luar batas rumah jika pemain di dalam rumah)
             float timer = 0f;
             while (timer < 1.2f)
             {
                 timer += Time.deltaTime;
                 if (playerTarget != null)
                 {
-                    transform.position = Vector3.MoveTowards(transform.position, playerTarget.position, (moveSpeed * 1.5f) * Time.deltaTime);
+                    Vector3 burrowDest = playerTarget.position;
+                    if (NightBrawlManager.IsInsideHouse(burrowDest))
+                    {
+                        burrowDest = NightBrawlManager.GetNearestOutdoorPosition(burrowDest, 2.0f);
+                    }
+                    transform.position = Vector3.MoveTowards(transform.position, burrowDest, (moveSpeed * 1.5f) * Time.deltaTime);
                 }
                 yield return null;
             }
 
-            // Muncul mendadak dan hantam pemain
+            // Muncul mendadak dan hantam pemain jika pemain berada di luar rumah
             transform.localScale = startScale;
             isBurrowed = false;
 
-            if (playerTarget != null && Vector3.Distance(transform.position, playerTarget.position) <= 2.2f)
+            if (playerTarget != null && !NightBrawlManager.IsInsideHouse(playerTarget.position) && Vector3.Distance(transform.position, playerTarget.position) <= 2.2f)
             {
                 var target = playerTarget.GetComponent<IDamageable>();
                 target?.TakeDamage(contactDamage + 10, playerTarget.position, Vector3.up);
@@ -393,7 +416,7 @@ namespace FeaturesCombat
             if (Physics.Raycast(transform.position + Vector3.up * 1.5f, shootDir, out hit, 15f))
             {
                 var target = hit.collider.GetComponent<IDamageable>() ?? hit.collider.GetComponentInParent<IDamageable>();
-                if (target != null && hit.collider.CompareTag("Player"))
+                if (target != null && hit.collider.CompareTag("Player") && !NightBrawlManager.IsInsideHouse(hit.point))
                 {
                     target.TakeDamage(25, hit.point, shootDir);
                 }
@@ -434,11 +457,15 @@ namespace FeaturesCombat
 
             yield return new WaitForSeconds(1.5f);
 
-            // Turun menghantam tanah di dekat pemain
+            // Turun menghantam tanah di dekat pemain (atau di batas luar jika pemain di dalam rumah)
             Vector3 slamTarget = playerTarget != null ? playerTarget.position : groundPos;
+            if (NightBrawlManager.IsInsideHouse(slamTarget))
+            {
+                slamTarget = NightBrawlManager.GetNearestOutdoorPosition(slamTarget, 2.5f);
+            }
             transform.position = slamTarget;
 
-            if (playerTarget != null && Vector3.Distance(transform.position, playerTarget.position) <= 4f)
+            if (playerTarget != null && !NightBrawlManager.IsInsideHouse(playerTarget.position) && Vector3.Distance(transform.position, playerTarget.position) <= 4f)
             {
                 var target = playerTarget.GetComponent<IDamageable>();
                 target?.TakeDamage(35, slamTarget, Vector3.up);
@@ -455,7 +482,7 @@ namespace FeaturesCombat
             // Charge shot 1 detik
             yield return new WaitForSeconds(0.8f);
 
-            if (playerTarget != null)
+            if (playerTarget != null && !NightBrawlManager.IsInsideHouse(playerTarget.position))
             {
                 Vector3 shotDir = (playerTarget.position - transform.position).normalized;
                 RaycastHit hit;
@@ -487,7 +514,8 @@ namespace FeaturesCombat
 
             yield return new WaitForSeconds(1.2f);
 
-            if (playerTarget != null)
+            // Jika pemain berada di dalam rumah, atap melindungi sepenuhnya (0 damage)
+            if (playerTarget != null && !NightBrawlManager.IsInsideHouse(playerTarget.position))
             {
                 var target = playerTarget.GetComponent<IDamageable>();
                 target?.TakeDamage(30, playerTarget.position, Vector3.down);

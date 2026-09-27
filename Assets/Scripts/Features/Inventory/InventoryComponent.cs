@@ -22,6 +22,17 @@ public class InventoryComponent : MonoBehaviour
         {
             ResetInventory(maxCapacity);
         }
+        else
+        {
+            // Pastikan item yang sudah ada di inspector tidak memiliki quantity <= 0
+            for (int i = 0; i < slots.Count; i++)
+            {
+                if (slots[i] != null && slots[i].item != null && slots[i].quantity <= 0)
+                {
+                    slots[i].quantity = 1;
+                }
+            }
+        }
 
         // Auto-detect player inventory agar hasHotbar aktif otomatis tanpa perlu konfigurasi inspector manual
         if (CompareTag("Player") || GetComponent<PlayerControl>() != null || blockTrophyItems)
@@ -117,6 +128,15 @@ public class InventoryComponent : MonoBehaviour
 
         while (slots.Count < maxCapacity)
             slots.Add(new InventorySlot());
+
+        // Normalisasi: jika ada slot yang terpasang item tapi quantity <= 0, perbaiki ke 1
+        for (int i = 0; i < slots.Count; i++)
+        {
+            if (slots[i] != null && slots[i].item != null && slots[i].quantity <= 0)
+            {
+                slots[i].quantity = 1;
+            }
+        }
     }
 
     /// <summary>

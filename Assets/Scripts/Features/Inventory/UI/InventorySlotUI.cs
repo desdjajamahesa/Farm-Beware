@@ -90,8 +90,11 @@ public class InventorySlotUI : MonoBehaviour, IDropHandler, IPointerClickHandler
         flashing = false;
         SetProgressVisible(false);
 
-        if (slot == null || slot.IsEmpty)
+        // Treat slot as non-empty if item is present. Normalise quantity to at least 1 for display.
+        if (slot == null || slot.item == null)
             return;
+
+        int effectiveQuantity = slot.quantity <= 0 ? 1 : slot.quantity;
 
         // Spawn ulang ikon item.
         GameObject iconGO = new GameObject("Icon", typeof(RectTransform));
@@ -115,7 +118,7 @@ public class InventorySlotUI : MonoBehaviour, IDropHandler, IPointerClickHandler
             || (slot.item is ToolItemData tool && tool.isWeapon)
             || string.Equals(slot.item.itemId, "dummysword", System.StringComparison.OrdinalIgnoreCase);
 
-        if (!isWeapon && slot.quantity > 1)
+        if (!isWeapon && effectiveQuantity > 1)
         {
             // Spawn ulang teks quantity.
             GameObject qtyGO = new GameObject("Quantity", typeof(RectTransform));
@@ -135,7 +138,7 @@ public class InventorySlotUI : MonoBehaviour, IDropHandler, IPointerClickHandler
             qText.color = Color.white;
             qText.alignment = TextAnchor.LowerRight;
             qText.raycastTarget = false;
-            qText.text = slot.quantity.ToString();
+            qText.text = effectiveQuantity.ToString();
 
             var shadow = qtyGO.AddComponent<Shadow>();
             shadow.effectColor = new Color(0f, 0f, 0f, 0.9f);

@@ -34,7 +34,7 @@ namespace FeaturesTime.Atmosphere
 
         [Header("Night Preset (Malam Hari - Atmospheric Moonlight & Rim)")]
         [SerializeField] private Color nightLightColor = new Color(0.55f, 0.75f, 1.0f);    // Colder Crisp Moonlight
-        [SerializeField] private float nightLightIntensity = 0.6f;                          // Moonlight 0.6f
+        [SerializeField] private float nightLightIntensity = 1.5f;                          // Moonlight 1.5f
         [SerializeField] private Vector3 nightLightRotation = new Vector3(55f, 35f, 0f);   // Pitch 55, Yaw 35
         [SerializeField] private Color nightAmbientSky = new Color(0.20f, 0.24f, 0.32f);    // Cool Night Sky
         [SerializeField] private Color nightAmbientEquator = new Color(0.14f, 0.16f, 0.22f); // Soft Horizon Fill
@@ -44,6 +44,16 @@ namespace FeaturesTime.Atmosphere
         [SerializeField] private float nightFogStart = 52f;  // Fog di luar area gameplay
         [SerializeField] private float nightFogEnd = 115f;   // Gradasi perimeter
         [SerializeField] private Color nightCameraBackground = new Color(0.06f, 0.09f, 0.16f); // Background malam jelas
+
+        [Header("Camera Projection Settings")]
+        [Tooltip("Orthographic size kamera utama saat siang hari.")]
+        [SerializeField] private float dayCameraOrthoSize = 7.0f;
+        [Tooltip("Orthographic size kamera utama saat malam hari.")]
+        [SerializeField] private float nightCameraOrthoSize = 7.0f;
+
+        public float NightLightIntensity { get => nightLightIntensity; set => nightLightIntensity = value; }
+        public float DayCameraOrthoSize { get => dayCameraOrthoSize; set => dayCameraOrthoSize = value; }
+        public float NightCameraOrthoSize { get => nightCameraOrthoSize; set => nightCameraOrthoSize = value; }
 
         private Camera mainCamera;
         private Coroutine transitionCoroutine;
@@ -140,6 +150,8 @@ namespace FeaturesTime.Atmosphere
 
             if (mainCamera == null) mainCamera = Camera.main;
             Color startCamBg = mainCamera != null ? mainCamera.backgroundColor : targetCamBg;
+            float targetCamOrtho = isNight ? nightCameraOrthoSize : dayCameraOrthoSize;
+            float startCamOrtho = mainCamera != null ? mainCamera.orthographicSize : targetCamOrtho;
 
             float elapsed = 0f;
             while (elapsed < transitionDuration)
@@ -165,6 +177,10 @@ namespace FeaturesTime.Atmosphere
                 if (mainCamera != null)
                 {
                     mainCamera.backgroundColor = Color.Lerp(startCamBg, targetCamBg, t);
+                    if (mainCamera.orthographic)
+                    {
+                        mainCamera.orthographicSize = Mathf.Lerp(startCamOrtho, targetCamOrtho, t);
+                    }
                 }
 
                 yield return null;
@@ -189,6 +205,10 @@ namespace FeaturesTime.Atmosphere
             if (mainCamera != null)
             {
                 mainCamera.backgroundColor = targetCamBg;
+                if (mainCamera.orthographic)
+                {
+                    mainCamera.orthographicSize = targetCamOrtho;
+                }
             }
 
             transitionCoroutine = null;
@@ -219,6 +239,10 @@ namespace FeaturesTime.Atmosphere
             if (mainCamera != null)
             {
                 mainCamera.backgroundColor = isNight ? nightCameraBackground : dayCameraBackground;
+                if (mainCamera.orthographic)
+                {
+                    mainCamera.orthographicSize = isNight ? nightCameraOrthoSize : dayCameraOrthoSize;
+                }
             }
         }
     }
