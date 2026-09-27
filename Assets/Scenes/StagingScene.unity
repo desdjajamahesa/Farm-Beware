@@ -105321,7 +105321,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9bc8001cecc16f24f9acf0bec21e7600, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::FeaturesCombat.NightBrawlManager
-  arenaCenter: {x: 20, y: 0.5, z: 30}
+  arenaCenter: {x: 21, y: 0.5, z: 36}
   spawnRadiusMin: 8
   spawnRadiusMax: 15
   currentDay: 1
