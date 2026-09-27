@@ -1,4 +1,4 @@
-# AGENT.md
+# Agent Guidelines & Operational SOP
 
 Primary operating guidelines, behavioral constraints, and Git workflow rules for autonomous AI agents working in the **Farm-Beware** codebase.
 
