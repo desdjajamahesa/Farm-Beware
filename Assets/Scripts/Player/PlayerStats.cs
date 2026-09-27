@@ -60,6 +60,7 @@ public class PlayerStats : MonoBehaviour, FeaturesCombat.IDamageable
     private Renderer[] playerRenderers;
     private MaterialPropertyBlock hurtPropBlock;
     private Coroutine hurtFlashCoroutine;
+    private Animator playerAnimator;
 
     void Awake()
     {
@@ -69,6 +70,7 @@ public class PlayerStats : MonoBehaviour, FeaturesCombat.IDamageable
 
         playerRenderers = GetComponentsInChildren<Renderer>(true);
         hurtPropBlock = new MaterialPropertyBlock();
+        playerAnimator = GetComponentInChildren<Animator>();
     }
 
     void Start()
@@ -250,6 +252,17 @@ public class PlayerStats : MonoBehaviour, FeaturesCombat.IDamageable
         if (FeaturesCamera.IsometricCameraController.Instance != null)
         {
             FeaturesCamera.IsometricCameraController.Instance.TriggerShake(0.14f, 0.20f);
+        }
+
+        // 3. Reaksi tubuh terhuyung mundur jika menerima luka berat (>= 20 HP) dan sedang tidak menyerang
+        if (amount >= 20)
+        {
+            var pc = GetComponent<PlayerControl>();
+            if (pc != null && !pc.IsAttacking && playerAnimator != null)
+            {
+                playerAnimator.ResetTrigger("HitReact");
+                playerAnimator.SetTrigger("HitReact");
+            }
         }
     }
 

@@ -39,6 +39,19 @@ public class PlayerEquipment : MonoBehaviour
     [Tooltip("Biaya stamina per pukulan kombo: Hit 1, Hit 2, Hit 3.")]
     [SerializeField] private float[] comboStaminaCosts = new float[] { 10f, 10f, 15f };
 
+    [Header("Pengaturan Skill Tendangan (Spartan Kick)")]
+    [Tooltip("Konsumsi stamina saat melancarkan tendangan (Kick).")]
+    public float kickStaminaCost = 15f;
+    [Tooltip("Damage dari tendangan (Kick).")]
+    public int kickDamage = 22;
+    [Tooltip("Kekuatan dorongan knockback tendangan menjauhkan musuh.")]
+    public float kickKnockback = 10.5f;
+    [Tooltip("Jangkauan jarak tendangan (meter).")]
+    public float kickHitRange = 2.0f;
+    [Tooltip("Waktu cooldown skill tendangan (detik).")]
+    public float kickCooldown = 1.8f;
+    private float lastKickTime = -10f;
+
     [Header("Pengaturan Jurus Spesial (Leap Strike)")]
     [Tooltip("Nama Trigger parameter di Animator untuk jurus spesial.")]
     [SerializeField] private string skillTriggerName = "SkillAttack";
@@ -61,6 +74,7 @@ public class PlayerEquipment : MonoBehaviour
 
     public int CurrentComboIndex => currentComboIndex;
     public bool IsExecutingSkill => isExecutingSkill;
+    public bool IsHoldingWeapon => currentWeaponModel != null;
 
     public enum RangeIndicatorVisibility
     {
@@ -257,6 +271,85 @@ public class PlayerEquipment : MonoBehaviour
         }
 
         return false;
+    }
+
+    public bool TryPerformKick()
+    {
+        if (Time.time - lastKickTime < kickCooldown)
+            return false;
+
+        if (playerStats != null && playerStats.currentStamina < kickStaminaCost)
+            return false;
+
+        if (playerStats != null)
+        {
+            playerStats.UseStamina(kickStaminaCost);
+        }
+
+        lastKickTime = Time.time;
+
+        if (animator != null)
+        {
+            animator.ResetTrigger("Kick");
+            animator.SetTrigger("Kick");
+        }
+
+        if (currentSwingCoroutine != null)
+        {
+            StopCoroutine(currentSwingCoroutine);
+        }
+
+        currentSwingCoroutine = StartCoroutine(RoutineKickHitbox());
+        return true;
+    }
+
+    private System.Collections.IEnumerator RoutineKickHitbox()
+    {
+        float speed = Mathf.Max(0.5f, AttackAnimationSpeed);
+        float impactDelay = 0.08f / speed;
+        yield return new WaitForSeconds(impactDelay);
+
+        Vector3 origin = transform.position + Vector3.up * 0.8f;
+        Vector3 forwardDir = transform.forward;
+        Vector3 sweepCenter = origin + forwardDir * (kickHitRange * 0.5f);
+        Collider[] hits = Physics.OverlapSphere(sweepCenter, kickHitRange * 0.7f, ~0, QueryTriggerInteraction.Collide);
+
+        var hitSet = new System.Collections.Generic.HashSet<FeaturesCombat.IDamageable>();
+        foreach (var c in hits)
+        {
+            if (c == null || c.gameObject == gameObject || c.transform.IsChildOf(transform)) continue;
+
+            Vector3 toTarget = c.transform.position - origin;
+            toTarget.y = 0f;
+            if (toTarget.sqrMagnitude > 0.04f && Vector3.Dot(forwardDir, toTarget.normalized) < 0.20f)
+                continue;
+
+            var target = c.GetComponent<FeaturesCombat.IDamageable>() ?? c.GetComponentInParent<FeaturesCombat.IDamageable>();
+            if (target != null && !target.IsDead && hitSet.Add(target))
+            {
+                Vector3 hitPoint = c.ClosestPoint(sweepCenter);
+                target.TakeDamage(kickDamage, hitPoint, forwardDir);
+
+                Rigidbody targetRb = c.GetComponent<Rigidbody>() ?? c.GetComponentInParent<Rigidbody>();
+                if (targetRb != null && !targetRb.isKinematic)
+                {
+                    Vector3 kbDir = (forwardDir + Vector3.up * 0.2f).normalized;
+                    targetRb.AddForce(kbDir * kickKnockback, ForceMode.Impulse);
+                }
+
+                if (PlayerUI.FloatingCombatTextManager.Instance != null)
+                {
+                    PlayerUI.FloatingCombatTextManager.Instance.SpawnEnemyDamage(
+                        hitPoint + Vector3.up * 0.8f,
+                        kickDamage,
+                        isCrit: true,
+                        isSkill: false);
+                }
+            }
+        }
+
+        yield return new WaitForSeconds(0.32f / speed);
+        currentSwingCoroutine = null;
     }
 
     public bool TryPerformSkillAttack()
