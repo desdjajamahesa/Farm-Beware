@@ -319,11 +319,39 @@ namespace FeaturesCombat
 
         /// <summary>
         /// Mengecek apakah sebuah koordinat dunia berada di dalam interior rumah.
-        /// Batas rumah: X: [9.5, 31.5], Z: [4.5, 26.5].
+        /// Batas rumah: X: [9.0, 32.0], Z: [4.0, 27.0].
         /// </summary>
         public static bool IsInsideHouse(Vector3 pos)
         {
             return pos.x >= 9.0f && pos.x <= 32.0f && pos.z >= 4.0f && pos.z <= 27.0f;
+        }
+
+        /// <summary>
+        /// Menghasilkan titik outdoor terdekat di luar perimeter rumah dengan margin aman.
+        /// Digunakan untuk mengusir monster keluar atau membatasi pergerakan skill agar tidak menembus rumah.
+        /// </summary>
+        public static Vector3 GetNearestOutdoorPosition(Vector3 pos, float margin = 1.5f)
+        {
+            float minX = 9.0f - margin;
+            float maxX = 32.0f + margin;
+            float minZ = 4.0f - margin;
+            float maxZ = 27.0f + margin;
+
+            float distNorth = Mathf.Abs(maxZ - pos.z);
+            float distSouth = Mathf.Abs(pos.z - minZ);
+            float distWest = Mathf.Abs(pos.x - minX);
+            float distEast = Mathf.Abs(maxX - pos.x);
+
+            float minDist = Mathf.Min(distNorth, Mathf.Min(distSouth, Mathf.Min(distWest, distEast)));
+
+            Vector3 outdoor = pos;
+            if (Mathf.Approximately(minDist, distNorth)) outdoor.z = maxZ;
+            else if (Mathf.Approximately(minDist, distSouth)) outdoor.z = minZ;
+            else if (Mathf.Approximately(minDist, distWest)) outdoor.x = minX;
+            else outdoor.x = maxX;
+
+            outdoor.y = Mathf.Max(0.1f, pos.y);
+            return outdoor;
         }
 
         /// <summary>

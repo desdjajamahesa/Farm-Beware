@@ -50,24 +50,24 @@ namespace FeaturesCamera
         [SerializeField] private float checkInterval = 0.03f;
 
         [Header("Occlusion Sampling")]
-        [Tooltip("Vertical heights relative to player pivot to test for occlusion (0.5m = lower body/legs, 1.0m = waist/torso, 1.5m = upper body/head)")]
-        [SerializeField] private float[] verticalSampleHeights = new float[] { 0.5f, 1.0f, 1.5f };
+        [Tooltip("Vertical heights relative to player pivot to test for occlusion (0.85m = lower torso, 1.25m = upper torso/chest, 1.65m = head)")]
+        [SerializeField] private float[] verticalSampleHeights = new float[] { 0.85f, 1.25f, 1.65f };
 
         [Tooltip("Number of horizontal fan rays for mid/upper samples to cover character width")]
         [Range(1, 5)]
         [SerializeField] private int fanRayCount = 3;
 
         [Tooltip("Half-angle of fan spread in degrees for mid/upper samples")]
-        [Range(1f, 15f)]
-        [SerializeField] private float maxFanAngle = 4f;
+        [Range(0.5f, 15f)]
+        [SerializeField] private float maxFanAngle = 1.8f;
 
         [Header("Hysteresis / Stability")]
         [Tooltip("How long (in seconds) to keep walls transparent after they stop being directly hit by rays. Prevents flicker when moving.")]
         [SerializeField] private float unoccludeDelay = 0.25f;
 
-        [Tooltip("SphereCast radius for occlusion test (0 = thin raycast). A small radius like 0.15m ensures seams between modular wall segments don't miss rays.")]
+        [Tooltip("SphereCast radius for occlusion test (0 = thin raycast). A calibrated radius of 0.05m ensures seams don't miss rays while avoiding premature side hits.")]
         [Range(0f, 0.5f)]
-        [SerializeField] private float raySphereRadius = 0.15f;
+        [SerializeField] private float raySphereRadius = 0.05f;
 
         [Header("Room Trigger Occlusion (Failsafe for whole rooms)")]
         [Tooltip("Rooms where being inside the trigger automatically keeps the room's foreground walls transparent.")]

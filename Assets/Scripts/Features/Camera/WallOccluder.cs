@@ -15,7 +15,7 @@ namespace FeaturesCamera
         public float transparentAlpha = 0.15f;
 
         [Tooltip("Fade speed (higher = faster)")]
-        public float fadeSpeed = 8f;
+        public float fadeSpeed = 2.8f;
 
         [Header("References (auto-assigned if empty)")]
         [SerializeField] private MeshRenderer meshRenderer;

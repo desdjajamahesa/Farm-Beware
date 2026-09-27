@@ -35,17 +35,20 @@ namespace FarmBeware.Editor.Rendering
                     { "Bedroom_East", new string[] { "Wall_East", "Window_East_2m" } }
                 }, ref occludersGrouped);
 
-                // 1a. Link Bedroom foreground walls (South and West) so both fade together seamlessly
+                // 1a. Decoupled Bedroom foreground walls (South and West are independent to prevent whole-room cascade)
                 var southGroupTrans = bedroomWall.transform.Find("Group_Bedroom_South");
                 var westGroupTrans = bedroomWall.transform.Find("Group_Bedroom_West");
                 southGroup = southGroupTrans != null ? southGroupTrans.GetComponent<WallOcclusionGroup>() : null;
                 westGroup = westGroupTrans != null ? westGroupTrans.GetComponent<WallOcclusionGroup>() : null;
 
-                if (southGroup != null && westGroup != null)
+                if (southGroup != null)
                 {
-                    if (!southGroup.linkedGroups.Contains(westGroup)) southGroup.linkedGroups.Add(westGroup);
-                    if (!westGroup.linkedGroups.Contains(southGroup)) westGroup.linkedGroups.Add(southGroup);
+                    southGroup.linkedGroups.Clear();
                     EditorUtility.SetDirty(southGroup);
+                }
+                if (westGroup != null)
+                {
+                    westGroup.linkedGroups.Clear();
                     EditorUtility.SetDirty(westGroup);
                 }
 
@@ -115,8 +118,9 @@ namespace FarmBeware.Editor.Rendering
                     if (bedroomZoneCol != null)
                     {
                         bedroomZoneCol.isTrigger = true;
-                        bedroomZoneCol.size = new Vector3(7.0f, 4.0f, 8.0f);
-                        bedroomZoneCol.center = new Vector3(0f, 1f, 0f);
+                        // Interior margin/padding: Z >= 19.03m (prevents triggering at doorway), X >= 21.40m
+                        bedroomZoneCol.size = new Vector3(9.60f, 4.0f, 6.80f);
+                        bedroomZoneCol.center = new Vector3(0.05f, 2.0f, 0.17f);
                         EditorUtility.SetDirty(bedroomZoneCol);
                         EditorUtility.SetDirty(bedroomZoneObj);
                     }
