@@ -51,11 +51,24 @@ public class PlayerStats : MonoBehaviour, FeaturesCombat.IDamageable
     public bool IsStarving => currentHunger <= 0.01f;
     public bool IsDehydrated => currentThirst <= 0.01f;
 
+    [Header("Visual Feedback Saat Terkena Hit")]
+    [Tooltip("Warna kedipan merah saat karakter pemain terkena hit monster.")]
+    [SerializeField] private Color hurtFlashColor = new Color(1f, 0.22f, 0.22f, 1f);
+    [Tooltip("Durasi kedipan merah tubuh pemain (detik).")]
+    [SerializeField] private float hurtFlashDuration = 0.12f;
+
+    private Renderer[] playerRenderers;
+    private MaterialPropertyBlock hurtPropBlock;
+    private Coroutine hurtFlashCoroutine;
+
     void Awake()
     {
         baseMaxHealth = maxHealth;
         baseMaxStamina = maxStamina;
         baseStaminaRegenRate = staminaRegenRate;
+
+        playerRenderers = GetComponentsInChildren<Renderer>(true);
+        hurtPropBlock = new MaterialPropertyBlock();
     }
 
     void Start()
@@ -229,6 +242,59 @@ public class PlayerStats : MonoBehaviour, FeaturesCombat.IDamageable
         currentHealth = Mathf.Clamp(currentHealth - amount, 0, maxHealth);
         OnHealthChanged?.Invoke(currentHealth, maxHealth);
         OnDamageTaken?.Invoke(amount);
+
+        // 1. Visual flash merah pada tubuh karakter pemain (agar jelas bahwa pemain yang terkena luka)
+        TriggerHurtFlash();
+
+        // 2. Shudder getaran kamera halus saat pemain menerima damage
+        if (FeaturesCamera.IsometricCameraController.Instance != null)
+        {
+            FeaturesCamera.IsometricCameraController.Instance.TriggerShake(0.14f, 0.20f);
+        }
+    }
+
+    private void TriggerHurtFlash()
+    {
+        if (playerRenderers == null || playerRenderers.Length == 0)
+        {
+            playerRenderers = GetComponentsInChildren<Renderer>(true);
+        }
+
+        if (playerRenderers == null || playerRenderers.Length == 0) return;
+
+        if (hurtFlashCoroutine != null)
+            StopCoroutine(hurtFlashCoroutine);
+
+        if (isActiveAndEnabled)
+            hurtFlashCoroutine = StartCoroutine(RoutineHurtFlash());
+    }
+
+    private System.Collections.IEnumerator RoutineHurtFlash()
+    {
+        if (hurtPropBlock == null) hurtPropBlock = new MaterialPropertyBlock();
+
+        hurtPropBlock.SetColor("_BaseColor", hurtFlashColor);
+        hurtPropBlock.SetColor("_Color", hurtFlashColor);
+
+        foreach (var r in playerRenderers)
+        {
+            if (r != null && !(r is ParticleSystemRenderer) && !(r is LineRenderer))
+            {
+                r.SetPropertyBlock(hurtPropBlock);
+            }
+        }
+
+        yield return new WaitForSeconds(hurtFlashDuration);
+
+        foreach (var r in playerRenderers)
+        {
+            if (r != null && !(r is ParticleSystemRenderer) && !(r is LineRenderer))
+            {
+                r.SetPropertyBlock(null);
+            }
+        }
+
+        hurtFlashCoroutine = null;
     }
 
     public void TakeDamage(int damage, Vector3 hitPoint, Vector3 hitDirection)

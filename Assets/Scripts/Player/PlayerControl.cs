@@ -20,6 +20,7 @@ public class PlayerControl : MonoBehaviour
     [Tooltip("Durasi karakter diam di tempat saat mengayunkan serangan pedang (detik).")]
     public float attackLockDuration = 1.1f;
     private bool isAttacking = false;
+    private bool isSkillLeaping = false;
 
     [Header("Pengaturan Pergerakan Saat Menyerang")]
     [Tooltip("Pengali kecepatan jalan saat menyerang (misal: 0.4 = 40% dari walkSpeed). Karakter tetap bisa bergerak pelan.")]
@@ -29,6 +30,21 @@ public class PlayerControl : MonoBehaviour
     [Tooltip("Kecepatan rotasi karakter saat menyerang sehingga bisa berputar/membalik arah (bulak-balik).")]
     [Range(5f, 30f)]
     public float attackTurnSpeed = 18f;
+
+    [Header("Pengaturan Jurus Spesial (Leap Momentum)")]
+    [Tooltip("Dorongan momentum maju saat melompat menerjang.")]
+    public float leapForwardImpulse = 6.5f;
+
+    [Tooltip("Dorongan momentum ke atas saat melompat menerjang.")]
+    public float leapUpwardImpulse = 2.5f;
+
+    [Header("Pengaturan Tangga (Step-Up)")]
+    [Tooltip("Tinggi maksimum anak tangga yang bisa dinaiki otomatis (meter).")]
+    [Range(0.05f, 0.6f)]
+    public float stepUpHeight = 0.35f;
+    [Tooltip("Kecepatan smooth naik anak tangga.")]
+    [Range(5f, 30f)]
+    public float stepUpSpeed = 15f;
 
     private CapsuleCollider playerCollider;
     private Rigidbody rb;
@@ -210,10 +226,11 @@ public class PlayerControl : MonoBehaviour
         // 5. Sinkronisasi Animator secara natural
         if (animator != null)
         {
+            animator.SetBool("IsAttacking", isAttacking);
             if (isAttacking)
             {
                 animator.SetBool("Sprinting", false);
-                animator.SetBool("Grounded", isGrounded);
+                animator.SetBool("Grounded", true); // Kunci Grounded tetap true saat menyerang agar AirBorn tidak memotong animasi
                 animator.SetFloat("Vel", isMoving ? 0.3f : 0f);
             }
             else
@@ -245,13 +262,54 @@ public class PlayerControl : MonoBehaviour
         }
     }
 
-    void FixedUpdate()
+    // Step-Up: Angkat karakter secara smooth melewati anak tangga rendah (tanpa invisible wall)
+    private void HandleStepUp(Vector3 moveDir)
+    {
+        if (moveDir.sqrMagnitude < 0.001f || playerCollider == null || rb == null) return;
+        if (!isGrounded) return;
+
+        float radius = playerCollider.radius;
+        float checkDist = radius + 0.2f;
+
+        // 1. Cek ada rintangan pendek di depan bawah (setinggi < stepUpHeight)
+        Vector3 lowOrigin = transform.position + Vector3.up * 0.05f;
+        if (!Physics.Raycast(lowOrigin, moveDir, out RaycastHit lowHit, checkDist,
+            ~LayerMask.GetMask("Ignore Raycast"), QueryTriggerInteraction.Ignore))
+            return;
+
+        // Pastikan rintangan cukup rendah (bukan dinding tinggi)
+        float obstacleTopY = lowHit.collider.bounds.max.y;
+        float stepDelta = obstacleTopY - transform.position.y;
+        if (stepDelta <= 0f || stepDelta > stepUpHeight) return;
+
+        // 2. Cek apakah di atas step ada ruang yang cukup (tidak ada atap rendah)
+        Vector3 aboveStepOrigin = transform.position + Vector3.up * (stepDelta + 0.05f) + moveDir * checkDist;
+        if (Physics.CheckSphere(aboveStepOrigin, radius * 0.9f,
+            ~LayerMask.GetMask("Ignore Raycast"), QueryTriggerInteraction.Ignore))
+            return;
+
+        // 3. Angkat player ke atas anak tangga secara smooth
+        float targetY = transform.position.y + stepDelta;
+        float newY = Mathf.MoveTowards(rb.position.y, targetY, stepUpSpeed * Time.fixedDeltaTime);
+        rb.MovePosition(new Vector3(rb.position.x, newY, rb.position.z));
+        // Reset vertical velocity saat step-up agar tidak memantul
+        if (rb.linearVelocity.y < 0f)
+            rb.linearVelocity = new Vector3(rb.linearVelocity.x, 0f, rb.linearVelocity.z);
+    }
+
+        void FixedUpdate()
     {
         // Kunci input: hentikan fisika pergerakan saat terkunci atau sedang menanam benih
         if (isInputLocked || isPlanting)
         {
             if (rb != null)
                 rb.linearVelocity = new Vector3(0f, rb.linearVelocity.y, 0f);
+            return;
+        }
+
+        // Saat jurus lompat menerjang (skill leap), biarkan momentum fisika menggerakkan tubuh maju
+        if (isSkillLeaping)
+        {
             return;
         }
 
@@ -351,6 +409,9 @@ public class PlayerControl : MonoBehaviour
 
             targetHorizontalVel = desiredMove * (maxSpeed * turnSpeedFactor);
 
+            // Step-Up: naik anak tangga otomatis tanpa invisible wall
+            HandleStepUp(desiredMove);
+
             // Rotasi karakter menghadap arah pergerakan / sliding
             if (desiredMove.sqrMagnitude > 0.001f)
             {
@@ -423,28 +484,35 @@ public class PlayerControl : MonoBehaviour
 
     // --- LOGIKA AKSI ---
 
-    // Klik Kiri Mouse / Tombol F / Serang: Panggil animasi serangan jika item yang dipegang adalah senjata dan kunci pergerakan selama ayunan.
+    // Klik Kiri Mouse / Tombol F: Serangan Kombo Biasa (3-Hit Combo)
+    // Klik Kanan Mouse / Tombol R: Jurus Spesial (Leap Strike)
     private void HandleAttackInput()
     {
         if (isInputLocked || isPlanting || isAttacking) return;
 
-        bool mouseClicked = Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame;
-        // Abaikan klik mouse jika pointer sedang berada di atas elemen UI (modal/inventory/hotbar)
-        if (mouseClicked && UnityEngine.EventSystems.EventSystem.current != null && UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject())
+        bool isPointerOverUI = UnityEngine.EventSystems.EventSystem.current != null &&
+                               UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject();
+
+        // 1. Serangan Normal (3-Hit Combo): Left Click atau Tombol F
+        bool leftClick = Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame && !isPointerOverUI;
+        bool fKey = Keyboard.current != null && Keyboard.current.fKey.wasPressedThisFrame;
+
+        // 2. Jurus Spesial (Leap Strike): Right Click atau Tombol R
+        bool rightClick = Mouse.current != null && Mouse.current.rightButton.wasPressedThisFrame && !isPointerOverUI;
+        bool rKey = Keyboard.current != null && Keyboard.current.rKey.wasPressedThisFrame;
+
+        if (playerEquipment == null)
+            playerEquipment = GetComponent<PlayerEquipment>() ?? gameObject.AddComponent<PlayerEquipment>();
+
+        if (rightClick || rKey)
         {
-            mouseClicked = false;
+            if (playerEquipment != null && playerEquipment.TryPerformSkillAttack())
+            {
+                StartCoroutine(RoutineSkillAttack());
+            }
         }
-
-        bool fKeyPressed = Keyboard.current != null && Keyboard.current.fKey.wasPressedThisFrame;
-
-        if (mouseClicked || fKeyPressed)
+        else if (leftClick || fKey)
         {
-            if (playerEquipment == null)
-                playerEquipment = GetComponent<PlayerEquipment>();
-
-            if (playerEquipment == null)
-                playerEquipment = gameObject.AddComponent<PlayerEquipment>();
-
             if (playerEquipment != null && playerEquipment.TryPerformAttack())
             {
                 StartCoroutine(RoutineAttack());
@@ -455,24 +523,26 @@ public class PlayerControl : MonoBehaviour
     private IEnumerator RoutineAttack()
     {
         isAttacking = true;
+        if (animator != null)
+            animator.SetBool("IsAttacking", true);
 
         // Tunggu satu frame agar transisi animator ke state attack dimulai
         yield return null;
 
         float atkSpeed = (playerEquipment != null) ? Mathf.Max(0.5f, playerEquipment.AttackAnimationSpeed) : 1f;
         float maxLock = attackLockDuration / atkSpeed;
-        float minLock = 0.35f / atkSpeed;
+        float minLock = 0.30f / atkSpeed;
 
         float timer = 0f;
         while (timer < maxLock)
         {
             timer += Time.deltaTime;
 
-            // Jika animator sudah selesai animasi serang dan bertransisi kembali ke Idle/Moving setelah minimal minLock detik
             if (timer > minLock && animator != null)
             {
-                var stateInfo = animator.GetCurrentAnimatorStateInfo(0);
-                if (!stateInfo.IsName("attack") && !animator.GetNextAnimatorStateInfo(0).IsName("attack"))
+                var curr = animator.GetCurrentAnimatorStateInfo(0);
+                var next = animator.GetNextAnimatorStateInfo(0);
+                if (!IsAttackState(curr) && !IsAttackState(next))
                 {
                     break;
                 }
@@ -482,6 +552,84 @@ public class PlayerControl : MonoBehaviour
         }
 
         isAttacking = false;
+        if (animator != null)
+            animator.SetBool("IsAttacking", false);
+    }
+
+    private IEnumerator RoutineSkillAttack()
+    {
+        isAttacking = true;
+        isSkillLeaping = true;
+        if (animator != null)
+            animator.SetBool("IsAttacking", true);
+
+        float atkSpeed = (playerEquipment != null) ? Mathf.Max(0.5f, playerEquipment.AttackAnimationSpeed) : 1.6f;
+
+        Vector3 forwardDir = transform.forward;
+
+        // Fase 1: Windup / ancang-ancang melompat (~0.25s / atkSpeed)
+        float windupDuration = 0.25f / atkSpeed;
+        float elapsed = 0f;
+        while (elapsed < windupDuration)
+        {
+            elapsed += Time.deltaTime;
+            yield return null;
+        }
+
+        // Berikan dorongan awal melompat ke udara
+        if (rb != null)
+        {
+            rb.linearVelocity = forwardDir * leapForwardImpulse + Vector3.up * leapUpwardImpulse;
+        }
+
+        // Fase 2: Meluncur maju di udara hingga pedang menghantam tanah (~1.14s total / atkSpeed)
+        float impactTime = 1.14f / atkSpeed;
+        while (elapsed < impactTime)
+        {
+            elapsed += Time.deltaTime;
+            if (rb != null)
+            {
+                rb.linearVelocity = new Vector3(forwardDir.x * leapForwardImpulse, rb.linearVelocity.y, forwardDir.z * leapForwardImpulse);
+            }
+            yield return new WaitForFixedUpdate();
+        }
+
+        // Fase 3: Mendarat & hantaman tanah (hentikan laju horizontal agar mendarat kokoh di titik hantaman)
+        isSkillLeaping = false;
+        if (rb != null)
+        {
+            rb.linearVelocity = new Vector3(0f, rb.linearVelocity.y, 0f);
+        }
+
+        // Fase 4: Recovery pasca hantaman dan transisi kembali ke Idle/Moving (~1.35s / atkSpeed)
+        float totalLock = 1.35f / atkSpeed;
+        while (elapsed < totalLock)
+        {
+            elapsed += Time.deltaTime;
+            if (animator != null)
+            {
+                var curr = animator.GetCurrentAnimatorStateInfo(0);
+                var next = animator.GetNextAnimatorStateInfo(0);
+                if (!IsAttackState(curr) && !IsAttackState(next))
+                {
+                    break;
+                }
+            }
+            yield return null;
+        }
+
+        isAttacking = false;
+        if (animator != null)
+            animator.SetBool("IsAttacking", false);
+    }
+
+    private bool IsAttackState(AnimatorStateInfo info)
+    {
+        return info.IsName("attack") ||
+               info.IsName("Attack_Combo1") ||
+               info.IsName("Attack_Combo2") ||
+               info.IsName("Attack_Combo3") ||
+               info.IsName("Attack_Skill");
     }
 
 

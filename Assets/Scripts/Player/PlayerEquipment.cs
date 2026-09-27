@@ -29,6 +29,39 @@ public class PlayerEquipment : MonoBehaviour
 
     public float AttackAnimationSpeed => attackAnimationSpeed;
 
+    [Header("Pengaturan Kombo Serangan (Mixamo)")]
+    [Tooltip("Waktu maksimal (detik) antar klik untuk melanjutkan ke pukulan kombo berikutnya sebelum reset.")]
+    [SerializeField] private float comboResetWindow = 0.9f;
+
+    [Tooltip("Pengali damage untuk masing-masing pukulan kombo: Hit 1, Hit 2, Hit 3 (Finisher).")]
+    [SerializeField] private float[] comboDamageMultipliers = new float[] { 1.0f, 1.2f, 1.5f };
+
+    [Tooltip("Biaya stamina per pukulan kombo: Hit 1, Hit 2, Hit 3.")]
+    [SerializeField] private float[] comboStaminaCosts = new float[] { 10f, 10f, 15f };
+
+    [Header("Pengaturan Jurus Spesial (Leap Strike)")]
+    [Tooltip("Nama Trigger parameter di Animator untuk jurus spesial.")]
+    [SerializeField] private string skillTriggerName = "SkillAttack";
+
+    [Tooltip("Biaya stamina untuk melancarkan jurus spesial.")]
+    [SerializeField] private float skillStaminaCost = 25f;
+
+    [Tooltip("Pengali damage untuk jurus spesial (relatif terhadap base damage).")]
+    [SerializeField] private float skillDamageMultiplier = 2.0f;
+
+    [Tooltip("Jangkauan/radius hantaman jurus spesial.")]
+    [SerializeField] private float skillHitRange = 2.5f;
+
+    [Tooltip("Kekuatan dorongan knockback jurus spesial.")]
+    [SerializeField] private float skillKnockback = 8.0f;
+
+    private int currentComboIndex = 0;
+    private float lastAttackTime = -999f;
+    private bool isExecutingSkill = false;
+
+    public int CurrentComboIndex => currentComboIndex;
+    public bool IsExecutingSkill => isExecutingSkill;
+
     public enum RangeIndicatorVisibility
     {
         WhenHoldingWeapon,
@@ -96,24 +129,50 @@ public class PlayerEquipment : MonoBehaviour
         }
     }
 
+    public bool IsAttackState(AnimatorStateInfo state)
+    {
+        return state.IsName("attack") ||
+               state.IsName("Attack_Combo1") ||
+               state.IsName("Attack_Combo2") ||
+               state.IsName("Attack_Combo3") ||
+               state.IsName("Attack_Skill");
+    }
+
     public bool TryPerformAttack()
     {
         if (animator == null) animator = GetComponentInChildren<Animator>();
+        if (isExecutingSkill) return false;
 
-        // Cegah spam klik saat animasi serang sebelumnya masih aktif
+        // Cegah spam klik jika animasi serang saat ini baru dimulai (izinkan combo window di tengah/akhir animasi)
         if (animator != null)
         {
             var state = animator.GetCurrentAnimatorStateInfo(0);
-            if ((state.IsName("attack") || state.IsName(attackTriggerName)) && state.normalizedTime < 0.70f)
+            if (IsAttackState(state) && state.normalizedTime < 0.35f)
             {
                 return false;
             }
         }
 
+        // Tentukan combo index berikutnya
+        float timeSinceLast = Time.time - lastAttackTime;
+        if (timeSinceLast > comboResetWindow || currentComboIndex >= 2)
+        {
+            currentComboIndex = 0;
+        }
+        else
+        {
+            currentComboIndex++;
+        }
+
+        float staminaCost = (comboStaminaCosts != null && currentComboIndex < comboStaminaCosts.Length)
+            ? comboStaminaCosts[currentComboIndex]
+            : attackStaminaCost;
+
         if (playerStats == null) playerStats = GetComponent<PlayerStats>();
-        if (playerStats != null && (playerStats.currentStamina < attackStaminaCost || playerStats.IsExhausted))
+        if (playerStats != null && (playerStats.currentStamina < staminaCost || playerStats.IsExhausted))
         {
             Debug.Log("[PlayerEquipment] Stamina tidak cukup untuk menyerang!");
+            currentComboIndex = 0;
             return false;
         }
 
@@ -147,16 +206,17 @@ public class PlayerEquipment : MonoBehaviour
                 atkSpdMultiplier *= 1.20f;
             }
 
-            // Gabungkan dengan kecepatan animasi serangan dari Inspector
             atkSpdMultiplier *= attackAnimationSpeed;
 
             animator.speed = atkSpdMultiplier;
+            animator.SetInteger("ComboIndex", currentComboIndex);
             animator.SetTrigger(attackTriggerName);
 
-            // Kurangi stamina saat serangan berhasil dilakukan
+            lastAttackTime = Time.time;
+
             if (playerStats != null)
             {
-                playerStats.UseStamina(attackStaminaCost);
+                playerStats.UseStamina(staminaCost);
             }
 
             int baseDmg;
@@ -169,12 +229,109 @@ public class PlayerEquipment : MonoBehaviour
             }
             else
             {
-                // Tangan kosong atau item umum: damage dasar
                 baseDmg = 8;
                 knockback = 3.5f;
             }
 
-            float dmgMultiplier = buffManager != null ? buffManager.GetAttackDamageMultiplier() : 1f;
+            float comboMul = (comboDamageMultipliers != null && currentComboIndex < comboDamageMultipliers.Length)
+                ? comboDamageMultipliers[currentComboIndex]
+                : 1f;
+
+            float dmgMultiplier = (buffManager != null ? buffManager.GetAttackDamageMultiplier() : 1f) * comboMul;
+            int finalDamage = Mathf.RoundToInt(baseDmg * dmgMultiplier);
+
+            // Combo ke-3 (Finisher) adalah putaran 360 derajat
+            bool is360 = (currentComboIndex == 2);
+            float activeRange = is360 ? attackHitRange * 1.15f : attackHitRange;
+            float finalKnockback = is360 ? knockback * 1.4f : knockback;
+
+            if (currentSwingCoroutine != null)
+            {
+                StopCoroutine(currentSwingCoroutine);
+                currentSwingCoroutine = null;
+            }
+
+            currentSwingCoroutine = StartCoroutine(RoutineSwingHitbox(finalDamage, finalKnockback, atkSpdMultiplier, is360, activeRange));
+
+            return true;
+        }
+
+        return false;
+    }
+
+    public bool TryPerformSkillAttack()
+    {
+        if (animator == null) animator = GetComponentInChildren<Animator>();
+        if (isExecutingSkill) return false;
+
+        if (animator != null)
+        {
+            var state = animator.GetCurrentAnimatorStateInfo(0);
+            if (IsAttackState(state) && state.normalizedTime < 0.40f)
+            {
+                return false;
+            }
+        }
+
+        if (playerStats == null) playerStats = GetComponent<PlayerStats>();
+        if (playerStats != null && (playerStats.currentStamina < skillStaminaCost || playerStats.IsExhausted))
+        {
+            Debug.Log("[PlayerEquipment] Stamina tidak cukup untuk jurus spesial!");
+            return false;
+        }
+
+        ItemData item = CurrentEquippedItem;
+        if (item == null)
+        {
+            if (!allowBareHandsAttack)
+            {
+                Debug.Log("[PlayerEquipment] Tidak bisa melancarkan jurus: Tangan kosong.");
+                return false;
+            }
+        }
+        else
+        {
+            bool isWeapon = (item is ToolItemData tool && tool.isWeapon);
+            if (!isWeapon && !allowBareHandsAttack)
+            {
+                Debug.Log($"[PlayerEquipment] Item '{item.itemName}' bukan senjata, tidak bisa melancarkan jurus.");
+                return false;
+            }
+        }
+
+        if (animator != null && !string.IsNullOrEmpty(skillTriggerName))
+        {
+            float atkSpdMultiplier = buffManager != null ? buffManager.GetAttackSpeedMultiplier() : 1f;
+            var upgradeState = FeaturesWorkbench.PlayerWeaponUpgradeState.Instance ?? GetComponent<FeaturesWorkbench.PlayerWeaponUpgradeState>();
+            if (upgradeState != null && upgradeState.sweetPotatoPathUnlocked)
+            {
+                atkSpdMultiplier *= 1.20f;
+            }
+
+            atkSpdMultiplier *= attackAnimationSpeed;
+
+            animator.speed = atkSpdMultiplier;
+            animator.SetTrigger(skillTriggerName);
+
+            lastAttackTime = Time.time;
+            currentComboIndex = 0; // Reset combo setelah skill
+
+            if (playerStats != null)
+            {
+                playerStats.UseStamina(skillStaminaCost);
+            }
+
+            int baseDmg;
+            if (item is ToolItemData toolData)
+            {
+                baseDmg = (upgradeState != null) ? upgradeState.baseDamage : toolData.baseDamage;
+            }
+            else
+            {
+                baseDmg = 8;
+            }
+
+            float dmgMultiplier = (buffManager != null ? buffManager.GetAttackDamageMultiplier() : 1f) * skillDamageMultiplier;
             int finalDamage = Mathf.RoundToInt(baseDmg * dmgMultiplier);
 
             if (currentSwingCoroutine != null)
@@ -183,7 +340,7 @@ public class PlayerEquipment : MonoBehaviour
                 currentSwingCoroutine = null;
             }
 
-            currentSwingCoroutine = StartCoroutine(RoutineSwingHitbox(finalDamage, knockback, atkSpdMultiplier));
+            currentSwingCoroutine = StartCoroutine(RoutineSkillHitbox(finalDamage, skillKnockback, atkSpdMultiplier, skillHitRange));
 
             return true;
         }
@@ -191,16 +348,16 @@ public class PlayerEquipment : MonoBehaviour
         return false;
     }
 
-    private System.Collections.IEnumerator RoutineSwingHitbox(int damage, float knockback, float speedMultiplier)
+    private System.Collections.IEnumerator RoutineSwingHitbox(int damage, float knockback, float speedMultiplier, bool is360 = false, float rangeOverride = -1f)
     {
         float delay = 0.12f / Mathf.Max(0.5f, speedMultiplier);
         float duration = 0.28f / Mathf.Max(0.5f, speedMultiplier);
 
-        // Memicu efek pulse/highlight pada indikator lingkaran di bawah
         TriggerRangeIndicatorPulse(delay + duration + 0.1f);
 
         yield return new WaitForSeconds(delay);
 
+        float activeRange = rangeOverride > 0f ? rangeOverride : attackHitRange;
         FeaturesCombat.WeaponHitbox hitbox = null;
         if (currentWeaponModel != null)
         {
@@ -213,15 +370,15 @@ public class PlayerEquipment : MonoBehaviour
             }
         }
 
-        if (hitbox != null)
+        if (hitbox != null && !is360)
         {
-            hitbox.ConfigureHitRange(attackHitRange);
+            hitbox.ConfigureHitRange(activeRange);
             hitbox.Activate(gameObject, damage, knockback, transform.forward);
         }
         else
         {
-            // Fallback bare-hands / no-model melee sweep
-            PerformDirectMeleeSweep(damage, knockback);
+            // Untuk putaran 360 atau tanpa hitbox fisik, gunakan direct sweep
+            PerformDirectMeleeSweep(damage, knockback, is360, activeRange);
         }
 
         yield return new WaitForSeconds(duration);
@@ -231,14 +388,14 @@ public class PlayerEquipment : MonoBehaviour
             hitbox.Deactivate();
         }
 
-        // Tunggu sisa transisi animasi attack selesai sebelum mereset animator.speed kembali ke 1.0f
         float maxWait = 0.5f / Mathf.Max(0.5f, speedMultiplier);
         float elapsed = 0f;
         while (elapsed < maxWait && animator != null)
         {
             elapsed += Time.deltaTime;
-            var state = animator.GetCurrentAnimatorStateInfo(0);
-            if (!state.IsName("attack") && !animator.GetNextAnimatorStateInfo(0).IsName("attack"))
+            var curr = animator.GetCurrentAnimatorStateInfo(0);
+            var next = animator.GetNextAnimatorStateInfo(0);
+            if (!IsAttackState(curr) && !IsAttackState(next))
             {
                 break;
             }
@@ -253,15 +410,56 @@ public class PlayerEquipment : MonoBehaviour
         currentSwingCoroutine = null;
     }
 
-    /// <summary>
-    /// Sapuan langsung tanpa model senjata fisik (mis. saat bertarung tangan kosong).
-    /// </summary>
-    private void PerformDirectMeleeSweep(int damage, float knockback)
+    private System.Collections.IEnumerator RoutineSkillHitbox(int damage, float knockback, float speedMultiplier, float range)
     {
+        isExecutingSkill = true;
+
+        // Waktu tunggu lompatan di udara sebelum mendarat dan menghantam tanah (pada t=1.14s animasi slam)
+        float impactDelay = 1.14f / Mathf.Max(0.5f, speedMultiplier);
+        float impactDuration = 0.25f / Mathf.Max(0.5f, speedMultiplier);
+
+        TriggerRangeIndicatorPulse(impactDelay + impactDuration + 0.15f);
+
+        yield return new WaitForSeconds(impactDelay);
+
+        // Hantaman mendarat: sapuan AoE 360 derajat di sekitar titik hantaman
+        PerformDirectMeleeSweep(damage, knockback, is360: true, rangeOverride: range);
+
+        yield return new WaitForSeconds(impactDuration);
+
+        float maxWait = 0.6f / Mathf.Max(0.5f, speedMultiplier);
+        float elapsed = 0f;
+        while (elapsed < maxWait && animator != null)
+        {
+            elapsed += Time.deltaTime;
+            var curr = animator.GetCurrentAnimatorStateInfo(0);
+            var next = animator.GetNextAnimatorStateInfo(0);
+            if (!IsAttackState(curr) && !IsAttackState(next))
+            {
+                break;
+            }
+            yield return null;
+        }
+
+        if (animator != null)
+        {
+            animator.speed = 1f;
+        }
+
+        isExecutingSkill = false;
+        currentSwingCoroutine = null;
+    }
+
+    /// <summary>
+    /// Sapuan melee langsung (mendukung serangan cone forward ataupun putaran 360 derajat).
+    /// </summary>
+    private void PerformDirectMeleeSweep(int damage, float knockback, bool is360 = false, float rangeOverride = -1f)
+    {
+        float activeRange = rangeOverride > 0f ? rangeOverride : attackHitRange;
         Vector3 origin = transform.position + Vector3.up * 0.8f;
         Vector3 forwardDir = transform.forward;
-        Vector3 sweepCenter = origin + forwardDir * (attackHitRange * 0.5f);
-        float sweepRadius = attackHitRange * 0.65f;
+        Vector3 sweepCenter = is360 ? origin : origin + forwardDir * (activeRange * 0.5f);
+        float sweepRadius = is360 ? activeRange : (activeRange * 0.65f);
         Collider[] hits = Physics.OverlapSphere(sweepCenter, sweepRadius, ~0, QueryTriggerInteraction.Collide);
 
         var hitSet = new System.Collections.Generic.HashSet<FeaturesCombat.IDamageable>();
@@ -269,26 +467,38 @@ public class PlayerEquipment : MonoBehaviour
         {
             if (c == null || c.gameObject == gameObject || c.transform.IsChildOf(transform)) continue;
 
-            Vector3 toTarget = c.transform.position - origin;
-            toTarget.y = 0f;
-            if (toTarget.sqrMagnitude > 0.04f && Vector3.Dot(forwardDir, toTarget.normalized) < 0.2f)
-                continue;
+            if (!is360)
+            {
+                Vector3 toTarget = c.transform.position - origin;
+                toTarget.y = 0f;
+                if (toTarget.sqrMagnitude > 0.04f && Vector3.Dot(forwardDir, toTarget.normalized) < 0.2f)
+                    continue;
+            }
 
             var target = c.GetComponent<FeaturesCombat.IDamageable>() ?? c.GetComponentInParent<FeaturesCombat.IDamageable>();
             if (target != null && !target.IsDead && hitSet.Add(target))
             {
                 Vector3 hitPoint = c.ClosestPoint(sweepCenter);
-                target.TakeDamage(damage, hitPoint, forwardDir);
+                Vector3 hitDir = is360 ? (c.transform.position - origin).normalized : forwardDir;
+                if (hitDir.sqrMagnitude < 0.01f) hitDir = forwardDir;
+
+                target.TakeDamage(damage, hitPoint, hitDir);
 
                 Rigidbody targetRb = c.GetComponent<Rigidbody>() ?? c.GetComponentInParent<Rigidbody>();
                 if (targetRb != null && !targetRb.isKinematic)
                 {
-                    targetRb.AddForce((forwardDir + Vector3.up * 0.25f).normalized * knockback, ForceMode.Impulse);
+                    targetRb.AddForce((hitDir + Vector3.up * 0.35f).normalized * knockback, ForceMode.Impulse);
                 }
 
                 if (PlayerUI.FloatingCombatTextManager.Instance != null)
                 {
-                    PlayerUI.FloatingCombatTextManager.Instance.SpawnText(hitPoint + Vector3.up * 0.8f, $"-{damage}", new Color(1f, 0.25f, 0.2f));
+                    bool isFinisher = is360 && !isExecutingSkill;
+                    bool isSkill = isExecutingSkill;
+                    PlayerUI.FloatingCombatTextManager.Instance.SpawnEnemyDamage(
+                        hitPoint + Vector3.up * 0.8f,
+                        damage,
+                        isCrit: isFinisher,
+                        isSkill: isSkill);
                 }
             }
         }

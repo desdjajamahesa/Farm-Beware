@@ -53,7 +53,51 @@ namespace FeaturesCamera
         [Tooltip("Orthographic camera size.")]
         public float orthographicSize = 19.5f;
 
+        public static IsometricCameraController Instance { get; private set; }
+
         private Camera cam;
+        private Vector3 shakeOffset = Vector3.zero;
+        private Coroutine shakeCoroutine;
+
+        private void Awake()
+        {
+            if (Instance != null && Instance != this)
+            {
+                // Jaga instance utama
+                return;
+            }
+            Instance = this;
+        }
+
+        private void OnDestroy()
+        {
+            if (Instance == this)
+                Instance = null;
+        }
+
+        /// <summary>
+        /// Menggetarkan kamera secara halus saat pemain terkena hit (subtle impact shudder).
+        /// </summary>
+        public void TriggerShake(float duration = 0.14f, float intensity = 0.22f)
+        {
+            if (shakeCoroutine != null) StopCoroutine(shakeCoroutine);
+            shakeCoroutine = StartCoroutine(RoutineShake(duration, intensity));
+        }
+
+        private System.Collections.IEnumerator RoutineShake(float duration, float intensity)
+        {
+            float elapsed = 0f;
+            while (elapsed < duration)
+            {
+                elapsed += Time.deltaTime;
+                float damp = 1f - (elapsed / duration);
+                Vector2 r = Random.insideUnitCircle;
+                shakeOffset = new Vector3(r.x, r.y * 0.4f, r.x * 0.4f) * (intensity * damp);
+                yield return null;
+            }
+            shakeOffset = Vector3.zero;
+            shakeCoroutine = null;
+        }
 
         private void Start()
         {
@@ -95,7 +139,7 @@ namespace FeaturesCamera
 
             if (Mouse.current != null)
             {
-                isOrbiting = Mouse.current.rightButton.isPressed;
+                isOrbiting = Mouse.current.middleButton.isPressed || (Keyboard.current != null && Keyboard.current.altKey.isPressed && Mouse.current.rightButton.isPressed);
                 Vector2 delta = Mouse.current.delta.ReadValue();
                 deltaX = delta.x * 0.2f;
                 deltaY = delta.y * 0.2f;
@@ -130,8 +174,9 @@ namespace FeaturesCamera
             Vector3 targetCenter = target.position;
             Vector3 targetPosition = targetCenter - (rotation * Vector3.forward * distance);
 
-            // Smooth follow
-            transform.position = Vector3.Lerp(transform.position, targetPosition, Time.deltaTime * smoothSpeed);
+            // Smooth follow + Shake offset
+            Vector3 smoothedPos = Vector3.Lerp(transform.position, targetPosition, Time.deltaTime * smoothSpeed);
+            transform.position = smoothedPos + shakeOffset;
             transform.rotation = Quaternion.Slerp(transform.rotation, rotation, Time.deltaTime * smoothSpeed);
         }
     }

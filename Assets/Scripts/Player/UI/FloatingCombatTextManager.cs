@@ -6,9 +6,10 @@ namespace PlayerUI
 {
     /// <summary>
     /// Singleton manager untuk memunculkan teks pertarungan melayang (Floating Damage/Heal/Notification Text).
-    /// Mendukung auto-binding ke PlayerStats untuk memunculkan -Damage dan +Heal secara otomatis.
-    /// Menyediakan metode publik SpawnText untuk memunculkan damage musuh di posisi dunia 3D dengan
-    /// pelacakan dinamis kamera, font outline kontras tinggi, dan object pooling efisien (0 GC).
+    /// Membedakan secara visual dan dramatis antara:
+    /// 1. Outgoing Damage (Pemain memukul monster): Warna Emas/Amber/Api cerah tanpa minus, simbol petir/ledakan.
+    /// 2. Incoming Damage (Monster memukul pemain): Warna Merah Darah pekat dengan tanda minus dan label HP (-X HP).
+    /// Menggunakan dynamic camera tracking, high-contrast outlines, dan object pooling 0-GC.
     /// </summary>
     public class FloatingCombatTextManager : MonoBehaviour
     {
@@ -33,11 +34,32 @@ namespace PlayerUI
         [SerializeField] private RectTransform containerCanvas;
         [SerializeField] private GameObject floatingTextPrefab;
 
-        [Header("Colors")]
-        [SerializeField] private Color damageColor = new Color(1f, 0.28f, 0.22f);      // Merah Terang
-        [SerializeField] private Color criticalDamageColor = new Color(1f, 0.70f, 0.15f); // Emas Jingga
+        [Header("Colors - Outgoing (Pemain Memukul Monster)")]
+        [Tooltip("Warna damage normal tebasan kombo pemain (Kuning Emas).")]
+        [SerializeField] private Color enemyNormalDamageColor = new Color(1f, 0.84f, 0.15f);
+
+        [Tooltip("Warna damage finisher kombo ke-3 putaran 360 (Jingga Petir / Amber).")]
+        [SerializeField] private Color enemyFinisherDamageColor = new Color(1f, 0.52f, 0.05f);
+
+        [Tooltip("Warna damage jurus spesial hantaman tanah (Merah-Jingga Api Ledakan).")]
+        [SerializeField] private Color enemySkillDamageColor = new Color(1f, 0.28f, 0.05f);
+
+        [Tooltip("Warna damage god mode cheat.")]
+        [SerializeField] private Color godModeDamageColor = new Color(1f, 0.95f, 0.35f);
+
+        [Header("Colors - Incoming (Monster Memukul Pemain)")]
+        [Tooltip("Warna luka saat pemain terkena pukulan monster (Merah Darah Pekat).")]
+        [SerializeField] private Color playerDamageColor = new Color(1f, 0.15f, 0.15f);
+
+        [Tooltip("Warna luka kritis saat pemain terkena damage besar (Merah Tua Bahaya).")]
+        [SerializeField] private Color playerCriticalDamageColor = new Color(0.92f, 0.04f, 0.04f);
+
+        [Header("Colors - General")]
         [SerializeField] private Color healColor = new Color(0.25f, 0.95f, 0.40f);        // Hijau Terang
         [SerializeField] private Color noticeColor = new Color(0.95f, 0.88f, 0.35f);      // Kuning Lembut
+
+        private static readonly Color32 DefaultEnemyOutline = new Color32(20, 20, 20, 255);
+        private static readonly Color32 PlayerHurtOutline = new Color32(50, 0, 0, 255);
 
         private readonly Queue<FloatingTextItem> pool = new Queue<FloatingTextItem>();
         private Camera targetCamera;
@@ -129,18 +151,87 @@ namespace PlayerUI
             }
         }
 
+        /// <summary>
+        /// Memunculkan angka damage saat pemain memukul monster (Outgoing Hit).
+        /// Format: Angka emas/jingga cerah tanpa tanda minus, melayang naik dengan punch scale memuaskan.
+        /// </summary>
+        public void SpawnEnemyDamage(Vector3 worldPos, int damage, bool isCrit = false, bool isSkill = false)
+        {
+            ResolveCamera();
+            if (targetCamera == null) return;
+
+            string text;
+            Color textColor;
+            float scaleMultiplier;
+
+            if (damage >= 9999)
+            {
+                text = "💥 9999";
+                textColor = godModeDamageColor;
+                scaleMultiplier = 1.55f;
+            }
+            else if (isSkill)
+            {
+                text = $"💥 {damage}";
+                textColor = enemySkillDamageColor;
+                scaleMultiplier = 1.45f;
+            }
+            else if (isCrit)
+            {
+                text = $"⚡ {damage}";
+                textColor = enemyFinisherDamageColor;
+                scaleMultiplier = 1.25f;
+            }
+            else
+            {
+                text = $"{damage}";
+                textColor = enemyNormalDamageColor;
+                scaleMultiplier = 1.0f;
+            }
+
+            Vector3 spawnWorldPos = worldPos + new Vector3(
+                Random.Range(-0.25f, 0.25f),
+                Random.Range(0f, 0.25f),
+                Random.Range(-0.25f, 0.25f));
+
+            FloatingTextItem item = GetOrCreateItem();
+            item.PlayWorldTracked(text, textColor, spawnWorldPos, targetCamera, scaleMultiplier, DefaultEnemyOutline, () => pool.Enqueue(item));
+        }
+
+        /// <summary>
+        /// Memunculkan angka luka saat monster memukul pemain (Incoming Hit / Hurt).
+        /// Format: Merah darah pekat dengan tanda minus jelas (-X HP), outline marun gelap, melayang di atas pemain.
+        /// </summary>
+        public void SpawnPlayerDamage(Vector3 worldPos, int amount)
+        {
+            ResolveCamera();
+            if (targetCamera == null) return;
+
+            bool isCritical = amount >= 30;
+            string text = isCritical ? $"-{amount} HP!" : $"-{amount} HP";
+            Color textColor = isCritical ? playerCriticalDamageColor : playerDamageColor;
+            float scaleMultiplier = isCritical ? 1.35f : 1.15f;
+
+            Vector3 spawnWorldPos = worldPos + new Vector3(
+                Random.Range(-0.2f, 0.2f),
+                Random.Range(0.05f, 0.2f),
+                Random.Range(-0.2f, 0.2f));
+
+            FloatingTextItem item = GetOrCreateItem();
+            item.PlayWorldTracked(text, textColor, spawnWorldPos, targetCamera, scaleMultiplier, PlayerHurtOutline, () => pool.Enqueue(item));
+        }
+
         private void HandleDamageTaken(int amount)
         {
             if (playerStats == null) return;
-            Vector3 worldPos = playerStats.transform.position + Vector3.up * 1.8f;
-            Color col = amount >= 30 ? criticalDamageColor : damageColor;
-            SpawnText(worldPos, $"-{amount}", col);
+            Vector3 worldPos = playerStats.transform.position + Vector3.up * 1.9f;
+            SpawnPlayerDamage(worldPos, amount);
         }
 
         private void HandleHealed(int amount)
         {
             if (playerStats == null) return;
-            Vector3 worldPos = playerStats.transform.position + Vector3.up * 1.8f;
+            Vector3 worldPos = playerStats.transform.position + Vector3.up * 1.9f;
             SpawnText(worldPos, $"+{amount} HP", healColor);
         }
 
@@ -154,14 +245,13 @@ namespace PlayerUI
             ResolveCamera();
             if (targetCamera == null) return;
 
-            // Berikan sedikit random jitter agar angka berurutan tidak menumpuk persis
             Vector3 spawnWorldPos = worldPos + new Vector3(
                 Random.Range(-0.25f, 0.25f),
                 Random.Range(0f, 0.2f),
                 Random.Range(-0.25f, 0.25f));
 
             FloatingTextItem item = GetOrCreateItem();
-            item.PlayWorldTracked(text, color, spawnWorldPos, targetCamera, () => pool.Enqueue(item));
+            item.PlayWorldTracked(text, color, spawnWorldPos, targetCamera, 1.0f, null, () => pool.Enqueue(item));
         }
 
         private FloatingTextItem GetOrCreateItem()

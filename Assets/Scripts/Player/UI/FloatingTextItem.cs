@@ -7,6 +7,7 @@ namespace PlayerUI
     /// <summary>
     /// Elemen angka/teks pertarungan melayang (Floating Combat Text) dengan animasi punch-scale,
     /// pelacakan dinamis posisi 3D di dunia ke layar kamera, outline kontras tinggi, dan fade-out halus.
+    /// Mendukung kustomisasi ukuran skala dan warna outline untuk membedakan jenis hit.
     /// </summary>
     public class FloatingTextItem : MonoBehaviour
     {
@@ -33,7 +34,6 @@ namespace PlayerUI
 
             if (textMesh != null)
             {
-                // Konfigurasi outline kontras tinggi agar angka damage selalu terbaca jelas
                 textMesh.fontStyle = FontStyles.Bold;
                 textMesh.outlineWidth = 0.28f;
                 textMesh.outlineColor = new Color32(15, 15, 15, 255);
@@ -47,12 +47,35 @@ namespace PlayerUI
         /// </summary>
         public void PlayWorldTracked(string text, Color color, Vector3 worldStartPos, Camera cam, System.Action onComplete = null)
         {
+            PlayWorldTracked(text, color, worldStartPos, cam, 1.0f, null, onComplete);
+        }
+
+        /// <summary>
+        /// Overload lengkap dengan dukungan scaleMultiplier dan kustomisasi outline.
+        /// </summary>
+        public void PlayWorldTracked(
+            string text,
+            Color color,
+            Vector3 worldStartPos,
+            Camera cam,
+            float scaleMultiplier,
+            Color32? customOutline = null,
+            System.Action onComplete = null)
+        {
             EnsureComponents();
 
             if (textMesh != null)
             {
                 textMesh.text = text;
                 textMesh.color = color;
+                if (customOutline.HasValue)
+                {
+                    textMesh.outlineColor = customOutline.Value;
+                }
+                else
+                {
+                    textMesh.outlineColor = new Color32(15, 15, 15, 255);
+                }
             }
 
             gameObject.SetActive(true);
@@ -60,7 +83,7 @@ namespace PlayerUI
             if (floatCoroutine != null)
                 StopCoroutine(floatCoroutine);
 
-            floatCoroutine = StartCoroutine(WorldTrackedRoutine(color, worldStartPos, cam, onComplete));
+            floatCoroutine = StartCoroutine(WorldTrackedRoutine(color, worldStartPos, cam, scaleMultiplier, onComplete));
         }
 
         /// <summary>
@@ -85,25 +108,32 @@ namespace PlayerUI
             floatCoroutine = StartCoroutine(StaticScreenRoutine(color, startScreenPos, onComplete));
         }
 
-        private IEnumerator WorldTrackedRoutine(Color baseColor, Vector3 worldStartPos, Camera cam, System.Action onComplete)
+        private IEnumerator WorldTrackedRoutine(
+            Color baseColor,
+            Vector3 worldStartPos,
+            Camera cam,
+            float scaleMultiplier,
+            System.Action onComplete)
         {
             float elapsed = 0f;
-            transform.localScale = Vector3.one * 1.35f; // Punchy start scale
+            float initialPunch = 1.35f * scaleMultiplier;
+            float endScale = 1.0f * scaleMultiplier;
+            transform.localScale = Vector3.one * initialPunch;
 
             while (elapsed < duration)
             {
                 elapsed += Time.deltaTime;
                 float progress = elapsed / duration;
 
-                // Punch scale bounce: 1.35 -> 1.0 dalam 0.15 detik pertama
+                // Punch scale bounce
                 if (progress < 0.2f)
                 {
                     float p = progress / 0.2f;
-                    transform.localScale = Vector3.Lerp(Vector3.one * 1.35f, Vector3.one, p);
+                    transform.localScale = Vector3.Lerp(Vector3.one * initialPunch, Vector3.one * endScale, p);
                 }
                 else
                 {
-                    transform.localScale = Vector3.one;
+                    transform.localScale = Vector3.one * endScale;
                 }
 
                 // Posisi dunia naik perlahan
@@ -119,7 +149,6 @@ namespace PlayerUI
                     }
                     else
                     {
-                        // Di belakang kamera
                         textMesh.enabled = false;
                     }
                 }
@@ -138,6 +167,7 @@ namespace PlayerUI
                 yield return null;
             }
 
+            transform.localScale = Vector3.one;
             gameObject.SetActive(false);
             onComplete?.Invoke();
             floatCoroutine = null;
@@ -179,6 +209,7 @@ namespace PlayerUI
                 yield return null;
             }
 
+            transform.localScale = Vector3.one;
             gameObject.SetActive(false);
             onComplete?.Invoke();
             floatCoroutine = null;

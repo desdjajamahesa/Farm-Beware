@@ -207,15 +207,14 @@ namespace FeaturesCombat
                 targetRb.AddForce(knockbackDir * currentKnockback, ForceMode.Impulse);
             }
 
-            // Munculkan floating combat text
+            // Munculkan floating combat text untuk serangan pemain ke monster (warna emas cerah, tanpa minus)
             if (FloatingCombatTextManager.Instance != null)
             {
-                Color textColor = effectiveDamage >= 9999 ? new Color(1f, 0.85f, 0.15f) : new Color(1f, 0.25f, 0.2f);
-                string text = effectiveDamage >= 9999 ? "💥 9999" : $"-{effectiveDamage}";
-                FloatingCombatTextManager.Instance.SpawnText(
+                FloatingCombatTextManager.Instance.SpawnEnemyDamage(
                     hitPoint + Vector3.up * 0.8f,
-                    text,
-                    textColor);
+                    effectiveDamage,
+                    isCrit: false,
+                    isSkill: false);
             }
         }
     }
