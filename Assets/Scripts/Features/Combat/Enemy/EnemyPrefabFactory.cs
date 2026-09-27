@@ -132,6 +132,7 @@ namespace FeaturesCombat
             rb.mass = type.ToString().Contains("Boss") || type == EnemyType.TaroColossus || type == EnemyType.TheRanger ? 50f : 5f;
             rb.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ;
             rb.interpolation = RigidbodyInterpolation.Interpolate;
+            rb.collisionDetectionMode = CollisionDetectionMode.Continuous;
 
             // Pasang EnemyBase dan inisialisasi stats
             var enemyBase = go.AddComponent<EnemyBase>();
