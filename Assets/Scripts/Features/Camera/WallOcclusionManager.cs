@@ -50,8 +50,8 @@ namespace FeaturesCamera
         [SerializeField] private float checkInterval = 0.03f;
 
         [Header("Occlusion Sampling")]
-        [Tooltip("Vertical heights relative to player pivot to test for occlusion (0.85m = lower torso, 1.25m = upper torso/chest, 1.65m = head)")]
-        [SerializeField] private float[] verticalSampleHeights = new float[] { 0.85f, 1.25f, 1.65f };
+        [Tooltip("Vertical heights relative to player pivot to test for occlusion (0.80m = lower torso/thighs, 1.20m = chest, 1.60m = head)")]
+        [SerializeField] private float[] verticalSampleHeights = new float[] { 0.80f, 1.20f, 1.60f };
 
         [Tooltip("Number of horizontal fan rays for mid/upper samples to cover character width")]
         [Range(1, 5)]
@@ -59,15 +59,15 @@ namespace FeaturesCamera
 
         [Tooltip("Half-angle of fan spread in degrees for mid/upper samples")]
         [Range(0.5f, 15f)]
-        [SerializeField] private float maxFanAngle = 1.8f;
+        [SerializeField] private float maxFanAngle = 3.2f;
 
         [Header("Hysteresis / Stability")]
         [Tooltip("How long (in seconds) to keep walls transparent after they stop being directly hit by rays. Prevents flicker when moving.")]
-        [SerializeField] private float unoccludeDelay = 0.25f;
+        [SerializeField] private float unoccludeDelay = 0.08f;
 
-        [Tooltip("SphereCast radius for occlusion test (0 = thin raycast). A calibrated radius of 0.05m ensures seams don't miss rays while avoiding premature side hits.")]
+        [Tooltip("SphereCast radius for occlusion test (0 = thin raycast). A calibrated radius of 0.12m ensures seams don't miss rays while avoiding premature side hits.")]
         [Range(0f, 0.5f)]
-        [SerializeField] private float raySphereRadius = 0.05f;
+        [SerializeField] private float raySphereRadius = 0.12f;
 
         [Header("Room Trigger Occlusion (Failsafe for whole rooms)")]
         [Tooltip("Rooms where being inside the trigger automatically keeps the room's foreground walls transparent.")]

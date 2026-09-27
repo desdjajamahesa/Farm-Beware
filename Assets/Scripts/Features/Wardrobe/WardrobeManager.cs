@@ -205,14 +205,7 @@ namespace FeaturesWardrobe
                 if (CameraManager.Instance != null)
                 {
                     CameraManager.Instance.SetMode(CameraManager.CameraMode.WardrobeMode, wardrobeRoot);
-
-                // Position wardrobeCamera at the mirror looking towards player front
-                if (wardrobeCamera != null && mirrorCamera != null && mirrorCamera.MirrorSurface != null)
-                {
-                    Transform mirror = mirrorCamera.MirrorSurface;
-                    wardrobeCamera.transform.position = mirror.position + mirror.right * 0.35f + mirror.forward * 0.1f + Vector3.up * -0.05f;
-                    wardrobeCamera.transform.rotation = Quaternion.LookRotation(mirror.forward, Vector3.up);
-                }
+                // Camera pose is authored in the scene — no runtime override needed.
                 }
                 else
                 {

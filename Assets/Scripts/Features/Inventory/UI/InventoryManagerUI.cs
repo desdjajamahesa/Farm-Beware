@@ -85,6 +85,18 @@ public class InventoryManagerUI : MonoBehaviour
     {
         Instance = this;
 
+        if (playerInventory == null)
+        {
+            var player = FindFirstObjectByType<PlayerControl>();
+            if (player != null)
+                playerInventory = player.GetComponent<InventoryComponent>();
+
+            if (playerInventory == null)
+                playerInventory = GetComponent<InventoryComponent>();
+        }
+
+        displayLeftInventory = playerInventory;
+
         // Sembunyikan semua UI paling awal + kunci kursor untuk game action.
         CloseAllUI();
     }
@@ -533,8 +545,9 @@ if (customPanel != null)
             if (playerHotbarContainer != null)
                 playerHotbarContainer.gameObject.SetActive(true);
 
-            BuildPlayerSlots();
             displayLeftInventory = playerInventory;
+            BuildPlayerSlots();
+            UpdateUI();
         }
 
         // Restore player input (unlock movement/interaction)
@@ -601,7 +614,9 @@ if (customPanel != null)
 
             InventorySlotUI slot = Instantiate(slotPrefab, parent);
             slot.Init(this, i, playerInventory);
-            slot.BoundSlot = i < playerInventory.slots.Count ? playerInventory.slots[i] : new InventorySlot();
+            InventorySlot slotData = i < playerInventory.slots.Count ? playerInventory.slots[i] : new InventorySlot();
+            slot.BoundSlot = slotData;
+            slot.SetSlotVisual(slotData);
             playerSlotUIs.Add(slot);
         }
     }
@@ -634,7 +649,9 @@ if (customPanel != null)
             if (slotRect != null)
                 slotRect.anchoredPosition3D = Vector3.zero;
             slot.Init(this, i, inventory);
-            slot.BoundSlot = i < inventory.slots.Count ? inventory.slots[i] : new InventorySlot();
+            InventorySlot slotData = i < inventory.slots.Count ? inventory.slots[i] : new InventorySlot();
+            slot.BoundSlot = slotData;
+            slot.SetSlotVisual(slotData);
             list.Add(slot);
         }
 
@@ -713,6 +730,9 @@ if (customPanel != null)
 
     public void UpdateUI()
     {
+        if (displayLeftInventory == null && playerInventory != null)
+            displayLeftInventory = playerInventory;
+
         RefreshPanel(playerSlotUIs, displayLeftInventory);
         RefreshPanel(storageSlotUIs, currentStorageInventory);
         RefreshPanel(refrigeratorSlotUIs, currentStorageInventory);

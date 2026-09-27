@@ -16,7 +16,7 @@ MonoBehaviour:
   itemName: Hoe
   category: 6
   rarity: 0
-  itemIcon: {fileID: 21300000, guid: da8589e6752645549aae0f26d793ec02, type: 3}
+  itemIcon: {fileID: 21300000, guid: 44f822ee4fe94cb499c7571df61dc159, type: 3}
   description: A farming tool used to till and aerate wild soil, preparing it for
     planting seeds.
   maxStack: 1
