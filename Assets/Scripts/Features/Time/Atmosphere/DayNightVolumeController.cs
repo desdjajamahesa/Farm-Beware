@@ -97,9 +97,42 @@ namespace FeaturesTime.Atmosphere
         [SerializeField] private VolumePhaseSettings duskSettings = CreateDefaultDuskSettings();
         [SerializeField] private VolumePhaseSettings nightSettings = CreateDefaultNightSettings();
 
+        [Header("Combat Juice & Impact Settings")]
+        [Tooltip("Jika aktif, otomatis mendengarkan event damage player untuk memicu getaran aberasi kromatik.")]
+        [SerializeField] private bool bindPlayerDamageEvent = true;
+
+        [Tooltip("Intensitas puncak getaran aberasi kromatik saat player terkena damage.")]
+        [Range(0f, 1f)]
+        [SerializeField] private float playerDamagePeakIntensity = 0.65f;
+
+        [Tooltip("Durasi getaran aberasi kromatik player damage dalam detik.")]
+        [Range(0.05f, 1f)]
+        [SerializeField] private float playerDamageDuration = 0.30f;
+
         [Header("Runtime Debug View (Read-Only)")]
         [SerializeField] private EnvironmentPhase currentActivePhase = EnvironmentPhase.Day;
         [SerializeField] private bool isTransitioning = false;
+
+        #endregion
+
+        #region Singleton Accessor
+
+        private static DayNightVolumeController _instance;
+
+        public static DayNightVolumeController Instance
+        {
+            get
+            {
+                if (_instance == null)
+                {
+                    var found = FindObjectsByType<DayNightVolumeController>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+                    if (found != null && found.Length > 0)
+                        _instance = found[0];
+                }
+                return _instance;
+            }
+            private set => _instance = value;
+        }
 
         #endregion
 
@@ -111,8 +144,11 @@ namespace FeaturesTime.Atmosphere
         private ColorAdjustments _colorAdjustments;
         private WhiteBalance _whiteBalance;
         private Vignette _vignette;
+        private ChromaticAberration _chromaticAberration;
 
         private Coroutine _transitionCoroutine;
+        private Coroutine _impulseCoroutine;
+        private PlayerStats _cachedPlayerStats;
 
         #endregion
 
@@ -121,6 +157,7 @@ namespace FeaturesTime.Atmosphere
         public EnvironmentPhase CurrentActivePhase => currentActivePhase;
         public bool IsTransitioning => isTransitioning;
         public float TransitionDuration { get => transitionDuration; set => transitionDuration = Mathf.Max(0.1f, value); }
+        public ChromaticAberration ChromaticAberrationOverride => _chromaticAberration;
 
         #endregion
 
@@ -212,8 +249,23 @@ namespace FeaturesTime.Atmosphere
 
         private void Awake()
         {
+            if (Instance == null)
+            {
+                Instance = this;
+            }
+            else if (Instance != this)
+            {
+                Debug.LogWarning("[DayNightVolumeController] Duplicate instance detected on " + gameObject.name);
+            }
+
             ValidatePresetsIntegrity();
             CacheOverrides();
+        }
+
+        private void OnDestroy()
+        {
+            if (Instance == this)
+                Instance = null;
         }
 
         private void OnEnable()
@@ -222,6 +274,11 @@ namespace FeaturesTime.Atmosphere
             if (DayNightTimeManager.Instance != null)
             {
                 DayNightTimeManager.Instance.OnTimePhaseChanged += HandleTimePhaseChanged;
+            }
+
+            if (bindPlayerDamageEvent)
+            {
+                BindPlayerStats();
             }
         }
 
@@ -233,16 +290,34 @@ namespace FeaturesTime.Atmosphere
                 DayNightTimeManager.Instance.OnTimePhaseChanged -= HandleTimePhaseChanged;
             }
 
+            UnbindPlayerStats();
+
             if (_transitionCoroutine != null)
             {
                 StopCoroutine(_transitionCoroutine);
                 _transitionCoroutine = null;
                 isTransitioning = false;
             }
+
+            if (_impulseCoroutine != null)
+            {
+                StopCoroutine(_impulseCoroutine);
+                _impulseCoroutine = null;
+            }
+
+            if (_chromaticAberration != null)
+            {
+                _chromaticAberration.intensity.value = 0f;
+            }
         }
 
         private void Start()
         {
+            if (bindPlayerDamageEvent && _cachedPlayerStats == null)
+            {
+                BindPlayerStats();
+            }
+
             // Defensive resolution: pastikan event terdaftar bila saat Awake/OnEnable DayNightTimeManager belum siap
             if (DayNightTimeManager.Instance != null)
             {
@@ -345,6 +420,15 @@ namespace FeaturesTime.Atmosphere
             _vignette.intensity.overrideState = true;
             _vignette.smoothness.overrideState = true;
             _vignette.color.overrideState = true;
+
+            // 6. Chromatic Aberration (Combat Juice / Taktil Impulse)
+            if (!_runtimeProfile.TryGet(out _chromaticAberration))
+            {
+                _chromaticAberration = _runtimeProfile.Add<ChromaticAberration>(true);
+            }
+            _chromaticAberration.active = true;
+            _chromaticAberration.intensity.overrideState = true;
+            _chromaticAberration.intensity.value = 0f; // Baseline selalu 0 untuk kestabilan pandangan isometrik
         }
 
         private void ValidatePresetsIntegrity()
@@ -487,6 +571,12 @@ namespace FeaturesTime.Atmosphere
                 isTransitioning = false;
             }
 
+            if (_impulseCoroutine != null)
+            {
+                StopCoroutine(_impulseCoroutine);
+                _impulseCoroutine = null;
+            }
+
             if (_runtimeProfile == null)
             {
                 ValidatePresetsIntegrity();
@@ -533,6 +623,11 @@ namespace FeaturesTime.Atmosphere
                 _vignette.smoothness.value = target.vignetteSmoothness;
                 _vignette.color.value = target.vignetteColor;
             }
+
+            if (_chromaticAberration != null)
+            {
+                _chromaticAberration.intensity.value = 0f;
+            }
         }
 
         /// <summary>
@@ -562,6 +657,99 @@ namespace FeaturesTime.Atmosphere
                 case EnvironmentPhase.Dusk: duskSettings = settings; break;
                 case EnvironmentPhase.Night: nightSettings = settings; break;
             }
+        }
+
+        #endregion
+
+        #region Combat Juice & Chromatic Impulse
+
+        /// <summary>
+        /// Memicu lonjakan aberasi kromatik tajam yang meluruh secara organik (smooth decay)
+        /// untuk memberikan umpan balik benturan taktil (misal saat player menerima damage kritis atau saat bos/Taro Colossus spawn).
+        /// Zero GC: berjalan murni menggunakan stack value types dan interpolasi frame time.
+        /// </summary>
+        /// <param name="peakIntensity">Intensitas puncak aberasi kromatik (0.0 s/d 1.0).</param>
+        /// <param name="duration">Durasi total getaran dalam detik.</param>
+        public void TriggerChromaticImpulse(float peakIntensity = 0.75f, float duration = 0.35f)
+        {
+            if (_runtimeProfile == null)
+            {
+                CacheOverrides();
+            }
+
+            if (_chromaticAberration == null)
+                return;
+
+            // Hentikan coroutine impulse sebelumnya jika masih aktif agar tidak terjadi tumpang tindih
+            if (_impulseCoroutine != null)
+            {
+                StopCoroutine(_impulseCoroutine);
+                _impulseCoroutine = null;
+            }
+
+            if (!gameObject.activeInHierarchy || !enabled || duration <= 0.001f)
+            {
+                _chromaticAberration.intensity.value = 0f;
+                return;
+            }
+
+            _impulseCoroutine = StartCoroutine(ChromaticImpulseRoutine(peakIntensity, duration));
+        }
+
+        private IEnumerator ChromaticImpulseRoutine(float peakIntensity, float totalDuration)
+        {
+            // Attack phase: ~20% durasi (interpolasi tajam naik ke peak)
+            // Decay phase : ~80% durasi (peluruhan halus kembali ke 0f)
+            float attackDuration = totalDuration * 0.20f;
+            float decayDuration = totalDuration - attackDuration;
+            float elapsed = 0f;
+
+            while (elapsed < totalDuration)
+            {
+                elapsed += Time.deltaTime;
+
+                if (elapsed <= attackDuration)
+                {
+                    float tAttack = Mathf.Clamp01(elapsed / attackDuration);
+                    _chromaticAberration.intensity.value = Mathf.Lerp(0f, peakIntensity, tAttack);
+                }
+                else
+                {
+                    float tDecay = Mathf.Clamp01((elapsed - attackDuration) / decayDuration);
+                    _chromaticAberration.intensity.value = Mathf.SmoothStep(peakIntensity, 0f, tDecay);
+                }
+
+                yield return null;
+            }
+
+            // Pastikan baseline kembali tepat ke 0f
+            _chromaticAberration.intensity.value = 0f;
+            _impulseCoroutine = null;
+        }
+
+        private void BindPlayerStats()
+        {
+            if (_cachedPlayerStats == null)
+                _cachedPlayerStats = FindFirstObjectByType<PlayerStats>();
+
+            if (_cachedPlayerStats != null)
+            {
+                _cachedPlayerStats.OnDamageTaken -= HandlePlayerDamageTaken;
+                _cachedPlayerStats.OnDamageTaken += HandlePlayerDamageTaken;
+            }
+        }
+
+        private void UnbindPlayerStats()
+        {
+            if (_cachedPlayerStats != null)
+            {
+                _cachedPlayerStats.OnDamageTaken -= HandlePlayerDamageTaken;
+            }
+        }
+
+        private void HandlePlayerDamageTaken(int damageAmount)
+        {
+            TriggerChromaticImpulse(playerDamagePeakIntensity, playerDamageDuration);
         }
 
         #endregion
@@ -596,6 +784,9 @@ namespace FeaturesTime.Atmosphere
 
         [ContextMenu("Jump To: Night Settings")]
         private void JumpToNight() => ApplyPhaseSettingsInstant(EnvironmentPhase.Night);
+
+        [ContextMenu("Test Chromatic Aberration Impulse (0.75, 0.35s)")]
+        private void TestChromaticImpulse() => TriggerChromaticImpulse(0.75f, 0.35f);
 
         #endregion
 
