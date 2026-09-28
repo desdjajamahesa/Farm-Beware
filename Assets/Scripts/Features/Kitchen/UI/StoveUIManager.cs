@@ -5,9 +5,11 @@ using UnityEngine.InputSystem;
 using TMPro;
 
 /// <summary>
-/// UI Manager untuk Genshin-style cooking panel.
-/// Menampilkan daftar resep di kiri, detail + bahan + tombol "Masak" di kanan.
-/// Masak instan: klik = langsung konsumsi bahan + tambah hasil ke inventory pemain.
+/// UI View/Presenter untuk Genshin-style cooking panel.
+/// Bertindak murni sebagai layer presentasi: menampilkan daftar resep, detail bahan,
+/// dan memancarkan aksi pengguna ke backend controller (GenshinStove).
+/// Berlangganan event OnCookingStateChanged, OnCookingStarted, OnCookingProgress,
+/// OnCookingCompleted, dan OnCookingCancelled dari backend tanpa mengelola timer atau mutasi inventaris langsung.
 /// </summary>
 public class StoveUIManager : MonoBehaviour
 {
@@ -27,10 +29,11 @@ public class StoveUIManager : MonoBehaviour
     [SerializeField] private GameObject ingredientRowPrefab;
     [SerializeField] private GameObject emptyStatePlaceholder;
 
-    [Header("Cook Button")]
+    [Header("Cook Button & Progress")]
     [SerializeField] private Button cookButton;
     [SerializeField] private TextMeshProUGUI cookButtonText;
     [SerializeField] private Image cookButtonImage;
+    [SerializeField] private Slider cookingProgressBar;
 
     [Header("Close Button")]
     [SerializeField] private Button closeButton;
@@ -41,10 +44,10 @@ public class StoveUIManager : MonoBehaviour
     [SerializeField] private Color haveEnoughColor = new Color(0.3f, 0.9f, 0.4f, 1f);
     [SerializeField] private Color notEnoughColor = new Color(0.9f, 0.3f, 0.3f, 1f);
 
-    private List<KitchenRecipe> allRecipes;
+    private List<KitchenRecipe> allRecipes = new List<KitchenRecipe>();
     private InventoryComponent playerInventory;
     private KitchenRecipe selectedRecipe;
-    private bool isCooking = false;
+    private GenshinStove currentStove;
     private readonly List<GameObject> spawnedRecipeButtons = new List<GameObject>();
     private readonly List<GameObject> spawnedIngredientRows = new List<GameObject>();
 
@@ -60,10 +63,33 @@ public class StoveUIManager : MonoBehaviour
             closeButton.onClick.AddListener(OnCloseClicked);
     }
 
-    /// <summary>Buka panel stove dengan resep dan inventory pemain.</summary>
+    /// <summary>Buka panel stove dengan referensi controller GenshinStove dan inventory pemain.</summary>
+    public void Open(GenshinStove stove, InventoryComponent playerInv)
+    {
+        UnsubscribeFromStove(currentStove);
+        currentStove = stove != null ? stove : GenshinStove.Instance;
+        SubscribeToStove(currentStove);
+
+        var recipes = (currentStove != null && currentStove.availableRecipes != null)
+            ? currentStove.availableRecipes
+            : new KitchenRecipe[0];
+
+        OpenInternal(recipes, playerInv);
+    }
+
+    /// <summary>Overload legacy: buka panel stove dengan daftar resep langsung.</summary>
     public void Open(KitchenRecipe[] recipes, InventoryComponent playerInv)
     {
-        allRecipes = new List<KitchenRecipe>(recipes);
+        UnsubscribeFromStove(currentStove);
+        currentStove = GenshinStove.Instance;
+        SubscribeToStove(currentStove);
+
+        OpenInternal(recipes, playerInv);
+    }
+
+    private void OpenInternal(KitchenRecipe[] recipes, InventoryComponent playerInv)
+    {
+        allRecipes = recipes != null ? new List<KitchenRecipe>(recipes) : new List<KitchenRecipe>();
         playerInventory = playerInv;
         selectedRecipe = null;
 
@@ -97,11 +123,12 @@ public class StoveUIManager : MonoBehaviour
     /// <summary>Tutup panel stove.</summary>
     public void Close()
     {
-        if (isCooking)
+        if (currentStove != null && currentStove.CurrentState == CookingState.Cooking)
         {
-            StopAllCoroutines();
-            isCooking = false;
+            currentStove.CancelCooking(refundIngredients: true);
         }
+
+        UnsubscribeFromStove(currentStove);
 
         if (panelStove != null)
             panelStove.SetActive(false);
@@ -117,6 +144,91 @@ public class StoveUIManager : MonoBehaviour
         var playerControl = FindFirstObjectByType<PlayerControl>();
         if (playerControl != null)
             playerControl.isInputLocked = false;
+    }
+
+    private void SubscribeToStove(GenshinStove stove)
+    {
+        if (stove == null) return;
+        stove.OnCookingStateChanged += HandleCookingStateChanged;
+        stove.OnCookingStarted += HandleCookingStarted;
+        stove.OnCookingProgress += HandleCookingProgress;
+        stove.OnCookingCompleted += HandleCookingCompleted;
+        stove.OnCookingCancelled += HandleCookingCancelled;
+    }
+
+    private void UnsubscribeFromStove(GenshinStove stove)
+    {
+        if (stove == null) return;
+        stove.OnCookingStateChanged -= HandleCookingStateChanged;
+        stove.OnCookingStarted -= HandleCookingStarted;
+        stove.OnCookingProgress -= HandleCookingProgress;
+        stove.OnCookingCompleted -= HandleCookingCompleted;
+        stove.OnCookingCancelled -= HandleCookingCancelled;
+    }
+
+    private void HandleCookingStateChanged(CookingState state)
+    {
+        UpdateCookButton();
+    }
+
+    private void HandleCookingStarted(KitchenRecipe recipe, float duration)
+    {
+        if (cookingProgressBar != null)
+        {
+            cookingProgressBar.gameObject.SetActive(true);
+            cookingProgressBar.value = 0f;
+        }
+
+        if (cookButton != null)
+            cookButton.interactable = false;
+
+        if (cookButtonText != null)
+            cookButtonText.text = $"Cooking... ({Mathf.CeilToInt(duration)}s)";
+
+        UpdateIngredientDisplay(recipe);
+    }
+
+    private void HandleCookingProgress(float progress01, float remainingSeconds)
+    {
+        if (cookingProgressBar != null)
+        {
+            if (!cookingProgressBar.gameObject.activeSelf)
+                cookingProgressBar.gameObject.SetActive(true);
+            cookingProgressBar.value = progress01;
+        }
+
+        if (cookButtonText != null)
+        {
+            cookButtonText.text = $"Cooking... ({Mathf.CeilToInt(remainingSeconds)}s)";
+        }
+    }
+
+    private void HandleCookingCompleted(KitchenRecipe recipe)
+    {
+        if (cookingProgressBar != null)
+        {
+            cookingProgressBar.value = 1f;
+            cookingProgressBar.gameObject.SetActive(false);
+        }
+
+        if (selectedRecipe != null)
+            SelectRecipe(selectedRecipe);
+        else
+            UpdateCookButton();
+    }
+
+    private void HandleCookingCancelled(KitchenRecipe recipe)
+    {
+        if (cookingProgressBar != null)
+        {
+            cookingProgressBar.value = 0f;
+            cookingProgressBar.gameObject.SetActive(false);
+        }
+
+        if (selectedRecipe != null)
+            SelectRecipe(selectedRecipe);
+        else
+            UpdateCookButton();
     }
 
     private void PopulateRecipeList()
@@ -165,7 +277,7 @@ public class StoveUIManager : MonoBehaviour
 
     private void SelectRecipe(KitchenRecipe recipe)
     {
-        if (isCooking) return;
+        if (currentStove != null && currentStove.CurrentState == CookingState.Cooking) return;
         selectedRecipe = recipe;
 
         if (emptyStatePlaceholder != null)
@@ -174,7 +286,7 @@ public class StoveUIManager : MonoBehaviour
         // Update detail panel
         if (resultIcon != null)
         {
-            if (recipe.output != null && recipe.output.itemIcon != null)
+            if (recipe != null && recipe.output != null && recipe.output.itemIcon != null)
             {
                 resultIcon.sprite = recipe.output.itemIcon;
                 resultIcon.enabled = true;
@@ -186,18 +298,19 @@ public class StoveUIManager : MonoBehaviour
         }
 
         if (resultName != null)
-            resultName.text = recipe.output != null ? recipe.output.itemName : recipe.name;
+            resultName.text = recipe != null && recipe.output != null ? recipe.output.itemName : (recipe != null ? recipe.name : "");
 
         if (resultDescription != null)
-            resultDescription.text = !string.IsNullOrEmpty(recipe.description)
+            resultDescription.text = recipe != null && !string.IsNullOrEmpty(recipe.description)
                 ? recipe.description
-                : (recipe.output != null ? recipe.output.description : "");
+                : (recipe != null && recipe.output != null ? recipe.output.description : "");
 
         if (processTimeText != null)
-            processTimeText.text = $"Waktu: {recipe.processTime:F0} detik";
+            processTimeText.text = recipe != null ? $"Waktu: {recipe.processTime:F0} detik" : "";
 
         // Populate ingredients
-        PopulateIngredientRows(recipe);
+        if (recipe != null)
+            PopulateIngredientRows(recipe);
 
         // Update cook button
         UpdateCookButton();
@@ -210,7 +323,7 @@ public class StoveUIManager : MonoBehaviour
             if (row != null) Destroy(row);
         spawnedIngredientRows.Clear();
 
-        if (ingredientContainer == null || ingredientRowPrefab == null) return;
+        if (ingredientContainer == null || ingredientRowPrefab == null || recipe == null) return;
 
         var ingredients = recipe.GetAllIngredients();
         foreach (var ingredient in ingredients)
@@ -287,15 +400,17 @@ public class StoveUIManager : MonoBehaviour
 
     private void UpdateCookButton()
     {
-        bool canCook = CanCook();
+        bool isCookingNow = currentStove != null && currentStove.CurrentState == CookingState.Cooking;
+        bool canCook = !isCookingNow && currentStove != null && selectedRecipe != null && playerInventory != null &&
+                       currentStove.CanCook(selectedRecipe, playerInventory, out _);
 
         if (cookButton != null)
-            cookButton.interactable = isCooking ? false : canCook;
+            cookButton.interactable = canCook;
 
         if (cookButtonImage != null)
             cookButtonImage.color = canCook ? canCookColor : cannotCookColor;
 
-        if (cookButtonText != null && !isCooking)
+        if (cookButtonText != null && !isCookingNow)
             cookButtonText.text = canCook ? "Cook!" : "Missing Ingredients";
     }
 
@@ -304,83 +419,18 @@ public class StoveUIManager : MonoBehaviour
         PopulateIngredientRows(recipe);
     }
 
-    private bool CanCook()
-    {
-        if (selectedRecipe == null || playerInventory == null) return false;
-
-        // Validasi ketersediaan air di botol
-        if (selectedRecipe.waterRequired > 0f)
-        {
-            var bottle = FeaturesKitchen.PlayerWaterBottle.Instance;
-            if (bottle == null || !bottle.HasWater(selectedRecipe.waterRequired))
-                return false;
-        }
-
-        var ingredients = selectedRecipe.GetAllIngredients();
-        foreach (var ingredient in ingredients)
-        {
-            if (ingredient.item == null) continue;
-
-            // Jika item adalah bottle_water dan resep menggunakan sistem waterRequired, abaikan pengecekan slot biasa
-            if (ingredient.item.itemId == "food_bottle_water" && selectedRecipe.waterRequired > 0f)
-                continue;
-
-            if (playerInventory.CountItem(ingredient.item) < ingredient.quantity)
-                return false;
-        }
-        return true;
-    }
-
     private void OnCookClicked()
     {
-        if (isCooking || !CanCook() || selectedRecipe == null || playerInventory == null) return;
-        StartCoroutine(CookProcessRoutine(selectedRecipe));
-    }
+        if (currentStove == null || selectedRecipe == null || playerInventory == null) return;
+        if (currentStove.CurrentState == CookingState.Cooking) return;
 
-    private System.Collections.IEnumerator CookProcessRoutine(KitchenRecipe recipe)
-    {
-        isCooking = true;
-
-        // 1. Konsumsi bahan dan air di awal
-        if (recipe.waterRequired > 0f && FeaturesKitchen.PlayerWaterBottle.Instance != null)
+        if (!currentStove.CanCook(selectedRecipe, playerInventory, out string failReason))
         {
-            FeaturesKitchen.PlayerWaterBottle.Instance.ConsumeWater(recipe.waterRequired);
+            Debug.LogWarning($"[StoveUIManager] Cannot cook: {failReason}");
+            return;
         }
 
-        var ingredients = recipe.GetAllIngredients();
-        foreach (var ingredient in ingredients)
-        {
-            if (ingredient.item != null)
-            {
-                if (ingredient.item.itemId == "food_bottle_water" && recipe.waterRequired > 0f)
-                    continue;
-
-                playerInventory.RemoveItem(ingredient.item, ingredient.quantity);
-            }
-        }
-        UpdateIngredientDisplay(recipe);
-
-        // 2. Countdown Timer berdasarkan recipe.processTime
-        float duration = recipe.processTime > 0 ? recipe.processTime : 1f;
-        float elapsed = 0f;
-
-        if (cookButton != null) cookButton.interactable = false;
-
-        while (elapsed < duration)
-        {
-            elapsed += Time.deltaTime;
-            float remaining = Mathf.Ceil(duration - elapsed);
-            if (cookButtonText != null) cookButtonText.text = $"Cooking... ({remaining}s)";
-            yield return null;
-        }
-
-        // 3. Tambahkan hasil ke inventory
-        playerInventory.AddItem(recipe.output, recipe.outputCount);
-
-        // 4. Selesai
-        isCooking = false;
-        if (cookButton != null) cookButton.interactable = true;
-        SelectRecipe(recipe);
+        currentStove.StartCooking(selectedRecipe, playerInventory);
     }
 
     private void OnCloseClicked()
@@ -404,6 +454,8 @@ public class StoveUIManager : MonoBehaviour
 
     private void OnDestroy()
     {
+        UnsubscribeFromStove(currentStove);
+
         if (Instance == this)
             Instance = null;
 

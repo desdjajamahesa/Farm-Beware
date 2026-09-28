@@ -93,6 +93,7 @@ namespace FeaturesWardrobe
                 if (uacd != null)
                 {
                     uacd.renderType = CameraRenderType.Base;  // Never overlay
+                    uacd.renderPostProcessing = false;        // Hardening: exclude mirror reflection camera from post-processing VRAM passes
                     if (uacd.cameraStack != null && uacd.cameraStack.Count > 0)
                     {
                         uacd.cameraStack.Clear();
