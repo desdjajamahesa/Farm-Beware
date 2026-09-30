@@ -747,10 +747,7 @@ public class MainMenuController : MonoBehaviour
         if (titleRoot != null) titleRoot.SetActive(active);
         if (backgroundOverlay != null) backgroundOverlay.gameObject.SetActive(active);
         if (titleText != null) titleText.gameObject.SetActive(active);
-        var pumpkin = transform.Find("PumpkinHead");
-        if (pumpkin != null) pumpkin.gameObject.SetActive(active);
-        var eyes = transform.Find("CornfieldLurkerEyes");
-        if (eyes != null) eyes.gameObject.SetActive(active);
+
     }
 
     private void UpdateStartButtonLabel()
