@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 /// <summary>
 /// Satu bahan dalam resep: item + jumlah yang dibutuhkan.
-/// Digunakan oleh GenshinStove untuk mengecek inventory pemain.
+/// Digunakan oleh KitchenStove untuk mengecek inventory pemain.
 /// </summary>
 [System.Serializable]
 public class RecipeIngredient
@@ -16,7 +16,7 @@ public class RecipeIngredient
 /// Resep proses dapur (mencuci / memasak). Data murni, di-edit di Inspector.
 /// Mendukung dua mode:
 /// - Sink: pakai field `input` tunggal (backward compat, auto-start).
-/// - Genshin Stove: pakai field `ingredients` list (manual cook, cek dari inventory pemain).
+/// - Stove: pakai field `ingredients` list (manual cook, cek dari inventory pemain).
 /// </summary>
 [CreateAssetMenu(fileName = "NewRecipe", menuName = "FarmBeware/Kitchen Recipe")]
 public class KitchenRecipe : ScriptableObject
@@ -25,7 +25,7 @@ public class KitchenRecipe : ScriptableObject
     [Tooltip("Bahan tunggal untuk Sink (backward compat). Abaikan jika pakai ingredients list.")]
     public ItemData input;
 
-    [Header("Genshin Cooking")]
+    [Header("Stove Cooking")]
     [Tooltip("Nama unik resep untuk ditampilkan di tombol buku resep.")]
     public string recipeName;
 
@@ -46,7 +46,7 @@ public class KitchenRecipe : ScriptableObject
     [Tooltip("Jumlah hasil yang diproduksi.")]
     public int outputCount = 1;
 
-    [Tooltip("Durasi proses dalam detik (untuk Sink; Genshin Stove = instan).")]
+    [Tooltip("Durasi proses dalam detik.")]
     public float processTime = 3f;
 
     [Header("Water Requirements")]
@@ -55,7 +55,7 @@ public class KitchenRecipe : ScriptableObject
 
     // === ACCESSORS ===
 
-    /// <summary>True jika resep pakai multi-bahan (Genshin mode).</summary>
+    /// <summary>True jika resep pakai multi-bahan (Stove mode).</summary>
     public bool IsMultiIngredient => ingredients != null && ingredients.Count > 0;
 
     /// <summary>Dapatkan semua bahan (gabungkan field lama + baru).</summary>

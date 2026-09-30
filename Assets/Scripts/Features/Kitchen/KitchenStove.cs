@@ -17,7 +17,7 @@ public enum CookingState
 }
 
 /// <summary>
-/// Kompor memasak (Genshin-style Cooking Controller):
+/// Kompor memasak (Kitchen Cooking Controller):
 /// Bertindak sebagai backend controller mandiri yang mengelola:
 /// - State machine siklus memasak (Idle -> Cooking -> Completed / Cancelled).
 /// - Pemancaran event C# publik (OnCookingStateChanged, OnCookingStarted, OnCookingProgress, dll).
@@ -25,7 +25,7 @@ public enum CookingState
 /// - Menghilangkan tight coupling dengan UI; UI bertindak murni sebagai View/Presenter.
 /// </summary>
 [DisallowMultipleComponent]
-public class GenshinStove : MonoBehaviour, IInteractable
+public class KitchenStove : MonoBehaviour, IInteractable
 {
     #region Sub-types
 
@@ -78,14 +78,14 @@ public class GenshinStove : MonoBehaviour, IInteractable
 
     #region Singleton Accessor
 
-    private static GenshinStove _instance;
-    public static GenshinStove Instance
+    private static KitchenStove _instance;
+    public static KitchenStove Instance
     {
         get
         {
             if (_instance == null)
             {
-                var found = FindObjectsByType<GenshinStove>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+                var found = FindObjectsByType<KitchenStove>(FindObjectsInactive.Include, FindObjectsSortMode.None);
                 if (found != null && found.Length > 0)
                     _instance = found[0];
             }
@@ -132,7 +132,7 @@ public class GenshinStove : MonoBehaviour, IInteractable
 
         if (stoveUI == null)
         {
-            Debug.LogWarning("[GenshinStove] StoveUIManager tidak ditemukan!");
+            Debug.LogWarning("[KitchenStove] StoveUIManager tidak ditemukan!");
             return;
         }
 
@@ -140,7 +140,7 @@ public class GenshinStove : MonoBehaviour, IInteractable
         InventoryComponent playerInv = interactor.GetComponent<InventoryComponent>();
         if (playerInv == null)
         {
-            Debug.LogWarning("[GenshinStove] Player tidak punya InventoryComponent!");
+            Debug.LogWarning("[KitchenStove] Player tidak punya InventoryComponent!");
             return;
         }
 
@@ -228,7 +228,7 @@ public class GenshinStove : MonoBehaviour, IInteractable
     {
         if (!CanCook(recipe, inventory, out string failReason))
         {
-            Debug.LogWarning($"[GenshinStove] Gagal memulai memasak: {failReason}");
+            Debug.LogWarning($"[KitchenStove] Gagal memulai memasak: {failReason}");
             return false;
         }
 
@@ -374,3 +374,4 @@ public class GenshinStove : MonoBehaviour, IInteractable
 
     #endregion
 }
+

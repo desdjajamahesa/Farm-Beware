@@ -3,7 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 
 /// <summary>
-/// Overlay progress dunia (ala Minecraft) untuk Stove & Kitchen Sink.
+/// Overlay progress bar visual berbasis world-space untuk Stove & Kitchen Sink.
 /// MURNI visual: subscribe ke event KitchenStation, tidak menyimpan state gameplay.
 /// Visual: "veil" putih transparan yang NAIK dari bawah ke atas mengikuti progress
 /// real-time (OnProcessProgress per frame), billboard menghadap kamera,

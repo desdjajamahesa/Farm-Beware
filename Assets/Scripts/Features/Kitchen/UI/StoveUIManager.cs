@@ -5,9 +5,9 @@ using UnityEngine.InputSystem;
 using TMPro;
 
 /// <summary>
-/// UI View/Presenter untuk Genshin-style cooking panel.
+/// UI View/Presenter untuk panel memasak kompor (Kitchen Stove).
 /// Bertindak murni sebagai layer presentasi: menampilkan daftar resep, detail bahan,
-/// dan memancarkan aksi pengguna ke backend controller (GenshinStove).
+/// dan memancarkan aksi pengguna ke backend controller (KitchenStove).
 /// Berlangganan event OnCookingStateChanged, OnCookingStarted, OnCookingProgress,
 /// OnCookingCompleted, dan OnCookingCancelled dari backend tanpa mengelola timer atau mutasi inventaris langsung.
 /// </summary>
@@ -47,7 +47,7 @@ public class StoveUIManager : MonoBehaviour
     private List<KitchenRecipe> allRecipes = new List<KitchenRecipe>();
     private InventoryComponent playerInventory;
     private KitchenRecipe selectedRecipe;
-    private GenshinStove currentStove;
+    private KitchenStove currentStove;
     private readonly List<GameObject> spawnedRecipeButtons = new List<GameObject>();
     private readonly List<GameObject> spawnedIngredientRows = new List<GameObject>();
 
@@ -63,11 +63,11 @@ public class StoveUIManager : MonoBehaviour
             closeButton.onClick.AddListener(OnCloseClicked);
     }
 
-    /// <summary>Buka panel stove dengan referensi controller GenshinStove dan inventory pemain.</summary>
-    public void Open(GenshinStove stove, InventoryComponent playerInv)
+    /// <summary>Buka panel stove dengan referensi controller KitchenStove dan inventory pemain.</summary>
+    public void Open(KitchenStove stove, InventoryComponent playerInv)
     {
         UnsubscribeFromStove(currentStove);
-        currentStove = stove != null ? stove : GenshinStove.Instance;
+        currentStove = stove != null ? stove : KitchenStove.Instance;
         SubscribeToStove(currentStove);
 
         var recipes = (currentStove != null && currentStove.availableRecipes != null)
@@ -81,7 +81,7 @@ public class StoveUIManager : MonoBehaviour
     public void Open(KitchenRecipe[] recipes, InventoryComponent playerInv)
     {
         UnsubscribeFromStove(currentStove);
-        currentStove = GenshinStove.Instance;
+        currentStove = KitchenStove.Instance;
         SubscribeToStove(currentStove);
 
         OpenInternal(recipes, playerInv);
@@ -146,7 +146,7 @@ public class StoveUIManager : MonoBehaviour
             playerControl.isInputLocked = false;
     }
 
-    private void SubscribeToStove(GenshinStove stove)
+    private void SubscribeToStove(KitchenStove stove)
     {
         if (stove == null) return;
         stove.OnCookingStateChanged += HandleCookingStateChanged;
@@ -156,7 +156,7 @@ public class StoveUIManager : MonoBehaviour
         stove.OnCookingCancelled += HandleCookingCancelled;
     }
 
-    private void UnsubscribeFromStove(GenshinStove stove)
+    private void UnsubscribeFromStove(KitchenStove stove)
     {
         if (stove == null) return;
         stove.OnCookingStateChanged -= HandleCookingStateChanged;

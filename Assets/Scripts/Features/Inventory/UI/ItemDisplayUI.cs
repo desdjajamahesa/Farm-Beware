@@ -4,7 +4,7 @@ using UnityEngine.InputSystem;
 using UnityEngine.UI;
 using TMPro;
 
-// Singleton UI untuk menampilkan informasi item bergaya Minecraft:
+// Singleton UI presenter untuk menampilkan informasi dan tooltip item di world-space:
 // 1) Popup nama item di hotbar saat pindah slot terpilih dengan smooth fade.
 // 2) Tooltip mengikuti kursor saat hover item di inventory.
 // 3) Banner prompt interaksi dengan badge tombol [E] dan formatting teks modern.

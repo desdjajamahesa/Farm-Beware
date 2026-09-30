@@ -48671,7 +48671,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 563e31159822edc4f8039099d86e3de4, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::GenshinStove
+  m_EditorClassIdentifier: Assembly-CSharp::KitchenStove
   recipes:
   - {fileID: 11400000, guid: 20444c23d5c64f641a05de7108973466, type: 2}
   - {fileID: 11400000, guid: cf50be511a365b84b844a1e4a9997c7f, type: 2}
