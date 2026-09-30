@@ -97,4 +97,17 @@ public class TimeManager : MonoBehaviour
     {
         StartNightPhase();
     }
+
+    /// <summary>
+    /// Restores full time state (used by Save/Load system).
+    /// </summary>
+    public void SetTimeState(int day, DayPhase phase, bool cleared)
+    {
+        currentDay = Mathf.Max(1, day);
+        currentPhase = phase;
+        isNightEncounterCleared = cleared;
+
+        OnDayChanged?.Invoke(currentDay);
+        OnPhaseChanged?.Invoke(currentPhase);
+    }
 }

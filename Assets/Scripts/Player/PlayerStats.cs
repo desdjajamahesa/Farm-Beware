@@ -342,4 +342,22 @@ public class PlayerStats : MonoBehaviour, FeaturesCombat.IDamageable
         currentThirst = Mathf.Clamp(currentThirst + amount, 0, maxThirst);
         OnThirstChanged?.Invoke(currentThirst, maxThirst);
     }
+
+    /// <summary>
+    /// Restores all player vital stats at once (used by Save/Load system).
+    /// </summary>
+    public void RestoreStats(int hp, float stamina, float hunger, float thirst)
+    {
+        currentHealth = Mathf.Clamp(hp, 1, maxHealth);
+        currentStamina = Mathf.Clamp(stamina, 0f, maxStamina);
+        currentHunger = Mathf.Clamp(hunger, 0f, maxHunger);
+        currentThirst = Mathf.Clamp(thirst, 0f, maxThirst);
+        lastNotifiedHunger = currentHunger;
+        lastNotifiedThirst = currentThirst;
+
+        OnHealthChanged?.Invoke(currentHealth, maxHealth);
+        OnStaminaChanged?.Invoke(currentStamina, maxStamina);
+        OnHungerChanged?.Invoke(currentHunger, maxHunger);
+        OnThirstChanged?.Invoke(currentThirst, maxThirst);
+    }
 }

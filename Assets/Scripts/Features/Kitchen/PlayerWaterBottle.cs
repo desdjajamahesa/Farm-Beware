@@ -137,5 +137,14 @@ namespace FeaturesKitchen
 
             return true;
         }
+
+        /// <summary>
+        /// Sets current water directly (used by Save/Load system).
+        /// </summary>
+        public void SetWater(float amount)
+        {
+            currentWater = Mathf.Clamp(amount, 0f, maxWater);
+            OnWaterChanged?.Invoke(currentWater, maxWater);
+        }
     }
 }

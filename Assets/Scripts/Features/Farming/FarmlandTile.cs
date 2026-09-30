@@ -465,6 +465,21 @@ namespace FeaturesFarming
             }
         }
 
+        /// <summary>
+        /// Restores complete crop state (used by Save/Load system).
+        /// </summary>
+        public void RestoreCropState(TileState state, SeedItemData seed, float progress, float timer)
+        {
+            currentState = state;
+            plantedSeed = seed;
+            growthProgress = Mathf.Clamp01(progress);
+            currentTimer = timer;
+            lastVisualStage = -1;
+            UpdateVisuals();
+            UpdateLabelText(null);
+            UpdateCountdownUI();
+        }
+
         public void UpdateLabelText(GameObject interactor)
         {
             if (worldLabel == null) return;
