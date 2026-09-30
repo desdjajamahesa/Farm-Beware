@@ -21,6 +21,8 @@ public class PlayerControl : MonoBehaviour
     public float attackLockDuration = 1.1f;
     private bool isAttacking = false;
     private bool isSkillLeaping = false;
+    private float idleFidgetTimer = 0f;
+    public bool IsAttacking => isAttacking;
 
     [Header("Pengaturan Pergerakan Saat Menyerang")]
     [Tooltip("Pengali kecepatan jalan saat menyerang (misal: 0.4 = 40% dari walkSpeed). Karakter tetap bisa bergerak pelan.")]
@@ -256,7 +258,30 @@ public class PlayerControl : MonoBehaviour
                 animator.SetFloat("Vel", targetSpeed, 0.12f, Time.deltaTime);
                 animator.SetBool("Grounded", isGrounded);
                 // Idle aktif jika pemain tidak memberi input dan kecepatan tubuh sudah melambat
-                animator.SetBool("Idle", !isMoving && currentSpeed < 0.25f);
+                bool isIdleNow = !isMoving && currentSpeed < 0.25f;
+                animator.SetBool("Idle", isIdleNow);
+
+                // Sinkronisasi status memegang senjata
+                bool hasWeapon = (playerEquipment != null && playerEquipment.IsHoldingWeapon);
+                animator.SetBool("HasWeapon", hasWeapon);
+
+                // Idle fidget: HANYA jika sedang memegang senjata dan diam lebih dari 9 detik
+                if (isIdleNow && hasWeapon)
+                {
+                    idleFidgetTimer += Time.fixedDeltaTime;
+                    if (idleFidgetTimer > 9.0f)
+                    {
+                        idleFidgetTimer = 0f;
+                        if (isGrounded && !isAttacking)
+                        {
+                            animator.SetTrigger("LookAround");
+                        }
+                    }
+                }
+                else
+                {
+                    idleFidgetTimer = 0f;
+                }
                 animator.SetBool("Sprinting", isRunning && currentSpeed > walkSpeed * 0.8f);
             }
         }
@@ -501,10 +526,31 @@ public class PlayerControl : MonoBehaviour
         bool rightClick = Mouse.current != null && Mouse.current.rightButton.wasPressedThisFrame && !isPointerOverUI;
         bool rKey = Keyboard.current != null && Keyboard.current.rKey.wasPressedThisFrame;
 
+        // 3. Skill Tendangan Spartan (Knockback Kick): Tombol Q
+        bool qKey = Keyboard.current != null && Keyboard.current.qKey.wasPressedThisFrame;
+
+        // 4. Selebrasi / Battlecry Emote: Tombol T
+        bool tKey = Keyboard.current != null && Keyboard.current.tKey.wasPressedThisFrame;
+
         if (playerEquipment == null)
             playerEquipment = GetComponent<PlayerEquipment>() ?? gameObject.AddComponent<PlayerEquipment>();
 
-        if (rightClick || rKey)
+        if (qKey)
+        {
+            if (playerEquipment != null && playerEquipment.TryPerformKick())
+            {
+                StartCoroutine(RoutineKick());
+            }
+        }
+        else if (tKey)
+        {
+            if (animator != null && isGrounded)
+            {
+                animator.ResetTrigger("Taunt");
+                animator.SetTrigger("Taunt");
+            }
+        }
+        else if (rightClick || rKey)
         {
             if (playerEquipment != null && playerEquipment.TryPerformSkillAttack())
             {
@@ -549,6 +595,39 @@ public class PlayerControl : MonoBehaviour
             }
 
             yield return null;
+        }
+
+        isAttacking = false;
+        if (animator != null)
+            animator.SetBool("IsAttacking", false);
+    }
+
+    private IEnumerator RoutineKick()
+    {
+        isAttacking = true;
+        if (animator != null)
+            animator.SetBool("IsAttacking", true);
+
+        float atkSpeed = (playerEquipment != null) ? Mathf.Max(0.5f, playerEquipment.AttackAnimationSpeed) : 1.6f;
+
+        Vector3 forwardDir = transform.forward;
+        if (rb != null)
+        {
+            // Hentakan lunge maju seketika bersamaan dengan lesatan tendangan
+            rb.linearVelocity = forwardDir * 4.2f + Vector3.up * 0.1f;
+        }
+
+        float lockDuration = 0.38f / atkSpeed;
+        float elapsed = 0f;
+        while (elapsed < lockDuration)
+        {
+            elapsed += Time.deltaTime;
+            yield return null;
+        }
+
+        if (rb != null)
+        {
+            rb.linearVelocity = new Vector3(0f, rb.linearVelocity.y, 0f);
         }
 
         isAttacking = false;
@@ -629,7 +708,8 @@ public class PlayerControl : MonoBehaviour
                info.IsName("Attack_Combo1") ||
                info.IsName("Attack_Combo2") ||
                info.IsName("Attack_Combo3") ||
-               info.IsName("Attack_Skill");
+               info.IsName("Attack_Skill") ||
+               info.IsName("Attack_Kick");
     }
 
 
