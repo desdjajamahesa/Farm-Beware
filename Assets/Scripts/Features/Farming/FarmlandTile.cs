@@ -574,11 +574,11 @@ namespace FeaturesFarming
             if (col != null)
             {
                 col.isTrigger = false;
-                // Ukuran collider petak tanah: 1.2 x 0.4 x 1.2
-                if (col.size == Vector3.one)
+                // Ukuran collider petak tanah: 1.2 x 0.18 x 1.2 agar pas dengan bedengan tanah dan tidak menghalangi jalan
+                if (col.size == Vector3.one || col.size.y > 0.25f)
                 {
-                    col.size = new Vector3(1.2f, 0.4f, 1.2f);
-                    col.center = new Vector3(0f, 0.2f, 0f);
+                    col.size = new Vector3(1.2f, 0.18f, 1.2f);
+                    col.center = new Vector3(0f, 0.09f, 0f);
                 }
             }
         }

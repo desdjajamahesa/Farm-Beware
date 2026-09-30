@@ -1,0 +1,1275 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &898484627489593538
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 6059925426664684927}
+  - component: {fileID: 6483126091079831457}
+  - component: {fileID: 3572926301507066242}
+  m_Layer: 0
+  m_Name: Garden_Bed_South
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &6059925426664684927
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 898484627489593538}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 11.8, y: 0.02, z: 40.6}
+  m_LocalScale: {x: 7.4, y: 0.04, z: 1.7}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 5289407300179440527}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!33 &6483126091079831457
+MeshFilter:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 898484627489593538}
+  m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!23 &3572926301507066242
+MeshRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 898484627489593538}
+  m_Enabled: 1
+  m_CastShadows: 1
+  m_ReceiveShadows: 1
+  m_DynamicOccludee: 1
+  m_StaticShadowCaster: 0
+  m_MotionVectors: 1
+  m_LightProbeUsage: 1
+  m_ReflectionProbeUsage: 1
+  m_RayTracingMode: 2
+  m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
+  m_RenderingLayerMask: 1
+  m_RendererPriority: 0
+  m_Materials:
+  - {fileID: 2100000, guid: 2940c40b9e8324b4fb9eab0c0f9a677f, type: 2}
+  m_StaticBatchInfo:
+    firstSubMesh: 0
+    subMeshCount: 0
+  m_StaticBatchRoot: {fileID: 0}
+  m_ProbeAnchor: {fileID: 0}
+  m_LightProbeVolumeOverride: {fileID: 0}
+  m_ScaleInLightmap: 1
+  m_ReceiveGI: 1
+  m_PreserveUVs: 1
+  m_IgnoreNormalsForChartDetection: 0
+  m_ImportantGI: 0
+  m_StitchLightmapSeams: 1
+  m_SelectedEditorRenderState: 3
+  m_MinimumChartSize: 4
+  m_AutoUVMaxDistance: 0.5
+  m_AutoUVMaxAngle: 89
+  m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
+  m_SortingLayerID: 0
+  m_SortingLayer: 0
+  m_SortingOrder: 0
+  m_MaskInteraction: 0
+  m_AdditionalVertexStreams: {fileID: 0}
+--- !u!1 &2069134542673171457
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 5289407300179440527}
+  m_Layer: 0
+  m_Name: Farmland
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &5289407300179440527
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2069134542673171457}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 9133249246701931378}
+  - {fileID: 6664131989575561928}
+  - {fileID: 9214137590551118228}
+  - {fileID: 1709839235802999331}
+  - {fileID: 3376169010313532074}
+  - {fileID: 8864974528009580859}
+  - {fileID: 6278681269219035074}
+  - {fileID: 169079928229191234}
+  - {fileID: 6059925426664684927}
+  - {fileID: 2776139417514241996}
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &2132708931437473580
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2776139417514241996}
+  - component: {fileID: 2962504227067100326}
+  - component: {fileID: 1430797368702836760}
+  m_Layer: 0
+  m_Name: Garden_Bed_North
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2776139417514241996
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2132708931437473580}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 11.8, y: 0.02, z: 44.8}
+  m_LocalScale: {x: 7.4, y: 0.04, z: 1.7}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 5289407300179440527}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!33 &2962504227067100326
+MeshFilter:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2132708931437473580}
+  m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!23 &1430797368702836760
+MeshRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2132708931437473580}
+  m_Enabled: 1
+  m_CastShadows: 1
+  m_ReceiveShadows: 1
+  m_DynamicOccludee: 1
+  m_StaticShadowCaster: 0
+  m_MotionVectors: 1
+  m_LightProbeUsage: 1
+  m_ReflectionProbeUsage: 1
+  m_RayTracingMode: 2
+  m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
+  m_RenderingLayerMask: 1
+  m_RendererPriority: 0
+  m_Materials:
+  - {fileID: 2100000, guid: 2940c40b9e8324b4fb9eab0c0f9a677f, type: 2}
+  m_StaticBatchInfo:
+    firstSubMesh: 0
+    subMeshCount: 0
+  m_StaticBatchRoot: {fileID: 0}
+  m_ProbeAnchor: {fileID: 0}
+  m_LightProbeVolumeOverride: {fileID: 0}
+  m_ScaleInLightmap: 1
+  m_ReceiveGI: 1
+  m_PreserveUVs: 1
+  m_IgnoreNormalsForChartDetection: 0
+  m_ImportantGI: 0
+  m_StitchLightmapSeams: 1
+  m_SelectedEditorRenderState: 3
+  m_MinimumChartSize: 4
+  m_AutoUVMaxDistance: 0.5
+  m_AutoUVMaxAngle: 89
+  m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
+  m_SortingLayerID: 0
+  m_SortingLayer: 0
+  m_SortingOrder: 0
+  m_MaskInteraction: 0
+  m_AdditionalVertexStreams: {fileID: 0}
+--- !u!1001 &7988851702573399
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 5289407300179440527}
+    m_Modifications:
+    - target: {fileID: 1060950350446668627, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: plantedSeed
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 1060950350446668627, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: currentState
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2690513492304261814, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_Size.x
+      value: 1.2
+      objectReference: {fileID: 0}
+    - target: {fileID: 2690513492304261814, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_Size.y
+      value: 0.18
+      objectReference: {fileID: 0}
+    - target: {fileID: 2690513492304261814, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_Size.z
+      value: 1.2
+      objectReference: {fileID: 0}
+    - target: {fileID: 2690513492304261814, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_Center.y
+      value: 0.09
+      objectReference: {fileID: 0}
+    - target: {fileID: 5307613753106097742, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_Name
+      value: FarmlandPlot_6
+      objectReference: {fileID: 0}
+    - target: {fileID: 6289528234638148804, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: soilRenderer
+      value: 
+      objectReference: {fileID: 187502291712265855}
+    - target: {fileID: 8870638313631946860, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 10.8
+      objectReference: {fileID: 0}
+    - target: {fileID: 8870638313631946860, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8870638313631946860, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 44.8
+      objectReference: {fileID: 0}
+    - target: {fileID: 8870638313631946860, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 8870638313631946860, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8870638313631946860, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8870638313631946860, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8870638313631946860, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8870638313631946860, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8870638313631946860, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 5307613753106097742, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 3000768132252283945}
+  m_SourcePrefab: {fileID: 100100000, guid: 31e269080e9514a438157306b12121e5, type: 3}
+--- !u!23 &187502291712265855 stripped
+MeshRenderer:
+  m_CorrespondingSourceObject: {fileID: 181909277855835944, guid: 31e269080e9514a438157306b12121e5, type: 3}
+  m_PrefabInstance: {fileID: 7988851702573399}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &5310886658684014361 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 5307613753106097742, guid: 31e269080e9514a438157306b12121e5, type: 3}
+  m_PrefabInstance: {fileID: 7988851702573399}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &3000768132252283945
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5310886658684014361}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8f0529fc7d4bb0047af3df5cca9e2b40, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FeaturesFarming.CropGrowthCountdownUI
+  heightOffset: {x: 0, y: 1.4, z: 0}
+  ringBgColor: {r: 0.05, g: 0.07, b: 0.11, a: 0.92}
+  progressColor: {r: 0.05, g: 0.92, b: 0.65, a: 1}
+--- !u!4 &8864974528009580859 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 8870638313631946860, guid: 31e269080e9514a438157306b12121e5, type: 3}
+  m_PrefabInstance: {fileID: 7988851702573399}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1001 &343935886215289336
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 5289407300179440527}
+    m_Modifications:
+    - target: {fileID: 1060950350446668627, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: plantedSeed
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 1060950350446668627, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: currentState
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2690513492304261814, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_Size.x
+      value: 1.2
+      objectReference: {fileID: 0}
+    - target: {fileID: 2690513492304261814, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_Size.y
+      value: 0.18
+      objectReference: {fileID: 0}
+    - target: {fileID: 2690513492304261814, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_Size.z
+      value: 1.2
+      objectReference: {fileID: 0}
+    - target: {fileID: 2690513492304261814, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_Center.y
+      value: 0.09
+      objectReference: {fileID: 0}
+    - target: {fileID: 5307613753106097742, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_Name
+      value: FarmlandPlot_3
+      objectReference: {fileID: 0}
+    - target: {fileID: 6289528234638148804, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: soilRenderer
+      value: 
+      objectReference: {fileID: 451382903632232144}
+    - target: {fileID: 8870638313631946860, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 12.8
+      objectReference: {fileID: 0}
+    - target: {fileID: 8870638313631946860, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8870638313631946860, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 40.6
+      objectReference: {fileID: 0}
+    - target: {fileID: 8870638313631946860, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 8870638313631946860, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8870638313631946860, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8870638313631946860, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8870638313631946860, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8870638313631946860, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8870638313631946860, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 5307613753106097742, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 6471823409455041366}
+  m_SourcePrefab: {fileID: 100100000, guid: 31e269080e9514a438157306b12121e5, type: 3}
+--- !u!23 &451382903632232144 stripped
+MeshRenderer:
+  m_CorrespondingSourceObject: {fileID: 181909277855835944, guid: 31e269080e9514a438157306b12121e5, type: 3}
+  m_PrefabInstance: {fileID: 343935886215289336}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &5579266471374290870 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 5307613753106097742, guid: 31e269080e9514a438157306b12121e5, type: 3}
+  m_PrefabInstance: {fileID: 343935886215289336}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &6471823409455041366
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5579266471374290870}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8f0529fc7d4bb0047af3df5cca9e2b40, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FeaturesFarming.CropGrowthCountdownUI
+  heightOffset: {x: 0, y: 1.4, z: 0}
+  ringBgColor: {r: 0.05, g: 0.07, b: 0.11, a: 0.92}
+  progressColor: {r: 0.05, g: 0.92, b: 0.65, a: 1}
+--- !u!4 &9214137590551118228 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 8870638313631946860, guid: 31e269080e9514a438157306b12121e5, type: 3}
+  m_PrefabInstance: {fileID: 343935886215289336}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1001 &406739316795331358
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 5289407300179440527}
+    m_Modifications:
+    - target: {fileID: 181909277855835944, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: 2940c40b9e8324b4fb9eab0c0f9a677f, type: 2}
+    - target: {fileID: 406201842884804741, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: be784b17b7fb42547a1ec9b4e3f88c21, type: 2}
+    - target: {fileID: 709080690545233544, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: be784b17b7fb42547a1ec9b4e3f88c21, type: 2}
+    - target: {fileID: 1060950350446668627, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: plantedSeed
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 1060950350446668627, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: currentState
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1062289505531226651, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: be784b17b7fb42547a1ec9b4e3f88c21, type: 2}
+    - target: {fileID: 1434881849437396789, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: be784b17b7fb42547a1ec9b4e3f88c21, type: 2}
+    - target: {fileID: 1469754740415374895, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: be784b17b7fb42547a1ec9b4e3f88c21, type: 2}
+    - target: {fileID: 2428123825932055022, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: be784b17b7fb42547a1ec9b4e3f88c21, type: 2}
+    - target: {fileID: 2690513492304261814, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_Size.x
+      value: 1.2
+      objectReference: {fileID: 0}
+    - target: {fileID: 2690513492304261814, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_Size.y
+      value: 0.18
+      objectReference: {fileID: 0}
+    - target: {fileID: 2690513492304261814, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_Size.z
+      value: 1.2
+      objectReference: {fileID: 0}
+    - target: {fileID: 2690513492304261814, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_Center.y
+      value: 0.09
+      objectReference: {fileID: 0}
+    - target: {fileID: 2871522517324604587, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: be784b17b7fb42547a1ec9b4e3f88c21, type: 2}
+    - target: {fileID: 3519497030827352690, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: be784b17b7fb42547a1ec9b4e3f88c21, type: 2}
+    - target: {fileID: 3901609834158472063, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: be784b17b7fb42547a1ec9b4e3f88c21, type: 2}
+    - target: {fileID: 4085968283082229722, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: be784b17b7fb42547a1ec9b4e3f88c21, type: 2}
+    - target: {fileID: 4199290803648199949, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: be784b17b7fb42547a1ec9b4e3f88c21, type: 2}
+    - target: {fileID: 4579605469677525784, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: be784b17b7fb42547a1ec9b4e3f88c21, type: 2}
+    - target: {fileID: 4838440681232078697, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: be784b17b7fb42547a1ec9b4e3f88c21, type: 2}
+    - target: {fileID: 5307613753106097742, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_Name
+      value: FarmlandPlot_1
+      objectReference: {fileID: 0}
+    - target: {fileID: 5321232529559230478, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: be784b17b7fb42547a1ec9b4e3f88c21, type: 2}
+    - target: {fileID: 5577842697256339775, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 0.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 5577842697256339775, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_LocalScale.y
+      value: 0.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 5577842697256339775, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_LocalScale.z
+      value: 0.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 5865548471769617913, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: be784b17b7fb42547a1ec9b4e3f88c21, type: 2}
+    - target: {fileID: 6289528234638148804, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: soilRenderer
+      value: 
+      objectReference: {fileID: 514328204147995702}
+    - target: {fileID: 6884703453737771038, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: be784b17b7fb42547a1ec9b4e3f88c21, type: 2}
+    - target: {fileID: 7077033817825805201, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: be784b17b7fb42547a1ec9b4e3f88c21, type: 2}
+    - target: {fileID: 7964555779907123019, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: be784b17b7fb42547a1ec9b4e3f88c21, type: 2}
+    - target: {fileID: 8079780884681094657, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: be784b17b7fb42547a1ec9b4e3f88c21, type: 2}
+    - target: {fileID: 8448908334027594210, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: be784b17b7fb42547a1ec9b4e3f88c21, type: 2}
+    - target: {fileID: 8637041162699183425, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: be784b17b7fb42547a1ec9b4e3f88c21, type: 2}
+    - target: {fileID: 8686570969184223391, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: be784b17b7fb42547a1ec9b4e3f88c21, type: 2}
+    - target: {fileID: 8870638313631946860, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 8.8
+      objectReference: {fileID: 0}
+    - target: {fileID: 8870638313631946860, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8870638313631946860, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 40.6
+      objectReference: {fileID: 0}
+    - target: {fileID: 8870638313631946860, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 8870638313631946860, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8870638313631946860, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8870638313631946860, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8870638313631946860, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8870638313631946860, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8870638313631946860, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 9109591484782444530, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: be784b17b7fb42547a1ec9b4e3f88c21, type: 2}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 5307613753106097742, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1497356997788297492}
+  m_SourcePrefab: {fileID: 100100000, guid: 31e269080e9514a438157306b12121e5, type: 3}
+--- !u!23 &514328204147995702 stripped
+MeshRenderer:
+  m_CorrespondingSourceObject: {fileID: 181909277855835944, guid: 31e269080e9514a438157306b12121e5, type: 3}
+  m_PrefabInstance: {fileID: 406739316795331358}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &5480152691757331792 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 5307613753106097742, guid: 31e269080e9514a438157306b12121e5, type: 3}
+  m_PrefabInstance: {fileID: 406739316795331358}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1497356997788297492
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5480152691757331792}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8f0529fc7d4bb0047af3df5cca9e2b40, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FeaturesFarming.CropGrowthCountdownUI
+  heightOffset: {x: 0, y: 1.4, z: 0}
+  ringBgColor: {r: 0.05, g: 0.07, b: 0.11, a: 0.92}
+  progressColor: {r: 0.05, g: 0.92, b: 0.65, a: 1}
+--- !u!4 &9133249246701931378 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 8870638313631946860, guid: 31e269080e9514a438157306b12121e5, type: 3}
+  m_PrefabInstance: {fileID: 406739316795331358}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1001 &2837573638485928612
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 5289407300179440527}
+    m_Modifications:
+    - target: {fileID: 1060950350446668627, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: plantedSeed
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 1060950350446668627, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: currentState
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2690513492304261814, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_Size.x
+      value: 1.2
+      objectReference: {fileID: 0}
+    - target: {fileID: 2690513492304261814, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_Size.y
+      value: 0.18
+      objectReference: {fileID: 0}
+    - target: {fileID: 2690513492304261814, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_Size.z
+      value: 1.2
+      objectReference: {fileID: 0}
+    - target: {fileID: 2690513492304261814, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_Center.y
+      value: 0.09
+      objectReference: {fileID: 0}
+    - target: {fileID: 5307613753106097742, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_Name
+      value: FarmlandPlot_2
+      objectReference: {fileID: 0}
+    - target: {fileID: 6289528234638148804, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: soilRenderer
+      value: 
+      objectReference: {fileID: 2731243742689660300}
+    - target: {fileID: 8870638313631946860, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 10.8
+      objectReference: {fileID: 0}
+    - target: {fileID: 8870638313631946860, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8870638313631946860, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 40.6
+      objectReference: {fileID: 0}
+    - target: {fileID: 8870638313631946860, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 8870638313631946860, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8870638313631946860, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8870638313631946860, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8870638313631946860, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8870638313631946860, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8870638313631946860, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 5307613753106097742, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 6701424019337859877}
+  m_SourcePrefab: {fileID: 100100000, guid: 31e269080e9514a438157306b12121e5, type: 3}
+--- !u!23 &2731243742689660300 stripped
+MeshRenderer:
+  m_CorrespondingSourceObject: {fileID: 181909277855835944, guid: 31e269080e9514a438157306b12121e5, type: 3}
+  m_PrefabInstance: {fileID: 2837573638485928612}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &6664131989575561928 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 8870638313631946860, guid: 31e269080e9514a438157306b12121e5, type: 3}
+  m_PrefabInstance: {fileID: 2837573638485928612}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &7983044472326491370 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 5307613753106097742, guid: 31e269080e9514a438157306b12121e5, type: 3}
+  m_PrefabInstance: {fileID: 2837573638485928612}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &6701424019337859877
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7983044472326491370}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8f0529fc7d4bb0047af3df5cca9e2b40, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FeaturesFarming.CropGrowthCountdownUI
+  heightOffset: {x: 0, y: 1.4, z: 0}
+  ringBgColor: {r: 0.05, g: 0.07, b: 0.11, a: 0.92}
+  progressColor: {r: 0.05, g: 0.92, b: 0.65, a: 1}
+--- !u!1001 &3186452682780155822
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 5289407300179440527}
+    m_Modifications:
+    - target: {fileID: 1060950350446668627, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: plantedSeed
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 1060950350446668627, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: currentState
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2690513492304261814, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_Size.x
+      value: 1.2
+      objectReference: {fileID: 0}
+    - target: {fileID: 2690513492304261814, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_Size.y
+      value: 0.18
+      objectReference: {fileID: 0}
+    - target: {fileID: 2690513492304261814, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_Size.z
+      value: 1.2
+      objectReference: {fileID: 0}
+    - target: {fileID: 2690513492304261814, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_Center.y
+      value: 0.09
+      objectReference: {fileID: 0}
+    - target: {fileID: 5307613753106097742, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_Name
+      value: FarmlandPlot_7
+      objectReference: {fileID: 0}
+    - target: {fileID: 6289528234638148804, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: soilRenderer
+      value: 
+      objectReference: {fileID: 3368349830752663686}
+    - target: {fileID: 8870638313631946860, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 12.8
+      objectReference: {fileID: 0}
+    - target: {fileID: 8870638313631946860, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8870638313631946860, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 44.8
+      objectReference: {fileID: 0}
+    - target: {fileID: 8870638313631946860, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 8870638313631946860, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8870638313631946860, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8870638313631946860, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8870638313631946860, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8870638313631946860, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8870638313631946860, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 5307613753106097742, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 2652736309720829527}
+  m_SourcePrefab: {fileID: 100100000, guid: 31e269080e9514a438157306b12121e5, type: 3}
+--- !u!23 &3368349830752663686 stripped
+MeshRenderer:
+  m_CorrespondingSourceObject: {fileID: 181909277855835944, guid: 31e269080e9514a438157306b12121e5, type: 3}
+  m_PrefabInstance: {fileID: 3186452682780155822}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &6278681269219035074 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 8870638313631946860, guid: 31e269080e9514a438157306b12121e5, type: 3}
+  m_PrefabInstance: {fileID: 3186452682780155822}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &7318599273466984928 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 5307613753106097742, guid: 31e269080e9514a438157306b12121e5, type: 3}
+  m_PrefabInstance: {fileID: 3186452682780155822}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &2652736309720829527
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7318599273466984928}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8f0529fc7d4bb0047af3df5cca9e2b40, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FeaturesFarming.CropGrowthCountdownUI
+  heightOffset: {x: 0, y: 1.4, z: 0}
+  ringBgColor: {r: 0.05, g: 0.07, b: 0.11, a: 0.92}
+  progressColor: {r: 0.05, g: 0.92, b: 0.65, a: 1}
+--- !u!1001 &6179036957309078214
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 5289407300179440527}
+    m_Modifications:
+    - target: {fileID: 1060950350446668627, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: plantedSeed
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 1060950350446668627, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: currentState
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2690513492304261814, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_Size.x
+      value: 1.2
+      objectReference: {fileID: 0}
+    - target: {fileID: 2690513492304261814, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_Size.y
+      value: 0.18
+      objectReference: {fileID: 0}
+    - target: {fileID: 2690513492304261814, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_Size.z
+      value: 1.2
+      objectReference: {fileID: 0}
+    - target: {fileID: 2690513492304261814, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_Center.y
+      value: 0.09
+      objectReference: {fileID: 0}
+    - target: {fileID: 5307613753106097742, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_Name
+      value: FarmlandPlot_5
+      objectReference: {fileID: 0}
+    - target: {fileID: 6289528234638148804, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: soilRenderer
+      value: 
+      objectReference: {fileID: 6288745651519548910}
+    - target: {fileID: 8870638313631946860, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 8.8
+      objectReference: {fileID: 0}
+    - target: {fileID: 8870638313631946860, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8870638313631946860, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 44.8
+      objectReference: {fileID: 0}
+    - target: {fileID: 8870638313631946860, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 8870638313631946860, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8870638313631946860, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8870638313631946860, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8870638313631946860, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8870638313631946860, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8870638313631946860, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 5307613753106097742, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 5752733879695390149}
+  m_SourcePrefab: {fileID: 100100000, guid: 31e269080e9514a438157306b12121e5, type: 3}
+--- !u!1 &2046947369361534088 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 5307613753106097742, guid: 31e269080e9514a438157306b12121e5, type: 3}
+  m_PrefabInstance: {fileID: 6179036957309078214}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &5752733879695390149
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2046947369361534088}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8f0529fc7d4bb0047af3df5cca9e2b40, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FeaturesFarming.CropGrowthCountdownUI
+  heightOffset: {x: 0, y: 1.4, z: 0}
+  ringBgColor: {r: 0.05, g: 0.07, b: 0.11, a: 0.92}
+  progressColor: {r: 0.05, g: 0.92, b: 0.65, a: 1}
+--- !u!4 &3376169010313532074 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 8870638313631946860, guid: 31e269080e9514a438157306b12121e5, type: 3}
+  m_PrefabInstance: {fileID: 6179036957309078214}
+  m_PrefabAsset: {fileID: 0}
+--- !u!23 &6288745651519548910 stripped
+MeshRenderer:
+  m_CorrespondingSourceObject: {fileID: 181909277855835944, guid: 31e269080e9514a438157306b12121e5, type: 3}
+  m_PrefabInstance: {fileID: 6179036957309078214}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1001 &7827334449591267919
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 5289407300179440527}
+    m_Modifications:
+    - target: {fileID: 1060950350446668627, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: plantedSeed
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 1060950350446668627, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: currentState
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2690513492304261814, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_Size.x
+      value: 1.2
+      objectReference: {fileID: 0}
+    - target: {fileID: 2690513492304261814, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_Size.y
+      value: 0.18
+      objectReference: {fileID: 0}
+    - target: {fileID: 2690513492304261814, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_Size.z
+      value: 1.2
+      objectReference: {fileID: 0}
+    - target: {fileID: 2690513492304261814, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_Center.y
+      value: 0.09
+      objectReference: {fileID: 0}
+    - target: {fileID: 5307613753106097742, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_Name
+      value: FarmlandPlot_4
+      objectReference: {fileID: 0}
+    - target: {fileID: 6289528234638148804, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: soilRenderer
+      value: 
+      objectReference: {fileID: 7937034364362249575}
+    - target: {fileID: 8870638313631946860, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 14.8
+      objectReference: {fileID: 0}
+    - target: {fileID: 8870638313631946860, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8870638313631946860, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 40.6
+      objectReference: {fileID: 0}
+    - target: {fileID: 8870638313631946860, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 8870638313631946860, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8870638313631946860, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8870638313631946860, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8870638313631946860, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8870638313631946860, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8870638313631946860, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 5307613753106097742, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 3426069557130637754}
+  m_SourcePrefab: {fileID: 100100000, guid: 31e269080e9514a438157306b12121e5, type: 3}
+--- !u!4 &1709839235802999331 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 8870638313631946860, guid: 31e269080e9514a438157306b12121e5, type: 3}
+  m_PrefabInstance: {fileID: 7827334449591267919}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &2668428561837020161 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 5307613753106097742, guid: 31e269080e9514a438157306b12121e5, type: 3}
+  m_PrefabInstance: {fileID: 7827334449591267919}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &3426069557130637754
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2668428561837020161}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8f0529fc7d4bb0047af3df5cca9e2b40, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FeaturesFarming.CropGrowthCountdownUI
+  heightOffset: {x: 0, y: 1.4, z: 0}
+  ringBgColor: {r: 0.05, g: 0.07, b: 0.11, a: 0.92}
+  progressColor: {r: 0.05, g: 0.92, b: 0.65, a: 1}
+--- !u!23 &7937034364362249575 stripped
+MeshRenderer:
+  m_CorrespondingSourceObject: {fileID: 181909277855835944, guid: 31e269080e9514a438157306b12121e5, type: 3}
+  m_PrefabInstance: {fileID: 7827334449591267919}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1001 &8737660304265004590
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 5289407300179440527}
+    m_Modifications:
+    - target: {fileID: 1060950350446668627, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: plantedSeed
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 1060950350446668627, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: currentState
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2690513492304261814, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_Size.x
+      value: 1.2
+      objectReference: {fileID: 0}
+    - target: {fileID: 2690513492304261814, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_Size.y
+      value: 0.18
+      objectReference: {fileID: 0}
+    - target: {fileID: 2690513492304261814, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_Size.z
+      value: 1.2
+      objectReference: {fileID: 0}
+    - target: {fileID: 2690513492304261814, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_Center.y
+      value: 0.09
+      objectReference: {fileID: 0}
+    - target: {fileID: 5307613753106097742, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_Name
+      value: FarmlandPlot_8
+      objectReference: {fileID: 0}
+    - target: {fileID: 6289528234638148804, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: soilRenderer
+      value: 
+      objectReference: {fileID: 8918290848631660806}
+    - target: {fileID: 8870638313631946860, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 14.8
+      objectReference: {fileID: 0}
+    - target: {fileID: 8870638313631946860, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8870638313631946860, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 44.8
+      objectReference: {fileID: 0}
+    - target: {fileID: 8870638313631946860, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 8870638313631946860, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8870638313631946860, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8870638313631946860, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8870638313631946860, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8870638313631946860, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8870638313631946860, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 5307613753106097742, guid: 31e269080e9514a438157306b12121e5, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 7206262465920444226}
+  m_SourcePrefab: {fileID: 100100000, guid: 31e269080e9514a438157306b12121e5, type: 3}
+--- !u!4 &169079928229191234 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 8870638313631946860, guid: 31e269080e9514a438157306b12121e5, type: 3}
+  m_PrefabInstance: {fileID: 8737660304265004590}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &3524639926788464736 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 5307613753106097742, guid: 31e269080e9514a438157306b12121e5, type: 3}
+  m_PrefabInstance: {fileID: 8737660304265004590}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &7206262465920444226
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3524639926788464736}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8f0529fc7d4bb0047af3df5cca9e2b40, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FeaturesFarming.CropGrowthCountdownUI
+  heightOffset: {x: 0, y: 1.4, z: 0}
+  ringBgColor: {r: 0.05, g: 0.07, b: 0.11, a: 0.92}
+  progressColor: {r: 0.05, g: 0.92, b: 0.65, a: 1}
+--- !u!23 &8918290848631660806 stripped
+MeshRenderer:
+  m_CorrespondingSourceObject: {fileID: 181909277855835944, guid: 31e269080e9514a438157306b12121e5, type: 3}
+  m_PrefabInstance: {fileID: 8737660304265004590}
+  m_PrefabAsset: {fileID: 0}
