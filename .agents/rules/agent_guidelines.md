@@ -65,7 +65,7 @@ All commit messages must be atomic and follow this format:
 
 | Type | When to Use | Example |
 |---|---|---|
-| `feat (100%)` | Feature fully implemented and verified | `feat (100%) : implement genshin cooking UI panel` |
+| `feat (100%)` | Feature fully implemented and verified | `feat (100%) : implement kitchen cooking UI panel` |
 | `progress` | Work-in-progress backup checkpoint | `progress : 50% wardrobe item reorganization` |
 | `fix` | Bug or null-reference resolution | `fix : resolve ESC key pause conflict on UI panels` |
 | `refactor` | Code restructuring with zero functional changes | `refactor : relocate wardrobe scripts to feature directory` |

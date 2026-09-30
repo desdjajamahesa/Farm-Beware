@@ -52,7 +52,7 @@ Development roadmap, milestone tracking, and feature goals for **Farm-Beware** b
 
 ### Milestone 1: House, Kitchen, & Core Systems (COMPLETED ✅)
 - [x] **Centralized Camera Architecture**: `CameraManager` handling state machine transitions, positioning, and input lock.
-- [x] **Instant Cooking System**: `GenshinStove` and `StoveUIManager` with Single Central Axis TextMeshPro layout.
+- [x] **KitchenStove Architectural Refactor**: Decoupled backend controller and state machine (`CookingState: Idle, Cooking, Completed, Cancelled`), event-driven broadcaster, safe inventory & water transaction snapshots with rollback upon cancellation/interruption, and `StoveUIManager` as pure view presenter.
 - [x] **Dynamic Washing Mechanic**: `KitchenSinkInteractable` with item-level dirty/clean data transformation.
 - [x] **Item Overhaul & Central Registry**: 33 active items in `ItemDatabase` (8 Food, 2 Crops, 2 Seeds, 4 Kitchen Materials, 4 Monster Drops, 1 Dummy Sword, 12 Trophies).
 - [x] **Wardrobe System**: `PlayerOutfit` with in-world `MirrorCamera` live preview.
@@ -79,6 +79,10 @@ Development roadmap, milestone tracking, and feature goals for **Farm-Beware** b
   - Custom Bayer $4 \times 4$ screen-door transparency shader `DitheredBuildingLit.shader` (`RenderType = Opaque`, `ZWrite On`) preserving exterior shadow projection and depth buffer.
   - Smooth trigger component `HouseInteriorTrigger.cs` interpolating `_DitherFade` via `MaterialPropertyBlock` (zero material duplication).
   - Bitwise URP Light Layers isolation tool `LightLayerAssignmentUtility.cs` preventing exterior moonlight (Layer 0) and interior amber lamps (Layer 1) from leaking.
+- [x] **Phase 5: Post-Processing & Game Feel Integration**:
+  - Implemented `DayNightVolumeController.cs` on `_LIGHTING/Global Volume` with ACES Tonemapping, Bloom, Color Adjustments, Motion Blur, and Chromatic Aberration.
+  - Hardened `MirrorCamera.cs` with `renderPostProcessing = false` on secondary camera pass to isolate mirror rendering and conserve VRAM.
+  - Implemented responsive tactile combat juice: `DayNightVolumeController.Instance.TriggerCombatImpulse(duration, intensity)` for dynamic zero-GC chromatic aberration feedback during impacts and boss spawns.
 
 ---
 
@@ -121,6 +125,7 @@ Development roadmap, milestone tracking, and feature goals for **Farm-Beware** b
 ---
 
 ### Milestone 5: Audio, Visual Polish, & Game Feel
+- [x] **Combat Impact Juice**: Responsive chromatic aberration impulse feedback via `DayNightVolumeController.Instance.TriggerCombatImpulse()` for heavy attacks and boss encounters.
 - [ ] **Cooking Effects**: Smoke/fire VFX on the stove, cooking audio effects, and UI "Dish Created!" feedback.
 - [ ] **Modular Kitchen Walls**: Split monolithic kitchen wall meshes into Layer 12 segments for fine-grained `WallOccluder` fading.
 - [ ] **3D Trophy Models**: Replace placeholder colored cube prefabs with custom 3D trophy models.

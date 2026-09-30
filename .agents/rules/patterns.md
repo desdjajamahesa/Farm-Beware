@@ -134,6 +134,61 @@ propertyBlock.SetFloat(DitherFadeID, targetFade);
 targetRenderer.SetPropertyBlock(propertyBlock);
 ```
 
+### 1.10 Safe Transaction & Rollback Pattern (Crafting / Production Stations)
+Production stations that consume resources over time must implement atomic snapshot and rollback safety:
+```csharp
+// 1. Snapshot and consume immediately on start
+_consumedSnapshots.Clear();
+foreach (var ing in recipe.ingredients)
+{
+    inventory.RemoveItem(ing.item, ing.quantity);
+    _consumedSnapshots.Add(new ConsumedIngredientSnapshot { item = ing.item, quantity = ing.quantity });
+}
+
+// 2. Rollback immediately if cancelled or interrupted
+public void CancelCooking(bool refundIngredients = true)
+{
+    if (CurrentState != CookingState.Cooking) return;
+    if (_cookingCoroutine != null) StopCoroutine(_cookingCoroutine);
+
+    if (refundIngredients && _activeInventory != null)
+    {
+        foreach (var snap in _consumedSnapshots)
+            _activeInventory.AddItem(snap.item, snap.quantity);
+        if (_consumedWater > 0f && PlayerWaterBottle.Instance != null)
+            PlayerWaterBottle.Instance.RefillWater(_consumedWater);
+    }
+    _consumedSnapshots.Clear();
+    SetState(CookingState.Cancelled);
+    SetState(CookingState.Idle);
+}
+
+// 3. Finalize output and clear snapshot when timer finishes
+inventory.AddItem(recipe.output, recipe.outputCount);
+_consumedSnapshots.Clear();
+```
+
+### 1.11 Decoupled Backend Controller & View/Presenter
+Never mix state management, countdown routines, or inventory mutations inside UI managers:
+- **Backend Controller (`KitchenStove`)**: Owns `CookingState`, runs `CookingTimerRoutine`, performs validations, and executes safe transactions. Broadcasts C# events (`OnCookingStateChanged`, `OnCookingProgress`, etc.).
+- **View / Presenter (`StoveUIManager`)**: Subscribes to backend events, updates UI elements (buttons, sliders, labels), forwards user clicks to the backend controller, and unsubscribes cleanly on close.
+
+### 1.12 Dynamic Post-Processing Juice Impulses
+Avoid static post-processing for combat feel. Cache Volume overrides and trigger zero-GC dynamic impulses:
+```csharp
+if (_volume != null && _volume.profile.TryGet(out _chromaticAberration))
+{
+    // Cached override reference
+}
+
+public void TriggerCombatImpulse(float duration, float maxIntensity)
+{
+    if (_chromaticAberration == null) return;
+    if (_impulseCoroutine != null) StopCoroutine(_impulseCoroutine);
+    _impulseCoroutine = StartCoroutine(CombatImpulseRoutine(duration, maxIntensity));
+}
+```
+
 ---
 
 ## 2. Coding Standards & Conventions
@@ -184,4 +239,6 @@ private void Awake()
 8. ❌ **Alpha Blended Building Materials**: Never use `Transparent` render queue (`ZWrite Off`) for buildings, roofs, or walls. Always use Bayer $4 \times 4$ Dithered Alpha Clipping (`RenderType = Opaque`, `ZWrite On`) to preserve depth buffer and physical shadow map projection.
 9. ❌ **`UniversalForward` in Deferred+ Pipelines**: Never tag custom opaque forward shaders with `Tags { "LightMode" = "UniversalForward" }` in Deferred+. Use `Tags { "LightMode" = "UniversalForwardOnly" }` so that geometry is rendered by the forward-only opaque pass rather than dropped by the GBuffer pass.
 10. ❌ **Static Batching in GPU Resident Drawer (BRG) Pipelines**: Never enable Unity Static Batching when using BRG (`gpuResidentDrawerMode: InstancedDrawing`). Static batching duplicates vertex data into CPU RAM and fractures instanced draw batches.
+11. ❌ **UI Managers Mutating Inventories or Running Logic Timers**: UI components must never invoke `inventory.RemoveItem()`, `inventory.AddItem()`, or execute backend countdown coroutines. All mutations and timers belong strictly to backend controllers/services.
+12. ❌ **Secondary Cameras Executing Post-Processing Passes**: Mirror or auxiliary off-screen render texture cameras must explicitly set `renderPostProcessing = false` on `UniversalAdditionalCameraData` to prevent redundant tonemapping/blur passes and eliminate VRAM bloat.
 

@@ -116,6 +116,71 @@ foreach (var l in allLights)
 return $"PASS: Light Layers. Exterior Sun: {extLights} (mask=1), Interior Lamps: {intLights} (mask=2), Leaking Lights: {leakLights}";
 ```
 
+### 2.6 KitchenStove State Machine & Transaction Rollback Audit
+Validates `KitchenStove` presence, `CookingState` enum, item consumption, and atomic refund on cancellation:
+
+```csharp
+var stove = UnityEngine.Object.FindFirstObjectByType<KitchenStove>(UnityEngine.FindObjectsInactive.Include);
+if (stove == null) return "FAIL: KitchenStove not found in scene!";
+
+var testGO = new UnityEngine.GameObject("Stove_Audit_Test");
+try
+{
+    var testStove = testGO.AddComponent<KitchenStove>();
+    var inv = testGO.AddComponent<InventoryComponent>();
+    inv.ResetInventory(10);
+
+    var raw = UnityEngine.ScriptableObject.CreateInstance<ItemData>();
+    raw.itemId = "audit_raw"; raw.itemName = "Audit Raw";
+    var cooked = UnityEngine.ScriptableObject.CreateInstance<ItemData>();
+    cooked.itemId = "audit_cooked"; cooked.itemName = "Audit Cooked";
+
+    var recipe = UnityEngine.ScriptableObject.CreateInstance<KitchenRecipe>();
+    recipe.output = cooked; recipe.outputCount = 1; recipe.processTime = 1f;
+    recipe.ingredients = new System.Collections.Generic.List<RecipeIngredient>
+    {
+        new RecipeIngredient { item = raw, quantity = 2 }
+    };
+
+    inv.AddItem(raw, 2);
+    testStove.StartCooking(recipe, inv);
+    int consumedCount = inv.CountItem(raw);
+
+    testStove.CancelCooking(refundIngredients: true);
+    int refundedCount = inv.CountItem(raw);
+
+    UnityEngine.Object.DestroyImmediate(raw);
+    UnityEngine.Object.DestroyImmediate(cooked);
+    UnityEngine.Object.DestroyImmediate(recipe);
+
+    return $"PASS: Stove Audit. ConsumedCount={consumedCount} (expected 0), RefundedCount={refundedCount} (expected 2), State={testStove.CurrentState}";
+}
+finally
+{
+    UnityEngine.Object.DestroyImmediate(testGO);
+}
+```
+
+### 2.7 Post-Processing Volume & Mirror Camera Exclusion Audit
+Checks that `Global Volume` contains all required overrides and that `MirrorCamera` excludes post-processing:
+
+```csharp
+var vol = UnityEngine.Object.FindFirstObjectByType<UnityEngine.Rendering.Volume>(UnityEngine.FindObjectsInactive.Include);
+if (vol == null || !vol.isGlobal) return "FAIL: Global Volume not found!";
+
+bool hasTone = vol.profile.Has<UnityEngine.Rendering.Universal.Tonemapping>();
+bool hasBloom = vol.profile.Has<UnityEngine.Rendering.Universal.Bloom>();
+bool hasColor = vol.profile.Has<UnityEngine.Rendering.Universal.ColorAdjustments>();
+bool hasMotion = vol.profile.Has<UnityEngine.Rendering.Universal.MotionBlur>();
+bool hasChroma = vol.profile.Has<UnityEngine.Rendering.Universal.ChromaticAberration>();
+
+var mirrorCam = UnityEngine.Object.FindFirstObjectByType<MirrorCamera>(UnityEngine.FindObjectsInactive.Include);
+var camData = mirrorCam != null ? mirrorCam.GetComponent<UnityEngine.Rendering.Universal.UniversalAdditionalCameraData>() : null;
+bool mirrorIsolated = camData != null && !camData.renderPostProcessing;
+
+return $"PASS: Post-Processing. Tone={hasTone}, Bloom={hasBloom}, Color={hasColor}, Motion={hasMotion}, Chroma={hasChroma}, MirrorIsolated={mirrorIsolated}";
+```
+
 ---
 
 ## 3. Manual Play Mode Verification Checklist
@@ -129,14 +194,18 @@ return $"PASS: Light Layers. Exterior Sun: {extLights} (mask=1), Interior Lamps:
 3. Press `ESC` while free-roaming with no open panels.
    - The Pause Menu (`PauseMenuUI`) opens as expected.
 
-### 3.2 Genshin-Style Cooking Flow (`GenshinStove`)
-1. Retrieve cooking ingredients from `TestChest` (`Crop_SweetPotato`, `Mat_CookingOil`, etc.).
+### 3.2 Stove Cooking Flow (`KitchenStove`)
+1. Retrieve cooking ingredients from `TestChest` (`Crop_SweetPotato`, `Mat_CookingOil`, etc.) and ensure water bottle has water.
 2. Approach the stove, press `E`.
    - Cooking panel opens with the Single Central Axis layout.
 3. Select a recipe with satisfied ingredients.
    - The "MASAK!" button activates (green).
 4. Click "MASAK!".
-   - Ingredients are deducted from the player inventory, and the cooked dish appears in the inventory.
+   - Ingredients and water are deducted from inventory, button displays `Cooking... (Xs)` with a progress slider filling up.
+5. **Rollback Test**: Close the panel (`ESC` or Close button) mid-cooking.
+   - Verify all consumed ingredients and water are fully refunded to the player.
+6. Re-open, cook to completion.
+   - Once the timer expires, the finished dish appears in the player's inventory and UI details refresh.
 
 ### 3.3 Dynamic Washing Flow (`KitchenSink`)
 1. Place a dirty item (`isDirty = true`) into the sink inventory.
@@ -175,4 +244,6 @@ return $"PASS: Light Layers. Exterior Sun: {extLights} (mask=1), Interior Lamps:
 | "There are 2 audio listeners in the scene" warning | `MirrorCamera` has an active AudioListener component | Disable AudioListener on mirror camera (`audioListener.enabled = false`) |
 | ESC immediately triggers Pause Menu while panel is active | UI script and PauseMenuUI both consume ESC simultaneously | Ensure PauseMenuUI checks for active gameplay modals before toggling |
 | Items rejected during inventory drag-and-drop | `CanAcceptItem` backend rules active | Verify `blockTrophyItems` flag or `allowedFoodCategories` on destination component |
+| Ingredients lost when closing stove panel mid-cook | StoveUIManager bypassed backend rollback on panel close | Ensure `StoveUIManager.Close()` calls `currentStove.CancelCooking(refundIngredients: true)` |
+| Mirror camera shows blown-out bloom / VRAM bloat | `MirrorCamera` executing secondary post-processing pass | Ensure `MirrorCamera` sets `UniversalAdditionalCameraData.renderPostProcessing = false` in `Awake()` |
 

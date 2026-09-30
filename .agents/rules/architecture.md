@@ -77,11 +77,31 @@ Core backend component attached to the Player, Test Chest, Refrigerator, and Kit
 
 ## 4. Kitchen & Cooking System (`Features/Kitchen/`)
 
-### 4.1 Genshin-Style Cooking (`GenshinStove.cs` & `StoveUIManager.cs`)
-- Replaces legacy slow tick-based cooking with instant, recipe-driven craft interactions.
-- Evaluates `KitchenRecipe` ScriptableObjects supporting multiple ingredients (`RecipeIngredient`).
-- Validates ingredient availability via `CountItem()`, consumes inputs via `RemoveItem()`, and yields output via `AddItem()`.
-- UI utilizes a **Single Central Axis** layout powered by TextMeshPro.
+### 4.1 Kitchen Stove Cooking Architecture (`KitchenStove.cs` & `StoveUIManager.cs`)
+The cooking system is decoupled following a strict Backend Controller & View/Presenter architecture:
+
+- **Backend Controller & State Machine (`KitchenStove.cs`)**:
+  - **State Machine (`CookingState`)**: `Idle`, `Cooking`, `Completed`, `Cancelled`.
+  - **State Transitions**: `Idle` → `Cooking` (on `StartCooking`) → `Completed` (on timer expiration) → `Idle`, or `Cooking` → `Cancelled` (on manual cancel or modal interruption) → `Idle`.
+  - **Event-Driven Broadcaster**:
+    - `event Action<CookingState> OnCookingStateChanged`
+    - `event Action<KitchenRecipe, float> OnCookingStarted`
+    - `event Action<float, float> OnCookingProgress`
+    - `event Action<KitchenRecipe> OnCookingCompleted`
+    - `event Action<KitchenRecipe> OnCookingCancelled`
+  - **Transaction & Snapshot Safety**:
+    - `CanCook(KitchenRecipe, InventoryComponent, out string failReason)`: Validates both ingredient counts in `InventoryComponent` and clean water levels in `PlayerWaterBottle.Instance`.
+    - `StartCooking()`: Snapshots consumed item types/quantities and water volumes, deducts them immediately, transitions state to `Cooking`, and runs the countdown timer coroutine.
+    - `CancelCooking(bool refundIngredients = true)`: Stops the timer, restores snapshotted ingredients to `InventoryComponent`, refunds water to `PlayerWaterBottle`, and fires cancellation events.
+    - `Finalization`: On timer completion, adds `recipe.output` (`outputCount`) to `InventoryComponent`, clears transaction snapshots, and transitions to `Completed` then `Idle`.
+
+- **View / Presenter (`StoveUIManager.cs`)**:
+  - Acts strictly as a presentation layer and user action forwarder.
+  - Contains **zero** local countdown coroutines and performs **zero** direct inventory mutations.
+  - Subscribes to `KitchenStove` events on `Open()` and cleanly unsubscribes on `Close()` or `OnDestroy()`.
+  - Updates progress bar and cook button countdown (`Cooking... (Xs)`) reactively via `OnCookingProgress`.
+  - Automatically cancels cooking with full item/water refund if the panel is closed mid-cook.
+  - Preserves ESC Modal Priority Stack via `MainMenuController.LastFrameUIPanelClosed` and handles cursor/input locking.
 
 ### 4.2 Item-Level Dynamic Washing (`KitchenSinkInteractable.cs`)
 - Eliminates 1-to-1 recipe asset bloat for washing mechanics.
@@ -187,4 +207,20 @@ Farm-Beware features a modern high-fidelity rendering pipeline tailored for Unit
   - **Light Layer 1 (Interior)**: `InteriorLamp_*`, `Light_Interior_*`, indoor floor meshes, indoor furniture.
   - **Light Layer 0+1 (Transition)**: Door frames, entry thresholds.
 - Accessible via Editor Window: `Tools > Farm-Beware > Rendering > Light Layer Assignment Utility`.
+
+### 8.6 Post-Processing Volume Pipeline & Tactile Juice (`DayNightVolumeController.cs`)
+- **Global Volume Hierarchy**: Located under `_LIGHTING/Global Volume` in `StagingScene.unity` with `isGlobal = true`.
+- **Volume Profile Overrides**:
+  - `Tonemapping`: ACES tonemapper for cinematic dynamic range.
+  - `Bloom`: Subtle glow for emissive materials, lanterns, and rim lighting.
+  - `ColorAdjustments`: Dynamic day/night contrast, saturation, and exposure compensation.
+  - `MotionBlur`: High-quality camera translation smoothing.
+  - `ChromaticAberration`: Base post-processing color fringing.
+- **Responsive Tactile Combat Juice (`TriggerCombatImpulse`)**:
+  - Chromatic aberration is not merely a static aesthetic pass; it functions as responsive game feel feedback.
+  - `DayNightVolumeController.Instance.TriggerCombatImpulse(float duration, float maxIntensity)` dynamically spikes and eases chromatic aberration intensity during heavy combat impacts, critical hits, or boss spawns.
+  - Zero-GC coroutine lifecycle using cached override references (`VolumeProfile.TryGet<ChromaticAberration>`).
+- **Mirror Camera Post-Processing Exclusion (`MirrorCamera.cs`)**:
+  - The wardrobe mirror secondary camera explicitly sets `renderPostProcessing = false` on its `UniversalAdditionalCameraData`.
+  - Prevents recursive post-processing passes, eliminates VRAM bloat on render textures, and preserves mirror fidelity.
 

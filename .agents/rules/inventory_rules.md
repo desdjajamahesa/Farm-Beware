@@ -10,3 +10,9 @@
 
 3. **Code Enforcement**:
    - `ItemData.cs` enforces `[Range(1, 20)]` and clamps `maxStack` in `OnValidate()`.
+
+4. **Transaction & Snapshot Safety (Crafting / Stations)**:
+   - Any production or cooking station that consumes items or liquids over time (e.g., `KitchenStove`) MUST snapshot consumed items and liquids at transaction initiation.
+   - If the process is cancelled, interrupted, or closed prematurely, the station must support an atomic rollback (`CancelCooking(refundIngredients: true)`), restoring item counts to `InventoryComponent` and liquid volumes to `PlayerWaterBottle`.
+   - Output items must only be added to inventory upon successful completion of the timer, at which point transaction snapshots are cleanly cleared.
+
