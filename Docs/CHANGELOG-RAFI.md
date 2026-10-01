@@ -1,6 +1,6 @@
-# Changelog
+# Changelog (Rafi)
 
-Semua perubahan penting pada proyek ini akan dicatat di halaman ini.
+Semua perubahan penting pada proyek ini oleh Rafi akan dicatat di halaman ini.
 
 ## - 2026-10-01
 
