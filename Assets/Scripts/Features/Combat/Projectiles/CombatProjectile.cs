@@ -44,6 +44,7 @@ namespace FeaturesCombat.Projectiles
 
         private Vector3 moveDirection = Vector3.forward;
         private float spawnTime = 0f;
+        private GameObject shooterOwner;
 
         private void Awake()
         {
@@ -58,8 +59,20 @@ namespace FeaturesCombat.Projectiles
 
         private void Update()
         {
-            // Pergerakan proyektil
-            transform.position += moveDirection * (speed * Time.deltaTime);
+            float stepDist = speed * Time.deltaTime;
+            Vector3 step = moveDirection * stepDist;
+
+            // Continuous sphere cast sweep agar peluru tidak pernah menembus (tunneling) target
+            if (Physics.SphereCast(transform.position, 0.25f, moveDirection, out RaycastHit hit, stepDist, ~LayerMask.GetMask("Ignore Raycast"), QueryTriggerInteraction.Ignore))
+            {
+                if (IsValidTarget(hit.collider))
+                {
+                    ApplyHit(hit.collider, hit.point);
+                    return;
+                }
+            }
+
+            transform.position += step;
 
             // Timeout lifetime
             if (Time.time - spawnTime >= lifetime)
@@ -71,8 +84,9 @@ namespace FeaturesCombat.Projectiles
         /// <summary>
         /// Menginisialisasi proyektil saat ditembakkan.
         /// </summary>
-        public void Launch(Vector3 direction, Color color, int damageAmount = 25, float projSpeed = 14f)
+        public void Launch(GameObject shooter, Vector3 direction, Color color, int damageAmount = 25, float projSpeed = 14f)
         {
+            shooterOwner = shooter;
             moveDirection = direction.normalized;
             transform.forward = moveDirection;
             damage = damageAmount;
@@ -81,6 +95,62 @@ namespace FeaturesCombat.Projectiles
             spawnTime = Time.time;
 
             EnsurePointLightConfiguration();
+        }
+
+        /// <summary>
+        /// Factory helper untuk membangkitkan entitas proyektil secara instan di dunia game.
+        /// </summary>
+        public static CombatProjectile Spawn(GameObject shooter, Vector3 position, Vector3 direction, int damageAmount, float projSpeed, Color projectileColor)
+        {
+            GameObject projObj = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            projObj.name = "CombatProjectile_Kernel";
+            projObj.transform.position = position;
+            projObj.transform.localScale = new Vector3(0.35f, 0.35f, 0.35f);
+
+            var col = projObj.GetComponent<Collider>();
+            if (col != null) col.isTrigger = true;
+
+            var rb = projObj.AddComponent<Rigidbody>();
+            rb.isKinematic = true;
+            rb.useGravity = false;
+
+            var renderer = projObj.GetComponent<Renderer>();
+            if (renderer != null)
+            {
+                Shader shader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
+                Material mat = new Material(shader);
+                mat.color = projectileColor;
+                if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", projectileColor);
+                if (mat.HasProperty("_EmissionColor"))
+                {
+                    mat.EnableKeyword("_EMISSION");
+                    mat.SetColor("_EmissionColor", projectileColor * 1.5f);
+                }
+                renderer.material = mat;
+            }
+
+            var proj = projObj.AddComponent<CombatProjectile>();
+            proj.Launch(shooter, direction, projectileColor, damageAmount, projSpeed);
+
+            // Tambahkan Trail Renderer glowing untuk keterbacaan visual lintasan peluru
+            var trail = projObj.AddComponent<TrailRenderer>();
+            trail.time = 0.16f;
+            trail.startWidth = 0.22f;
+            trail.endWidth = 0.0f;
+            Shader trailShader = Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Sprites/Default");
+            var trailMat = new Material(trailShader);
+            trailMat.color = projectileColor;
+            if (trailMat.HasProperty("_BaseColor")) trailMat.SetColor("_BaseColor", projectileColor);
+            trail.material = trailMat;
+
+            Gradient gradient = new Gradient();
+            gradient.SetKeys(
+                new GradientColorKey[] { new GradientColorKey(projectileColor, 0f), new GradientColorKey(projectileColor, 1f) },
+                new GradientAlphaKey[] { new GradientAlphaKey(0.85f, 0f), new GradientAlphaKey(0.0f, 1f) }
+            );
+            trail.colorGradient = gradient;
+
+            return proj;
         }
 
         /// <summary>
@@ -116,20 +186,41 @@ namespace FeaturesCombat.Projectiles
             }
         }
 
-        private void OnTriggerEnter(Collider other)
+        private bool IsValidTarget(Collider other)
         {
-            // Abaikan trigger lain
-            if (other.isTrigger) return;
+            if (other.isTrigger) return false;
 
-            // Cek apakah mengenai IDamageable
+            if (shooterOwner != null)
+            {
+                if (other.gameObject == shooterOwner || other.transform.IsChildOf(shooterOwner.transform))
+                    return false;
+
+                // Cegah friendly fire antar sesama monster
+                if (shooterOwner.GetComponent<EnemyBase>() != null && (other.GetComponent<EnemyBase>() != null || other.GetComponentInParent<EnemyBase>() != null))
+                    return false;
+            }
+
+            return true;
+        }
+
+        private void ApplyHit(Collider other, Vector3 hitPoint)
+        {
             var damageable = other.GetComponent<IDamageable>() ?? other.GetComponentInParent<IDamageable>();
             if (damageable != null && !damageable.IsDead)
             {
-                Vector3 hitPoint = other.ClosestPoint(transform.position);
                 damageable.TakeDamage(damage, hitPoint, moveDirection);
             }
 
             Despawn();
+        }
+
+        private void OnTriggerEnter(Collider other)
+        {
+            if (IsValidTarget(other))
+            {
+                Vector3 hitPoint = other.ClosestPoint(transform.position);
+                ApplyHit(other, hitPoint);
+            }
         }
 
         private void Despawn()

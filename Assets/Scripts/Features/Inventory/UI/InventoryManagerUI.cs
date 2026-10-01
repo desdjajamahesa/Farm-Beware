@@ -586,7 +586,39 @@ if (customPanel != null)
             detailItemIcon.enabled = item.itemIcon != null;
         }
         if (detailItemName != null) detailItemName.text = item.itemName;
-        if (detailItemDesc != null) detailItemDesc.text = item.description ?? "";
+        if (detailItemDesc != null)
+        {
+            string desc = item.description ?? "";
+            if (item is FoodItemData food)
+            {
+                System.Text.StringBuilder sb = new System.Text.StringBuilder(desc);
+                List<string> nutrition = new List<string>();
+                if (food.hungerRestore != 0) nutrition.Add($"<b>Hunger:</b> {(food.hungerRestore > 0 ? "+" : "")}{food.hungerRestore:F0}");
+                if (food.hydrationRestore != 0) nutrition.Add($"<b>Hydration:</b> {(food.hydrationRestore > 0 ? "+" : "")}{food.hydrationRestore:F0}");
+                if (food.healAmount != 0) nutrition.Add($"<b>HP:</b> {(food.healAmount > 0 ? "+" : "")}{food.healAmount}");
+
+                if (nutrition.Count > 0)
+                {
+                    sb.AppendLine();
+                    sb.Append($"<color=#38BDF8>{string.Join("  |  ", nutrition)}</color>");
+                }
+
+                if (food.buffEffects != null && food.buffEffects.Count > 0)
+                {
+                    foreach (var buff in food.buffEffects)
+                    {
+                        string buffDesc = !string.IsNullOrEmpty(buff.description) ? buff.description : buff.buffName;
+                        sb.AppendLine();
+                        sb.Append($"<color=#FBBF24>✦ {buffDesc} ({buff.duration}s)</color>");
+                    }
+                }
+                detailItemDesc.text = sb.ToString();
+            }
+            else
+            {
+                detailItemDesc.text = desc;
+            }
+        }
     }
 
     private void SetCursorFree(bool free)

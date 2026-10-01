@@ -263,6 +263,43 @@ public class InventoryComponent : MonoBehaviour
         return added == amount;
     }
 
+    /// <summary>
+    /// Checks whether the inventory has enough capacity to hold 'amount' units of 'item'.
+    /// </summary>
+    public bool HasSpaceFor(ItemData item, int amount)
+    {
+        if (item == null || amount <= 0) return false;
+        if (!CanAcceptItem(item)) return false;
+
+        int remaining = amount;
+
+        // 1. Check existing non-full slots holding the same item
+        for (int i = 0; i < slots.Count && remaining > 0; i++)
+        {
+            InventorySlot slot = slots[i];
+            if (slot != null && !slot.IsEmpty && slot.item == item)
+            {
+                int space = item.maxStack - slot.quantity;
+                if (space > 0)
+                {
+                    remaining -= Mathf.Min(space, remaining);
+                }
+            }
+        }
+
+        // 2. Check empty slots
+        for (int i = 0; i < slots.Count && remaining > 0; i++)
+        {
+            InventorySlot slot = slots[i];
+            if (slot == null || slot.IsEmpty)
+            {
+                remaining -= Mathf.Min(item.maxStack, remaining);
+            }
+        }
+
+        return remaining <= 0;
+    }
+
     public bool RemoveItem(ItemData item, int amount)
     {
         if (item == null || amount <= 0)

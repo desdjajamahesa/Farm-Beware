@@ -290,10 +290,10 @@ namespace FeaturesRendering.Lighting
                 ApplyToLight(nightEulerAngles.x, nightEulerAngles.y, currentEvaluatedColor, currentIntensity);
 
                 RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Trilight;
-                RenderSettings.ambientSkyColor = new Color(0.15f, 0.18f, 0.28f);
-                RenderSettings.ambientEquatorColor = new Color(0.10f, 0.12f, 0.18f);
-                RenderSettings.ambientGroundColor = new Color(0.05f, 0.06f, 0.08f);
-                RenderSettings.fogColor = new Color(0.08f, 0.11f, 0.20f);
+                RenderSettings.ambientSkyColor = new Color(0.36f, 0.44f, 0.58f);
+                RenderSettings.ambientEquatorColor = new Color(0.28f, 0.34f, 0.44f);
+                RenderSettings.ambientGroundColor = new Color(0.22f, 0.26f, 0.32f);
+                RenderSettings.fogColor = new Color(0.18f, 0.24f, 0.34f);
             }
         }
 

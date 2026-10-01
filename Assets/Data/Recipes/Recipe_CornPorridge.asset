@@ -20,7 +20,9 @@ MonoBehaviour:
   - item: {fileID: 11400000, guid: 18736835b0621ad478537e2fa98f4c07, type: 2}
     quantity: 1
   recipeIcon: {fileID: 21300000, guid: a657df07df6525346941fb6f64e74d5f, type: 3}
-  description: Boil fresh corn with clean water to create a nourishing bowl of porridge.
+  description: 'Warm, silky porridge made from boiled sweet corn and clean water.
+    Greatly enhances stamina recovery. (+10 Hunger, +10 Hydration, +15% Stamina Recovery
+    for 90s)'
   output: {fileID: 11400000, guid: 283857b9de52c7042a09c161091cc3bb, type: 2}
   outputCount: 1
   processTime: 1.5

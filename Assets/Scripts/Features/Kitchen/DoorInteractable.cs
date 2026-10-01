@@ -17,26 +17,26 @@ public enum ThresholdAxis
 public class DoorInteractable : MonoBehaviour, IInteractable
 {
     [Header("Spawn Points (Two-Way)")]
-    [Tooltip("Spawn point ketika player berada di DALAM (keluar ke luar)")]
+    [Tooltip("Spawn point when player is inside (teleporting outside).")]
     [SerializeField] private Transform spawnPointInside;
     
-    [Tooltip("Spawn point ketika player berada di LUAR (masuk ke dalam)")]
+    [Tooltip("Spawn point when player is outside (teleporting inside).")]
     [SerializeField] private Transform spawnPointOutside;
 
 #pragma warning disable 0414
     [Header("Detection")]
-    [Tooltip("Axis to use for inside/outside detection")]
+    [Tooltip("Axis to use for inside/outside detection.")]
     [SerializeField] private ThresholdAxis thresholdAxis = ThresholdAxis.Z;
     
-    [Tooltip("Threshold value on selected axis: player coordinate > threshold = inside (for X/Z), player coordinate < threshold = inside (for Y)")]
+    [Tooltip("Threshold value on selected axis: player coordinate > threshold = inside (for X/Z), player coordinate < threshold = inside (for Y).")]
     [SerializeField] private float insideThreshold = 14.0f;
 #pragma warning restore 0414
 
     [Header("Fade Effect")]
-    [Tooltip("Durasi fade in/out (detik)")]
+    [Tooltip("Fade in/out duration in seconds.")]
     [SerializeField] private float fadeDuration = 0.5f;
     
-    [Tooltip("Apakah menggunakan efek fade saat teleport")]
+    [Tooltip("Whether to use screen fade effect during teleport.")]
     [SerializeField] private bool useFadeEffect = true;
 
     [Header("Dynamic Destination Labels")]
@@ -94,7 +94,7 @@ public class DoorInteractable : MonoBehaviour, IInteractable
     {
         if (spawnPointInside == null || spawnPointOutside == null)
         {
-            Debug.LogWarning("DoorInteractable: spawnPointInside atau spawnPointOutside belum di-set.");
+            Debug.LogWarning("[DoorInteractable] spawnPointInside or spawnPointOutside is not assigned!");
             return;
         }
 

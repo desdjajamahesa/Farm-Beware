@@ -1260,7 +1260,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ece06dd238bd35446a7735224afd633f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::FeaturesInteraction.WorldLabel
-  displayName: Cangkul Tanah
+  displayName: Till Soil
 --- !u!114 &4315229751543080464
 MonoBehaviour:
   m_ObjectHideFlags: 0

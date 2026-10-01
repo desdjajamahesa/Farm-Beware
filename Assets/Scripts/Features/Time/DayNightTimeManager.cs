@@ -29,7 +29,23 @@ namespace FeaturesTime
                 {
                     DayNightTimeManager[] found = FindObjectsByType<DayNightTimeManager>(FindObjectsInactive.Include, FindObjectsSortMode.None);
                     if (found != null && found.Length > 0)
+                    {
                         _instance = found[0];
+                    }
+                    else
+                    {
+                        var tm = FindFirstObjectByType<TimeManager>();
+                        if (tm != null)
+                        {
+                            _instance = tm.gameObject.AddComponent<DayNightTimeManager>();
+                        }
+                        else
+                        {
+                            var go = new GameObject("DayNightTimeManager");
+                            _instance = go.AddComponent<DayNightTimeManager>();
+                            if (Application.isPlaying) DontDestroyOnLoad(go);
+                        }
+                    }
                 }
                 return _instance;
             }
@@ -134,6 +150,17 @@ namespace FeaturesTime
 
         private void Start()
         {
+            if (TimeManager.Instance != null)
+            {
+                currentDay = TimeManager.Instance.currentDay;
+                if (TimeManager.Instance.currentPhase == TimeManager.DayPhase.Night)
+                    currentHour = nightStartHour;
+                else
+                    currentHour = dayStartHour;
+            }
+
+            currentPhase = EvaluatePhase(currentHour);
+
             // Emit inisialisasi awal ke semua listener yang telah mendaftar di Awake
             int hourInt = CurrentHourInt;
             int minuteInt = CurrentMinuteInt;
@@ -147,15 +174,14 @@ namespace FeaturesTime
             OnTimePhaseChanged?.Invoke(currentPhase);
             OnDayChanged?.Invoke(currentDay);
             OnNormalizedTimeChanged?.Invoke(NormalizedTime);
-
-            SyncLegacyTimeManager(currentPhase, currentDay);
         }
 
         private void OnEnable()
         {
-            if (syncWithLegacyTimeManager && TimeManager.Instance != null)
+            if (TimeManager.Instance != null)
             {
-                TimeManager.Instance.OnPhaseChanged += HandleLegacyPhaseChanged;
+                TimeManager.Instance.OnPhaseChanged += HandleTimeManagerPhaseChanged;
+                TimeManager.Instance.OnDayChanged += HandleTimeManagerDayChanged;
             }
         }
 
@@ -163,35 +189,35 @@ namespace FeaturesTime
         {
             if (TimeManager.Instance != null)
             {
-                TimeManager.Instance.OnPhaseChanged -= HandleLegacyPhaseChanged;
+                TimeManager.Instance.OnPhaseChanged -= HandleTimeManagerPhaseChanged;
+                TimeManager.Instance.OnDayChanged -= HandleTimeManagerDayChanged;
             }
         }
 
-        private void HandleLegacyPhaseChanged(TimeManager.DayPhase phase)
+        private void HandleTimeManagerPhaseChanged(TimeManager.DayPhase phase)
         {
-            if (phase == TimeManager.DayPhase.Night && currentPhase != EnvironmentPhase.Night)
+            if (phase == TimeManager.DayPhase.Night)
             {
-                SkipToNight();
+                SetTime(nightStartHour);
             }
-            else if (phase == TimeManager.DayPhase.Day && currentPhase == EnvironmentPhase.Night)
+            else if (phase == TimeManager.DayPhase.Day)
             {
                 SetTime(dayStartHour);
             }
         }
 
+        private void HandleTimeManagerDayChanged(int newDay)
+        {
+            currentDay = newDay;
+            OnDayChanged?.Invoke(currentDay);
+        }
+
         private void Update()
         {
-            // Pintasan keyboard 'N' untuk kompatibilitas penuh dengan sistem legacy
-            if (syncWithLegacyTimeManager && UnityEngine.InputSystem.Keyboard.current != null && UnityEngine.InputSystem.Keyboard.current.nKey.wasPressedThisFrame)
-            {
-                SkipToNight();
-                return;
-            }
-
             if (isPaused || realSecondsPerInGameDay <= 0.01f)
                 return;
 
-            // Hitung progresi waktu murni (matematika independen)
+            // Hitung progresi waktu visual murni (matematika independen)
             float hourDelta = (Time.deltaTime / realSecondsPerInGameDay) * 24.0f;
             AdvanceHourInternal(hourDelta);
         }
@@ -208,23 +234,32 @@ namespace FeaturesTime
 
         /// <summary>
         /// Mengembangkan jam in-game dan memancarkan sinyal event jika melewati threshold batas waktu.
-        /// Tidak ada render call atau operasi visual dalam metode ini.
+        /// Tidak ada render call atau mutasi gameplay state di dalam metode ini.
         /// </summary>
         private void AdvanceHourInternal(float deltaHours)
         {
-            currentHour += deltaHours;
+            // Jika dalam fase Day pada TimeManager, kunci progresi waktu visual di batas sore (duskStartHour = 17.0f)
+            // Mencegah waktu secara otonom masuk ke malam tanpa interaksi kasur oleh pemain!
+            if (TimeManager.Instance != null && TimeManager.Instance.currentPhase == TimeManager.DayPhase.Day)
+            {
+                if (currentHour + deltaHours >= duskStartHour)
+                {
+                    currentHour = duskStartHour;
+                }
+                else
+                {
+                    currentHour += deltaHours;
+                }
+            }
+            else
+            {
+                currentHour += deltaHours;
+            }
 
-            // Rollover 24 jam -> Hari Baru
+            // Rollover 24 jam visual (murni visual, TIDAK memanggil TimeManager.AdvanceToNextDay)
             if (currentHour >= 24.0f)
             {
                 currentHour -= 24.0f;
-                currentDay++;
-                OnDayChanged?.Invoke(currentDay);
-
-                if (syncWithLegacyTimeManager && TimeManager.Instance != null)
-                {
-                    TimeManager.Instance.AdvanceToNextDay();
-                }
             }
             else if (currentHour < 0f)
             {
@@ -257,7 +292,6 @@ namespace FeaturesTime
                 currentPhase = newPhase;
                 lastEmittedPhase = newPhase;
                 OnTimePhaseChanged?.Invoke(currentPhase);
-                SyncLegacyTimeManager(currentPhase, currentDay);
             }
         }
 
@@ -277,21 +311,6 @@ namespace FeaturesTime
             return EnvironmentPhase.Night;
         }
 
-        private void SyncLegacyTimeManager(EnvironmentPhase phase, int day)
-        {
-            if (!syncWithLegacyTimeManager || TimeManager.Instance == null)
-                return;
-
-            if (phase == EnvironmentPhase.Night && TimeManager.Instance.currentPhase != TimeManager.DayPhase.Night)
-            {
-                TimeManager.Instance.StartNightPhase();
-            }
-            else if (phase == EnvironmentPhase.Day && TimeManager.Instance.currentPhase != TimeManager.DayPhase.Day)
-            {
-                // Day phase pada legacy
-            }
-        }
-
         #endregion
 
         #region IDayNightTimeService Public Commands
@@ -309,8 +328,6 @@ namespace FeaturesTime
             OnHourChanged?.Invoke(lastEmittedHour);
             OnMinuteChanged?.Invoke(lastEmittedMinute);
             OnTimePhaseChanged?.Invoke(currentPhase);
-
-            SyncLegacyTimeManager(currentPhase, currentDay);
         }
 
         public void SetPaused(bool paused)
@@ -326,7 +343,7 @@ namespace FeaturesTime
         public void AdvanceToNextDay()
         {
             currentHour = dawnStartHour;
-            currentDay++;
+            currentDay = TimeManager.Instance != null ? TimeManager.Instance.currentDay : (currentDay + 1);
             currentPhase = EvaluatePhase(currentHour);
 
             lastEmittedHour = CurrentHourInt;
@@ -338,21 +355,12 @@ namespace FeaturesTime
             OnHourChanged?.Invoke(lastEmittedHour);
             OnMinuteChanged?.Invoke(lastEmittedMinute);
             OnTimePhaseChanged?.Invoke(currentPhase);
-
-            if (syncWithLegacyTimeManager && TimeManager.Instance != null)
-            {
-                TimeManager.Instance.AdvanceToNextDay();
-            }
         }
 
         public void SkipToNight()
         {
             SetTime(nightStartHour);
-            if (syncWithLegacyTimeManager && TimeManager.Instance != null && TimeManager.Instance.currentPhase != TimeManager.DayPhase.Night)
-            {
-                TimeManager.Instance.StartNightPhase();
-            }
-            Debug.Log($"[DayNightTimeManager] Mode Malam aktif via pintasan 'N' (Jam: {currentHour:F1}, Fase: {currentPhase})");
+            Debug.Log($"[DayNightTimeManager] Mode Malam visual aktif (Jam: {currentHour:F1}, Fase: {currentPhase})");
         }
 
         #endregion

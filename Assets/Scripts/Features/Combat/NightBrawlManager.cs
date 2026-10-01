@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.AI;
 using PlayerUI;
 using FeaturesTime.UI;
 
@@ -194,8 +195,10 @@ namespace FeaturesCombat
             foreach (var type in toSpawn)
             {
                 Vector3 spawnPos = CalculateRandomSpawnPoint();
-                GameObject enemyObj = EnemyPrefabFactory.CreateEnemy(type, spawnPos);
-                EnemyBase enemy = enemyObj.GetComponent<EnemyBase>();
+                EnemyBase enemy = EnemyObjectPool.Instance != null
+                    ? EnemyObjectPool.Instance.Spawn(type, spawnPos)
+                    : EnemyPrefabFactory.CreateEnemy(type, spawnPos).GetComponent<EnemyBase>();
+
                 if (enemy != null)
                 {
                     activeEnemies.Add(enemy);
@@ -204,6 +207,21 @@ namespace FeaturesCombat
             }
 
             Debug.Log($"[NightBrawlManager] Day {day} Wave {wave} dimulai: {activeEnemies.Count} musuh dibangkitkan.");
+        }
+
+        /// <summary>
+        /// Mendaftarkan musuh baru hasil pemanggilan (summon) bos ke dalam daftar musuh aktif wave saat ini.
+        /// </summary>
+        public void RegisterDynamicEnemy(EnemyBase enemy)
+        {
+            if (enemy == null || activeEnemies.Contains(enemy)) return;
+            activeEnemies.Add(enemy);
+            OnEnemySpawned?.Invoke(enemy);
+
+            if (CombatPhaseTrackerUI.Instance != null)
+            {
+                CombatPhaseTrackerUI.Instance.SetEnemiesRemaining(activeEnemies.Count);
+            }
         }
 
         private List<EnemyType> GetEnemiesListForDayAndWave(int day, int wave)
@@ -396,13 +414,23 @@ namespace FeaturesCombat
             }
 
             // Raycast ke tanah agar menempel tepat di permukaan terrain
+            Vector3 finalPos = candidate;
             if (Physics.Raycast(candidate, Vector3.down, out RaycastHit hit, 30f))
             {
-                return hit.point + Vector3.up * 0.1f;
+                finalPos = hit.point + Vector3.up * 0.1f;
+            }
+            else
+            {
+                finalPos.y = 0.5f;
             }
 
-            candidate.y = 0.5f;
-            return candidate;
+            // Snap presisi ke NavMesh walkable area terdekat
+            if (NavMesh.SamplePosition(finalPos, out NavMeshHit navHit, 6f, NavMesh.AllAreas))
+            {
+                return navHit.position;
+            }
+
+            return finalPos;
         }
 
         private void HandleEnemyDied(EnemyBase enemy)
@@ -458,7 +486,14 @@ namespace FeaturesCombat
                 {
                     if (enemy != null)
                     {
-                        Destroy(enemy.gameObject);
+                        if (EnemyObjectPool.Instance != null)
+                        {
+                            EnemyObjectPool.Instance.ReturnToPool(enemy);
+                        }
+                        else
+                        {
+                            Destroy(enemy.gameObject);
+                        }
                     }
                 }
                 activeEnemies.Clear();

@@ -3,32 +3,25 @@ using UnityEngine;
 namespace FeaturesInteraction
 {
     /// <summary>
-    /// Interaksi minimal untuk furniture (Kursi, Peti, Meja, dll).
-    /// Hanya log interaksi; cocok untuk furniture yang hanya butuh hover glow + label.
-    /// Bisa di-extend untuk fungsionalitas khusus (duduk, buka tutup, taruh item).
-    /// Furniture tanpa fungsi nyata (hasUsableFunction = false) tidak akan di-highlight.
+    /// Minimal interaction handler for generic furniture (Chairs, Tables, Chests, etc.).
+    /// Suitable for furniture that only needs hover glow + label tooltip.
+    /// Decorative furniture without function (hasUsableFunction = false) will not be highlighted.
     /// </summary>
     public class GenericFurnitureInteractable : MonoBehaviour, IInteractable
     {
-        [Tooltip("Jenis furniture untuk logging (Kursi, Peti, Meja, dll).")]
+        [Tooltip("Furniture category name for interaction logging (Chair, Table, Chest, etc.).")]
         [SerializeField] private string furnitureType = "Furniture";
 
-        [Tooltip("Pesan custom saat di-interact (kosong = default).")]
+        [Tooltip("Custom interaction message (empty = default).")]
         [SerializeField] private string customInteractMessage;
 
-        [Tooltip("Apakah furniture ini memiliki fungsi interaksi nyata (selain dekoratif). "
-                 + "Jika false, objek tidak akan muncul highlight dan tidak bisa diinteraksikan.")]
+        [Tooltip("Whether this furniture has functional gameplay interaction. If false, hover highlight is suppressed.")]
         [SerializeField] private bool hasUsableFunction = false;
 
-        /// <summary>
-        /// Hanya izinkan interaksi dan highlight jika furniture punya fungsi nyata
-        /// (misal Meja Pedagang), atau jika ada komponen interaktif lain terpasang (MerchantTableInteractable, dll).
-        /// </summary>
         public bool CanInteract(GameObject interactor)
         {
             if (hasUsableFunction) return true;
 
-            // Izinkan jika ada interactable lain yang lebih spesifik pada objek ini
             var others = GetComponents<IInteractable>();
             foreach (var other in others)
             {
@@ -43,7 +36,7 @@ namespace FeaturesInteraction
         {
             string message = !string.IsNullOrEmpty(customInteractMessage)
                 ? customInteractMessage
-                : $"Berinteraksi dengan {furnitureType} ({gameObject.name})";
+                : $"Interacted with {furnitureType} ({gameObject.name})";
 
             if (furnitureType == "Merchant Table")
             {

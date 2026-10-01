@@ -231,14 +231,14 @@ namespace FeaturesTime.Atmosphere
                 bloomThreshold = 0.85f,
                 bloomIntensity = 0.38f,
                 bloomScatter = 0.75f,
-                postExposure = -1.0f,
-                contrast = 15f,
-                saturation = -5f,
-                colorFilter = new Color(0.88f, 0.92f, 1.0f),
-                temperature = -22f,
-                tint = -5f,
-                vignetteIntensity = 0.40f,
-                vignetteSmoothness = 0.45f,
+                postExposure = -0.30f,
+                contrast = 8f,
+                saturation = 4f,
+                colorFilter = new Color(0.92f, 0.95f, 1.0f),
+                temperature = -14f,
+                tint = -3f,
+                vignetteIntensity = 0.22f,
+                vignetteSmoothness = 0.35f,
                 vignetteColor = Color.black
             };
         }

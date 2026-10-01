@@ -138,6 +138,28 @@ namespace FeaturesCombat
             enemyBase.enemyType = type;
             enemyBase.InitializeStatsByType();
 
+            // Pasang modular boss abilities (Task 2.1)
+            if (type == EnemyType.CyclopsTuberMaw)
+            {
+                var summon = go.AddComponent<BossSummonAbility>();
+                summon.Configure(EnemyType.TuberMaw, 3, 45f, 6, true, 2.0f);
+            }
+            else if (type == EnemyType.TheRanger)
+            {
+                var summon = go.AddComponent<BossSummonAbility>();
+                summon.Configure(EnemyType.CornMusketeer, 3, 35f, 6, true, 1.8f);
+
+                // Task 2.3: The Ranger Enrage Phase
+                var enrage = go.AddComponent<RangerEnrageAbility>();
+                enrage.EnsureInitialized();
+            }
+            else if (type == EnemyType.TaroColossus)
+            {
+                // Task 2.2: Taro Colossus Combat Toolkit
+                go.AddComponent<ColossusAirborneAbility>();
+                go.AddComponent<ColossusGrappleAbility>();
+            }
+
             return go;
         }
     }

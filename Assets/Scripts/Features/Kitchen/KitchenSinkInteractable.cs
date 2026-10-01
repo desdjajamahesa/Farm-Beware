@@ -11,11 +11,11 @@ using FeaturesInteraction;
 [RequireComponent(typeof(InventoryComponent))]
 public class KitchenSinkInteractable : KitchenStation, IInteractable
 {
-    [Header("Wastafel Settings")]
-    [Tooltip("Durasi cucian default (detik per item).")]
+    [Header("Kitchen Sink Settings")]
+    [Tooltip("Default wash duration per item in seconds.")]
     [SerializeField] private float washDurationPerItem = 2f;
 
-    [Tooltip("Kategori makanan yang boleh dicuci di wastafel.")]
+    [Tooltip("Allowed food categories that can be washed in the sink.")]
     [SerializeField] private List<ItemData.FoodCategory> allowedCategories =
         new List<ItemData.FoodCategory>
         {
@@ -23,7 +23,7 @@ public class KitchenSinkInteractable : KitchenStation, IInteractable
             ItemData.FoodCategory.Fruit,
         };
 
-    [Tooltip("Bila true, hasil cuci otomatis dikembalikan ke Inventory Player.")]
+    [Tooltip("If true, washed items are returned directly to player inventory.")]
     [SerializeField] private bool returnWashedToPlayer = false;
 
     [Header("Panel Reference")]

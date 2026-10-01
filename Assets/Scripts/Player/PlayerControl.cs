@@ -954,4 +954,75 @@ public class PlayerControl : MonoBehaviour
             }
         }
     }
+
+    #region Boss Attack Impact Helpers (Stun & Control Lock)
+
+    private Coroutine stunCoroutine;
+
+    /// <summary>
+    /// Memberikan efek stun sementara pada pemain (misal: akibat bantingan grapple bos).
+    /// Dilengkapi safety timeout coroutine agar pemain tidak pernah terkunci selamanya.
+    /// </summary>
+    public void ApplyStun(float duration)
+    {
+        if (stunCoroutine != null)
+        {
+            StopCoroutine(stunCoroutine);
+        }
+        stunCoroutine = StartCoroutine(RoutineStun(duration));
+    }
+
+    private System.Collections.IEnumerator RoutineStun(float duration)
+    {
+        StopMovement();
+        isInputLocked = true;
+
+        if (PlayerUI.FloatingCombatTextManager.Instance != null)
+        {
+            PlayerUI.FloatingCombatTextManager.Instance.SpawnText(
+                transform.position + Vector3.up * 1.8f,
+                "⚡ STUNNED!",
+                new Color(1f, 0.85f, 0.2f));
+        }
+
+        yield return new WaitForSeconds(duration);
+
+        isInputLocked = false;
+        stunCoroutine = null;
+    }
+
+    /// <summary>
+    /// Menerapkan dorongan knockback fisika pada pemain.
+    /// </summary>
+    public void ApplyKnockback(Vector3 direction, float force)
+    {
+        if (rb != null)
+        {
+            direction.y = 0.2f;
+            rb.AddForce(direction.normalized * force, ForceMode.Impulse);
+        }
+    }
+
+    /// <summary>
+    /// Mengunci / membuka input kontrol pemain secara eksplisit (misal: saat diangkat bos).
+    /// </summary>
+    public void SetControlLock(bool locked)
+    {
+        if (locked)
+        {
+            StopMovement();
+            isInputLocked = true;
+        }
+        else
+        {
+            isInputLocked = false;
+            if (stunCoroutine != null)
+            {
+                StopCoroutine(stunCoroutine);
+                stunCoroutine = null;
+            }
+        }
+    }
+
+    #endregion
 }

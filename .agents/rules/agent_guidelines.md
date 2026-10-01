@@ -43,6 +43,16 @@ Primary operating guidelines, behavioral constraints, and Git workflow rules for
   `Library/`, `Temp/`, `Obj/`, `Logs/`, `UserSettings/`, `Builds/`, `.vs/`.
 - ❌ Do not touch `.meta` files manually without GUID synchronization. Always use `AssetDatabase.MoveAsset` when relocating assets.
 
+### 2.6 Language Mandate (100% English Hard Rule)
+- ❌ **STRICTLY PROHIBITED**: Writing any code identifiers, comments, logs, Inspector attributes (`Header`, `Tooltip`), user-facing UI labels, HUD prompts, interaction labels (`WorldLabel.displayName`), or ScriptableObject fields in Indonesian or any other non-English language.
+- ✅ **ALL English Everywhere**:
+  1. Code identifiers, class/method/variable names, and docstrings.
+  2. Inspector `[Header]`, `[Tooltip]`, `[SerializeField]` descriptions.
+  3. User-facing UI text, HUD prompts, interaction labels, and floating combat text.
+  4. Log messages (`Debug.Log`, `Debug.LogWarning`, `Debug.LogError`).
+  5. ScriptableObject data assets (item names, descriptions, recipe names, buff descriptions).
+  6. Documentation and operational rule files.
+
 ---
 
 ## 3. Git Workflow & 3-Layer Repository SOP

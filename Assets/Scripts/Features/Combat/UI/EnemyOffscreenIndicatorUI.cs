@@ -18,6 +18,7 @@ namespace FeaturesCombat.UI
         private readonly List<EnemyIndicatorArrow> arrowPool = new List<EnemyIndicatorArrow>();
         private readonly HashSet<EnemyBase> pulsingEnemies = new HashSet<EnemyBase>();
         private Camera targetCamera;
+        private Transform playerTransform;
 
         private void Awake()
         {
@@ -27,6 +28,19 @@ namespace FeaturesCombat.UI
                 return;
             }
             Instance = this;
+            EnsurePlayerReference();
+        }
+
+        private void EnsurePlayerReference()
+        {
+            if (playerTransform == null)
+            {
+                var playerObj = GameObject.FindWithTag("Player") ?? GameObject.Find("Player") ?? GameObject.Find("PlayerCapsule");
+                if (playerObj != null)
+                {
+                    playerTransform = playerObj.transform;
+                }
+            }
         }
 
         private void OnEnable()
@@ -35,6 +49,7 @@ namespace FeaturesCombat.UI
             {
                 NightBrawlManager.Instance.OnEnemySpawned += HandleEnemySpawned;
             }
+            EnsurePlayerReference();
         }
 
         private void OnDisable()
@@ -75,6 +90,9 @@ namespace FeaturesCombat.UI
                 return;
             }
 
+            // Pastikan referensi karakter pemain tersedia
+            EnsurePlayerReference();
+
             // Jika NightBrawlManager belum aktif atau sedang tidak ada pertarungan malam, sembunyikan semua
             if (NightBrawlManager.Instance == null || !NightBrawlManager.Instance.IsNightBrawlActive)
             {
@@ -94,6 +112,8 @@ namespace FeaturesCombat.UI
             float halfWidth = (Screen.width * 0.5f) - edgeMargin;
             float halfHeight = (Screen.height * 0.5f) - edgeMargin;
 
+            Vector3 playerPos = playerTransform != null ? playerTransform.position : targetCamera.transform.position;
+
             for (int i = 0; i < activeEnemies.Count; i++)
             {
                 var enemy = activeEnemies[i];
@@ -102,16 +122,21 @@ namespace FeaturesCombat.UI
                 Vector3 worldPos = enemy.transform.position + Vector3.up * 0.8f;
                 Vector3 screenPos = targetCamera.WorldToScreenPoint(worldPos);
 
-                // Koreksi jika target berada di belakang frustum kamera (screenPos.z < 0)
-                bool isBehind = screenPos.z < 0;
+                // Koreksi jika target berada di belakang frustum kamera:
+                // HANYA berlaku untuk kamera perspektif. Pada kamera ortografis (parallel projection),
+                // screenPos.x dan y tidak pernah terbalik walau objek berada di belakang near clip plane.
+                bool isBehind = !targetCamera.orthographic && screenPos.z < 0;
                 if (isBehind)
                 {
                     screenPos.x = Screen.width - screenPos.x;
                     screenPos.y = Screen.height - screenPos.y;
                 }
 
+                // Validasi kedalaman pandangan kamera
+                bool isWithinDepth = screenPos.z >= targetCamera.nearClipPlane && screenPos.z <= targetCamera.farClipPlane;
+
                 // Cek apakah monster sudah terlihat jelas di dalam layar
-                bool isOnScreen = !isBehind &&
+                bool isOnScreen = isWithinDepth && !isBehind &&
                                   screenPos.x >= edgeMargin && screenPos.x <= Screen.width - edgeMargin &&
                                   screenPos.y >= edgeMargin && screenPos.y <= Screen.height - edgeMargin;
 
@@ -136,7 +161,11 @@ namespace FeaturesCombat.UI
                 Vector2 clampedEdgePos = screenCenter + fromCenter * scale;
 
                 float angleDegrees = Mathf.Atan2(fromCenter.y, fromCenter.x) * Mathf.Rad2Deg;
-                float distance = Vector3.Distance(targetCamera.transform.position, worldPos);
+
+                // Hitung jarak real-time dari posisi karakter pemain (Flat XZ Distance), BUKAN dari kamera
+                float distance = Vector2.Distance(
+                    new Vector2(playerPos.x, playerPos.z),
+                    new Vector2(worldPos.x, worldPos.z));
 
                 bool isBoss = (enemy.enemyType == EnemyType.CyclopsTuberMaw ||
                                enemy.enemyType == EnemyType.TaroColossus ||

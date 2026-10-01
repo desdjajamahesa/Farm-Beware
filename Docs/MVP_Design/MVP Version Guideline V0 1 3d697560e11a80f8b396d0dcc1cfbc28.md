@@ -213,3 +213,29 @@ Setelah encounter selesai:
 Jadi kasur sebenarnya menjadi **kontrol progression MVP**.
 
 ![Area Rumah Harvest Pipeline-2026-09-10-105210.png](MVP%20Version%20Guideline%20V0%201/Area_Rumah_Harvest_Pipeline-2026-09-10-105210.png)
+
+**Animation Drafting**
+
+Tuber Maw: - preference
+
+![image.png](MVP%20Version%20Guideline%20V0%201/image.png)
+
+**Cyclop Tuber Maw: - preference**
+
+![image.png](MVP%20Version%20Guideline%20V0%201/image%201.png)
+
+**Taro Brute: - preference**
+
+![image.png](MVP%20Version%20Guideline%20V0%201/image%202.png)
+
+**Taro Colossus (boss): - preference**
+
+![image.png](MVP%20Version%20Guideline%20V0%201/image%203.png)
+
+Corn musketeer: -preference
+
+![image.png](MVP%20Version%20Guideline%20V0%201/image%204.png)
+
+The Ranger: -preference
+
+![image.png](MVP%20Version%20Guideline%20V0%201/image%205.png)
