@@ -20,8 +20,20 @@ namespace FeaturesCombat
 
         [Header("Enemy Identity")]
         public EnemyType enemyType = EnemyType.TuberMaw;
+        [SerializeField] private FeaturesCombat.Data.EnemyData enemyData;
+        public FeaturesCombat.Data.EnemyData EnemyData => enemyData;
         public string displayName = "Tuber Maw";
         public bool isBoss = false;
+
+        public void SetEnemyData(FeaturesCombat.Data.EnemyData data)
+        {
+            enemyData = data;
+            if (enemyData != null)
+            {
+                enemyType = enemyData.enemyType;
+                InitializeStatsByType();
+            }
+        }
 
         [Header("Stats")]
         public int maxHealth = 100;
@@ -170,6 +182,27 @@ namespace FeaturesCombat
 
         public void InitializeStatsByType()
         {
+            if (enemyData != null)
+            {
+                enemyType = enemyData.enemyType;
+                displayName = enemyData.displayName;
+                isBoss = enemyData.isBoss;
+                maxHealth = enemyData.maxHealth;
+                armor = enemyData.armor;
+                moveSpeed = enemyData.moveSpeed;
+                contactDamage = enemyData.contactDamage;
+                attackRate = enemyData.attackRate;
+                attackRange = enemyData.attackRange;
+                aggroRange = enemyData.aggroRange;
+                knockbackResistance = enemyData.knockbackResistance;
+                minGold = enemyData.minGold;
+                maxGold = enemyData.maxGold;
+                goldChance = enemyData.goldChance;
+                originalArmor = armor;
+                currentHealth = maxHealth;
+                return;
+            }
+
             var db = ItemDatabase.Instance;
 
             switch (enemyType)

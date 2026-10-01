@@ -1,0 +1,34 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b56e47e124c819f4e9ffcf988a085160, type: 3}
+  m_Name: EnemyData_TaroBrute
+  m_EditorClassIdentifier: Assembly-CSharp::FeaturesCombat.Data.EnemyData
+  enemyType: 2
+  displayName: Taro Brute
+  isBoss: 0
+  evolvedBossVariant: {fileID: 11400000, guid: 5678c68a171d33d4e8766fe68c96ea74, type: 2}
+  maxHealth: 150
+  armor: 15
+  moveSpeed: 1.5
+  contactDamage: 25
+  attackRate: 0.5
+  attackRange: 2.5
+  aggroRange: 6
+  knockbackResistance: 0.8
+  lootDrops:
+  - item: {fileID: 11400000, guid: 6e678c35f5e44604dbb1e4a457c0cd52, type: 2}
+    minQuantity: 1
+    maxQuantity: 3
+    dropChance: 0.6
+  minGold: 250
+  maxGold: 600
+  goldChance: 0.6

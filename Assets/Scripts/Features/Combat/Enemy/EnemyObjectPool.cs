@@ -15,12 +15,15 @@ namespace FeaturesCombat
         [Header("Pool Prewarm Configuration")]
         [Tooltip("Jumlah instansiasi awal untuk monster normal di setiap tipe.")]
         [SerializeField] private int prewarmNormalCount = 4;
-
         [Tooltip("Jumlah instansiasi awal untuk boss di setiap tipe.")]
-        [SerializeField] private int prewarmBossCount = 1;
+        [SerializeField] private int prewarmBossCount = 2;
+
+        [Header("Enemy Data Assets (Modular Stats & Evolution)")]
+        [SerializeField] private List<FeaturesCombat.Data.EnemyData> registeredEnemyData = new List<FeaturesCombat.Data.EnemyData>();
 
         private readonly Dictionary<EnemyType, Queue<EnemyBase>> pools = new Dictionary<EnemyType, Queue<EnemyBase>>();
         private readonly Dictionary<EnemyType, GameObject> prefabCache = new Dictionary<EnemyType, GameObject>();
+        private readonly Dictionary<EnemyType, FeaturesCombat.Data.EnemyData> enemyDataCache = new Dictionary<EnemyType, FeaturesCombat.Data.EnemyData>();
         private Transform poolRoot;
 
         private void Awake()
@@ -40,6 +43,31 @@ namespace FeaturesCombat
 
         private void InitializePools()
         {
+            // Cache registered enemy data
+            foreach (var data in registeredEnemyData)
+            {
+                if (data != null)
+                {
+                    enemyDataCache[data.enemyType] = data;
+                }
+            }
+
+#if UNITY_EDITOR
+            if (enemyDataCache.Count == 0)
+            {
+                var guids = UnityEditor.AssetDatabase.FindAssets("t:EnemyData");
+                foreach (var g in guids)
+                {
+                    var path = UnityEditor.AssetDatabase.GUIDToAssetPath(g);
+                    var asset = UnityEditor.AssetDatabase.LoadAssetAtPath<FeaturesCombat.Data.EnemyData>(path);
+                    if (asset != null)
+                    {
+                        enemyDataCache[asset.enemyType] = asset;
+                    }
+                }
+            }
+#endif
+
             // Inisialisasi antrean pool untuk ke-6 varian
             foreach (EnemyType type in System.Enum.GetValues(typeof(EnemyType)))
             {
@@ -120,6 +148,14 @@ namespace FeaturesCombat
             {
                 enemy = obj.AddComponent<EnemyBase>();
                 enemy.enemyType = type;
+            }
+
+            if (enemyDataCache.TryGetValue(type, out var data))
+            {
+                enemy.SetEnemyData(data);
+            }
+            else
+            {
                 enemy.InitializeStatsByType();
             }
 

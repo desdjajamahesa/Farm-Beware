@@ -721,6 +721,14 @@ namespace FeaturesTime.Atmosphere
         /// </summary>
         /// <param name="peakIntensity">Intensitas puncak aberasi kromatik (0.0 s/d 1.0).</param>
         /// <param name="duration">Durasi total getaran dalam detik.</param>
+        /// <summary>
+        /// Triggers a brief cinematic chromatic aberration impulse for heavy melee combat tactile feedback (juice).
+        /// </summary>
+        public void TriggerCombatImpulse(float intensity = 0.85f, float duration = 0.25f)
+        {
+            TriggerChromaticImpulse(intensity, duration);
+        }
+
         public void TriggerChromaticImpulse(float peakIntensity = 0.75f, float duration = 0.35f)
         {
             if (_runtimeProfile == null)

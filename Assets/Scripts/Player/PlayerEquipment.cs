@@ -72,6 +72,31 @@ public class PlayerEquipment : MonoBehaviour
     private float lastAttackTime = -999f;
     private bool isExecutingSkill = false;
 
+    // Melee Combat FSM & Zero-GC Non-Alloc Hit Buffers
+    private FeaturesCombat.Melee.MeleeCombatStateMachine combatStateMachine = new FeaturesCombat.Melee.MeleeCombatStateMachine();
+    public FeaturesCombat.Melee.MeleeCombatStateMachine CombatStateMachine => combatStateMachine;
+
+    private readonly Collider[] _hitBuffer = new Collider[16];
+    private readonly FeaturesCombat.IDamageable[] _damagedTargetsBuffer = new FeaturesCombat.IDamageable[16];
+    private int _damagedTargetsCount = 0;
+
+    private bool HasTargetBeenHit(FeaturesCombat.IDamageable target)
+    {
+        for (int i = 0; i < _damagedTargetsCount; i++)
+        {
+            if (_damagedTargetsBuffer[i] == target) return true;
+        }
+        return false;
+    }
+
+    private void RecordTargetHit(FeaturesCombat.IDamageable target)
+    {
+        if (_damagedTargetsCount < _damagedTargetsBuffer.Length)
+        {
+            _damagedTargetsBuffer[_damagedTargetsCount++] = target;
+        }
+    }
+
     public int CurrentComboIndex => currentComboIndex;
     public bool IsExecutingSkill => isExecutingSkill;
     public bool IsHoldingWeapon => currentWeaponModel != null;
@@ -167,16 +192,12 @@ public class PlayerEquipment : MonoBehaviour
             }
         }
 
-        // Tentukan combo index berikutnya
-        float timeSinceLast = Time.time - lastAttackTime;
-        if (timeSinceLast > comboResetWindow || currentComboIndex >= 2)
+        if (!combatStateMachine.TryTriggerLight(Time.time, out var nextState, out int comboStep))
         {
-            currentComboIndex = 0;
+            return false;
         }
-        else
-        {
-            currentComboIndex++;
-        }
+
+        currentComboIndex = comboStep;
 
         float staminaCost = (comboStaminaCosts != null && currentComboIndex < comboStaminaCosts.Length)
             ? comboStaminaCosts[currentComboIndex]
@@ -186,6 +207,7 @@ public class PlayerEquipment : MonoBehaviour
         if (playerStats != null && (playerStats.currentStamina < staminaCost || playerStats.IsExhausted))
         {
             Debug.Log("[PlayerEquipment] Stamina tidak cukup untuk menyerang!");
+            combatStateMachine.ResetToIdle();
             currentComboIndex = 0;
             return false;
         }
@@ -198,6 +220,7 @@ public class PlayerEquipment : MonoBehaviour
             if (!allowBareHandsAttack)
             {
                 Debug.Log("[PlayerEquipment] Tidak bisa menyerang: Tangan kosong.");
+                combatStateMachine.ResetToIdle();
                 return false;
             }
         }
@@ -207,6 +230,7 @@ public class PlayerEquipment : MonoBehaviour
             if (!isWeapon && !allowBareHandsAttack)
             {
                 Debug.Log($"[PlayerEquipment] Item '{item.itemName}' bukan senjata, tidak bisa menyerang.");
+                combatStateMachine.ResetToIdle();
                 return false;
             }
         }
@@ -247,17 +271,14 @@ public class PlayerEquipment : MonoBehaviour
                 knockback = 3.5f;
             }
 
-            float comboMul = (comboDamageMultipliers != null && currentComboIndex < comboDamageMultipliers.Length)
-                ? comboDamageMultipliers[currentComboIndex]
-                : 1f;
-
+            float comboMul = combatStateMachine.GetCurrentDamageMultiplier();
             float dmgMultiplier = (buffManager != null ? buffManager.GetAttackDamageMultiplier() : 1f) * comboMul;
             int finalDamage = Mathf.RoundToInt(baseDmg * dmgMultiplier);
 
             // Combo ke-3 (Finisher) adalah putaran 360 derajat
             bool is360 = (currentComboIndex == 2);
             float activeRange = is360 ? attackHitRange * 1.15f : attackHitRange;
-            float finalKnockback = is360 ? knockback * 1.4f : knockback;
+            float finalKnockback = knockback * combatStateMachine.GetCurrentKnockbackMultiplier();
 
             if (currentSwingCoroutine != null)
             {
@@ -265,12 +286,126 @@ public class PlayerEquipment : MonoBehaviour
                 currentSwingCoroutine = null;
             }
 
-            currentSwingCoroutine = StartCoroutine(RoutineSwingHitbox(finalDamage, finalKnockback, atkSpdMultiplier, is360, activeRange));
+            currentSwingCoroutine = StartCoroutine(RoutineSwingHitbox(finalDamage, finalKnockback, atkSpdMultiplier, is360, activeRange, isFinisher: is360));
 
             return true;
         }
 
         return false;
+    }
+
+    public bool TryPerformHeavyAttack(float chargeRatio = 1.0f)
+    {
+        if (animator == null) animator = GetComponentInChildren<Animator>();
+        if (isExecutingSkill) return false;
+
+        float staminaCost = attackStaminaCost * 1.6f;
+        if (playerStats == null) playerStats = GetComponent<PlayerStats>();
+        if (playerStats != null && (playerStats.currentStamina < staminaCost || playerStats.IsExhausted))
+        {
+            Debug.Log("[PlayerEquipment] Stamina not enough for heavy strike!");
+            combatStateMachine.ResetToIdle();
+            return false;
+        }
+
+        ItemData item = CurrentEquippedItem;
+        if (item == null && !allowBareHandsAttack) return false;
+        if (item != null && !(item is ToolItemData tool && tool.isWeapon) && !allowBareHandsAttack) return false;
+
+        combatStateMachine.ReleaseHeavy(Time.time, out _);
+
+        float atkSpdMultiplier = buffManager != null ? buffManager.GetAttackSpeedMultiplier() : 1f;
+        var upgradeState = FeaturesWorkbench.PlayerWeaponUpgradeState.Instance ?? GetComponent<FeaturesWorkbench.PlayerWeaponUpgradeState>();
+        if (upgradeState != null && upgradeState.sweetPotatoPathUnlocked) atkSpdMultiplier *= 1.20f;
+        atkSpdMultiplier *= attackAnimationSpeed;
+
+        if (animator != null)
+        {
+            animator.speed = atkSpdMultiplier;
+            animator.SetInteger("ComboIndex", 2);
+            animator.SetTrigger(attackTriggerName);
+        }
+
+        lastAttackTime = Time.time;
+        if (playerStats != null) playerStats.UseStamina(staminaCost);
+
+        int baseDmg = 8;
+        float knockback = 4.0f;
+        if (item is ToolItemData toolData)
+        {
+            baseDmg = (upgradeState != null) ? upgradeState.baseDamage : toolData.baseDamage;
+            knockback = (upgradeState != null) ? upgradeState.baseKnockback : toolData.knockbackForce;
+        }
+
+        float dmgMult = (buffManager != null ? buffManager.GetAttackDamageMultiplier() : 1f) * combatStateMachine.GetCurrentDamageMultiplier();
+        int finalDamage = Mathf.RoundToInt(baseDmg * dmgMult);
+        float finalKnockback = knockback * combatStateMachine.GetCurrentKnockbackMultiplier();
+
+        if (currentSwingCoroutine != null)
+        {
+            StopCoroutine(currentSwingCoroutine);
+            currentSwingCoroutine = null;
+        }
+
+        currentSwingCoroutine = StartCoroutine(RoutineSwingHitbox(finalDamage, finalKnockback, atkSpdMultiplier, is360: true, rangeOverride: attackHitRange * 1.3f, isHeavy: true));
+        return true;
+    }
+
+    public bool TryPerformDashAttack()
+    {
+        if (animator == null) animator = GetComponentInChildren<Animator>();
+        if (isExecutingSkill) return false;
+
+        float staminaCost = attackStaminaCost * 1.2f;
+        if (playerStats == null) playerStats = GetComponent<PlayerStats>();
+        if (playerStats != null && (playerStats.currentStamina < staminaCost || playerStats.IsExhausted))
+        {
+            Debug.Log("[PlayerEquipment] Stamina not enough for dash attack!");
+            combatStateMachine.ResetToIdle();
+            return false;
+        }
+
+        ItemData item = CurrentEquippedItem;
+        if (item == null && !allowBareHandsAttack) return false;
+        if (item != null && !(item is ToolItemData tool && tool.isWeapon) && !allowBareHandsAttack) return false;
+
+        if (!combatStateMachine.TryTriggerDashAttack(Time.time)) return false;
+
+        float atkSpdMultiplier = buffManager != null ? buffManager.GetAttackSpeedMultiplier() : 1f;
+        var upgradeState = FeaturesWorkbench.PlayerWeaponUpgradeState.Instance ?? GetComponent<FeaturesWorkbench.PlayerWeaponUpgradeState>();
+        if (upgradeState != null && upgradeState.sweetPotatoPathUnlocked) atkSpdMultiplier *= 1.20f;
+        atkSpdMultiplier *= attackAnimationSpeed;
+
+        if (animator != null)
+        {
+            animator.speed = atkSpdMultiplier * 1.25f;
+            animator.SetInteger("ComboIndex", 1);
+            animator.SetTrigger(attackTriggerName);
+        }
+
+        lastAttackTime = Time.time;
+        if (playerStats != null) playerStats.UseStamina(staminaCost);
+
+        int baseDmg = 8;
+        float knockback = 4.0f;
+        if (item is ToolItemData toolData)
+        {
+            baseDmg = (upgradeState != null) ? upgradeState.baseDamage : toolData.baseDamage;
+            knockback = (upgradeState != null) ? upgradeState.baseKnockback : toolData.knockbackForce;
+        }
+
+        float dmgMult = (buffManager != null ? buffManager.GetAttackDamageMultiplier() : 1f) * combatStateMachine.GetCurrentDamageMultiplier();
+        int finalDamage = Mathf.RoundToInt(baseDmg * dmgMult);
+        float finalKnockback = knockback * combatStateMachine.GetCurrentKnockbackMultiplier();
+
+        if (currentSwingCoroutine != null)
+        {
+            StopCoroutine(currentSwingCoroutine);
+            currentSwingCoroutine = null;
+        }
+
+        currentSwingCoroutine = StartCoroutine(RoutineSwingHitbox(finalDamage, finalKnockback, atkSpdMultiplier, is360: false, rangeOverride: attackHitRange * 1.25f, isDash: true));
+        return true;
     }
 
     public bool TryPerformKick()
@@ -312,11 +447,13 @@ public class PlayerEquipment : MonoBehaviour
         Vector3 origin = transform.position + Vector3.up * 0.8f;
         Vector3 forwardDir = transform.forward;
         Vector3 sweepCenter = origin + forwardDir * (kickHitRange * 0.5f);
-        Collider[] hits = Physics.OverlapSphere(sweepCenter, kickHitRange * 0.7f, ~0, QueryTriggerInteraction.Collide);
 
-        var hitSet = new System.Collections.Generic.HashSet<FeaturesCombat.IDamageable>();
-        foreach (var c in hits)
+        _damagedTargetsCount = 0;
+        int hitCount = Physics.OverlapSphereNonAlloc(sweepCenter, kickHitRange * 0.7f, _hitBuffer, ~0, QueryTriggerInteraction.Collide);
+
+        for (int i = 0; i < hitCount; i++)
         {
+            Collider c = _hitBuffer[i];
             if (c == null || c.gameObject == gameObject || c.transform.IsChildOf(transform)) continue;
 
             Vector3 toTarget = c.transform.position - origin;
@@ -325,8 +462,9 @@ public class PlayerEquipment : MonoBehaviour
                 continue;
 
             var target = c.GetComponent<FeaturesCombat.IDamageable>() ?? c.GetComponentInParent<FeaturesCombat.IDamageable>();
-            if (target != null && !target.IsDead && hitSet.Add(target))
+            if (target != null && !target.IsDead && !HasTargetBeenHit(target))
             {
+                RecordTargetHit(target);
                 Vector3 hitPoint = c.ClosestPoint(sweepCenter);
                 target.TakeDamage(kickDamage, hitPoint, forwardDir);
 
@@ -441,7 +579,7 @@ public class PlayerEquipment : MonoBehaviour
         return false;
     }
 
-    private System.Collections.IEnumerator RoutineSwingHitbox(int damage, float knockback, float speedMultiplier, bool is360 = false, float rangeOverride = -1f)
+    private System.Collections.IEnumerator RoutineSwingHitbox(int damage, float knockback, float speedMultiplier, bool is360 = false, float rangeOverride = -1f, bool isFinisher = false, bool isHeavy = false, bool isDash = false)
     {
         float delay = 0.12f / Mathf.Max(0.5f, speedMultiplier);
         float duration = 0.28f / Mathf.Max(0.5f, speedMultiplier);
@@ -463,15 +601,15 @@ public class PlayerEquipment : MonoBehaviour
             }
         }
 
-        if (hitbox != null && !is360)
+        if (hitbox != null && !is360 && !isHeavy && !isDash)
         {
             hitbox.ConfigureHitRange(activeRange);
             hitbox.Activate(gameObject, damage, knockback, transform.forward);
         }
         else
         {
-            // Untuk putaran 360 atau tanpa hitbox fisik, gunakan direct sweep
-            PerformDirectMeleeSweep(damage, knockback, is360, activeRange);
+            // Direct zero-GC non-alloc sweep for 360, heavy strikes, dash attacks, or bare hands
+            PerformDirectMeleeSweep(damage, knockback, is360, activeRange, isFinisher, isHeavy, isDash);
         }
 
         yield return new WaitForSeconds(duration);
@@ -507,7 +645,7 @@ public class PlayerEquipment : MonoBehaviour
     {
         isExecutingSkill = true;
 
-        // Waktu tunggu lompatan di udara sebelum mendarat dan menghantam tanah (pada t=1.14s animasi slam)
+        // Leap jump delay before ground impact
         float impactDelay = 1.14f / Mathf.Max(0.5f, speedMultiplier);
         float impactDuration = 0.25f / Mathf.Max(0.5f, speedMultiplier);
 
@@ -515,8 +653,8 @@ public class PlayerEquipment : MonoBehaviour
 
         yield return new WaitForSeconds(impactDelay);
 
-        // Hantaman mendarat: sapuan AoE 360 derajat di sekitar titik hantaman
-        PerformDirectMeleeSweep(damage, knockback, is360: true, rangeOverride: range);
+        // Ground slam impact: 360 AoE zero-GC non-alloc sweep with heavy impulse
+        PerformDirectMeleeSweep(damage, knockback, is360: true, rangeOverride: range, isHeavy: true);
 
         yield return new WaitForSeconds(impactDuration);
 
@@ -544,20 +682,24 @@ public class PlayerEquipment : MonoBehaviour
     }
 
     /// <summary>
-    /// Sapuan melee langsung (mendukung serangan cone forward ataupun putaran 360 derajat).
+    /// Direct melee sweep query (zero-GC, non-alloc, supporting frontal cone or 360 spins with visual impulse juice).
     /// </summary>
-    private void PerformDirectMeleeSweep(int damage, float knockback, bool is360 = false, float rangeOverride = -1f)
+    private void PerformDirectMeleeSweep(int damage, float knockback, bool is360 = false, float rangeOverride = -1f, bool isFinisher = false, bool isHeavy = false, bool isDash = false)
     {
         float activeRange = rangeOverride > 0f ? rangeOverride : attackHitRange;
         Vector3 origin = transform.position + Vector3.up * 0.8f;
         Vector3 forwardDir = transform.forward;
         Vector3 sweepCenter = is360 ? origin : origin + forwardDir * (activeRange * 0.5f);
         float sweepRadius = is360 ? activeRange : (activeRange * 0.65f);
-        Collider[] hits = Physics.OverlapSphere(sweepCenter, sweepRadius, ~0, QueryTriggerInteraction.Collide);
 
-        var hitSet = new System.Collections.Generic.HashSet<FeaturesCombat.IDamageable>();
-        foreach (var c in hits)
+        _damagedTargetsCount = 0;
+        int hitCount = Physics.OverlapSphereNonAlloc(sweepCenter, sweepRadius, _hitBuffer, ~0, QueryTriggerInteraction.Collide);
+
+        bool landedHit = false;
+
+        for (int i = 0; i < hitCount; i++)
         {
+            Collider c = _hitBuffer[i];
             if (c == null || c.gameObject == gameObject || c.transform.IsChildOf(transform)) continue;
 
             if (!is360)
@@ -569,8 +711,11 @@ public class PlayerEquipment : MonoBehaviour
             }
 
             var target = c.GetComponent<FeaturesCombat.IDamageable>() ?? c.GetComponentInParent<FeaturesCombat.IDamageable>();
-            if (target != null && !target.IsDead && hitSet.Add(target))
+            if (target != null && !target.IsDead && !HasTargetBeenHit(target))
             {
+                RecordTargetHit(target);
+                landedHit = true;
+
                 Vector3 hitPoint = c.ClosestPoint(sweepCenter);
                 Vector3 hitDir = is360 ? (c.transform.position - origin).normalized : forwardDir;
                 if (hitDir.sqrMagnitude < 0.01f) hitDir = forwardDir;
@@ -585,14 +730,23 @@ public class PlayerEquipment : MonoBehaviour
 
                 if (PlayerUI.FloatingCombatTextManager.Instance != null)
                 {
-                    bool isFinisher = is360 && !isExecutingSkill;
-                    bool isSkill = isExecutingSkill;
                     PlayerUI.FloatingCombatTextManager.Instance.SpawnEnemyDamage(
                         hitPoint + Vector3.up * 0.8f,
                         damage,
-                        isCrit: isFinisher,
-                        isSkill: isSkill);
+                        isCrit: isFinisher || isHeavy,
+                        isSkill: isExecutingSkill || isHeavy);
                 }
+            }
+        }
+
+        // Post-processing tactile screen juice on impactful hits
+        if (landedHit && (isFinisher || isHeavy || isDash || isExecutingSkill))
+        {
+            if (FeaturesTime.Atmosphere.DayNightVolumeController.Instance != null)
+            {
+                float impulseIntensity = isHeavy ? 0.95f : (isFinisher ? 0.85f : 0.65f);
+                float impulseDuration = isHeavy ? 0.30f : 0.22f;
+                FeaturesTime.Atmosphere.DayNightVolumeController.Instance.TriggerCombatImpulse(impulseIntensity, impulseDuration);
             }
         }
     }
@@ -606,6 +760,10 @@ public class PlayerEquipment : MonoBehaviour
         FindHandSocketIfNeeded();
         DestroyCurrentWeapon();
         EnsureRangeIndicator();
+        if (combatStateMachine != null)
+        {
+            combatStateMachine.ComboResetWindow = comboResetWindow;
+        }
     }
 
     private ItemData lastEquippedItem;
@@ -627,6 +785,7 @@ public class PlayerEquipment : MonoBehaviour
 
     private void Update()
     {
+        combatStateMachine.Update(Time.time);
         UpdateRangeIndicatorState();
     }
 

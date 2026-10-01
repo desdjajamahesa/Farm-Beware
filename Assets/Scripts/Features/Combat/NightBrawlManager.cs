@@ -30,13 +30,15 @@ namespace FeaturesCombat
         [SerializeField] private float waveIntermissionDelay = 4f;
 
         private readonly List<EnemyBase> activeEnemies = new List<EnemyBase>();
+        private readonly Wave.WaveProgressionEngine waveEngine = new Wave.WaveProgressionEngine();
         private bool isWaveInProgress = false;
-        private Coroutine waveLoopCoroutine;
+        private Coroutine intermissionCoroutine;
 
         public event System.Action<EnemyBase> OnEnemySpawned;
         public IReadOnlyList<EnemyBase> ActiveEnemies => activeEnemies;
         public int ActiveEnemiesCount => activeEnemies.Count;
         public bool IsNightBrawlActive => isWaveInProgress;
+        public Wave.WaveProgressionEngine WaveEngine => waveEngine;
 
         private void Awake()
         {
@@ -56,6 +58,11 @@ namespace FeaturesCombat
                 TimeManager.Instance.OnDayChanged += HandleDayChanged;
             }
             EnemyBase.OnAnyEnemyDied += HandleEnemyDied;
+
+            waveEngine.OnWaveStarted += HandleWaveStarted;
+            waveEngine.OnWaveCompleted += HandleWaveCompleted;
+            waveEngine.OnAllWavesCleared += HandleAllWavesCleared;
+            waveEngine.OnEnemiesRemainingChanged += HandleEnemiesRemainingChanged;
         }
 
         private void OnDisable()
@@ -66,6 +73,11 @@ namespace FeaturesCombat
                 TimeManager.Instance.OnDayChanged -= HandleDayChanged;
             }
             EnemyBase.OnAnyEnemyDied -= HandleEnemyDied;
+
+            waveEngine.OnWaveStarted -= HandleWaveStarted;
+            waveEngine.OnWaveCompleted -= HandleWaveCompleted;
+            waveEngine.OnAllWavesCleared -= HandleAllWavesCleared;
+            waveEngine.OnEnemiesRemainingChanged -= HandleEnemiesRemainingChanged;
         }
 
         private void Start()
@@ -101,10 +113,10 @@ namespace FeaturesCombat
         {
             if (isWaveInProgress) return;
 
-            // Day 1 -> 1 Wave, Day 2 -> 2 Waves ... Day 5 -> 5 Waves
-            totalWaves = Mathf.Clamp(currentDay, 1, 5);
-            currentWave = 0;
             isWaveInProgress = true;
+            waveEngine.StartNight(currentDay);
+            totalWaves = waveEngine.TotalWavesForDay;
+            currentWave = 0;
 
             if (TimeManager.Instance != null)
             {
@@ -116,81 +128,27 @@ namespace FeaturesCombat
                 CombatPhaseTrackerUI.Instance.SetWaveInfo(1, totalWaves);
             }
 
-            if (waveLoopCoroutine != null)
-                StopCoroutine(waveLoopCoroutine);
-
-            waveLoopCoroutine = StartCoroutine(RoutineWaveLoop());
-        }
-
-        private IEnumerator RoutineWaveLoop()
-        {
-            // Beri jeda 2 detik saat malam tiba agar suasana mencekam terasa
-            yield return new WaitForSeconds(2.5f);
-
-            while (currentWave < totalWaves)
+            if (intermissionCoroutine != null)
             {
-                currentWave++;
-
-                // Notifikasi wave dimulai
-                if (FloatingCombatTextManager.Instance != null)
-                {
-                    var player = GameObject.FindWithTag("Player");
-                    Vector3 notifPos = player != null ? player.transform.position + Vector3.up * 2f : arenaCenter;
-                    FloatingCombatTextManager.Instance.SpawnText(
-                        notifPos,
-                        $"⚠️ WAVE {currentWave} / {totalWaves} INCOMING!",
-                        new Color(1f, 0.25f, 0.25f));
-                }
-
-                if (CombatPhaseTrackerUI.Instance != null)
-                {
-                    CombatPhaseTrackerUI.Instance.SetWaveInfo(currentWave, totalWaves);
-                }
-
-                // Spawn musuh untuk wave saat ini
-                SpawnEnemiesForWave(currentDay, currentWave);
-
-                if (CombatPhaseTrackerUI.Instance != null)
-                {
-                    CombatPhaseTrackerUI.Instance.SetEnemiesRemaining(activeEnemies.Count);
-                }
-
-                // Tunggu sampai semua musuh di wave ini tereliminasi
-                while (activeEnemies.Count > 0)
-                {
-                    // Bersihkan null references jika ada musuh yang hancur mendadak
-                    activeEnemies.RemoveAll(e => e == null || e.IsDead);
-                    if (CombatPhaseTrackerUI.Instance != null)
-                    {
-                        CombatPhaseTrackerUI.Instance.SetEnemiesRemaining(activeEnemies.Count);
-                    }
-                    yield return new WaitForSeconds(0.5f);
-                }
-
-                // Wave selesai
-                if (currentWave < totalWaves)
-                {
-                    if (FloatingCombatTextManager.Instance != null)
-                    {
-                        var player = GameObject.FindWithTag("Player");
-                        Vector3 notifPos = player != null ? player.transform.position + Vector3.up * 2f : arenaCenter;
-                        FloatingCombatTextManager.Instance.SpawnText(
-                            notifPos,
-                            $"✨ Wave {currentWave} Cleared! Catch your breath...",
-                            new Color(0.4f, 0.9f, 0.4f));
-                    }
-                    yield return new WaitForSeconds(waveIntermissionDelay);
-                }
+                StopCoroutine(intermissionCoroutine);
+                intermissionCoroutine = null;
             }
 
-            // Seluruh wave malam ini selesai!
-            OnAllWavesCleared();
+            intermissionCoroutine = StartCoroutine(RoutineInitialSuspenseDelay());
         }
 
-        private void SpawnEnemiesForWave(int day, int wave)
+        private IEnumerator RoutineInitialSuspenseDelay()
+        {
+            yield return new WaitForSeconds(2.5f);
+            SpawnNextWave();
+            intermissionCoroutine = null;
+        }
+
+        private void SpawnNextWave()
         {
             activeEnemies.Clear();
-            List<EnemyType> toSpawn = GetEnemiesListForDayAndWave(day, wave);
+            List<EnemyType> toSpawn = waveEngine.PrepareNextWave();
+            currentWave = waveEngine.CurrentWaveIndex;
 
             foreach (var type in toSpawn)
             {
@@ -206,7 +164,61 @@ namespace FeaturesCombat
                 }
             }
 
-            Debug.Log($"[NightBrawlManager] Day {day} Wave {wave} dimulai: {activeEnemies.Count} musuh dibangkitkan.");
+            Debug.Log($"[NightBrawlManager] Day {currentDay} Wave {currentWave} spawned: {activeEnemies.Count} enemies.");
+        }
+
+        private void HandleWaveStarted(int day, int wave)
+        {
+            if (FloatingCombatTextManager.Instance != null)
+            {
+                var player = GameObject.FindWithTag("Player");
+                Vector3 notifPos = player != null ? player.transform.position + Vector3.up * 2f : arenaCenter;
+                FloatingCombatTextManager.Instance.SpawnText(
+                    notifPos,
+                    $"⚠️ WAVE {wave} / {totalWaves} INCOMING!",
+                    new Color(1f, 0.25f, 0.25f));
+            }
+
+            if (CombatPhaseTrackerUI.Instance != null)
+            {
+                CombatPhaseTrackerUI.Instance.SetWaveInfo(wave, totalWaves);
+            }
+        }
+
+        private void HandleEnemiesRemainingChanged(int count)
+        {
+            if (CombatPhaseTrackerUI.Instance != null)
+            {
+                CombatPhaseTrackerUI.Instance.SetEnemiesRemaining(count);
+            }
+        }
+
+        private void HandleWaveCompleted(int day, int wave)
+        {
+            if (waveEngine.HasMoreWaves)
+            {
+                if (FloatingCombatTextManager.Instance != null)
+                {
+                    var player = GameObject.FindWithTag("Player");
+                    Vector3 notifPos = player != null ? player.transform.position + Vector3.up * 2f : arenaCenter;
+                    FloatingCombatTextManager.Instance.SpawnText(
+                        notifPos,
+                        $"✨ Wave {wave} Cleared! Catch your breath...",
+                        new Color(0.4f, 0.9f, 0.4f));
+                }
+
+                if (intermissionCoroutine != null)
+                    StopCoroutine(intermissionCoroutine);
+
+                intermissionCoroutine = StartCoroutine(RoutineIntermissionCountdown());
+            }
+        }
+
+        private IEnumerator RoutineIntermissionCountdown()
+        {
+            yield return new WaitForSeconds(waveIntermissionDelay);
+            SpawnNextWave();
+            intermissionCoroutine = null;
         }
 
         /// <summary>
@@ -217,122 +229,12 @@ namespace FeaturesCombat
             if (enemy == null || activeEnemies.Contains(enemy)) return;
             activeEnemies.Add(enemy);
             OnEnemySpawned?.Invoke(enemy);
-
-            if (CombatPhaseTrackerUI.Instance != null)
-            {
-                CombatPhaseTrackerUI.Instance.SetEnemiesRemaining(activeEnemies.Count);
-            }
+            waveEngine.RegisterDynamicEnemy();
         }
 
         private List<EnemyType> GetEnemiesListForDayAndWave(int day, int wave)
         {
-            var list = new List<EnemyType>();
-
-            if (day == 1)
-            {
-                // Day 1: 1 wave
-                list.Add(EnemyType.TuberMaw);
-                list.Add(EnemyType.TuberMaw);
-                list.Add(EnemyType.TaroBrute);
-            }
-            else if (day == 2)
-            {
-                if (wave == 1)
-                {
-                    list.Add(EnemyType.TuberMaw);
-                    list.Add(EnemyType.TuberMaw);
-                    list.Add(EnemyType.CornMusketeer);
-                }
-                else
-                {
-                    list.Add(EnemyType.TaroBrute);
-                    list.Add(EnemyType.TaroBrute);
-                    list.Add(EnemyType.TuberMaw);
-                    list.Add(EnemyType.CornMusketeer);
-                }
-            }
-            else if (day == 3)
-            {
-                if (wave == 1)
-                {
-                    list.Add(EnemyType.CornMusketeer);
-                    list.Add(EnemyType.CornMusketeer);
-                    list.Add(EnemyType.TuberMaw);
-                    list.Add(EnemyType.TuberMaw);
-                }
-                else if (wave == 2)
-                {
-                    list.Add(EnemyType.TaroBrute);
-                    list.Add(EnemyType.TaroBrute);
-                    list.Add(EnemyType.CornMusketeer);
-                    list.Add(EnemyType.TuberMaw);
-                }
-                else
-                {
-                    list.Add(EnemyType.TuberMaw);
-                    list.Add(EnemyType.TuberMaw);
-                    list.Add(EnemyType.TaroBrute);
-                    list.Add(EnemyType.CornMusketeer);
-                    list.Add(EnemyType.CyclopsTuberMaw);
-                }
-            }
-            else if (day == 4)
-            {
-                if (wave <= 2)
-                {
-                    list.Add(EnemyType.CornMusketeer);
-                    list.Add(EnemyType.CornMusketeer);
-                    list.Add(EnemyType.TaroBrute);
-                    list.Add(EnemyType.TuberMaw);
-                }
-                else if (wave == 3)
-                {
-                    list.Add(EnemyType.TuberMaw);
-                    list.Add(EnemyType.TuberMaw);
-                    list.Add(EnemyType.TaroBrute);
-                    list.Add(EnemyType.CornMusketeer);
-                    list.Add(EnemyType.TaroBrute);
-                }
-                else
-                {
-                    list.Add(EnemyType.TaroColossus);
-                    list.Add(EnemyType.TaroBrute);
-                    list.Add(EnemyType.CornMusketeer);
-                    list.Add(EnemyType.TuberMaw);
-                }
-            }
-            else
-            {
-                // Day 5: 5 Waves
-                if (wave <= 3)
-                {
-                    list.Add(EnemyType.TuberMaw);
-                    list.Add(EnemyType.TuberMaw);
-                    list.Add(EnemyType.TaroBrute);
-                    list.Add(EnemyType.CornMusketeer);
-                    if (wave >= 2) list.Add(EnemyType.TaroBrute);
-                    if (wave >= 3) list.Add(EnemyType.CornMusketeer);
-                }
-                else if (wave == 4)
-                {
-                    // Boss Encounter 1: Taro Colossus + 3 Normal
-                    list.Add(EnemyType.TaroColossus);
-                    list.Add(EnemyType.TaroBrute);
-                    list.Add(EnemyType.TuberMaw);
-                    list.Add(EnemyType.CornMusketeer);
-                }
-                else
-                {
-                    // Wave 5 Climax: 2 Bosses Simultaneously + 3 Normal Enemies
-                    list.Add(EnemyType.CyclopsTuberMaw);
-                    list.Add(EnemyType.TheRanger);
-                    list.Add(EnemyType.TuberMaw);
-                    list.Add(EnemyType.TaroBrute);
-                    list.Add(EnemyType.CornMusketeer);
-                }
-            }
-
-            return list;
+            return Wave.WaveProgressionEngine.GetEnemiesScheduleForDayAndWave(day, wave);
         }
 
         /// <summary>
@@ -436,14 +338,10 @@ namespace FeaturesCombat
         private void HandleEnemyDied(EnemyBase enemy)
         {
             activeEnemies.Remove(enemy);
-
-            if (CombatPhaseTrackerUI.Instance != null)
-            {
-                CombatPhaseTrackerUI.Instance.SetEnemiesRemaining(activeEnemies.Count);
-            }
+            waveEngine.RecordEnemyDefeated();
         }
 
-        private void OnAllWavesCleared()
+        private void HandleAllWavesCleared(int day)
         {
             isWaveInProgress = false;
 
@@ -467,18 +365,19 @@ namespace FeaturesCombat
                 CombatPhaseTrackerUI.Instance.SetEnemiesRemaining(0);
             }
 
-            Debug.Log("[NightBrawlManager] Seluruh gelombang malam berhasil dituntaskan! Kasur siap untuk transisi hari berikutnya.");
+            Debug.Log("[NightBrawlManager] All night brawl waves cleared! Next day transition ready.");
         }
 
         public void EndNightBrawl(bool cleanupRemaining)
         {
-            if (waveLoopCoroutine != null)
+            if (intermissionCoroutine != null)
             {
-                StopCoroutine(waveLoopCoroutine);
-                waveLoopCoroutine = null;
+                StopCoroutine(intermissionCoroutine);
+                intermissionCoroutine = null;
             }
 
             isWaveInProgress = false;
+            waveEngine.EndNight();
 
             if (cleanupRemaining)
             {

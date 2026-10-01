@@ -70,6 +70,8 @@ public class PlayerControl : MonoBehaviour
     private bool isJumping;
     private float groundBufferTimer;
     private const float GroundBufferDuration = 0.12f;
+    private float attackHoldDuration = 0f;
+    private bool isChargingAttack = false;
 
     // Wall slide helpers
     private Vector3 contactWallNormal = Vector3.zero;
@@ -510,17 +512,32 @@ public class PlayerControl : MonoBehaviour
     // --- LOGIKA AKSI ---
 
     // Klik Kiri Mouse / Tombol F: Serangan Kombo Biasa (3-Hit Combo)
+    // Klik Kiri Mouse / Tombol F: Serangan Kombo Biasa (3-Hit Combo) / Dash Attack saat berlari / Heavy Strike jika ditahan
     // Klik Kanan Mouse / Tombol R: Jurus Spesial (Leap Strike)
     private void HandleAttackInput()
     {
-        if (isInputLocked || isPlanting || isAttacking) return;
+        if (isInputLocked || isPlanting || isAttacking)
+        {
+            isChargingAttack = false;
+            attackHoldDuration = 0f;
+            return;
+        }
 
         bool isPointerOverUI = UnityEngine.EventSystems.EventSystem.current != null &&
                                UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject();
 
-        // 1. Serangan Normal (3-Hit Combo): Left Click atau Tombol F
-        bool leftClick = Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame && !isPointerOverUI;
-        bool fKey = Keyboard.current != null && Keyboard.current.fKey.wasPressedThisFrame;
+        // 1. Serangan Normal / Dash / Heavy
+        bool leftPressed = Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame && !isPointerOverUI;
+        bool fPressed = Keyboard.current != null && Keyboard.current.fKey.wasPressedThisFrame;
+        bool attackPressed = leftPressed || fPressed;
+
+        bool leftHeld = Mouse.current != null && Mouse.current.leftButton.isPressed && !isPointerOverUI;
+        bool fHeld = Keyboard.current != null && Keyboard.current.fKey.isPressed;
+        bool attackHeld = leftHeld || fHeld;
+
+        bool leftReleased = Mouse.current != null && Mouse.current.leftButton.wasReleasedThisFrame;
+        bool fReleased = Keyboard.current != null && Keyboard.current.fKey.wasReleasedThisFrame;
+        bool attackReleased = leftReleased || fReleased;
 
         // 2. Jurus Spesial (Leap Strike): Right Click atau Tombol R
         bool rightClick = Mouse.current != null && Mouse.current.rightButton.wasPressedThisFrame && !isPointerOverUI;
@@ -537,10 +554,13 @@ public class PlayerControl : MonoBehaviour
 
         if (qKey)
         {
+            isChargingAttack = false;
+            attackHoldDuration = 0f;
             if (playerEquipment != null && playerEquipment.TryPerformKick())
             {
                 StartCoroutine(RoutineKick());
             }
+            return;
         }
         else if (tKey)
         {
@@ -549,21 +569,122 @@ public class PlayerControl : MonoBehaviour
                 animator.ResetTrigger("Taunt");
                 animator.SetTrigger("Taunt");
             }
+            return;
         }
         else if (rightClick || rKey)
         {
+            isChargingAttack = false;
+            attackHoldDuration = 0f;
             if (playerEquipment != null && playerEquipment.TryPerformSkillAttack())
             {
                 StartCoroutine(RoutineSkillAttack());
             }
+            return;
         }
-        else if (leftClick || fKey)
+
+        // --- Melee Attack Processing (Light Combo / Dash Attack / Charged Heavy) ---
+        if (attackPressed)
         {
-            if (playerEquipment != null && playerEquipment.TryPerformAttack())
+            // If running/sprinting at high speed, trigger instantaneous Dash Attack!
+            if (isRunning && inputVector.sqrMagnitude >= 0.01f)
             {
-                StartCoroutine(RoutineAttack());
+                if (playerEquipment != null && playerEquipment.TryPerformDashAttack())
+                {
+                    StartCoroutine(RoutineDashAttack());
+                    isChargingAttack = false;
+                    attackHoldDuration = 0f;
+                    return;
+                }
+            }
+
+            isChargingAttack = true;
+            attackHoldDuration = 0f;
+        }
+
+        if (isChargingAttack)
+        {
+            if (attackHeld)
+            {
+                attackHoldDuration += Time.deltaTime;
+                if (attackHoldDuration >= 0.35f && playerEquipment != null)
+                {
+                    playerEquipment.CombatStateMachine.StartHeavyCharge(Time.time);
+                    playerEquipment.CombatStateMachine.UpdateCharge(Time.deltaTime);
+                }
+            }
+
+            if (attackReleased)
+            {
+                isChargingAttack = false;
+                if (attackHoldDuration >= 0.35f)
+                {
+                    // Released after charging -> Heavy Attack!
+                    if (playerEquipment != null && playerEquipment.TryPerformHeavyAttack(playerEquipment.CombatStateMachine.ChargeRatio))
+                    {
+                        StartCoroutine(RoutineHeavyAttack());
+                    }
+                }
+                else
+                {
+                    // Released quickly -> Standard 3-Hit Combo Light Attack!
+                    if (playerEquipment != null && playerEquipment.TryPerformAttack())
+                    {
+                        StartCoroutine(RoutineAttack());
+                    }
+                }
+                attackHoldDuration = 0f;
             }
         }
+    }
+
+    private IEnumerator RoutineDashAttack()
+    {
+        isAttacking = true;
+        if (animator != null)
+            animator.SetBool("IsAttacking", true);
+
+        if (rb != null)
+        {
+            Vector3 forwardDir = transform.forward;
+            rb.linearVelocity = forwardDir * 7.5f + Vector3.up * 0.1f;
+        }
+
+        yield return null;
+
+        float atkSpeed = (playerEquipment != null) ? Mathf.Max(0.5f, playerEquipment.AttackAnimationSpeed) : 1.6f;
+        float lockDuration = 0.36f / atkSpeed;
+        yield return new WaitForSeconds(lockDuration);
+
+        isAttacking = false;
+        if (animator != null)
+            animator.SetBool("IsAttacking", false);
+    }
+
+    private IEnumerator RoutineHeavyAttack()
+    {
+        isAttacking = true;
+        if (animator != null)
+            animator.SetBool("IsAttacking", true);
+
+        if (rb != null)
+        {
+            rb.linearVelocity = transform.forward * 3.8f + Vector3.up * 0.1f;
+        }
+
+        yield return null;
+
+        float atkSpeed = (playerEquipment != null) ? Mathf.Max(0.5f, playerEquipment.AttackAnimationSpeed) : 1f;
+        float maxLock = 0.58f / atkSpeed;
+        float timer = 0f;
+        while (timer < maxLock)
+        {
+            timer += Time.deltaTime;
+            yield return null;
+        }
+
+        isAttacking = false;
+        if (animator != null)
+            animator.SetBool("IsAttacking", false);
     }
 
     private IEnumerator RoutineAttack()

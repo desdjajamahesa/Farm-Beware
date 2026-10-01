@@ -23,6 +23,7 @@ namespace FeaturesCombat
         [SerializeField] private float sweepRadius = 1.6f;
         [SerializeField] private float minForwardDot = 0.2f; // Minimum dot product to ensure frontal arc (rejects behind player)
 
+        private static readonly Collider[] _sharedSweepBuffer = new Collider[32];
         private GameObject attacker;
         private int currentDamage;
         private float currentKnockback;
@@ -121,11 +122,12 @@ namespace FeaturesCombat
             Vector3 forwardDir = (attacker != null) ? attacker.transform.forward : (attackDirection != Vector3.zero ? attackDirection : transform.forward);
             Vector3 sweepCenter = origin + forwardDir * sweepForwardOffset;
 
-            // Eksplisit LayerMask: mencakup semua collider kecuali trigger non-damageable
-            Collider[] overlaps = Physics.OverlapSphere(sweepCenter, sweepRadius, ~0, QueryTriggerInteraction.Collide);
+            // Explicit LayerMask: non-alloc sweep query using preallocated buffer
+            int hitCount = Physics.OverlapSphereNonAlloc(sweepCenter, sweepRadius, _sharedSweepBuffer, ~0, QueryTriggerInteraction.Collide);
 
-            foreach (var col in overlaps)
+            for (int i = 0; i < hitCount; i++)
             {
+                var col = _sharedSweepBuffer[i];
                 if (col == null) continue;
 
                 // Abaikan penyerang sendiri

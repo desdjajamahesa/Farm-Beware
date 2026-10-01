@@ -36,25 +36,31 @@ namespace FeaturesCombat
                 }
             }
 
-            // 2. Drop Monster Material
-            if (enemy.dropMaterial != null && Random.value <= enemy.dropChance)
+            // 2. Drop Monster Materials
+            Vector3 tossDir = CalculateTossDirection(enemy);
+
+            if (enemy.EnemyData != null && enemy.EnemyData.lootDrops != null && enemy.EnemyData.lootDrops.Count > 0)
             {
-                int dropCount = Random.Range(enemy.minDropCount, enemy.maxDropCount + 1);
-                Transform playerTarget = enemy.PlayerTarget;
-
-                Vector3 tossDir;
-                if (playerTarget != null)
+                // Modular ScriptableObject loot table
+                for (int i = 0; i < enemy.EnemyData.lootDrops.Count; i++)
                 {
-                    tossDir = (enemy.transform.position - playerTarget.position);
+                    var entry = enemy.EnemyData.lootDrops[i];
+                    if (entry.item != null && Random.value <= entry.dropChance)
+                    {
+                        int dropCount = Mathf.Clamp(entry.RollQuantity(), 1, 20); // Strict maxStack = 20 invariant
+                        for (int d = 0; d < dropCount; d++)
+                        {
+                            float angle = Random.Range(-35f, 35f);
+                            Vector3 spreadDir = Quaternion.Euler(0f, angle, 0f) * tossDir;
+                            WorldItemPickup.Spawn(enemy.transform.position, entry.item, 1, spreadDir);
+                        }
+                    }
                 }
-                else
-                {
-                    tossDir = -enemy.transform.forward;
-                }
-                tossDir.y = 0f;
-                if (tossDir.sqrMagnitude < 0.001f) tossDir = -enemy.transform.forward;
-                tossDir.Normalize();
-
+            }
+            else if (enemy.dropMaterial != null && Random.value <= enemy.dropChance)
+            {
+                // Fallback legacy drop path
+                int dropCount = Mathf.Clamp(Random.Range(enemy.minDropCount, enemy.maxDropCount + 1), 1, 20);
                 for (int i = 0; i < dropCount; i++)
                 {
                     float angle = Random.Range(-35f, 35f);
@@ -62,6 +68,23 @@ namespace FeaturesCombat
                     WorldItemPickup.Spawn(enemy.transform.position, enemy.dropMaterial, 1, spreadDir);
                 }
             }
+        }
+
+        private static Vector3 CalculateTossDirection(EnemyBase enemy)
+        {
+            Transform playerTarget = enemy.PlayerTarget;
+            Vector3 tossDir;
+            if (playerTarget != null)
+            {
+                tossDir = (enemy.transform.position - playerTarget.position);
+            }
+            else
+            {
+                tossDir = -enemy.transform.forward;
+            }
+            tossDir.y = 0f;
+            if (tossDir.sqrMagnitude < 0.001f) tossDir = -enemy.transform.forward;
+            return tossDir.normalized;
         }
     }
 }
