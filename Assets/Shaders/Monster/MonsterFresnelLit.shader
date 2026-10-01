@@ -68,6 +68,8 @@ Shader "FarmBeware/Monster/MonsterFresnelLit"
             #pragma multi_compile_fragment _ _SHADOWS_SOFT
             #pragma multi_compile _ _ADDITIONAL_LIGHTS
             #pragma multi_compile _ _CLUSTER_LIGHT_LOOP
+            #pragma multi_compile_fragment _ _ADDITIONAL_LIGHT_SHADOWS
+            #pragma multi_compile_fragment _ _LIGHT_LAYERS
 
             struct Attributes
             {
@@ -109,6 +111,23 @@ Shader "FarmBeware/Monster/MonsterFresnelLit"
                 Light mainLight = GetMainLight(TransformWorldToShadowCoord(input.positionWS));
                 float NdotL = saturate(dot(normalWS, mainLight.direction));
                 float3 directLight = albedo * mainLight.color * (NdotL * mainLight.shadowAttenuation);
+
+                // Evaluasi additional lights (point / spot lights lokal)
+            #if defined(_ADDITIONAL_LIGHTS)
+                uint lightsCount = GetAdditionalLightsCount();
+                uint meshRenderingLayers = GetMeshRenderingLayer();
+
+                LIGHT_LOOP_BEGIN(lightsCount)
+                    Light addLight = GetAdditionalLight(lightIndex, input.positionWS);
+                #if defined(_LIGHT_LAYERS)
+                    if (IsMatchingLightLayer(addLight.layerMask, meshRenderingLayers))
+                #endif
+                    {
+                        float addNdotL = saturate(dot(normalWS, addLight.direction));
+                        directLight += albedo * addLight.color * (addNdotL * addLight.distanceAttenuation * addLight.shadowAttenuation);
+                    }
+                LIGHT_LOOP_END
+            #endif
 
                 // Evaluasi ambient SH
                 float3 ambient = SampleSH(normalWS) * albedo;

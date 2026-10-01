@@ -14,6 +14,8 @@ GameObject:
   - component: {fileID: 3735569770327509566}
   - component: {fileID: 5518066880929863652}
   - component: {fileID: 1455978399487498977}
+  - component: {fileID: 3529086239607447264}
+  - component: {fileID: 4210852165846919619}
   m_Layer: 0
   m_Name: Boss_TaroColossus
   m_TagString: Untagged
@@ -90,7 +92,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 0}
+  - {fileID: 2100000, guid: 2fda7039fd15d0442b6c8e71ed5fd9bc, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -172,3 +174,43 @@ MonoBehaviour:
   minGold: 700
   maxGold: 1000
   goldChance: 0.8
+  repathInterval: 0.25
+  cornerReachThreshold: 0.8
+  obstacleAvoidanceDistance: 1.35
+  whiskerAngle: 35
+--- !u!114 &3529086239607447264
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1467440526129903929}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f52945f626508aa48b3f787a83e8cf2e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FeaturesCombat.ColossusAirborneAbility
+  cooldown: 20
+  trackDuration: 3.5
+  airborneHeight: 9
+  aoeDamage: 40
+  aoeRadius: 4.5
+  rockProjectileDamage: 20
+  hitsToInterrupt: 4
+--- !u!114 &4210852165846919619
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1467440526129903929}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0f22a0c9ec6462e4eac02a8198bfc4fa, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FeaturesCombat.ColossusGrappleAbility
+  cooldown: 24
+  grabRange: 2.2
+  grappleDamage: 35
+  stunDuration: 1.2
+  holdDuration: 0.7

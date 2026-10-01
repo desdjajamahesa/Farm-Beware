@@ -92,6 +92,11 @@ namespace FeaturesTime
         [Tooltip("Jika true, menyinkronkan event fase dengan TimeManager legacy di project.")]
         [SerializeField] private bool syncWithLegacyTimeManager = true;
 
+        /// <summary>
+        /// Flag indicating if legacy time manager synchronization is enabled.
+        /// </summary>
+        public bool SyncWithLegacyTimeManager => syncWithLegacyTimeManager;
+
         #endregion
 
         #region State Fields

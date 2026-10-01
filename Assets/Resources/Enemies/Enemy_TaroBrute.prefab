@@ -90,7 +90,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 0}
+  - {fileID: 2100000, guid: 926c23a444988384da4d06e226eff8c2, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -172,3 +172,7 @@ MonoBehaviour:
   minGold: 200
   maxGold: 500
   goldChance: 0.5
+  repathInterval: 0.25
+  cornerReachThreshold: 0.8
+  obstacleAvoidanceDistance: 1.35
+  whiskerAngle: 35

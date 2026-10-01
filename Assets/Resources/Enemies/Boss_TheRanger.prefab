@@ -14,6 +14,8 @@ GameObject:
   - component: {fileID: 264262273501200328}
   - component: {fileID: 8970551477199378670}
   - component: {fileID: 641113920033579613}
+  - component: {fileID: 8702122495243373716}
+  - component: {fileID: -1500125722396341916}
   m_Layer: 0
   m_Name: Boss_TheRanger
   m_TagString: Untagged
@@ -92,7 +94,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 0}
+  - {fileID: 2100000, guid: 17ee9526610ab624b9d7686f91c5c1df, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -174,3 +176,42 @@ MonoBehaviour:
   minGold: 700
   maxGold: 1000
   goldChance: 0.85
+  repathInterval: 0.25
+  cornerReachThreshold: 0.8
+  obstacleAvoidanceDistance: 1.35
+  whiskerAngle: 35
+--- !u!114 &8702122495243373716
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1027876986483246159}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: da96fa629eb897649aba22482362bf3a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FeaturesCombat.BossSummonAbility
+  minionType: 4
+  minionCount: 3
+  maxActiveMinions: 6
+  summonCooldown: 35
+  initialDelay: 4
+  channelDuration: 1.8
+  makeUnstaggerableDuringSummon: 1
+--- !u!114 &-1500125722396341916
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1027876986483246159}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 49106b02bbf895e46960a1d46e2a60b5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FeaturesCombat.RangerEnrageAbility
+  hpThresholdPercent: 0.5
+  projectileCount: 20
+  burstDamage: 18
+  projectileSpeed: 13.5
