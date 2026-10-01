@@ -76,7 +76,7 @@ public class PlayerControl : MonoBehaviour
     // Wall slide helpers
     private Vector3 contactWallNormal = Vector3.zero;
     private bool isTouchingWall = false;
-    private readonly System.Collections.Generic.HashSet<Collider> activeWallColliders = new System.Collections.Generic.HashSet<Collider>();
+    private float lastWallContactTime = -10f;
 
     // Kunci input global: saat true, pemain tidak bisa bergerak, membuka
     // inventori, melompat, dash, atau berinteraksi (dipakai mode Trophy, dst).
@@ -334,6 +334,13 @@ public class PlayerControl : MonoBehaviour
             return;
         }
 
+        // Auto-expire stale wall contact (guarantees zero-leak if colliders despawn or pooling occurs)
+        if (isTouchingWall && (Time.fixedTime - lastWallContactTime > Time.fixedDeltaTime * 1.5f))
+        {
+            isTouchingWall = false;
+            contactWallNormal = Vector3.zero;
+        }
+
         // Saat jurus lompat menerjang (skill leap), biarkan momentum fisika menggerakkan tubuh maju
         if (isSkillLeaping)
         {
@@ -366,7 +373,7 @@ public class PlayerControl : MonoBehaviour
             if (isTouchingWall && contactWallNormal.sqrMagnitude > 0.01f)
             {
                 float dot = Vector3.Dot(desiredMove, contactWallNormal);
-                if (dot < 0f) // Bergerak menabrak tembok
+                if (dot < -0.01f) // Bergerak menabrak tembok
                 {
                     Vector3 slide = Vector3.ProjectOnPlane(desiredMove, contactWallNormal);
                     slide.y = 0f;
@@ -375,7 +382,7 @@ public class PlayerControl : MonoBehaviour
                 }
             }
 
-            // 2. Wall Sliding prediktif via CapsuleCast ke depan (mencegah tersendat sebelum kontak)
+            // 2. Wall Sliding prediktif via CapsuleCast ke depan (mencegah tersendat sebelum kontak dengan tembok statis)
             if (playerCollider != null)
             {
                 float halfHeight = Mathf.Max(playerCollider.height * 0.5f - playerCollider.radius, 0f);
@@ -383,41 +390,48 @@ public class PlayerControl : MonoBehaviour
                 Vector3 p2 = transform.position + playerCollider.center - Vector3.up * Mathf.Max(halfHeight - 0.1f, 0f);
                 float radius = playerCollider.radius;
                 float castDist = maxSpeed * Time.fixedDeltaTime + 0.15f;
+                int wallLayerMask = (1 << LayerMask.NameToLayer("Wall")) | (1 << LayerMask.NameToLayer("Default"));
 
                 // Pass 1: Deteksi dan defleksikan arah ke dinding pertama
-                if (Physics.CapsuleCast(p1, p2, radius * 0.95f, desiredMove, out RaycastHit hit, castDist, ~LayerMask.GetMask("Ignore Raycast"), QueryTriggerInteraction.Ignore))
+                if (Physics.CapsuleCast(p1, p2, radius * 0.90f, desiredMove, out RaycastHit hit, castDist, wallLayerMask, QueryTriggerInteraction.Ignore))
                 {
-                    float wallAngle = Vector3.Angle(hit.normal, Vector3.up);
-                    if (wallAngle > 50f && wallAngle < 130f)
+                    if (hit.collider != playerCollider && !hit.transform.IsChildOf(transform) && (hit.rigidbody == null || hit.rigidbody.isKinematic) && hit.distance > 0.01f)
                     {
-                        Vector3 hitNormal = hit.normal;
-                        hitNormal.y = 0f;
-                        hitNormal.Normalize();
-
-                        float dot = Vector3.Dot(desiredMove, hitNormal);
-                        if (dot < 0f)
+                        float wallAngle = Vector3.Angle(hit.normal, Vector3.up);
+                        if (wallAngle > 50f && wallAngle < 130f)
                         {
-                            Vector3 slide = Vector3.ProjectOnPlane(desiredMove, hitNormal);
-                            slide.y = 0f;
-                            if (slide.sqrMagnitude > 0.001f)
-                                desiredMove = slide.normalized;
+                            Vector3 hitNormal = hit.normal;
+                            hitNormal.y = 0f;
+                            hitNormal.Normalize();
 
-                            // Pass 2: Jika berada di sudut (dua dinding bertemu), cek dinding kedua
-                            if (Physics.CapsuleCast(p1, p2, radius * 0.95f, desiredMove, out RaycastHit hitCorner, castDist * 0.5f, ~LayerMask.GetMask("Ignore Raycast"), QueryTriggerInteraction.Ignore))
+                            float dot = Vector3.Dot(desiredMove, hitNormal);
+                            if (dot < -0.01f)
                             {
-                                float cornerAngle = Vector3.Angle(hitCorner.normal, Vector3.up);
-                                if (cornerAngle > 50f && cornerAngle < 130f)
-                                {
-                                    Vector3 cornerNormal = hitCorner.normal;
-                                    cornerNormal.y = 0f;
-                                    cornerNormal.Normalize();
+                                Vector3 slide = Vector3.ProjectOnPlane(desiredMove, hitNormal);
+                                slide.y = 0f;
+                                if (slide.sqrMagnitude > 0.001f)
+                                    desiredMove = slide.normalized;
 
-                                    float dotCorner = Vector3.Dot(desiredMove, cornerNormal);
-                                    if (dotCorner < 0f)
+                                // Pass 2: Jika berada di sudut (dua dinding bertemu), cek dinding kedua
+                                if (Physics.CapsuleCast(p1, p2, radius * 0.90f, desiredMove, out RaycastHit hitCorner, castDist * 0.5f, wallLayerMask, QueryTriggerInteraction.Ignore))
+                                {
+                                    if (hitCorner.collider != playerCollider && !hitCorner.transform.IsChildOf(transform) && (hitCorner.rigidbody == null || hitCorner.rigidbody.isKinematic) && hitCorner.distance > 0.01f)
                                     {
-                                        Vector3 cornerSlide = Vector3.ProjectOnPlane(desiredMove, cornerNormal);
-                                        cornerSlide.y = 0f;
-                                        desiredMove = cornerSlide.sqrMagnitude > 0.001f ? cornerSlide.normalized : Vector3.zero;
+                                        float cornerAngle = Vector3.Angle(hitCorner.normal, Vector3.up);
+                                        if (cornerAngle > 50f && cornerAngle < 130f)
+                                        {
+                                            Vector3 cornerNormal = hitCorner.normal;
+                                            cornerNormal.y = 0f;
+                                            cornerNormal.Normalize();
+
+                                            float dotCorner = Vector3.Dot(desiredMove, cornerNormal);
+                                            if (dotCorner < -0.01f)
+                                            {
+                                                Vector3 cornerSlide = Vector3.ProjectOnPlane(desiredMove, cornerNormal);
+                                                cornerSlide.y = 0f;
+                                                desiredMove = cornerSlide.sqrMagnitude > 0.001f ? cornerSlide.normalized : Vector3.zero;
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -467,9 +481,26 @@ public class PlayerControl : MonoBehaviour
         rb.angularVelocity = Vector3.zero;
     }
 
+    void OnCollisionEnter(Collision collision)
+    {
+        ProcessWallCollision(collision);
+    }
+
     void OnCollisionStay(Collision collision)
     {
-        bool foundWall = false;
+        ProcessWallCollision(collision);
+    }
+
+    private void ProcessWallCollision(Collision collision)
+    {
+        // Abaikan objek dinamis (musuh, proyektil, item loot) - sliding hanya untuk struktur tembok/lingkungan statis
+        if (collision.collider == null || collision.collider.isTrigger) return;
+        if (collision.rigidbody != null && !collision.rigidbody.isKinematic) return;
+        if (collision.collider.CompareTag("Enemy") || collision.gameObject.GetComponent<FeaturesCombat.EnemyBase>() != null) return;
+
+        Vector3 combinedNormal = Vector3.zero;
+        int count = 0;
+
         for (int i = 0; i < collision.contactCount; i++)
         {
             Vector3 normal = collision.GetContact(i).normal;
@@ -477,36 +508,23 @@ public class PlayerControl : MonoBehaviour
             if (angle > 50f && angle < 130f)
             {
                 normal.y = 0f;
-                contactWallNormal = normal.normalized;
-                foundWall = true;
-                break;
+                combinedNormal += normal.normalized;
+                count++;
             }
         }
 
-        if (foundWall)
+        if (count > 0)
         {
-            activeWallColliders.Add(collision.collider);
+            contactWallNormal = (combinedNormal / count).normalized;
             isTouchingWall = true;
-        }
-        else
-        {
-            activeWallColliders.Remove(collision.collider);
-            if (activeWallColliders.Count == 0)
-            {
-                isTouchingWall = false;
-                contactWallNormal = Vector3.zero;
-            }
+            lastWallContactTime = Time.fixedTime;
         }
     }
 
     void OnCollisionExit(Collision collision)
     {
-        activeWallColliders.Remove(collision.collider);
-        if (activeWallColliders.Count == 0)
-        {
-            isTouchingWall = false;
-            contactWallNormal = Vector3.zero;
-        }
+        isTouchingWall = false;
+        contactWallNormal = Vector3.zero;
     }
 
     // --- LOGIKA AKSI ---

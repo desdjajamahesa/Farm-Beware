@@ -2227,27 +2227,6 @@ MonoBehaviour:
   group: {fileID: 493268861}
   additionalRenderers: []
   hideAdditionalRenderersOnFade: 1
---- !u!65 &82282857
-BoxCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 82282849}
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_IsTrigger: 0
-  m_ProvidesContacts: 0
-  m_Enabled: 1
-  serializedVersion: 3
-  m_Size: {x: 2.0000002, y: 3.0000005, z: 2}
-  m_Center: {x: 0, y: -0.27570653, z: 0.29565242}
 --- !u!1 &82571306 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: -6198295621462237267, guid: ac2f88c1521cf72439d6cb864ca0ced9, type: 3}
@@ -3715,8 +3694,8 @@ BoxCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Size: {x: 6.9999676, y: 6.9999948, z: 1.9999999}
-  m_Center: {x: 2.5000129, y: 2.499996, z: 0}
+  m_Size: {x: 6.9999676, y: 9.325392, z: 1.9999999}
+  m_Center: {x: 2.5000129, y: 3.6627007, z: 1.1136978e-15}
 --- !u!1 &142022954
 GameObject:
   m_ObjectHideFlags: 0
@@ -6847,7 +6826,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &273969139
 Transform:
   m_ObjectHideFlags: 0
@@ -13709,27 +13688,6 @@ MonoBehaviour:
   group: {fileID: 1707652213}
   additionalRenderers: []
   hideAdditionalRenderersOnFade: 1
---- !u!65 &487448602
-BoxCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 487448594}
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_IsTrigger: 0
-  m_ProvidesContacts: 0
-  m_Enabled: 1
-  serializedVersion: 3
-  m_Size: {x: 2, y: 3.0000007, z: 1.9999999}
-  m_Center: {x: 0, y: 0.029412031, z: 0.082352936}
 --- !u!1 &490048688
 GameObject:
   m_ObjectHideFlags: 0
@@ -20873,45 +20831,24 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 165959378731185851, guid: ac2f88c1521cf72439d6cb864ca0ced9, type: 3}
       insertIndex: -1
       addedObject: {fileID: 82282854}
-    - targetCorrespondingSourceObject: {fileID: 165959378731185851, guid: ac2f88c1521cf72439d6cb864ca0ced9, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 82282857}
     - targetCorrespondingSourceObject: {fileID: -5156694400938872409, guid: ac2f88c1521cf72439d6cb864ca0ced9, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1511709161}
-    - targetCorrespondingSourceObject: {fileID: -5156694400938872409, guid: ac2f88c1521cf72439d6cb864ca0ced9, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 1511709164}
     - targetCorrespondingSourceObject: {fileID: -1796537885003560681, guid: ac2f88c1521cf72439d6cb864ca0ced9, type: 3}
       insertIndex: -1
       addedObject: {fileID: 487448599}
-    - targetCorrespondingSourceObject: {fileID: -1796537885003560681, guid: ac2f88c1521cf72439d6cb864ca0ced9, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 487448602}
     - targetCorrespondingSourceObject: {fileID: 6979269140939525620, guid: ac2f88c1521cf72439d6cb864ca0ced9, type: 3}
       insertIndex: -1
       addedObject: {fileID: 767006185}
-    - targetCorrespondingSourceObject: {fileID: 6979269140939525620, guid: ac2f88c1521cf72439d6cb864ca0ced9, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 767006188}
     - targetCorrespondingSourceObject: {fileID: 406130095825438140, guid: ac2f88c1521cf72439d6cb864ca0ced9, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1323436099}
-    - targetCorrespondingSourceObject: {fileID: 406130095825438140, guid: ac2f88c1521cf72439d6cb864ca0ced9, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 1323436102}
     - targetCorrespondingSourceObject: {fileID: 6971553221490275693, guid: ac2f88c1521cf72439d6cb864ca0ced9, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1799721650}
-    - targetCorrespondingSourceObject: {fileID: 6971553221490275693, guid: ac2f88c1521cf72439d6cb864ca0ced9, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 1799721653}
     - targetCorrespondingSourceObject: {fileID: -828966785575343738, guid: ac2f88c1521cf72439d6cb864ca0ced9, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1834723903}
-    - targetCorrespondingSourceObject: {fileID: -828966785575343738, guid: ac2f88c1521cf72439d6cb864ca0ced9, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 1834723906}
     - targetCorrespondingSourceObject: {fileID: 977016736884182306, guid: ac2f88c1521cf72439d6cb864ca0ced9, type: 3}
       insertIndex: -1
       addedObject: {fileID: 2133033644}
@@ -22404,8 +22341,8 @@ BoxCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Size: {x: 2, y: 2.0000014, z: 2}
-  m_Center: {x: 0, y: -0.0000005364418, z: 0}
+  m_Size: {x: 2.2693691, y: 2.0000014, z: 2}
+  m_Center: {x: 0.13468468, y: -0.00000071956396, z: -2.0301228e-15}
 --- !u!1 &703480719
 GameObject:
   m_ObjectHideFlags: 0
@@ -24132,27 +24069,6 @@ MonoBehaviour:
   group: {fileID: 1078695803}
   additionalRenderers: []
   hideAdditionalRenderersOnFade: 1
---- !u!65 &767006188
-BoxCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 767006180}
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_IsTrigger: 0
-  m_ProvidesContacts: 0
-  m_Enabled: 1
-  serializedVersion: 3
-  m_Size: {x: 2, y: 3.000001, z: 1.9999999}
-  m_Center: {x: 0, y: 0.02941209, z: 0.08235282}
 --- !u!1 &769833202
 GameObject:
   m_ObjectHideFlags: 0
@@ -35921,8 +35837,8 @@ BoxCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Size: {x: 2, y: 2, z: 2}
-  m_Center: {x: 0, y: 0, z: 0}
+  m_Size: {x: 2.2025251, y: 1.9999996, z: 2}
+  m_Center: {x: -0.10126251, y: -3.778047e-15, z: 2.0557533e-16}
 --- !u!134 &1124831080
 PhysicsMaterial:
   m_ObjectHideFlags: 0
@@ -38335,6 +38251,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::FeaturesCombat.EnemyObjectPool
   prewarmNormalCount: 4
   prewarmBossCount: 1
+  registeredEnemyData: []
 --- !u!1 &1217018152
 GameObject:
   m_ObjectHideFlags: 0
@@ -42409,27 +42326,6 @@ MonoBehaviour:
   group: {fileID: 590388499}
   additionalRenderers: []
   hideAdditionalRenderersOnFade: 1
---- !u!65 &1323436102
-BoxCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1323436094}
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_IsTrigger: 0
-  m_ProvidesContacts: 0
-  m_Enabled: 1
-  serializedVersion: 3
-  m_Size: {x: 2, y: 3.0000007, z: 2}
-  m_Center: {x: 0, y: -1.9705955, z: 0.082352996}
 --- !u!23 &1324086514 stripped
 MeshRenderer:
   m_CorrespondingSourceObject: {fileID: 6045338081212908758, guid: 8e5379054188d354daa33eb5bcd38447, type: 3}
@@ -51570,27 +51466,6 @@ MonoBehaviour:
   group: {fileID: 1811380780}
   additionalRenderers: []
   hideAdditionalRenderersOnFade: 1
---- !u!65 &1511709164
-BoxCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1511709156}
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_IsTrigger: 0
-  m_ProvidesContacts: 0
-  m_Enabled: 1
-  serializedVersion: 3
-  m_Size: {x: 2.0000267, y: 3.0000007, z: 69.99991}
-  m_Center: {x: -0.000011742115, y: -0.11363685, z: 2.5454502}
 --- !u!1 &1513094634
 GameObject:
   m_ObjectHideFlags: 0
@@ -58339,8 +58214,8 @@ BoxCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Size: {x: 2, y: 2, z: 2}
-  m_Center: {x: 0, y: 0, z: 0}
+  m_Size: {x: 2.945876, y: 1.9999996, z: 2}
+  m_Center: {x: 0.47293726, y: -2.2271058e-15, z: -2.4003005e-16}
 --- !u!1 &1656645404
 GameObject:
   m_ObjectHideFlags: 0
@@ -63356,27 +63231,6 @@ MonoBehaviour:
   group: {fileID: 505399958}
   additionalRenderers: []
   hideAdditionalRenderersOnFade: 1
---- !u!65 &1799721653
-BoxCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1799721645}
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_IsTrigger: 0
-  m_ProvidesContacts: 0
-  m_Enabled: 1
-  serializedVersion: 3
-  m_Size: {x: 2.0000267, y: 4.499998, z: 69.99991}
-  m_Center: {x: -0.000009298325, y: -0.6763277, z: 1.6967297}
 --- !u!23 &1800461509 stripped
 MeshRenderer:
   m_CorrespondingSourceObject: {fileID: 2500858737794275898, guid: 8e5379054188d354daa33eb5bcd38447, type: 3}
@@ -64649,27 +64503,6 @@ MonoBehaviour:
   group: {fileID: 755788913}
   additionalRenderers: []
   hideAdditionalRenderersOnFade: 1
---- !u!65 &1834723906
-BoxCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1834723898}
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_IsTrigger: 0
-  m_ProvidesContacts: 0
-  m_Enabled: 1
-  serializedVersion: 3
-  m_Size: {x: 2.0000267, y: 4.4999986, z: 69.9999}
-  m_Center: {x: -0.0000072717667, y: -0.31818104, z: -3.5227346}
 --- !u!1 &1838403134
 GameObject:
   m_ObjectHideFlags: 0
