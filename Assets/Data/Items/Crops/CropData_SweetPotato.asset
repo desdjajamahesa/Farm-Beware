@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2e149b12d3df20841977739a0a06bb7e, type: 3}
+  m_Name: CropData_SweetPotato
+  m_EditorClassIdentifier: Assembly-CSharp::FeaturesFarming.Data.CropData
+  cropId: Crop_SweetPotato
+  cropName: Sweet Potato
+  totalDaysToHarvest: 2
+  growthStages:
+  - dayThreshold: 0
+    stagePrefab: {fileID: 0}
+  - dayThreshold: 1
+    stagePrefab: {fileID: 0}
+  - dayThreshold: 2
+    stagePrefab: {fileID: 0}
+  cleanYieldItem: {fileID: 11400000, guid: 7d4ca7d016e327b4f8cea215c54d2ae6, type: 2}
+  dirtyYieldItem: {fileID: 11400000, guid: b1f5c99a438af924cbe737a1d0476132, type: 2}
+  minYield: 1
+  maxYield: 3
+  seedReturnChance: 0.5
+  returnedSeedItem: {fileID: 11400000, guid: 204c190b81a6c054f8d1fe0f0c2a7a80, type: 2}
