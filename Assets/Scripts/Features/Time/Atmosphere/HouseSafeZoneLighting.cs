@@ -29,9 +29,9 @@ namespace FeaturesTime.Atmosphere
             public Renderer fixtureRenderer;
 
             [Header("Color & Temperature")]
-            [Tooltip("Suhu Kelvin warna lampu (misal: 2400K hangat, 4200K utility).")]
+            [Tooltip("Suhu Kelvin warna lampu (misal: 2400K - 2600K amber hangat).")]
             [Range(1000f, 15000f)]
-            public float colorTemperatureKelvin = 2800f;
+            public float colorTemperatureKelvin = 2500f;
 
             [Tooltip("Warna filter pengali (default: putih).")]
             public Color lightColorFilter = Color.white;

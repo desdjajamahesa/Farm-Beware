@@ -70,6 +70,16 @@ namespace FeaturesTime.Atmosphere
 
             [Tooltip("Warna vignette.")]
             public Color vignetteColor;
+
+            [Header("Lift Gamma Gain (Shadows Midtones Highlights)")]
+            [Tooltip("Offset warna bayangan (Lift). Malam: offset indigo/safir untuk mencegah blacks crush.")]
+            public Vector4 lift;
+
+            [Tooltip("Pengaturan midtone (Gamma).")]
+            public Vector4 gamma;
+
+            [Tooltip("Pengaturan highlight (Gain).")]
+            public Vector4 gain;
         }
 
         #endregion
@@ -145,6 +155,7 @@ namespace FeaturesTime.Atmosphere
         private WhiteBalance _whiteBalance;
         private Vignette _vignette;
         private ChromaticAberration _chromaticAberration;
+        private LiftGammaGain _liftGammaGain;
 
         private Coroutine _transitionCoroutine;
         private Coroutine _impulseCoroutine;
@@ -179,7 +190,10 @@ namespace FeaturesTime.Atmosphere
                 tint = 0f,
                 vignetteIntensity = 0.18f,
                 vignetteSmoothness = 0.35f,
-                vignetteColor = Color.black
+                vignetteColor = Color.black,
+                lift = Vector4.zero,
+                gamma = Vector4.zero,
+                gain = Vector4.one
             };
         }
 
@@ -199,7 +213,10 @@ namespace FeaturesTime.Atmosphere
                 tint = 0f,
                 vignetteIntensity = 0.16f,
                 vignetteSmoothness = 0.35f,
-                vignetteColor = Color.black
+                vignetteColor = Color.black,
+                lift = Vector4.zero,
+                gamma = Vector4.zero,
+                gain = Vector4.one
             };
         }
 
@@ -219,7 +236,10 @@ namespace FeaturesTime.Atmosphere
                 tint = -2f,
                 vignetteIntensity = 0.22f,
                 vignetteSmoothness = 0.38f,
-                vignetteColor = Color.black
+                vignetteColor = Color.black,
+                lift = new Vector4(0.01f, 0.005f, 0.0f, 0.0f),
+                gamma = Vector4.zero,
+                gain = Vector4.one
             };
         }
 
@@ -230,7 +250,7 @@ namespace FeaturesTime.Atmosphere
                 tonemappingMode = TonemappingMode.ACES,
                 bloomThreshold = 0.85f,
                 bloomIntensity = 0.38f,
-                bloomScatter = 0.75f,
+                bloomScatter = 0.70f,
                 postExposure = -0.30f,
                 contrast = 8f,
                 saturation = 4f,
@@ -239,7 +259,10 @@ namespace FeaturesTime.Atmosphere
                 tint = -3f,
                 vignetteIntensity = 0.22f,
                 vignetteSmoothness = 0.35f,
-                vignetteColor = Color.black
+                vignetteColor = Color.black,
+                lift = new Vector4(0.015f, 0.025f, 0.065f, 0.0f),
+                gamma = Vector4.zero,
+                gain = Vector4.one
             };
         }
 
@@ -429,6 +452,16 @@ namespace FeaturesTime.Atmosphere
             _chromaticAberration.active = true;
             _chromaticAberration.intensity.overrideState = true;
             _chromaticAberration.intensity.value = 0f; // Baseline selalu 0 untuk kestabilan pandangan isometrik
+
+            // 7. Lift Gamma Gain (Shadows Midtones Highlights)
+            if (!_runtimeProfile.TryGet(out _liftGammaGain))
+            {
+                _liftGammaGain = _runtimeProfile.Add<LiftGammaGain>(true);
+            }
+            _liftGammaGain.active = true;
+            _liftGammaGain.lift.overrideState = true;
+            _liftGammaGain.gamma.overrideState = true;
+            _liftGammaGain.gain.overrideState = true;
         }
 
         private void ValidatePresetsIntegrity()
@@ -498,6 +531,10 @@ namespace FeaturesTime.Atmosphere
             float startVigSmoothness = _vignette != null ? _vignette.smoothness.value : target.vignetteSmoothness;
             Color startVigColor = _vignette != null ? _vignette.color.value : target.vignetteColor;
 
+            Vector4 startLift = _liftGammaGain != null ? _liftGammaGain.lift.value : target.lift;
+            Vector4 startGamma = _liftGammaGain != null ? _liftGammaGain.gamma.value : target.gamma;
+            Vector4 startGain = _liftGammaGain != null ? _liftGammaGain.gain.value : target.gain;
+
             float startNightWeight = nightVolume != null ? nightVolume.weight : 0f;
             float targetNightWeight = (targetPhase == EnvironmentPhase.Night) ? 1.0f : 0.0f;
 
@@ -543,6 +580,13 @@ namespace FeaturesTime.Atmosphere
                     _vignette.intensity.value = Mathf.Lerp(startVigIntensity, target.vignetteIntensity, blend);
                     _vignette.smoothness.value = Mathf.Lerp(startVigSmoothness, target.vignetteSmoothness, blend);
                     _vignette.color.value = Color.Lerp(startVigColor, target.vignetteColor, blend);
+                }
+
+                if (_liftGammaGain != null)
+                {
+                    _liftGammaGain.lift.value = Vector4.Lerp(startLift, target.lift, blend);
+                    _liftGammaGain.gamma.value = Vector4.Lerp(startGamma, target.gamma, blend);
+                    _liftGammaGain.gain.value = Vector4.Lerp(startGain, target.gain, blend);
                 }
 
                 yield return null;
@@ -627,6 +671,13 @@ namespace FeaturesTime.Atmosphere
             if (_chromaticAberration != null)
             {
                 _chromaticAberration.intensity.value = 0f;
+            }
+
+            if (_liftGammaGain != null)
+            {
+                _liftGammaGain.lift.value = target.lift;
+                _liftGammaGain.gamma.value = target.gamma;
+                _liftGammaGain.gain.value = target.gain;
             }
         }
 

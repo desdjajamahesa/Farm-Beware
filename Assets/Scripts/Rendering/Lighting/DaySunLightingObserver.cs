@@ -70,9 +70,9 @@ namespace FeaturesRendering.Lighting
         [SerializeField] private float minElevation = 10f;
 
         [Header("2. Kurva Eksponensial Suhu Kelvin (5500K -> 3200K)")]
-        [Tooltip("Suhu kelvin di siang hari puncak (10:00 - 14:00). Standar siang seimbang: 5500K.")]
+        [Tooltip("Suhu kelvin di siang hari puncak (10:00 - 14:00). Standar siang keemasan pastoral: 5000K.")]
         [Range(4000f, 7500f)]
-        [SerializeField] private float noonKelvin = 5500f;
+        [SerializeField] private float noonKelvin = 5000f;
 
         [Tooltip("Suhu kelvin terendah saat senja (18:30). Oranye hangat atmosfer: 3200K.")]
         [Range(2000f, 4000f)]

@@ -14,13 +14,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::FeaturesRendering.Lighting.EnvironmentLightingTheme
   themeName: Day Warm Sunlight
   associatedPhase: 1
-  colorTemperatureKelvin: 6500
+  colorTemperatureKelvin: 5000
   lightColorFilter: {r: 1, g: 0.95, b: 0.88, a: 1}
   mainLightIntensity: 1.1
   mainLightEulerAngles: {x: 50, y: -30, z: 0}
   ambientSkyColor: {r: 0.7, g: 0.74, b: 0.8, a: 1}
   ambientEquatorColor: {r: 0.55, g: 0.52, b: 0.48, a: 1}
-  ambientGroundColor: {r: 0.35, g: 0.32, b: 0.28, a: 1}
+  ambientGroundColor: {r: 0.42, g: 0.38, b: 0.3, a: 1}
   apvIntensityMultiplier: 1
   reflectionIntensity: 1
   fogEnabled: 1
