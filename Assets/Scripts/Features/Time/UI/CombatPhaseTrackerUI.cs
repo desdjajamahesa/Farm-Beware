@@ -114,7 +114,7 @@ namespace FeaturesTime.UI
             }
         }
 
-        private void UpdatePhaseDisplay(TimeManager.DayPhase phase)
+        public void UpdatePhaseDisplay(TimeManager.DayPhase phase)
         {
             bool isNight = (phase == TimeManager.DayPhase.Night);
 
@@ -125,7 +125,7 @@ namespace FeaturesTime.UI
 
             if (phaseText != null)
             {
-                phaseText.text = isNight ? "🌙 NIGHT" : "☀️ DAY";
+                phaseText.text = isNight ? "NIGHT" : "DAY";
                 phaseText.color = isNight ? new Color(1f, 0.45f, 0.45f) : new Color(1f, 0.95f, 0.70f);
             }
 

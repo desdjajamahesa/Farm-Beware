@@ -120,7 +120,7 @@ public class PlayerStats : MonoBehaviour, FeaturesCombat.IDamageable
         HandleEmptyPenalty();
 
         // Testing input menggunakan New Input System 
-        if (UnityEngine.InputSystem.Keyboard.current != null)
+        if (Time.timeScale > 0f && UnityEngine.InputSystem.Keyboard.current != null)
         {
             if (UnityEngine.InputSystem.Keyboard.current.kKey.wasPressedThisFrame)
             {

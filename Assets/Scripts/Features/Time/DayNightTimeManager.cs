@@ -181,6 +181,9 @@ namespace FeaturesTime
 
         private void Update()
         {
+            if (Time.timeScale <= 0f || (FeaturesSaveSystem.SaveSystemUI.Instance != null && FeaturesSaveSystem.SaveSystemUI.Instance.IsOpen))
+                return;
+
             // Pintasan keyboard 'N' untuk kompatibilitas penuh dengan sistem legacy
             if (syncWithLegacyTimeManager && UnityEngine.InputSystem.Keyboard.current != null && UnityEngine.InputSystem.Keyboard.current.nKey.wasPressedThisFrame)
             {
@@ -311,6 +314,12 @@ namespace FeaturesTime
             OnTimePhaseChanged?.Invoke(currentPhase);
 
             SyncLegacyTimeManager(currentPhase, currentDay);
+        }
+
+        public void SetDayAndTime(int day, float targetHour)
+        {
+            currentDay = Mathf.Max(1, day);
+            SetTime(targetHour);
         }
 
         public void SetPaused(bool paused)

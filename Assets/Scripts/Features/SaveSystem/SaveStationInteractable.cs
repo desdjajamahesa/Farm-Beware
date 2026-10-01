@@ -12,8 +12,8 @@ namespace FeaturesSaveSystem
     public class SaveStationInteractable : MonoBehaviour, IInteractable
     {
         [Header("Interaction Prompt")]
-        [Tooltip("The label shown on screen when player approaches (e.g. 'Load', 'Save / Load')")]
-        [SerializeField] private string promptLabel = "Load";
+        [Tooltip("The label shown on screen when player approaches (e.g. 'Save / Load')")]
+        [SerializeField] private string promptLabel = "Save / Load";
 
         private WorldLabel worldLabel;
 

@@ -286,7 +286,7 @@ namespace FeaturesSaveSystem
                 statusMessage = $"Game Saved as '{safeDisplayName}'!";
                 Debug.Log($"[SaveSystemManager] New save created successfully: {filePath}");
 
-                ShowNotification($"💾 Saved '{safeDisplayName}' (Day {data.currentDay})", new Color(0.35f, 0.95f, 0.45f));
+                ShowNotification($"[Saved] '{safeDisplayName}' (Day {data.currentDay})", new Color(0.35f, 0.95f, 0.45f));
                 OnSaveCompleted?.Invoke(data);
                 OnSaveListChanged?.Invoke();
                 return true;
@@ -295,7 +295,7 @@ namespace FeaturesSaveSystem
             {
                 statusMessage = $"Failed to Save: {ex.Message}";
                 Debug.LogError($"[SaveSystemManager] Save creation failed: {ex}");
-                ShowNotification("❌ Failed to Save Game!", new Color(1f, 0.35f, 0.35f));
+                ShowNotification("[Failed] Save Game Failed!", new Color(1f, 0.35f, 0.35f));
                 return false;
             }
         }
@@ -356,7 +356,7 @@ namespace FeaturesSaveSystem
                 statusMessage = $"Overwrote '{displayName}'!";
                 Debug.Log($"[SaveSystemManager] Save overwritten successfully: {filePath}");
 
-                ShowNotification($"💾 Overwrote '{displayName}'", new Color(0.35f, 0.95f, 0.45f));
+                ShowNotification($"[Overwrote] '{displayName}'", new Color(0.35f, 0.95f, 0.45f));
                 OnSaveCompleted?.Invoke(data);
                 OnSaveListChanged?.Invoke();
                 return true;
@@ -365,7 +365,7 @@ namespace FeaturesSaveSystem
             {
                 statusMessage = $"Overwrite Failed: {ex.Message}";
                 Debug.LogError($"[SaveSystemManager] Overwrite error: {ex}");
-                ShowNotification("❌ Overwrite Failed!", new Color(1f, 0.35f, 0.35f));
+                ShowNotification("[Failed] Overwrite Failed!", new Color(1f, 0.35f, 0.35f));
                 return false;
             }
         }
@@ -379,7 +379,7 @@ namespace FeaturesSaveSystem
             if (meta == null)
             {
                 statusMessage = "Save slot record not found!";
-                ShowNotification("⚠️ Save slot record not found!", new Color(1f, 0.65f, 0.25f));
+                ShowNotification("[Warning] Save slot record not found!", new Color(1f, 0.65f, 0.25f));
                 return false;
             }
 
@@ -387,7 +387,7 @@ namespace FeaturesSaveSystem
             if (!File.Exists(filePath))
             {
                 statusMessage = "Save file is missing on disk!";
-                ShowNotification("❌ Save file missing on disk!", new Color(1f, 0.35f, 0.35f));
+                ShowNotification("[Error] Save file missing on disk!", new Color(1f, 0.35f, 0.35f));
                 // Clean manifest
                 cachedManifest.slots.Remove(meta);
                 SaveManifestToDisk();
@@ -402,7 +402,7 @@ namespace FeaturesSaveSystem
                 if (data == null)
                 {
                     statusMessage = "Save data is corrupted.";
-                    ShowNotification("❌ Corrupt Save Data!", new Color(1f, 0.35f, 0.35f));
+                    ShowNotification("[Error] Corrupt Save Data!", new Color(1f, 0.35f, 0.35f));
                     return false;
                 }
 
@@ -414,7 +414,7 @@ namespace FeaturesSaveSystem
                 statusMessage = $"Loaded '{meta.displayName}'!";
                 Debug.Log($"[SaveSystemManager] Game loaded from {filePath}");
 
-                ShowNotification($"📂 Loaded '{meta.displayName}' (Day {data.currentDay})", new Color(0.35f, 0.85f, 1f));
+                ShowNotification($"[Loaded] '{meta.displayName}' (Day {data.currentDay})", new Color(0.35f, 0.85f, 1f));
                 OnLoadCompleted?.Invoke(data);
                 return true;
             }
@@ -422,7 +422,7 @@ namespace FeaturesSaveSystem
             {
                 statusMessage = $"Load Failed: {ex.Message}";
                 Debug.LogError($"[SaveSystemManager] Error while loading {filePath}: {ex}");
-                ShowNotification("❌ Error Loading Save!", new Color(1f, 0.35f, 0.35f));
+                ShowNotification("[Error] Error Loading Save!", new Color(1f, 0.35f, 0.35f));
                 return false;
             }
         }
@@ -454,7 +454,7 @@ namespace FeaturesSaveSystem
                 SaveManifestToDisk();
 
                 statusMessage = $"Deleted '{meta.displayName}'!";
-                ShowNotification($"🗑️ Deleted '{meta.displayName}'", new Color(0.85f, 0.4f, 0.4f));
+                ShowNotification($"[Deleted] '{meta.displayName}'", new Color(0.85f, 0.4f, 0.4f));
                 OnSaveListChanged?.Invoke();
                 return true;
             }
@@ -496,20 +496,25 @@ namespace FeaturesSaveSystem
                 }
 
                 var inv = player.GetComponent<InventoryComponent>();
-                if (inv != null && inv.slots != null)
+                if (inv != null)
                 {
-                    for (int i = 0; i < inv.slots.Count; i++)
+                    data.selectedHotbarIndex = inv.selectedHotbarIndex;
+
+                    if (inv.slots != null)
                     {
-                        var slot = inv.slots[i];
-                        if (slot != null && !slot.IsEmpty && slot.item != null)
+                        for (int i = 0; i < inv.slots.Count; i++)
                         {
-                            string id = !string.IsNullOrEmpty(slot.item.itemId) ? slot.item.itemId : slot.item.name;
-                            data.inventorySlots.Add(new SavedInventorySlot
+                            var slot = inv.slots[i];
+                            if (slot != null && !slot.IsEmpty && slot.item != null)
                             {
-                                slotIndex = i,
-                                itemId = id,
-                                quantity = slot.quantity
-                            });
+                                string id = !string.IsNullOrEmpty(slot.item.itemId) ? slot.item.itemId : slot.item.name;
+                                data.inventorySlots.Add(new SavedInventorySlot
+                                {
+                                    slotIndex = i,
+                                    itemId = id,
+                                    quantity = slot.quantity
+                                });
+                            }
                         }
                     }
                 }
@@ -527,7 +532,7 @@ namespace FeaturesSaveSystem
                 data.waterBottleAmount = PlayerWaterBottle.Instance.CurrentWater;
             }
 
-            // 4. Time
+            // 4. Time System (24h continuous clock & phase)
             if (TimeManager.Instance != null)
             {
                 data.currentDay = TimeManager.Instance.currentDay;
@@ -538,6 +543,15 @@ namespace FeaturesSaveSystem
             {
                 data.currentDay = 1;
                 data.currentPhase = 0;
+            }
+
+            if (FeaturesTime.DayNightTimeManager.Instance != null)
+            {
+                data.currentHour = FeaturesTime.DayNightTimeManager.Instance.CurrentHour;
+            }
+            else
+            {
+                data.currentHour = data.currentPhase == 1 ? 19.5f : 7.0f;
             }
 
             // 5. Farmland Crops
@@ -559,7 +573,7 @@ namespace FeaturesSaveSystem
                         tileState = (int)tile.CurrentState,
                         seedItemId = seedId,
                         growthProgress = tile.GrowthProgress,
-                        currentTimer = tile.GrowthProgress * 30f
+                        currentTimer = tile.CurrentTimer
                     });
                 }
             }
@@ -571,22 +585,78 @@ namespace FeaturesSaveSystem
                 data.isHatEquipped = PlayerOutfit.Instance.isHatEquipped;
             }
 
+            // 7. Weapon Upgrades
+            if (FeaturesWorkbench.PlayerWeaponUpgradeState.Instance != null)
+            {
+                data.weaponLevel = FeaturesWorkbench.PlayerWeaponUpgradeState.Instance.weaponLevel;
+                data.sweetPotatoPathUnlocked = FeaturesWorkbench.PlayerWeaponUpgradeState.Instance.sweetPotatoPathUnlocked;
+                data.taroPathUnlocked = FeaturesWorkbench.PlayerWeaponUpgradeState.Instance.taroPathUnlocked;
+                data.cornPathUnlocked = FeaturesWorkbench.PlayerWeaponUpgradeState.Instance.cornPathUnlocked;
+            }
+
+            // 8. Container Inventories (Storage, Refrigerator, Trophy Cabinet)
+            CaptureContainerInventories(data);
+
+            // 9. Combat & Night Brawl
+            if (FeaturesCombat.NightBrawlManager.Instance != null)
+            {
+                data.nightCurrentWave = FeaturesCombat.NightBrawlManager.Instance.CurrentWave;
+                data.nightTotalWaves = FeaturesCombat.NightBrawlManager.Instance.TotalWaves;
+                data.isNightBrawlActive = FeaturesCombat.NightBrawlManager.Instance.IsNightBrawlActive;
+
+                var enemies = FeaturesCombat.NightBrawlManager.Instance.ActiveEnemies;
+                if (enemies != null)
+                {
+                    foreach (var enemy in enemies)
+                    {
+                        if (enemy != null && !enemy.IsDead)
+                        {
+                            data.activeEnemies.Add(new SavedEnemyData
+                            {
+                                enemyType = (int)enemy.enemyType,
+                                currentHealth = enemy.currentHealth,
+                                maxHealth = enemy.maxHealth,
+                                posX = enemy.transform.position.x,
+                                posY = enemy.transform.position.y,
+                                posZ = enemy.transform.position.z,
+                                rotY = enemy.transform.eulerAngles.y
+                            });
+                        }
+                    }
+                }
+            }
+
             return data;
         }
 
         private void ApplyLoadedGameState(GameSaveData data)
         {
-            // 1. Player Transform & CharacterController
+            // 1. Player Transform & Physics (Clean Teleport with linear/angular velocity reset)
             var player = GameObject.FindWithTag("Player") ?? GameObject.Find("Player");
             if (player != null)
             {
-                var cc = player.GetComponent<CharacterController>();
-                if (cc != null) cc.enabled = false;
+                Vector3 targetPos = new Vector3(data.playerPosX, data.playerPosY, data.playerPosZ);
+                Quaternion targetRot = Quaternion.Euler(0f, data.playerRotY, 0f);
 
-                player.transform.position = new Vector3(data.playerPosX, data.playerPosY, data.playerPosZ);
-                player.transform.rotation = Quaternion.Euler(0f, data.playerRotY, 0f);
-
-                if (cc != null) cc.enabled = true;
+                var pc = player.GetComponent<PlayerControl>();
+                if (pc != null)
+                {
+                    pc.Teleport(targetPos, targetRot);
+                }
+                else
+                {
+                    var rb = player.GetComponent<Rigidbody>();
+                    if (rb != null)
+                    {
+                        rb.linearVelocity = Vector3.zero;
+                        rb.angularVelocity = Vector3.zero;
+                        rb.position = targetPos;
+                        rb.rotation = targetRot;
+                    }
+                    player.transform.position = targetPos;
+                    player.transform.rotation = targetRot;
+                    Physics.SyncTransforms();
+                }
 
                 // 2. Stats
                 var stats = player.GetComponent<PlayerStats>();
@@ -595,7 +665,7 @@ namespace FeaturesSaveSystem
                     stats.RestoreStats(data.health, data.stamina, data.hunger, data.thirst);
                 }
 
-                // 3. Inventory
+                // 3. Inventory & Hotbar Selection
                 var inv = player.GetComponent<InventoryComponent>();
                 if (inv != null && inv.slots != null)
                 {
@@ -621,7 +691,15 @@ namespace FeaturesSaveSystem
                         }
                     }
 
+                    inv.selectedHotbarIndex = Mathf.Clamp(data.selectedHotbarIndex, 0, Mathf.Max(0, inv.slots.Count - 1));
                     inv.OnInventoryChanged?.Invoke();
+                    inv.OnHotbarSelected?.Invoke(inv.selectedHotbarIndex);
+
+                    var equip = player.GetComponent<PlayerEquipment>();
+                    if (equip != null)
+                    {
+                        equip.UpdateEquipmentVisual(inv.selectedHotbarIndex);
+                    }
                 }
             }
 
@@ -637,17 +715,97 @@ namespace FeaturesSaveSystem
                 PlayerWaterBottle.Instance.SetWater(data.waterBottleAmount);
             }
 
-            // 6. Time & Day
+            // 6. Weapon Upgrades
+            if (FeaturesWorkbench.PlayerWeaponUpgradeState.Instance != null)
+            {
+                FeaturesWorkbench.PlayerWeaponUpgradeState.Instance.weaponLevel = Mathf.Max(1, data.weaponLevel);
+                FeaturesWorkbench.PlayerWeaponUpgradeState.Instance.sweetPotatoPathUnlocked = data.sweetPotatoPathUnlocked;
+                FeaturesWorkbench.PlayerWeaponUpgradeState.Instance.taroPathUnlocked = data.taroPathUnlocked;
+                FeaturesWorkbench.PlayerWeaponUpgradeState.Instance.cornPathUnlocked = data.cornPathUnlocked;
+                FeaturesWorkbench.PlayerWeaponUpgradeState.Instance.RecalculateStats();
+            }
+
+            // 7. Container Inventories (Storage, Refrigerator, Trophy Cabinet)
+            RestoreContainerInventories(data);
+
+            // 8. Snap Camera to Player immediately
+            if (FeaturesCamera.IsometricCameraController.Instance != null)
+            {
+                FeaturesCamera.IsometricCameraController.Instance.SnapToTarget();
+            }
+
+            // Cancel any DayTransitionUI fade so no false 'Morning' banner is shown
+            DayTransitionUI.Instance?.CancelTransition();
+
+            // 9. Time & Day State
+            var phase = (TimeManager.DayPhase)data.currentPhase;
             if (TimeManager.Instance != null)
             {
                 TimeManager.Instance.SetTimeState(
                     data.currentDay,
-                    (TimeManager.DayPhase)data.currentPhase,
-                    data.isNightEncounterCleared
+                    phase,
+                    data.isNightEncounterCleared,
+                    notifyPhaseChanged: false
                 );
             }
 
-            // 7. Farmland Crops
+            if (FeaturesTime.DayNightTimeManager.Instance != null)
+            {
+                float targetHour = data.currentHour > 0f ? data.currentHour : (data.currentPhase == 1 ? 19.5f : 7.0f);
+                FeaturesTime.DayNightTimeManager.Instance.SetDayAndTime(data.currentDay, targetHour);
+            }
+
+            // 10. Instant Atmospheric Environment Sync
+            var lightingControllers = FindObjectsByType<FeaturesTime.Atmosphere.DayNightLightingController>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            foreach (var lc in lightingControllers)
+            {
+                if (lc != null) lc.ApplyPresetInstant(phase);
+            }
+
+            var audioControllers = FindObjectsByType<FeaturesTime.Atmosphere.DayNightAudioController>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            foreach (var ac in audioControllers)
+            {
+                if (ac != null) ac.ApplyInstant(phase);
+            }
+
+            var safeZoneLights = FindObjectsByType<FeaturesTime.Atmosphere.HouseSafeZoneLighting>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            foreach (var sz in safeZoneLights)
+            {
+                if (sz != null) sz.ApplyInstant(phase);
+            }
+
+            if (FeaturesRendering.Vision.VisionManager.Instance != null)
+            {
+                FeaturesRendering.Vision.VisionManager.Instance.SetNightState(phase == TimeManager.DayPhase.Night, instant: true);
+            }
+
+            if (FeaturesTime.UI.CombatPhaseTrackerUI.Instance != null)
+            {
+                FeaturesTime.UI.CombatPhaseTrackerUI.Instance.UpdatePhaseDisplay(phase);
+            }
+
+            // 11. Combat & Night Brawl
+            if (FeaturesCombat.NightBrawlManager.Instance != null)
+            {
+                FeaturesCombat.NightBrawlManager.Instance.RestoreNightBrawlState(
+                    data.currentDay,
+                    data.nightCurrentWave,
+                    data.nightTotalWaves,
+                    data.isNightEncounterCleared,
+                    data.isNightBrawlActive,
+                    data.activeEnemies
+                );
+            }
+            else
+            {
+                var existingEnemies = FindObjectsByType<FeaturesCombat.EnemyBase>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+                foreach (var enemy in existingEnemies)
+                {
+                    if (enemy != null) Destroy(enemy.gameObject);
+                }
+            }
+
+            // 12. Farmland Crops
             var tiles = FindObjectsByType<FarmlandTile>(FindObjectsInactive.Include, FindObjectsSortMode.None);
             if (tiles != null && data.farmlandTiles != null)
             {
@@ -679,13 +837,163 @@ namespace FeaturesSaveSystem
                 }
             }
 
-            // 8. Wardrobe Outfit
+            // 13. Bed Interactables
+            var beds = FindObjectsByType<FeaturesInteraction.BedInteractable>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            foreach (var b in beds)
+            {
+                b?.UpdateLabel();
+            }
+
+            // 14. Wardrobe Outfit
             if (PlayerOutfit.Instance != null && !string.IsNullOrEmpty(data.outfitName))
             {
                 var outfit = Resources.Load<OutfitData>("Player/model/" + data.outfitName);
                 if (outfit != null)
                 {
                     PlayerOutfit.Instance.EquipOutfit(outfit);
+                }
+            }
+        }
+
+        private void CaptureContainerInventories(GameSaveData data)
+        {
+            var fridge = FindFirstObjectByType<RefrigeratorInteractable>(FindObjectsInactive.Include);
+            if (fridge != null)
+            {
+                var inv = fridge.GetComponent<InventoryComponent>();
+                if (inv != null && inv.slots != null)
+                {
+                    var saved = new SavedContainerInventory { containerId = "Refrigerator" };
+                    for (int i = 0; i < inv.slots.Count; i++)
+                    {
+                        var s = inv.slots[i];
+                        if (s != null && !s.IsEmpty && s.item != null)
+                        {
+                            string id = !string.IsNullOrEmpty(s.item.itemId) ? s.item.itemId : s.item.name;
+                            saved.slots.Add(new SavedInventorySlot { slotIndex = i, itemId = id, quantity = s.quantity });
+                        }
+                    }
+                    data.containerInventories.Add(saved);
+                }
+            }
+
+            if (TrophySystemManager.Instance != null)
+            {
+                var cabInv = TrophySystemManager.Instance.CabinetInventory;
+                if (cabInv != null && cabInv.slots != null)
+                {
+                    var saved = new SavedContainerInventory { containerId = "TrophyCabinet" };
+                    for (int i = 0; i < cabInv.slots.Count; i++)
+                    {
+                        var s = cabInv.slots[i];
+                        if (s != null && !s.IsEmpty && s.item != null)
+                        {
+                            string id = !string.IsNullOrEmpty(s.item.itemId) ? s.item.itemId : s.item.name;
+                            saved.slots.Add(new SavedInventorySlot { slotIndex = i, itemId = id, quantity = s.quantity });
+                        }
+                    }
+                    data.containerInventories.Add(saved);
+                }
+
+                var rackInv = TrophySystemManager.Instance.RackInventory;
+                if (rackInv != null && rackInv.slots != null)
+                {
+                    var saved = new SavedContainerInventory { containerId = "TrophyRack" };
+                    for (int i = 0; i < rackInv.slots.Count; i++)
+                    {
+                        var s = rackInv.slots[i];
+                        if (s != null && !s.IsEmpty && s.item != null)
+                        {
+                            string id = !string.IsNullOrEmpty(s.item.itemId) ? s.item.itemId : s.item.name;
+                            saved.slots.Add(new SavedInventorySlot { slotIndex = i, itemId = id, quantity = s.quantity });
+                        }
+                    }
+                    data.containerInventories.Add(saved);
+                }
+            }
+        }
+
+        private void RestoreContainerInventories(GameSaveData data)
+        {
+            if (data.containerInventories == null) return;
+
+            foreach (var container in data.containerInventories)
+            {
+                if (container.containerId == "Refrigerator")
+                {
+                    var fridge = FindFirstObjectByType<RefrigeratorInteractable>(FindObjectsInactive.Include);
+                    if (fridge != null)
+                    {
+                        var inv = fridge.GetComponent<InventoryComponent>();
+                        if (inv != null && inv.slots != null)
+                        {
+                            for (int i = 0; i < inv.slots.Count; i++)
+                            {
+                                if (inv.slots[i] != null) { inv.slots[i].item = null; inv.slots[i].quantity = 0; }
+                            }
+                            foreach (var s in container.slots)
+                            {
+                                if (s.slotIndex >= 0 && s.slotIndex < inv.slots.Count)
+                                {
+                                    var item = ResolveItem(s.itemId);
+                                    if (item != null)
+                                    {
+                                        inv.slots[s.slotIndex].item = item;
+                                        inv.slots[s.slotIndex].quantity = s.quantity;
+                                    }
+                                }
+                            }
+                            inv.OnInventoryChanged?.Invoke();
+                        }
+                    }
+                }
+                else if (container.containerId == "TrophyCabinet" && TrophySystemManager.Instance != null)
+                {
+                    var inv = TrophySystemManager.Instance.CabinetInventory;
+                    if (inv != null && inv.slots != null)
+                    {
+                        for (int i = 0; i < inv.slots.Count; i++)
+                        {
+                            if (inv.slots[i] != null) { inv.slots[i].item = null; inv.slots[i].quantity = 0; }
+                        }
+                        foreach (var s in container.slots)
+                        {
+                            if (s.slotIndex >= 0 && s.slotIndex < inv.slots.Count)
+                            {
+                                var item = ResolveItem(s.itemId);
+                                if (item != null)
+                                {
+                                    inv.slots[s.slotIndex].item = item;
+                                    inv.slots[s.slotIndex].quantity = s.quantity;
+                                }
+                            }
+                        }
+                        inv.OnInventoryChanged?.Invoke();
+                    }
+                }
+                else if (container.containerId == "TrophyRack" && TrophySystemManager.Instance != null)
+                {
+                    var inv = TrophySystemManager.Instance.RackInventory;
+                    if (inv != null && inv.slots != null)
+                    {
+                        for (int i = 0; i < inv.slots.Count; i++)
+                        {
+                            if (inv.slots[i] != null) { inv.slots[i].item = null; inv.slots[i].quantity = 0; }
+                        }
+                        foreach (var s in container.slots)
+                        {
+                            if (s.slotIndex >= 0 && s.slotIndex < inv.slots.Count)
+                            {
+                                var item = ResolveItem(s.itemId);
+                                if (item != null)
+                                {
+                                    inv.slots[s.slotIndex].item = item;
+                                    inv.slots[s.slotIndex].quantity = s.quantity;
+                                }
+                            }
+                        }
+                        inv.OnInventoryChanged?.Invoke();
+                    }
                 }
             }
         }

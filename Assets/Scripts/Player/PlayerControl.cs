@@ -874,4 +874,23 @@ public class PlayerControl : MonoBehaviour
             }
         }
     }
+
+    /// <summary>
+    /// Teleports the player to a target position and rotation, resetting physics velocity and syncing transforms.
+    /// Used by the Save/Load system and scene transitions.
+    /// </summary>
+    public void Teleport(Vector3 position, Quaternion rotation)
+    {
+        StopMovement();
+        if (rb != null)
+        {
+            rb.linearVelocity = Vector3.zero;
+            rb.angularVelocity = Vector3.zero;
+            rb.position = position;
+            rb.rotation = rotation;
+        }
+        transform.position = position;
+        transform.rotation = rotation;
+        Physics.SyncTransforms();
+    }
 }

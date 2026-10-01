@@ -61,6 +61,10 @@ public class TimeManager : MonoBehaviour
 
     private void Update()
     {
+        // Do not process debug keys when paused or when Save UI is open
+        if (Time.timeScale <= 0f) return;
+        if (FeaturesSaveSystem.SaveSystemUI.Instance != null && FeaturesSaveSystem.SaveSystemUI.Instance.IsOpen) return;
+
         // DEBUG SEMENTARA: tekan N untuk melompat ke fase malam (uji tidur Kasur).
         if (Keyboard.current != null && Keyboard.current.nKey.wasPressedThisFrame)
             SkipToNight();
@@ -100,14 +104,19 @@ public class TimeManager : MonoBehaviour
 
     /// <summary>
     /// Restores full time state (used by Save/Load system).
+    /// Does NOT invoke OnDayChanged, as OnDayChanged indicates advancing to a new day.
+    /// Invoking it on load erroneously triggers DayTransitionUI ('Morning' banner), FarmingManager (advancing crop days),
+    /// and DailyEconomyManager (resetting stats).
     /// </summary>
-    public void SetTimeState(int day, DayPhase phase, bool cleared)
+    public void SetTimeState(int day, DayPhase phase, bool cleared, bool notifyPhaseChanged = false)
     {
         currentDay = Mathf.Max(1, day);
         currentPhase = phase;
         isNightEncounterCleared = cleared;
 
-        OnDayChanged?.Invoke(currentDay);
-        OnPhaseChanged?.Invoke(currentPhase);
+        if (notifyPhaseChanged)
+        {
+            OnPhaseChanged?.Invoke(currentPhase);
+        }
     }
 }

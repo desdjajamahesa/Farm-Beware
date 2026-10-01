@@ -36,7 +36,10 @@ namespace FeaturesFarming
 
         [Tooltip("Durasi pertumbuhan tanaman dalam detik (diambil dari SeedItemData bila tersedia).")]
         [SerializeField] private float growthDuration = 30f;
+        public float GrowthDuration => growthDuration;
+
         [SerializeField] private float currentTimer = 0f;
+        public float CurrentTimer => currentTimer;
 
         [Header("Hasil Panen")]
         [Tooltip("Jika dicentang, panen otomatis mengutamakan varian kotor (Dirty) agar harus dicuci di wastafel.")]
@@ -129,7 +132,7 @@ namespace FeaturesFarming
             }
 
             // 2. Debug shortcut: Tekan tombol H untuk mempercepat panen secara instan (membantu testing)
-            if (Application.isPlaying && Keyboard.current != null && Keyboard.current.hKey.wasPressedThisFrame)
+            if (Application.isPlaying && Time.timeScale > 0f && Keyboard.current != null && Keyboard.current.hKey.wasPressedThisFrame)
             {
                 if (currentState == TileState.PlantedDry || currentState == TileState.PlantedWatered)
                 {

@@ -65,10 +65,13 @@ namespace FeaturesSaveSystem
         // Time System
         public int currentDay;
         public int currentPhase; // 0 = Day, 1 = Night
+        public float currentHour; // 0.0f - 24.0f continuous clock
         public bool isNightEncounterCleared;
 
         // Inventory
+        public int selectedHotbarIndex = 0;
         public List<SavedInventorySlot> inventorySlots = new List<SavedInventorySlot>();
+        public List<SavedContainerInventory> containerInventories = new List<SavedContainerInventory>();
 
         // Farmland Crops
         public List<SavedFarmlandTile> farmlandTiles = new List<SavedFarmlandTile>();
@@ -76,6 +79,37 @@ namespace FeaturesSaveSystem
         // Wardrobe
         public string outfitName;
         public bool isHatEquipped = true;
+
+        // Weapon Upgrades
+        public int weaponLevel = 1;
+        public bool sweetPotatoPathUnlocked;
+        public bool taroPathUnlocked;
+        public bool cornPathUnlocked;
+
+        // Combat & Night Brawl
+        public int nightCurrentWave;
+        public int nightTotalWaves;
+        public bool isNightBrawlActive;
+        public List<SavedEnemyData> activeEnemies = new List<SavedEnemyData>();
+    }
+
+    [Serializable]
+    public class SavedContainerInventory
+    {
+        public string containerId;
+        public List<SavedInventorySlot> slots = new List<SavedInventorySlot>();
+    }
+
+    [Serializable]
+    public class SavedEnemyData
+    {
+        public int enemyType;
+        public int currentHealth;
+        public int maxHealth;
+        public float posX;
+        public float posY;
+        public float posZ;
+        public float rotY;
     }
 
     [Serializable]

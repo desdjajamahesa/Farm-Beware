@@ -90,6 +90,12 @@ namespace FeaturesSaveSystem
             {
                 SaveSystemManager.Instance.OnSaveListChanged -= RefreshSlotList;
             }
+
+            if (isOpen)
+            {
+                Time.timeScale = 1f;
+                isOpen = false;
+            }
         }
 
         private void Update()
@@ -113,6 +119,8 @@ namespace FeaturesSaveSystem
         public void Open()
         {
             EnsureUIHierarchy();
+
+            Time.timeScale = 0f;
 
             if (playerControl == null)
                 playerControl = FindFirstObjectByType<PlayerControl>();
@@ -150,6 +158,8 @@ namespace FeaturesSaveSystem
             isOpen = false;
             CloseConfirmDialog();
 
+            Time.timeScale = 1f;
+
             if (modalPanel != null)
             {
                 modalPanel.SetActive(false);
@@ -163,8 +173,8 @@ namespace FeaturesSaveSystem
                 playerControl.isInputLocked = false;
             }
 
-            Cursor.visible = false;
-            Cursor.lockState = CursorLockMode.Locked;
+            Cursor.visible = true;
+            Cursor.lockState = CursorLockMode.None;
 
             // Prevent ESC from triggering the Pause Menu simultaneously
             MainMenuController.LastFrameUIPanelClosed = Time.frameCount;
