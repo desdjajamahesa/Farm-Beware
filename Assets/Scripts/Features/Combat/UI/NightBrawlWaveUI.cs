@@ -11,7 +11,6 @@ namespace FeaturesCombat.UI
     /// Event-driven, stateless UI Presenter for the "Plants vs. Zombies" style Night Brawl Wave Indicator.
     /// Operates without per-frame Update() polling, maintaining strict Zero-GC performance during combat.
     /// </summary>
-    [RequireComponent(typeof(CanvasGroup))]
     public class NightBrawlWaveUI : MonoBehaviour
     {
         [Header("Canvas & Presentation Controls")]
@@ -81,10 +80,15 @@ namespace FeaturesCombat.UI
             }
             _instance = this;
 
-            if (mainCanvasGroup == null)
-                mainCanvasGroup = GetComponent<CanvasGroup>();
-
             EnsureHierarchyReferences();
+
+            if (mainCanvasGroup == null)
+            {
+                if (trackRootRect != null)
+                    mainCanvasGroup = trackRootRect.GetComponent<CanvasGroup>();
+                if (mainCanvasGroup == null)
+                    mainCanvasGroup = GetComponent<CanvasGroup>();
+            }
             SetUIVisibleInstant(false);
         }
 
