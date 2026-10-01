@@ -201,7 +201,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a31c75738ad9f95469b450fc2a19f877, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::FeaturesCombat.UI.MilestoneFlagView
+  m_EditorClassIdentifier: Assembly-CSharp::FeaturesCombat.UI.WaveIndicator
   rectTransform: {fileID: 3693857076590832032}
   flagBannerImage: {fileID: 2400996022612155365}
   poleImage: {fileID: 5960798771571108582}

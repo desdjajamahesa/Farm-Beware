@@ -496,7 +496,7 @@ public class PlayerControl : MonoBehaviour
         // Abaikan objek dinamis (musuh, proyektil, item loot) - sliding hanya untuk struktur tembok/lingkungan statis
         if (collision.collider == null || collision.collider.isTrigger) return;
         if (collision.rigidbody != null && !collision.rigidbody.isKinematic) return;
-        if (collision.collider.CompareTag("Enemy") || collision.gameObject.GetComponent<FeaturesCombat.EnemyBase>() != null) return;
+        if (collision.gameObject.GetComponent<FeaturesCombat.EnemyBase>() != null) return;
 
         Vector3 combinedNormal = Vector3.zero;
         int count = 0;

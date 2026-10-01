@@ -64,6 +64,7 @@ namespace FeaturesCombat
         private Rigidbody rb;
         private Renderer meshRenderer;
         private Color originalColor;
+        private MaterialPropertyBlock mpb;
         private float lastAttackTime = 0f;
         private float skillCooldownTimer = 0f;
         private bool isPerformingSkill = false;
@@ -99,9 +100,12 @@ namespace FeaturesCombat
             }
 
             meshRenderer = GetComponentInChildren<Renderer>();
+            mpb = new MaterialPropertyBlock();
             if (meshRenderer != null && meshRenderer.sharedMaterial != null)
             {
-                originalColor = meshRenderer.sharedMaterial.color;
+                originalColor = meshRenderer.sharedMaterial.HasProperty("_BaseColor")
+                    ? meshRenderer.sharedMaterial.GetColor("_BaseColor")
+                    : meshRenderer.sharedMaterial.color;
             }
 
             originalArmor = armor;
@@ -578,7 +582,7 @@ namespace FeaturesCombat
 
             if (meshRenderer != null)
             {
-                meshRenderer.material.color = new Color(1f, 0.45f, 0.15f); // Wind-up warning color
+                SetRendererColor(new Color(1f, 0.45f, 0.15f)); // Wind-up warning color
             }
 
             float windupTimer = 0f;
@@ -594,7 +598,7 @@ namespace FeaturesCombat
 
             if (meshRenderer != null)
             {
-                meshRenderer.material.color = originalColor;
+                SetRendererColor(originalColor);
             }
 
             if (telegraphDecal != null)
@@ -1032,9 +1036,9 @@ namespace FeaturesCombat
         {
             if (meshRenderer != null)
             {
-                meshRenderer.material.color = Color.white;
+                SetRendererColor(Color.white);
                 yield return new WaitForSeconds(0.08f);
-                meshRenderer.material.color = originalColor;
+                SetRendererColor(originalColor);
             }
         }
 
@@ -1093,7 +1097,7 @@ namespace FeaturesCombat
 
             if (meshRenderer != null)
             {
-                meshRenderer.material.color = originalColor;
+                SetRendererColor(originalColor);
             }
 
             EnsureTelegraphElements();
@@ -1110,6 +1114,19 @@ namespace FeaturesCombat
                 EnemyType.TheRanger => new Vector3(1.8f, 3.5f, 1.8f),
                 _ => Vector3.one
             };
+        }
+
+        /// <summary>
+        /// Mengubah warna renderer menggunakan MaterialPropertyBlock (tanpa duplikasi material).
+        /// Menjaga kompatibilitas SRP Batcher dan mencegah pink/magenta rendering.
+        /// </summary>
+        private void SetRendererColor(Color color)
+        {
+            if (meshRenderer == null || mpb == null) return;
+            meshRenderer.GetPropertyBlock(mpb);
+            mpb.SetColor("_BaseColor", color);
+            mpb.SetColor("_Color", color); // Fallback for standard shaders
+            meshRenderer.SetPropertyBlock(mpb);
         }
     }
 }

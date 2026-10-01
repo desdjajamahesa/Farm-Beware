@@ -105,10 +105,24 @@ Shader "FarmBeware/Monster/MonsterFresnelLit"
                 float3 albedo = albedoTex.rgb * _BaseColor.rgb;
 
                 float3 normalWS = normalize(input.normalWS);
-                float3 viewDirWS = GetWorldSpaceViewDir(input.positionWS);
+                float3 viewDirWS = GetWorldSpaceNormalizeViewDir(input.positionWS);
+
+                // Prepare InputData for URP clustered lighting and shadow evaluation
+                InputData inputData = (InputData)0;
+                inputData.positionWS = input.positionWS;
+                inputData.positionCS = input.positionCS;
+                inputData.normalWS = normalWS;
+                inputData.viewDirectionWS = viewDirWS;
+                #if defined(MAIN_LIGHT_CALCULATE_SHADOWS)
+                    inputData.shadowCoord = TransformWorldToShadowCoord(input.positionWS);
+                #else
+                    inputData.shadowCoord = float4(0, 0, 0, 0);
+                #endif
+                inputData.normalizedScreenSpaceUV = GetNormalizedScreenSpaceUV(input.positionCS);
+                inputData.shadowMask = half4(1, 1, 1, 1);
 
                 // Evaluasi directional light utama
-                Light mainLight = GetMainLight(TransformWorldToShadowCoord(input.positionWS));
+                Light mainLight = GetMainLight(inputData.shadowCoord);
                 float NdotL = saturate(dot(normalWS, mainLight.direction));
                 float3 directLight = albedo * mainLight.color * (NdotL * mainLight.shadowAttenuation);
 
@@ -118,7 +132,7 @@ Shader "FarmBeware/Monster/MonsterFresnelLit"
                 uint meshRenderingLayers = GetMeshRenderingLayer();
 
                 LIGHT_LOOP_BEGIN(lightsCount)
-                    Light addLight = GetAdditionalLight(lightIndex, input.positionWS);
+                    Light addLight = GetAdditionalLight(lightIndex, input.positionWS, inputData.shadowMask);
                 #if defined(_LIGHT_LAYERS)
                     if (IsMatchingLightLayer(addLight.layerMask, meshRenderingLayers))
                 #endif

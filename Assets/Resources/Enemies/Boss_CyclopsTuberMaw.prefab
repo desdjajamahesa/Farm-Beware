@@ -17,7 +17,7 @@ GameObject:
   - component: {fileID: 308960406051585097}
   m_Layer: 0
   m_Name: Boss_CyclopsTuberMaw
-  m_TagString: Untagged
+  m_TagString: Enemy
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -157,6 +157,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::FeaturesCombat.EnemyBase
   enemyType: 1
+  enemyData: {fileID: 0}
   displayName: Cyclops Tuber Maw
   isBoss: 1
   maxHealth: 600

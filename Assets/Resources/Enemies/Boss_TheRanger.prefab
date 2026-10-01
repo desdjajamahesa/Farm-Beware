@@ -18,7 +18,7 @@ GameObject:
   - component: {fileID: -1500125722396341916}
   m_Layer: 0
   m_Name: Boss_TheRanger
-  m_TagString: Untagged
+  m_TagString: Enemy
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -158,6 +158,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::FeaturesCombat.EnemyBase
   enemyType: 5
+  enemyData: {fileID: 0}
   displayName: The Ranger
   isBoss: 1
   maxHealth: 750

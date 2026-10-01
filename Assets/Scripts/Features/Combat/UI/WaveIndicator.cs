@@ -7,10 +7,10 @@ using UnityEngine.UI;
 namespace FeaturesCombat.UI
 {
     /// <summary>
-    /// Visual component representing a wave milestone pin/flag along the PvZ-style progress track.
-    /// Uses normalized anchors for 100% resolution independence and supports Zero-GC visual animations.
+    /// Visual component representing an individual wave milestone marker along the combat progression track.
+    /// Uses normalized anchors for resolution independence and supports zero-allocation visual animations.
     /// </summary>
-    public class MilestoneFlagView : MonoBehaviour
+    public class WaveIndicator : MonoBehaviour
     {
         [Header("UI Element References")]
         [SerializeField] private RectTransform rectTransform;
@@ -61,13 +61,13 @@ namespace FeaturesCombat.UI
             if (data.IsBossWave)
             {
                 if (flagBannerImage != null) flagBannerImage.color = bossFlagColor;
-                if (iconText != null) iconText.text = "💀";
+                if (iconText != null) iconText.text = "BOSS";
                 rectTransform.localScale = Vector3.one * 1.15f;
             }
             else
             {
                 if (flagBannerImage != null) flagBannerImage.color = standardFlagColor;
-                if (iconText != null) iconText.text = "🚩";
+                if (iconText != null) iconText.text = $"W{data.WaveIndex}";
                 rectTransform.localScale = Vector3.one;
             }
 

@@ -8,7 +8,7 @@ using UnityEngine.UI;
 namespace FeaturesCombat.UI
 {
     /// <summary>
-    /// Event-driven, stateless UI Presenter for the "Plants vs. Zombies" style Night Brawl Wave Indicator.
+    /// Event-driven, stateless UI Presenter for the Night Brawl Wave Indicator.
     /// Operates without per-frame Update() polling, maintaining strict Zero-GC performance during combat.
     /// </summary>
     public class NightBrawlWaveUI : MonoBehaviour
@@ -43,8 +43,8 @@ namespace FeaturesCombat.UI
         [SerializeField] private Color bossAnnouncementColor = new Color(0.90f, 0.15f, 0.20f, 1.0f);
         [SerializeField] private Color victoryAnnouncementColor = new Color(0.35f, 0.90f, 0.45f, 1.0f);
 
-        // Runtime pooled flag instances
-        private readonly List<MilestoneFlagView> activeFlags = new List<MilestoneFlagView>();
+        // Runtime pooled indicator instances
+        private readonly List<WaveIndicator> activeFlags = new List<WaveIndicator>();
 
         // Coroutine references to prevent overlapping state conflicts
         private Coroutine trackerSlideCoroutine;
@@ -84,10 +84,9 @@ namespace FeaturesCombat.UI
 
             if (mainCanvasGroup == null)
             {
-                if (trackRootRect != null)
+                mainCanvasGroup = GetComponent<CanvasGroup>();
+                if (mainCanvasGroup == null && trackRootRect != null)
                     mainCanvasGroup = trackRootRect.GetComponent<CanvasGroup>();
-                if (mainCanvasGroup == null)
-                    mainCanvasGroup = GetComponent<CanvasGroup>();
             }
             SetUIVisibleInstant(false);
         }
@@ -101,7 +100,14 @@ namespace FeaturesCombat.UI
         {
             UnsubscribeFromEvents();
             StopAllRunningCoroutines();
+            if (deferredSubscriptionCoroutine != null)
+            {
+                StopCoroutine(deferredSubscriptionCoroutine);
+                deferredSubscriptionCoroutine = null;
+            }
         }
+
+        private Coroutine deferredSubscriptionCoroutine;
 
         private void Start()
         {
@@ -111,20 +117,59 @@ namespace FeaturesCombat.UI
                 SubscribeToEvents();
             }
 
+            // If still not subscribed (manager not ready yet), start deferred retry
+            if (!isSubscribed)
+            {
+                deferredSubscriptionCoroutine = StartCoroutine(RoutineDeferredSubscription());
+            }
+
             // Sync with current phase
+            SyncWithCurrentPhase();
+        }
+
+        private IEnumerator RoutineDeferredSubscription()
+        {
+            float timeout = 5f;
+            float elapsed = 0f;
+            while (!isSubscribed && elapsed < timeout)
+            {
+                yield return new WaitForSeconds(0.25f);
+                elapsed += 0.25f;
+                SubscribeToEvents();
+            }
+
+            if (isSubscribed)
+            {
+                SyncWithCurrentPhase();
+                Debug.Log("[NightBrawlWaveUI] Deferred subscription successful.");
+            }
+            else
+            {
+                Debug.LogWarning("[NightBrawlWaveUI] Failed to subscribe after timeout. NightBrawlManager may not be in scene.");
+            }
+
+            deferredSubscriptionCoroutine = null;
+        }
+
+        private void SyncWithCurrentPhase()
+        {
             if (TimeManager.Instance != null)
             {
                 bool isNight = TimeManager.Instance.currentPhase == TimeManager.DayPhase.Night;
-                if (isNight && NightBrawlManager.Instance != null && NightBrawlManager.Instance.IsNightBrawlActive)
+                if (isNight)
                 {
                     SetUIVisibleInstant(true);
-                    if (NightBrawlManager.Instance.WaveEngine != null)
+                    if (NightBrawlManager.Instance != null && NightBrawlManager.Instance.WaveEngine != null)
                     {
-                        HandleNightInitialized(NightBrawlManager.Instance.WaveEngine.CurrentNightSummary);
-                        HandleNightProgressChanged(
-                            NightBrawlManager.Instance.WaveEngine.NightProgress,
-                            NightBrawlManager.Instance.WaveEngine.TotalDefeatedEnemies,
-                            NightBrawlManager.Instance.WaveEngine.TotalScheduledEnemies);
+                        var summary = NightBrawlManager.Instance.WaveEngine.CurrentNightSummary;
+                        if (summary.TotalWaves > 0)
+                        {
+                            HandleNightInitialized(summary);
+                            HandleNightProgressChanged(
+                                NightBrawlManager.Instance.WaveEngine.NightProgress,
+                                NightBrawlManager.Instance.WaveEngine.TotalDefeatedEnemies,
+                                NightBrawlManager.Instance.WaveEngine.TotalScheduledEnemies);
+                        }
                     }
                 }
                 else
@@ -133,16 +178,19 @@ namespace FeaturesCombat.UI
                 }
             }
         }
-
         #region Event Subscriptions (Zero Polling)
+
+        private bool isTimeManagerSubscribed = false;
 
         private void SubscribeToEvents()
         {
             if (isSubscribed) return;
 
-            if (TimeManager.Instance != null)
+            if (TimeManager.Instance != null && !isTimeManagerSubscribed)
             {
+                TimeManager.Instance.OnPhaseChanged -= HandlePhaseChanged; // Defensive
                 TimeManager.Instance.OnPhaseChanged += HandlePhaseChanged;
+                isTimeManagerSubscribed = true;
             }
 
             if (NightBrawlManager.Instance != null && NightBrawlManager.Instance.WaveEngine != null)
@@ -159,14 +207,13 @@ namespace FeaturesCombat.UI
 
         private void UnsubscribeFromEvents()
         {
-            if (!isSubscribed) return;
-
-            if (TimeManager.Instance != null)
+            if (TimeManager.Instance != null && isTimeManagerSubscribed)
             {
                 TimeManager.Instance.OnPhaseChanged -= HandlePhaseChanged;
+                isTimeManagerSubscribed = false;
             }
 
-            if (NightBrawlManager.Instance != null && NightBrawlManager.Instance.WaveEngine != null)
+            if (isSubscribed && NightBrawlManager.Instance != null && NightBrawlManager.Instance.WaveEngine != null)
             {
                 var engine = NightBrawlManager.Instance.WaveEngine;
                 engine.OnNightInitialized -= HandleNightInitialized;
@@ -272,23 +319,23 @@ namespace FeaturesCombat.UI
             {
                 string bossTitle = wave == totalWaves && day == 5
                     ? "FINAL CLIMAX: DUAL BOSSES!"
-                    : "⚠️ BOSS ENCOUNTER INCOMING!";
+                    : "BOSS ENCOUNTER INCOMING!";
                 string subtitle = "Steel your resolve. A monstrous threat approaches!";
                 ShowAnnouncement(bossTitle, subtitle, bossAnnouncementColor);
             }
             else if (wave > 1 && wave == totalWaves)
             {
-                ShowAnnouncement("⚠️ FINAL WAVE APPROACHING!", "Defeat the remaining monsters to survive!", normalAnnouncementColor);
+                ShowAnnouncement("FINAL WAVE APPROACHING!", "Defeat the remaining monsters to survive!", normalAnnouncementColor);
             }
             else if (wave > 1)
             {
-                ShowAnnouncement($"⚔️ WAVE {wave} APPROACHING!", "Prepare your defenses!", normalAnnouncementColor);
+                ShowAnnouncement($"WAVE {wave} APPROACHING!", "Prepare your defenses!", normalAnnouncementColor);
             }
         }
 
         private void HandleAllWavesCleared(int day)
         {
-            ShowAnnouncement("✨ NIGHT SURVIVED! ✨", "Dawn arrives. The monsters retreat into the shadows.", victoryAnnouncementColor);
+            ShowAnnouncement("NIGHT SURVIVED!", "Dawn arrives. The monsters retreat into the shadows.", victoryAnnouncementColor);
             StartCoroutine(RoutineDelayHideAfterVictory());
         }
 
@@ -318,7 +365,7 @@ namespace FeaturesCombat.UI
             for (int i = 0; i < summary.Milestones.Length; i++)
             {
                 var data = summary.Milestones[i];
-                MilestoneFlagView flagView = null;
+                WaveIndicator flagView = null;
 
                 // Reuse from list if available
                 if (i < activeFlags.Count && activeFlags[i] != null)
@@ -332,7 +379,7 @@ namespace FeaturesCombat.UI
                         ? Instantiate(milestoneFlagPrefab, flagsContainerRect)
                         : CreateFallbackFlagObject(flagsContainerRect);
 
-                    flagView = flagObj.GetComponent<MilestoneFlagView>() ?? flagObj.AddComponent<MilestoneFlagView>();
+                    flagView = flagObj.GetComponent<WaveIndicator>() ?? flagObj.AddComponent<WaveIndicator>();
                     activeFlags.Add(flagView);
                 }
 
@@ -342,7 +389,7 @@ namespace FeaturesCombat.UI
 
         private GameObject CreateFallbackFlagObject(Transform parent)
         {
-            GameObject flag = new GameObject("MilestoneFlag_Generated", typeof(RectTransform));
+            GameObject flag = new GameObject("WaveIndicator_Generated", typeof(RectTransform));
             flag.transform.SetParent(parent, false);
 
             var rt = flag.GetComponent<RectTransform>();
@@ -378,8 +425,8 @@ namespace FeaturesCombat.UI
             txtRt.sizeDelta = new Vector2(18f, 16f);
             txtRt.anchoredPosition = new Vector2(9f, 0f);
             var tmp = txtObj.GetComponent<TextMeshProUGUI>();
-            tmp.text = "🚩";
-            tmp.fontSize = 14;
+            tmp.text = "W";
+            tmp.fontSize = 12;
             tmp.alignment = TextAlignmentOptions.Center;
 
             return flag;
@@ -578,17 +625,18 @@ namespace FeaturesCombat.UI
             {
                 var track = transform.Find("WaveTracker_Panel");
                 if (track != null) trackRootRect = track.GetComponent<RectTransform>();
+                if (trackRootRect == null) trackRootRect = GetComponent<RectTransform>();
             }
 
             if (flagsContainerRect == null && trackRootRect != null)
             {
-                var flags = trackRootRect.Find("Flags_Container");
+                var flags = trackRootRect.Find("Track_Background/Flags_Container") ?? trackRootRect.Find("Flags_Container");
                 if (flags != null) flagsContainerRect = flags.GetComponent<RectTransform>();
             }
 
             if (trackerIconRect == null && trackRootRect != null)
             {
-                var icon = trackRootRect.Find("Tracker_Icon");
+                var icon = trackRootRect.Find("Track_Background/Tracker_Icon") ?? trackRootRect.Find("Tracker_Icon");
                 if (icon != null) trackerIconRect = icon.GetComponent<RectTransform>();
             }
         }

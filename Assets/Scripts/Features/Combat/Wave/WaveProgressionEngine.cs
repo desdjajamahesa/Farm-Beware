@@ -4,7 +4,7 @@ using System.Collections.Generic;
 namespace FeaturesCombat.Wave
 {
     /// <summary>
-    /// Readonly struct encapsulating metadata for a wave completion milestone on the PvZ-style progress track.
+    /// Readonly struct encapsulating metadata for a wave completion milestone on the combat progress track.
     /// Zero-GC allocation.
     /// </summary>
     public readonly struct WaveMilestoneData
