@@ -59,6 +59,13 @@ public class InventoryManagerUI : MonoBehaviour
     [Header("Item Details Toggle")]
     public GameObject itemDetailsContainer;
 
+    [Header("Character Sheet (Tab 3-Column UI)")]
+    public GameObject characterSheetRoot;
+    public GameObject playerStatsPanel;
+    public GameObject equipmentPanel;
+    public Vector2 defaultPlayerPanelPos = new Vector2(120f, 0f);
+    public Vector2 characterSheetPlayerPanelPos = new Vector2(505f, 0f);
+
     [Header("Panel Titles")]
     public Text leftPanelTitle;
     public Text rightPanelTitle;
@@ -96,6 +103,12 @@ public class InventoryManagerUI : MonoBehaviour
         }
 
         displayLeftInventory = playerInventory;
+
+        if (playerPanel != null)
+        {
+            var rt = playerPanel.GetComponent<RectTransform>();
+            if (rt != null) defaultPlayerPanelPos = rt.anchoredPosition;
+        }
 
         // Sembunyikan semua UI paling awal + kunci kursor untuk game action.
         CloseAllUI();
@@ -274,7 +287,39 @@ public class InventoryManagerUI : MonoBehaviour
         isPlayerOpen = !isPlayerOpen;
 
         if (playerPanel != null)
+        {
             playerPanel.SetActive(isPlayerOpen);
+
+            var rt = playerPanel.GetComponent<RectTransform>();
+            if (rt != null)
+            {
+                if (isPlayerOpen && (playerStatsPanel != null || characterSheetRoot != null))
+                {
+                    rt.anchorMin = new Vector2(0.5f, 0.5f);
+                    rt.anchorMax = new Vector2(0.5f, 0.5f);
+                    rt.pivot = new Vector2(0.5f, 0.5f);
+                    rt.anchoredPosition = characterSheetPlayerPanelPos;
+                }
+                else
+                {
+                    rt.anchorMin = new Vector2(0.0f, 0.5f);
+                    rt.anchorMax = new Vector2(0.0f, 0.5f);
+                    rt.pivot = new Vector2(0.0f, 0.5f);
+                    rt.anchoredPosition = defaultPlayerPanelPos;
+                }
+            }
+        }
+
+        if (characterSheetRoot != null) characterSheetRoot.SetActive(isPlayerOpen);
+        if (playerStatsPanel != null) playerStatsPanel.SetActive(isPlayerOpen);
+        if (equipmentPanel != null) equipmentPanel.SetActive(isPlayerOpen);
+
+
+        if (isPlayerOpen && playerStatsPanel != null)
+        {
+            var statsUI = playerStatsPanel.GetComponent<PlayerUI.PlayerStatsDisplayUI>() ?? playerStatsPanel.GetComponentInChildren<PlayerUI.PlayerStatsDisplayUI>();
+            statsUI?.UpdateAllStats();
+        }
 
         // Ensure hotbar is visible when player inventory is open
         if (isPlayerOpen && playerHotbarContainer != null)
@@ -321,6 +366,24 @@ public class InventoryManagerUI : MonoBehaviour
         // Kalau sedang mode trophy, kembalikan dulu ke tampilan normal.
         if (isTrophyCabinetMode)
             CloseAllUI();
+
+        // Mode Storage: Sembunyikan Stats dan Equipment, kembalikan posisi Player Panel ke kiri
+        if (characterSheetRoot != null) characterSheetRoot.SetActive(false);
+        if (playerStatsPanel != null) playerStatsPanel.SetActive(false);
+        if (equipmentPanel != null) equipmentPanel.SetActive(false);
+
+
+        if (playerPanel != null)
+        {
+            var rt = playerPanel.GetComponent<RectTransform>();
+            if (rt != null)
+            {
+                rt.anchorMin = new Vector2(0.0f, 0.5f);
+                rt.anchorMax = new Vector2(0.0f, 0.5f);
+                rt.pivot = new Vector2(0.0f, 0.5f);
+                rt.anchoredPosition = defaultPlayerPanelPos;
+            }
+        }
 
         UnsubscribeRight();
         currentStorageInventory = storageInv;
@@ -529,6 +592,10 @@ if (customPanel != null)
         if (storagePanel != null) storagePanel.SetActive(false);
         if (refrigeratorPanel != null) refrigeratorPanel.SetActive(false);
         if (trophyPanel != null) trophyPanel.SetActive(false);
+        if (characterSheetRoot != null) characterSheetRoot.SetActive(false);
+        if (playerStatsPanel != null) playerStatsPanel.SetActive(false);
+        if (equipmentPanel != null) equipmentPanel.SetActive(false);
+
 
         // ALWAYS ensure hotbar is visible when closing all UI
         if (playerHotbarContainer != null)
