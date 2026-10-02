@@ -5,6 +5,23 @@ Semua perubahan penting pada proyek ini oleh Rafi akan dicatat di halaman ini.
 ## - 2026-10-02
 
 ### Ditambahkan (Added)
+- **Restorasi Penataan Objek Indoor & Pemulihan Posisi Lampu Gantung**:
+  - **Pemulihan Posisi Lentera Gantung Workshop ([`ShelterLantern`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Prefabs/Compound/CraftingShelter_Stylized.prefab))**:
+    - Memasang balok kayu penopang atap tengah (`Rafter_Center` pada `LocalPos: (0.00, 2.60, 0.00)`) yang miring 10° selaras dengan kanopi atap.
+    - Menghubungkan rantai lentera gantung secara kokoh langsung ke bawah balok penopang (`LocalPos: (0.00, 2.25, 0.00)`), mengeliminasi celah melayang 25 cm di udara bebas.
+  - **Koreksi & Keseimbangan Lampu Teras Depan ([`WallLamp_Porch`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Prefabs/Decorations/WallLamp_Rustic.prefab))**:
+    - Memindahkan `WallLamp_Porch` dari tengah kusen/kaca pintu masuk (`X = 20.25`) ke permukaan dinding solid kanan pintu (`(21.90, 2.10, 25.96)`).
+    - Menambahkan lentera dinding kembar simetris di sisi kiri pintu (`WallLamp_Porch_Left` pada `(19.04, 2.10, 25.96)`), menciptakan pencahayaan pintu masuk yang seimbang dan membebaskan akses jalan masuk 100%.
+  - **Eliminasi Penembusan Dinding Kulkas Dapur (`Fridge`)**:
+    - Menggeser kulkas dan rangkaian stasiun dapur (`Kitchen_Sink`, `food_prep_station`, `Kitchen_Stove`) ke arah timur (`+1.5m` pada sumbu X). Kulkas kini berada seutuhnya di sudut barat laut dalam dapur (`X = 12.08, Z = 11.75`), mengeliminasi cacat visual di mana badan kulkas menonjol 1,2 meter ke pekarangan luar barat.
+  - **Pemulihan Posisi Nakas Kamar Tidur (`SmallDrawer`)**:
+    - Memindahkan nakas kayu yang sebelumnya tercecer di lantai lorong luar kembali ke dalam kamar tidur (`BedroomZone`) tepat di samping kepala tempat tidur ([`Bed`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scenes/StagingScene.unity)) di `(31.75, 0.44, 19.49)`.
+  - **Relokasi & Kalibrasi Kamera Trophy Cabinet (`TrophyCabinetSystem`)**:
+    - Menyelaraskan rak piala 12 snap point ke dinding barat kamar tidur (`(22.85, 0.875, 23.50)`) menghadap ke dalam ruangan.
+    - Menata ulang kamera First-Person `TrophyCamera` di `(25.45, 1.45, 23.50)` menghadap langsung ke rak piala tanpa terhalang dinding partisi.
+  - **Penyelarasan Peti Logistik Tengah (`TestChest`)**:
+    - Memindahkan peti penyimpanan lorong tengah dari tengah koridor pejalan kaki ke dinding selatan lorong (`(27.20, 0.04, 13.00)`), menjamin akses sirkulasi antara kamar, dapur, dan gudang tetap lapang dan bebas halangan.
+
 - **Harmonisasi & Penyesuaian Zona Workshop Halaman Belakang (Backyard Artisan Courtyard)**:
   - Merespons penataan manual pengguna terhadap 6 objek kunci: [`CraftingShelter`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Prefabs/Compound/CraftingShelter_Stylized.prefab), [`MerchantTable_Outdoor`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Prefabs/Compound/MerchantTable_Outdoor.prefab), `StorageChest_Outdoor_1`, `GardenLamp_CraftingShelter`, `StepStone_094 (1)`, dan `HousePorch_Steps (1)`.
   - **Penyelarasan Tangga Pintu Belakang ([`HousePorch_Steps (1)`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Prefabs/Compound/CobblestonePathways.prefab))**:
