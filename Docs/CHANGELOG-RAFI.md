@@ -35,6 +35,16 @@ Semua perubahan penting pada proyek ini oleh Rafi akan dicatat di halaman ini.
   - Dukungan multi-renderer atomik: Seluruh bagian pohon (batang `Trunk` dan seluruh bola daun `Canopy`) memudar secara serempak dan halus (*fade alpha* ke 0.22) saat berada di antara kamera dan karakter pemain.
   - Pemulihan instan & bebas memory leak: Saat pemain keluar dari balik pohon, seluruh material pohon kembali ke material opaque asli (`Mat_Tree_Trunk`, `Mat_Tree_Leaf_Oak`, `Mat_Tree_Leaf_Pine`) dengan dukungan SRP Batcher penuh.
 
+### Diperbaiki (Fixed)
+- **Material Hilang / Berwarna Pink pada `CobblestonePathways`**:
+  - Investigasi menemukan bahwa seluruh 106 MeshRenderer batu pijakan pekarangan (`CentralCurvedSpine`, `Branch_ScreenLeft_GardenWell`, `Branch_ScreenRight_CampfirePond`, dan `HousePorch_Steps`) memiliki slot material kosong (`null`), sehingga Unity merendernya dengan warna error magenta/pink bawaan.
+  - Mengalokasikan material Stylized URP Lit secara harmonis ke seluruh 106 batu:
+    - [`Mat_Cobblestone_Warm`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Materials/Environment/Mat_Cobblestone_Warm.mat) (57 batu): Nada batu kali hangat alami sebagai warna utama jalur.
+    - [`Mat_Campfire_Stone`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Materials/Environment/Mat_Campfire_Stone.mat) (27 batu): Nada abu-abu sedang untuk variasi visual realistis.
+    - [`Mat_Cobblestone_Dark`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Materials/Environment/Mat_Cobblestone_Dark.mat) (22 batu): Aksen bebatuan gelap dan undakan teras rumah (`Step_Bottom` dan `Step_Top`).
+  - Mengupdate aset prefab [**`CobblestonePathways.prefab`**](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Prefabs/Compound/CobblestonePathways.prefab) dan menyimpan scene [`StagingScene.unity`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scenes/StagingScene.unity).
+  - Melakukan audit menyeluruh ke 1.871 renderer di scene: 100% renderer kini bebas dari material null / pink shader.
+
 ## - 2026-10-01
 
 ### Ditambahkan (Added)
