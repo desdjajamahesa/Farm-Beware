@@ -236,6 +236,7 @@ GameObject:
   m_Component:
   - component: {fileID: 3100888430948118935}
   - component: {fileID: 4253603683991959930}
+  - component: {fileID: 8000933750209070541}
   m_Layer: 12
   m_Name: Tree_Stylized_Pine
   m_TagString: Untagged
@@ -286,6 +287,34 @@ MonoBehaviour:
   - {fileID: 8540556059696950572}
   - {fileID: 7156625724454143310}
   hideAdditionalRenderersOnFade: 0
+--- !u!205 &8000933750209070541
+LODGroup:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4179028939523009914}
+  serializedVersion: 2
+  m_LocalReferencePoint: {x: 0, y: 3.55, z: 0}
+  m_Size: 7.1
+  m_FadeMode: 1
+  m_AnimateCrossFading: 1
+  m_LastLODIsBillboard: 0
+  m_LODs:
+  - screenRelativeHeight: 0.25
+    fadeTransitionWidth: 0.5
+    renderers:
+    - renderer: {fileID: 6561318958536481439}
+    - renderer: {fileID: 638978975792176041}
+    - renderer: {fileID: 8540556059696950572}
+    - renderer: {fileID: 7156625724454143310}
+  - screenRelativeHeight: 0.05
+    fadeTransitionWidth: 0.5
+    renderers:
+    - renderer: {fileID: 6561318958536481439}
+    - renderer: {fileID: 638978975792176041}
+    - renderer: {fileID: 8540556059696950572}
+  m_Enabled: 1
 --- !u!1 &5403715367293642926
 GameObject:
   m_ObjectHideFlags: 0

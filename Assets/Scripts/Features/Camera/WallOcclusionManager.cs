@@ -74,6 +74,10 @@ namespace FeaturesCamera
         [SerializeField] private List<RoomOcclusionTrigger> roomTriggers = new List<RoomOcclusionTrigger>();
         public List<RoomOcclusionTrigger> RoomTriggers => roomTriggers;
 
+        [Header("Camera Proximity Occlusion")]
+        [Tooltip("Radius around camera to detect penetrating or nearby foliage/occluders")]
+        [SerializeField] private float cameraProximityRadius = 2.0f;
+
         [Header("Debug")]
         [SerializeField] private bool debugDrawRays = false;
 
@@ -83,6 +87,7 @@ namespace FeaturesCamera
         private readonly List<WallOccluder> toRemove = new List<WallOccluder>();
         private readonly Dictionary<WallOccluder, float> lastOccludedTime = new Dictionary<WallOccluder, float>();
         private readonly RaycastHit[] hitsBuffer = new RaycastHit[32];
+        private readonly Collider[] cameraProximityBuffer = new Collider[16];
 
         private float lastCheckTime = 0f;
 
@@ -252,48 +257,83 @@ namespace FeaturesCamera
                         if (occluder == null) occluder = col.GetComponentInParent<WallOccluder>();
                         if (occluder != null)
                         {
-                            if (occluder.Group != null)
-                            {
-                                if (occluder.Group.occluders != null)
-                                {
-                                    var members = occluder.Group.occluders;
-                                    for (int m = 0; m < members.Count; m++)
-                                    {
-                                        if (members[m] != null)
-                                        {
-                                            newOccluding.Add(members[m]);
-                                        }
-                                    }
-                                }
-
-                                if (occluder.Group.linkedGroups != null)
-                                {
-                                    for (int lg = 0; lg < occluder.Group.linkedGroups.Count; lg++)
-                                    {
-                                        var linked = occluder.Group.linkedGroups[lg];
-                                        if (linked != null && linked.occluders != null)
-                                        {
-                                            for (int m = 0; m < linked.occluders.Count; m++)
-                                            {
-                                                if (linked.occluders[m] != null)
-                                                {
-                                                    newOccluding.Add(linked.occluders[m]);
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                            else
-                            {
-                                newOccluding.Add(occluder);
-                            }
+                            RegisterOccluder(occluder);
                         }
                     }
                 }
             }
 
+            // 2. Camera proximity check: detect penetrating or overhead foliage geometry (zero GC allocations)
+            if (cameraProximityRadius > 0.05f)
+            {
+                int camHitCount = Physics.OverlapSphereNonAlloc(
+                    camPos,
+                    cameraProximityRadius,
+                    cameraProximityBuffer,
+                    occluderLayerMask.value,
+                    QueryTriggerInteraction.Collide
+                );
+
+                for (int c = 0; c < camHitCount; c++)
+                {
+                    var col = cameraProximityBuffer[c];
+                    if (col == null) continue;
+
+                    var occluder = col.GetComponent<WallOccluder>();
+                    if (occluder == null) occluder = col.GetComponentInParent<WallOccluder>();
+                    if (occluder != null)
+                    {
+                        RegisterOccluder(occluder);
+                    }
+                }
+            }
+
             UpdateOcclusionState();
+        }
+
+        /// <summary>
+        /// Registers an occluder and any of its linked groups into newOccluding without GC allocations.
+        /// </summary>
+        private void RegisterOccluder(WallOccluder occluder)
+        {
+            if (occluder == null) return;
+
+            if (occluder.Group != null)
+            {
+                if (occluder.Group.occluders != null)
+                {
+                    var members = occluder.Group.occluders;
+                    for (int m = 0; m < members.Count; m++)
+                    {
+                        if (members[m] != null)
+                        {
+                            newOccluding.Add(members[m]);
+                        }
+                    }
+                }
+
+                if (occluder.Group.linkedGroups != null)
+                {
+                    for (int lg = 0; lg < occluder.Group.linkedGroups.Count; lg++)
+                    {
+                        var linked = occluder.Group.linkedGroups[lg];
+                        if (linked != null && linked.occluders != null)
+                        {
+                            for (int m = 0; m < linked.occluders.Count; m++)
+                            {
+                                if (linked.occluders[m] != null)
+                                {
+                                    newOccluding.Add(linked.occluders[m]);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            else
+            {
+                newOccluding.Add(occluder);
+            }
         }
 
         /// <summary>

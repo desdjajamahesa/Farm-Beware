@@ -47,6 +47,7 @@ namespace FeaturesCamera
         private float currentAlpha = 1f;
         private bool isOccluding = false;
         private bool isInitialized = false;
+        private LODGroup lodGroup;
 
         public bool IsOccluding => isOccluding;
         public float CurrentAlpha => currentAlpha;
@@ -76,6 +77,9 @@ namespace FeaturesCamera
         private void Initialize()
         {
             if (isInitialized) return;
+
+            if (lodGroup == null)
+                lodGroup = GetComponent<LODGroup>() ?? GetComponentInParent<LODGroup>();
 
             // Auto-get MeshRenderer
             if (meshRenderer == null)
@@ -405,7 +409,7 @@ namespace FeaturesCamera
                         if (rend.enabled != shouldBeEnabled)
                             rend.enabled = shouldBeEnabled;
                     }
-                    else if (!rend.enabled)
+                    else if (!rend.enabled && lodGroup == null)
                     {
                         rend.enabled = true;
                     }
@@ -420,7 +424,7 @@ namespace FeaturesCamera
                     if (meshRenderer.enabled != shouldBeEnabled)
                         meshRenderer.enabled = shouldBeEnabled;
                 }
-                else if (!meshRenderer.enabled)
+                else if (!meshRenderer.enabled && lodGroup == null)
                 {
                     meshRenderer.enabled = true;
                 }
@@ -438,7 +442,7 @@ namespace FeaturesCamera
 
             if (meshRenderer != null)
             {
-                meshRenderer.enabled = true;
+                if (lodGroup == null) meshRenderer.enabled = true;
                 if (originalMaterials != null && originalMaterials.Length > 0)
                 {
                     meshRenderer.sharedMaterials = originalMaterials;
@@ -453,7 +457,7 @@ namespace FeaturesCamera
                     var rend = additionalRenderers[i];
                     if (rend != null)
                     {
-                        rend.enabled = true;
+                        if (lodGroup == null) rend.enabled = true;
                         var origMats = i < additionalOriginalMaterialsList.Count ? additionalOriginalMaterialsList[i] : null;
                         if (origMats != null && origMats.Length > 0)
                         {
@@ -471,7 +475,7 @@ namespace FeaturesCamera
         {
             if (meshRenderer != null)
             {
-                meshRenderer.enabled = true;
+                if (lodGroup == null) meshRenderer.enabled = true;
                 if (originalMaterials != null && originalMaterials.Length > 0)
                 {
                     meshRenderer.sharedMaterials = originalMaterials;
@@ -485,7 +489,7 @@ namespace FeaturesCamera
                 for (int i = 0; i < additionalRenderers.Count; i++)
                 {
                     var rend = additionalRenderers[i];
-                    if (rend != null) rend.enabled = true;
+                    if (rend != null && lodGroup == null) rend.enabled = true;
                     var origMats = i < additionalOriginalMaterialsList.Count ? additionalOriginalMaterialsList[i] : null;
                     if (rend != null && origMats != null && origMats.Length > 0)
                     {
