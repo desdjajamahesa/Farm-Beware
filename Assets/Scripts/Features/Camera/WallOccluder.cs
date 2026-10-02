@@ -163,9 +163,17 @@ namespace FeaturesCamera
                     {
                         tMat = new Material(baseTransparentMat);
                         if (orig.HasProperty("_BaseMap") && orig.GetTexture("_BaseMap") != null)
+                        {
                             tMat.SetTexture("_BaseMap", orig.GetTexture("_BaseMap"));
+                            tMat.SetTextureScale("_BaseMap", orig.GetTextureScale("_BaseMap"));
+                            tMat.SetTextureOffset("_BaseMap", orig.GetTextureOffset("_BaseMap"));
+                        }
                         else if (orig.HasProperty("_MainTex") && orig.GetTexture("_MainTex") != null)
+                        {
                             tMat.SetTexture("_MainTex", orig.GetTexture("_MainTex"));
+                            tMat.SetTextureScale("_MainTex", orig.GetTextureScale("_MainTex"));
+                            tMat.SetTextureOffset("_MainTex", orig.GetTextureOffset("_MainTex"));
+                        }
 
                         if (orig.HasProperty("_BaseColor"))
                             tMat.SetColor("_BaseColor", orig.GetColor("_BaseColor"));
@@ -209,7 +217,38 @@ namespace FeaturesCamera
                 }
                 else
                 {
-                    origMats = rend.sharedMaterials;
+                    var currentMats = rend.sharedMaterials;
+                    if (currentMats != null && currentMats.Length > 0 && currentMats[0] != null && currentMats[0].name.Contains("Transparent_"))
+                    {
+                        var cleanMats = new Material[currentMats.Length];
+                        for (int cm = 0; cm < currentMats.Length; cm++)
+                        {
+                            if (currentMats[cm] != null)
+                            {
+                                string baseName = currentMats[cm].name;
+                                int idx = baseName.IndexOf("_Transparent_");
+                                if (idx > 0) baseName = baseName.Substring(0, idx);
+#if UNITY_EDITOR
+                                var guids = UnityEditor.AssetDatabase.FindAssets($"{baseName} t:Material");
+                                for (int g = 0; g < guids.Length; g++)
+                                {
+                                    var loaded = UnityEditor.AssetDatabase.LoadAssetAtPath<Material>(UnityEditor.AssetDatabase.GUIDToAssetPath(guids[g]));
+                                    if (loaded != null && loaded.name == baseName)
+                                    {
+                                        cleanMats[cm] = loaded;
+                                        break;
+                                    }
+                                }
+#endif
+                                if (cleanMats[cm] == null) cleanMats[cm] = currentMats[cm];
+                            }
+                        }
+                        origMats = cleanMats;
+                    }
+                    else
+                    {
+                        origMats = currentMats;
+                    }
                 }
                 additionalOriginalMaterialsList.Add(origMats);
 
@@ -223,9 +262,17 @@ namespace FeaturesCamera
                     {
                         tMat = new Material(baseTransparentMat);
                         if (orig.HasProperty("_BaseMap") && orig.GetTexture("_BaseMap") != null)
+                        {
                             tMat.SetTexture("_BaseMap", orig.GetTexture("_BaseMap"));
+                            tMat.SetTextureScale("_BaseMap", orig.GetTextureScale("_BaseMap"));
+                            tMat.SetTextureOffset("_BaseMap", orig.GetTextureOffset("_BaseMap"));
+                        }
                         else if (orig.HasProperty("_MainTex") && orig.GetTexture("_MainTex") != null)
+                        {
                             tMat.SetTexture("_MainTex", orig.GetTexture("_MainTex"));
+                            tMat.SetTextureScale("_MainTex", orig.GetTextureScale("_MainTex"));
+                            tMat.SetTextureOffset("_MainTex", orig.GetTextureOffset("_MainTex"));
+                        }
                         if (orig.HasProperty("_BaseColor"))
                             tMat.SetColor("_BaseColor", orig.GetColor("_BaseColor"));
                         else if (orig.HasProperty("_Color"))
@@ -392,6 +439,32 @@ namespace FeaturesCamera
                     bool needsAddTrans = !isTrans || (rend.sharedMaterials == null || rend.sharedMaterials.Length == 0 || rend.sharedMaterials[0] != transMats[0]);
                     if (currentAlpha < 1f && needsAddTrans)
                     {
+                        // Sync dynamic textures to additional transparent materials
+                        for (int m = 0; m < Mathf.Min(origMats.Length, transMats.Length); m++)
+                        {
+                            var orig = origMats[m];
+                            var trans = transMats[m];
+                            if (orig != null && trans != null)
+                            {
+                                if (orig.HasProperty("_BaseMap") && trans.HasProperty("_BaseMap"))
+                                {
+                                    var tex = orig.GetTexture("_BaseMap");
+                                    if (tex != null && trans.GetTexture("_BaseMap") != tex)
+                                        trans.SetTexture("_BaseMap", tex);
+                                    trans.SetTextureScale("_BaseMap", orig.GetTextureScale("_BaseMap"));
+                                    trans.SetTextureOffset("_BaseMap", orig.GetTextureOffset("_BaseMap"));
+                                }
+                                else if (orig.HasProperty("_MainTex") && trans.HasProperty("_MainTex"))
+                                {
+                                    var tex = orig.GetTexture("_MainTex");
+                                    if (tex != null && trans.GetTexture("_MainTex") != tex)
+                                        trans.SetTexture("_MainTex", tex);
+                                    trans.SetTextureScale("_MainTex", orig.GetTextureScale("_MainTex"));
+                                    trans.SetTextureOffset("_MainTex", orig.GetTextureOffset("_MainTex"));
+                                }
+                            }
+                        }
+
                         rend.sharedMaterials = transMats;
                         if (i < additionalUsingTransparentList.Count)
                             additionalUsingTransparentList[i] = true;

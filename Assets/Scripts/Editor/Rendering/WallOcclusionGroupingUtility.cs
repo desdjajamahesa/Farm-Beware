@@ -55,7 +55,10 @@ namespace FarmBeware.Editor.Rendering
 
             // 1a. Configure Bedroom Mirror and Frame as additionalRenderers of the wall behind them
             var mirrorObj = GameObject.Find("_WORLD/Zones/BedroomZone/MirrorRoot/Mirror") ?? GameObject.Find("Mirror");
-            var frameObj = GameObject.Find("_WORLD/Zones/BedroomZone/MirrorRoot/Frame") ?? GameObject.Find("Frame");
+            var frameObj = GameObject.Find("_WORLD/Zones/BedroomZone/MirrorRoot/Mirror/MirrorFrame") 
+                        ?? GameObject.Find("_WORLD/Zones/BedroomZone/MirrorRoot/MirrorFrame")
+                        ?? GameObject.Find("MirrorFrame") 
+                        ?? GameObject.Find("Frame");
 
             if (mirrorObj != null)
             {
@@ -84,8 +87,20 @@ namespace FarmBeware.Editor.Rendering
                 EditorUtility.SetDirty(southGroup);
             }
 
-            // Attach Mirror & Frame renderers to wall_2m_bedroom.002's WallOccluder (South wall behind mirror)
-            var wallBehindMirror = GameObject.Find("wall_2m_bedroom.002") ?? GameObject.Find("wall_2m_bedroom.001");
+            // Clean up wall_2m_bedroom.002 if mirror/frame were mistakenly attached to it
+            var wall002 = GameObject.Find("wall_2m_bedroom.002");
+            if (wall002 != null)
+            {
+                var occ002 = wall002.GetComponent<WallOccluder>();
+                if (occ002 != null && occ002.AdditionalRenderers != null)
+                {
+                    occ002.AdditionalRenderers.RemoveAll(r => r == null || (mirrorObj != null && r.gameObject == mirrorObj) || (frameObj != null && r.gameObject == frameObj));
+                    EditorUtility.SetDirty(occ002);
+                }
+            }
+
+            // Attach Mirror & Frame renderers to wall_2m_bedroom.001's WallOccluder (South wall directly behind mirror)
+            var wallBehindMirror = GameObject.Find("wall_2m_bedroom.001") ?? GameObject.Find("wall_2m_bedroom.002");
             if (wallBehindMirror != null)
             {
                 var wallOcc = wallBehindMirror.GetComponent<WallOccluder>();
@@ -104,7 +119,7 @@ namespace FarmBeware.Editor.Rendering
                         if (fRend != null && !wallOcc.AdditionalRenderers.Contains(fRend))
                             wallOcc.AdditionalRenderers.Add(fRend);
                     }
-                    wallOcc.HideAdditionalRenderersOnFade = true;
+                    wallOcc.HideAdditionalRenderersOnFade = false; // Mirror & frame fade to transparent with the wall
                     EditorUtility.SetDirty(wallOcc);
                 }
             }
