@@ -5,6 +5,12 @@ Semua perubahan penting pada proyek ini oleh Rafi akan dicatat di halaman ini.
 ## - 2026-10-02
 
 ### Ditambahkan (Added)
+- **Integrasi & Penggabungan Fitur dari `Bhaskoro-branch` (Merge `Bhaskoro-branch` ke `Sprint-branch`)**:
+  - Dokumentasi terpisah dibuat pada [`Docs/CHANGELOG-BHASKORO.md`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Docs/CHANGELOG-BHASKORO.md).
+  - Integrasi Multi-Slot Save/Load System modular (`SaveSystemManager`, `SaveSystemUI`, `SaveStationInteractable`, `GameSaveData`).
+  - Integrasi Overhaul Stylized Fantasy Main Menu & Pause Menu (`MainMenuScene.unity`, `MainMenuUI.prefab`, `PauseMenuUI.prefab`, animators, dan tekstur).
+  - Rekonsiliasi konflik cerdas: Melindungi scene pekarangan homestead, 16 petak lahan, dan tree occluder via scene grafting tanpa regresi; mencegah bug kritis `m_TimeScale: 0` pada `ProjectSettings/TimeManager.asset`; mengintegrasikan sistem save/load combat dengan arsitektur `WaveProgressionEngine`.
+  - Pembersihan 38 file scratch/backup sementara dari root direktori.
 - **Integrasi & Penggabungan Fitur dari `branch-roi-1` (Merge `branch-roi-1` ke `Sprint-branch`)**:
   - Rekonsiliasi konflik scene [`StagingScene.unity`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scenes/StagingScene.unity) menggunakan strategi *Scene Reconstruction & Prefab Grafting* di Unity Editor.
   - Integrasi struktur kompleks pekarangan (Homestead Compound Yard): Pagar luar perimeter [`HomesteadPerimeter`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Prefabs/Compound/HomesteadPerimeter.prefab) dengan gerbang utara, jalur setapak bebatuan [`CobblestonePathways`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Prefabs/Compound/CobblestonePathways.prefab), model sumur air pekarangan timur [`WaterWell`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Prefabs/Compound/WaterWell.prefab), area relaksasi api unggun luar ruangan [`RelaxationArea_Campfire`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Prefabs/Compound/RelaxationArea_Campfire.prefab) dengan skrip kelap-kelip cahaya [`CampfireLightFlicker.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Environment/CampfireLightFlicker.cs), serta pagar pembatas kebun [`GardenEnclosure`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Prefabs/Compound/GardenEnclosure.prefab) dan `GardenEnclosure_East`.
