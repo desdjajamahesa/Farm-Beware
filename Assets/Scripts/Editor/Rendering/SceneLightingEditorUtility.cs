@@ -20,10 +20,12 @@ namespace FarmBeware.Editor.Rendering
             var dnlc = Object.FindFirstObjectByType<DayNightLightingController>();
             var dnvc = Object.FindFirstObjectByType<DayNightVolumeController>();
             var hsz = Object.FindFirstObjectByType<HouseSafeZoneLighting>();
+            var outdoor = Object.FindFirstObjectByType<OutdoorLightingController>();
 
             if (dnlc != null) dnlc.ApplyPresetInstant(TimeManager.DayPhase.Day);
             if (dnvc != null) dnvc.ApplyInstant(TimeManager.DayPhase.Day);
             if (hsz != null) hsz.ApplyInstant(TimeManager.DayPhase.Day);
+            if (outdoor != null) outdoor.ApplyInstant(TimeManager.DayPhase.Day);
 
             MarkSceneDirty();
             Debug.Log("[SceneLightingEditorUtility] Pencahayaan scene diubah ke: SIANG (Day - Terang).");
@@ -35,10 +37,12 @@ namespace FarmBeware.Editor.Rendering
             var dnlc = Object.FindFirstObjectByType<DayNightLightingController>();
             var dnvc = Object.FindFirstObjectByType<DayNightVolumeController>();
             var hsz = Object.FindFirstObjectByType<HouseSafeZoneLighting>();
+            var outdoor = Object.FindFirstObjectByType<OutdoorLightingController>();
 
             if (dnlc != null) dnlc.ApplyPresetInstant(TimeManager.DayPhase.Night);
             if (dnvc != null) dnvc.ApplyInstant(TimeManager.DayPhase.Night);
             if (hsz != null) hsz.ApplyInstant(TimeManager.DayPhase.Night);
+            if (outdoor != null) outdoor.ApplyInstant(TimeManager.DayPhase.Night);
 
             MarkSceneDirty();
             Debug.Log("[SceneLightingEditorUtility] Pencahayaan scene diubah ke: MALAM (Night - Preview).");
@@ -67,6 +71,9 @@ namespace FarmBeware.Editor.Rendering
                     break;
                 }
             }
+
+            var outdoor = Object.FindFirstObjectByType<OutdoorLightingController>();
+            if (outdoor != null) outdoor.ApplyInstant(TimeManager.DayPhase.Day);
 
             MarkSceneDirty();
             Debug.Log("[SceneLightingEditorUtility] Mode WORK LIGHT aktif: Kabut dinonaktifkan & ambient diterangkan untuk mempermudah penataan objek.");
