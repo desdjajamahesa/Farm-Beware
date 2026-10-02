@@ -79,3 +79,6 @@ crashlytics-build.properties
 /[Aa]ssets/[Ss]creenshots.meta
 /[Aa]ssets/_Recovery/
 /[Aa]ssets/_Recovery.meta
+
+# Scratch and temporary tools
+/scratch/
