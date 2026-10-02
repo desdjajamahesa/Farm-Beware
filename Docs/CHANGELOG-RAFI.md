@@ -5,6 +5,14 @@ Semua perubahan penting pada proyek ini oleh Rafi akan dicatat di halaman ini.
 ## - 2026-10-02
 
 ### Ditambahkan (Added)
+- **Perluasan Pagar Pekarangan & Penataan Rumah di Tengah (Centered House & Expanded Compound)**:
+  - Memperbesar dimensi batas pekarangan [`HomesteadPerimeter`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Prefabs/Compound/HomesteadPerimeter.prefab) dari semula `34.8m x 47.7m` menjadi `42.8m x 66.7m` (X: [0.0, 42.0], Z: [-17.0, 48.0]).
+  - Rumah kini berada tepat di tengah-tengah compound (*perfect symmetry*): kedalaman pekarangan depan = 23.2m, kedalaman halaman belakang (*backyard*) = 22.4m, jarak samping barat = 9.5m, dan jarak samping timur = 10.5m.
+  - Seluruh elemen depan (16 plot sawah, kolam alami, crafting shelter, sumur, api unggun, dan 106 batu pijakan) tetap aman dan utuh tanpa regresi.
+  - Memindahkan seluruh pohon dari depan gerbang utama (area depan kini bersih dan lega) dan melipatgandakan jumlah pohon dari 13 menjadi 28 pohon (14 Oak & 14 Pine).
+  - Distribusi pohon baru: 5 pohon di sayap barat, 5 pohon di sayap timur, dan 18 pohon membingkai halaman belakang serta benteng hutan selatan.
+  - 100% pohon terintegrasi dengan komponen [`WallOccluder`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Camera/WallOccluder.cs) pada Layer 12 (`Wall`) untuk transparansi kamera otomatis.
+  - Penyesuaian batas compound pada [`NightBrawlManager.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Combat/NightBrawlManager.cs) (`IsInsideCompound`) dan penambahan sektor serangan monster dari hutan belakang (Sektor 3 & 4).
 - **Integrasi & Penggabungan Fitur dari `Bhaskoro-branch` (Merge `Bhaskoro-branch` ke `Sprint-branch`)**:
   - Dokumentasi terpisah dibuat pada [`Docs/CHANGELOG-BHASKORO.md`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Docs/CHANGELOG-BHASKORO.md).
   - Integrasi Multi-Slot Save/Load System modular (`SaveSystemManager`, `SaveSystemUI`, `SaveStationInteractable`, `GameSaveData`).
