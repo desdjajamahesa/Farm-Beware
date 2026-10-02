@@ -5,7 +5,31 @@ Semua perubahan penting pada proyek ini oleh Rafi akan dicatat di halaman ini.
 ## - 2026-10-02
 
 ### Ditambahkan (Added)
-- **Overhaul Redesain Tata Letak Area Luar Pekarangan (Master Outdoor Compound Redesign)**:
+- **Harmonisasi & Penyesuaian Zona Workshop Halaman Belakang (Backyard Artisan Courtyard)**:
+  - Merespons penataan manual pengguna terhadap 6 objek kunci: [`CraftingShelter`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Prefabs/Compound/CraftingShelter_Stylized.prefab), [`MerchantTable_Outdoor`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Prefabs/Compound/MerchantTable_Outdoor.prefab), `StorageChest_Outdoor_1`, `GardenLamp_CraftingShelter`, `StepStone_094 (1)`, dan `HousePorch_Steps (1)`.
+  - **Penyelarasan Tangga Pintu Belakang ([`HousePorch_Steps (1)`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Prefabs/Compound/CobblestonePathways.prefab))**:
+    - Membersihkan duplikasi hierarki nested ganda dari hasil salinan manual.
+    - Menyelaraskan posisi anak tangga batu dua tingkat (`Step_Top` dan `Step_Bottom`) tepat presisi di tengah pintu belakang dapur (`door_kitchen.001` pada `X = 13.27, Z = 5.26`).
+    - Membersihkan duplikasi serupa pada tangga pintu depan utama.
+  - **Jalur Setapak Bebatuan Baru Halaman Belakang (`Branch_Backyard_Workshop`)**:
+    - Memisahkan 20+ batu pijakan yang tercecer di cabang lain ke cabang terdedikasi `CobblestonePathways/Branch_Backyard_Workshop`.
+    - Merancang ulang jalur ganda organik yang mengalir mulus mulai dari kaki tangga pintu belakang (`StepStone_094 (1)` pada `(12.75, 0.03, 3.75)`) meliuk alami menuju teras depan [`CraftingShelter`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Prefabs/Compound/CraftingShelter_Stylized.prefab) di `(3.74, 0.0, -7.52)`.
+    - Menambahkan cabang bebatuan penghubung khusus menuju lapak dagang [`MerchantTable_Outdoor`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Prefabs/Compound/MerchantTable_Outdoor.prefab).
+    - Menghilangkan *collider* pada bebatuan jalur untuk mencegah tabrakan/tersangkutnya navigasi karakter.
+  - **Restrukturisasi Transform & Material Meja Dagang ([`MerchantTable_Outdoor`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Prefabs/Compound/MerchantTable_Outdoor.prefab))**:
+    - Memindahkan root transform [`MerchantTable_Outdoor`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Prefabs/Compound/MerchantTable_Outdoor.prefab) langsung ke koordinat visual `(6.42, 0.0, -10.98)` dan mereset seluruh *local offsets* kaki serta daun meja ke posisi nol yang bersih.
+    - Memperbarui material visual dari *default grey Lit* menjadi tekstur kayu hangat [`Mat_Wood.mat`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Materials/Kitchen/Mat_Wood.mat) serta taplak kain mewah [`Mat_Decor_CarpetSquare.mat`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Materials/Furniture/Mat_Decor_CarpetSquare.mat).
+    - Memasang komponen `BoxCollider` fisik berukuran proporsional.
+  - **Penyelarasan Peti Logistik & Lampu Taman**:
+    - Memindahkan parent `OutdoorWorkshopStorage` langsung ke koordinat `(2.89, 0.0, -3.16)` sehingga `StorageChest_Outdoor_1` memiliki *local transform* nol yang rapi, dan menambahkan `BoxCollider` interaksi.
+    - Mengatur posisi `GardenLamp_CraftingShelter` di `(2.09, 0.0, -4.76)` sebagai penerang transisi antara peti dan gubuk workshop.
+    - Menghapus lampu yatim piatu tak sengaja di koordinat `(0, 0, 0)` yang menembus pagar barat.
+  - **Pengecatan Alami Permukaan Tanah (Terrain Splatmap Painting)**:
+    - Mengecat lapisan tanah organik lembut ([`TL_DirtPath`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Terrain/New%20Terrain%201.asset)) di sepanjang jalur setapak belakang dari pintu dapur hingga ke teras workshop.
+    - Membentuk area tanah lapang (*artisan clearing*) bergradasi halus di bawah [`CraftingShelter`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Prefabs/Compound/CraftingShelter_Stylized.prefab), lapak [`MerchantTable_Outdoor`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Prefabs/Compound/MerchantTable_Outdoor.prefab), dan sudut peti logistik.
+  - **Regenerasi NavMesh & Baking**:
+    - Melakukan re-bake NavMesh scene secara penuh untuk memastikan pergerakan AI dan pemain di area halaman belakang bebas hambatan.
+
   - Dokumen master plan level design lengkap disimpan pada [`Docs/outdoor_redesign_plan.md`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Docs/outdoor_redesign_plan.md) (disetujui oleh pengguna).
   - **Zona 2 (Social Hub - Focal Point Sentral)**:
     - Merelokasi [`RelaxationArea_Campfire`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Prefabs/Compound/RelaxationArea_Campfire.prefab) tepat di titik tengah poros pekarangan `(20.5, 0.0, 35.5)`.
