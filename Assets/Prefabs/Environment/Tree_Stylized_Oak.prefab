@@ -9,7 +9,8 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 8535672318365237807}
-  m_Layer: 0
+  - component: {fileID: 534629514737749466}
+  m_Layer: 12
   m_Name: Tree_Stylized_Oak
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -35,6 +36,30 @@ Transform:
   - {fileID: 6363362864682511143}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &534629514737749466
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2441256669486582447}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ef61ab698c979384f80e6ffdbb85087e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FeaturesCamera.WallOccluder
+  transparentAlpha: 0.22
+  fadeSpeed: 6
+  meshRenderer: {fileID: 0}
+  originalMaterial: {fileID: 0}
+  transparentMaterial: {fileID: 0}
+  group: {fileID: 0}
+  additionalRenderers:
+  - {fileID: 6020505181157245530}
+  - {fileID: 2273621626171564423}
+  - {fileID: 505710576542475556}
+  - {fileID: 6752042783212279608}
+  hideAdditionalRenderersOnFade: 0
 --- !u!1 &4701168758553647773
 GameObject:
   m_ObjectHideFlags: 0
@@ -47,7 +72,7 @@ GameObject:
   - component: {fileID: 4072156275958666481}
   - component: {fileID: 7758690877789335423}
   - component: {fileID: 6752042783212279608}
-  m_Layer: 0
+  m_Layer: 12
   m_Name: Canopy_SideB
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -159,7 +184,7 @@ GameObject:
   - component: {fileID: 3719996647548046009}
   - component: {fileID: 7646100738459294022}
   - component: {fileID: 6020505181157245530}
-  m_Layer: 0
+  m_Layer: 12
   m_Name: Trunk
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -273,7 +298,7 @@ GameObject:
   - component: {fileID: 8130834858884049649}
   - component: {fileID: 5098577846690848020}
   - component: {fileID: 505710576542475556}
-  m_Layer: 0
+  m_Layer: 12
   m_Name: Canopy_SideA
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -385,7 +410,7 @@ GameObject:
   - component: {fileID: 4120238990217736509}
   - component: {fileID: 6544593593549900231}
   - component: {fileID: 2273621626171564423}
-  m_Layer: 0
+  m_Layer: 12
   m_Name: Canopy_Main
   m_TagString: Untagged
   m_Icon: {fileID: 0}
