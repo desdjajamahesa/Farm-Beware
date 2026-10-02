@@ -18,10 +18,38 @@ namespace FeaturesCombat
 
         [Header("Arena Center & Spawn Bounds")]
         [SerializeField] private Vector3 arenaCenter = new Vector3(21f, 0.5f, 36f);
-#pragma warning disable 0414
-        [SerializeField] private float spawnRadiusMin = 8f;
-        [SerializeField] private float spawnRadiusMax = 15f;
-#pragma warning restore 0414
+
+        [Header("Front Gate Spawn Points")]
+        [Tooltip("Three spawn points located directly in front of the main entrance gate.")]
+        [SerializeField] private Vector3[] frontGateSpawnPoints = new Vector3[3]
+        {
+            new Vector3(16.5f, 0.08f, 53.0f), // Point 1: Left flank in front of gate
+            new Vector3(21.0f, 0.08f, 55.0f), // Point 2: Center direct approach in front of gate
+            new Vector3(25.5f, 0.08f, 53.0f)  // Point 3: Right flank in front of gate
+        };
+
+        [Tooltip("Optional transform anchors in the scene. If assigned, their positions will override frontGateSpawnPoints.")]
+        [SerializeField] private Transform[] frontGateSpawnTransforms;
+
+        [Tooltip("Horizontal scatter radius around each spawn point to prevent overlapping spawns.")]
+        [SerializeField] private float spawnScatterRadius = 1.2f;
+
+        public IReadOnlyList<Vector3> FrontGateSpawnPoints => frontGateSpawnPoints;
+        public Transform[] FrontGateSpawnTransforms => frontGateSpawnTransforms;
+        public float SpawnScatterRadius => spawnScatterRadius;
+
+        public Vector3 GetSpawnPoint(int index)
+        {
+            if (frontGateSpawnTransforms != null && index >= 0 && index < frontGateSpawnTransforms.Length && frontGateSpawnTransforms[index] != null)
+            {
+                return frontGateSpawnTransforms[index].position;
+            }
+            if (frontGateSpawnPoints != null && index >= 0 && index < frontGateSpawnPoints.Length)
+            {
+                return frontGateSpawnPoints[index];
+            }
+            return new Vector3(21.0f, 0.08f, 54.0f);
+        }
 
         [Header("Wave Progress")]
         [SerializeField] private int currentDay = 1;
@@ -286,55 +314,19 @@ namespace FeaturesCombat
         }
 
         /// <summary>
-        /// Menghasilkan titik spawn acak yang dijamin 100% berada di luar rumah (outdoor).
-        /// Terdistribusi di 5 sektor pekarangan, sayap samping, gerbang, dan hutan belakang:
-        /// 0: Gelombang penyerbu dari luar gerbang utama utara (Z: 49-56, X: 17-25)
-        /// 1: Pekarangan timur terbuka dekat sumur (X: 34-40, Z: 28-44)
-        /// 2: Lorong pekarangan barat antara pagar dan kebun/api unggun (X: 2-7.5, Z: 28-42)
-        /// 3: Pekarangan belakang rumah (Backyard) (X: 10-32, Z: -15 s.d. -2)
-        /// 4: Gelombang penyerbu dari hutan perimeter selatan belakang (X: 12-30, Z: -24 s.d. -18)
+        /// Generates a spawn position chosen from one of the 3 points located directly in front of the front gate.
+        /// Applies a slight horizontal scatter radius and snaps to the walkable NavMesh surface.
         /// </summary>
         public Vector3 CalculateRandomSpawnPoint()
         {
-            Vector3 candidate = Vector3.zero;
-            int attempts = 0;
+            int pointIndex = UnityEngine.Random.Range(0, 3);
+            Vector3 basePoint = GetSpawnPoint(pointIndex);
 
-            while (attempts < 25)
-            {
-                attempts++;
-                int sector = UnityEngine.Random.Range(0, 5);
-                switch (sector)
-                {
-                    case 0: // Sektor Utara Luar: Menyerbu masuk melalui Gerbang Utama (Z: 49 s.d. 56, X: 17 s.d. 25)
-                        candidate = new Vector3(UnityEngine.Random.Range(17f, 25f), 10f, UnityEngine.Random.Range(49f, 56f));
-                        break;
-                    case 1: // Sektor Timur: Pekarangan terbuka di timur (X: 34f s.d. 40f, Z: 28f s.d. 44f)
-                        candidate = new Vector3(UnityEngine.Random.Range(34f, 40f), 10f, UnityEngine.Random.Range(28f, 44f));
-                        break;
-                    case 2: // Sektor Barat: Lorong barat dekat kebun (X: 2.0f s.d. 7.5f, Z: 28f s.d. 42f)
-                        candidate = new Vector3(UnityEngine.Random.Range(2.0f, 7.5f), 10f, UnityEngine.Random.Range(28f, 42f));
-                        break;
-                    case 3: // Sektor Halaman Belakang (Backyard): Area terbuka di belakang rumah (X: 10f s.d. 32f, Z: -15f s.d. -2f)
-                        candidate = new Vector3(UnityEngine.Random.Range(10f, 32f), 10f, UnityEngine.Random.Range(-15f, -2f));
-                        break;
-                    case 4: // Sektor Hutan Selatan: Menyerbu dari luar pagar belakang (X: 12f s.d. 30f, Z: -24f s.d. -18f)
-                        candidate = new Vector3(UnityEngine.Random.Range(12f, 30f), 10f, UnityEngine.Random.Range(-24f, -18f));
-                        break;
-                }
+            // Slight scatter offset to prevent simultaneous spawns from clumping on the same exact coordinate
+            Vector2 scatter = UnityEngine.Random.insideUnitCircle * spawnScatterRadius;
+            Vector3 candidate = basePoint + new Vector3(scatter.x, 0f, scatter.y);
+            candidate.y += 10f; // Elevate for ground raycast
 
-                if (!IsInsideHouse(candidate))
-                {
-                    break;
-                }
-            }
-
-            // Fallback deterministik jika anomali
-            if (IsInsideHouse(candidate))
-            {
-                candidate = new Vector3(21.0f, 10f, 36.0f); // Titik tengah pekarangan depan
-            }
-
-            // Raycast ke tanah agar menempel tepat di permukaan terrain
             Vector3 finalPos = candidate;
             if (Physics.Raycast(candidate, Vector3.down, out RaycastHit hit, 30f))
             {
@@ -342,11 +334,11 @@ namespace FeaturesCombat
             }
             else
             {
-                finalPos.y = 0.5f;
+                finalPos.y = basePoint.y;
             }
 
-            // Snap presisi ke NavMesh walkable area terdekat
-            if (NavMesh.SamplePosition(finalPos, out NavMeshHit navHit, 6f, NavMesh.AllAreas))
+            // Snap precisely to nearest walkable NavMesh area
+            if (NavMesh.SamplePosition(finalPos, out NavMeshHit navHit, 4f, NavMesh.AllAreas))
             {
                 return navHit.position;
             }
@@ -566,6 +558,17 @@ namespace FeaturesCombat
                         Destroy(enemy.gameObject);
                     }
                 }
+            }
+        }
+
+        private void OnDrawGizmosSelected()
+        {
+            Gizmos.color = new Color(1f, 0.35f, 0.1f, 0.85f);
+            for (int i = 0; i < 3; i++)
+            {
+                Vector3 p = GetSpawnPoint(i);
+                Gizmos.DrawWireSphere(p, spawnScatterRadius);
+                Gizmos.DrawSphere(p, 0.35f);
             }
         }
     }
