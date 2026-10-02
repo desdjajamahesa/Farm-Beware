@@ -17,7 +17,7 @@ namespace FeaturesCombat
         public static NightBrawlManager Instance { get; private set; }
 
         [Header("Arena Center & Spawn Bounds")]
-        [SerializeField] private Vector3 arenaCenter = new Vector3(20f, 0.5f, 30f);
+        [SerializeField] private Vector3 arenaCenter = new Vector3(21f, 0.5f, 36f);
 #pragma warning disable 0414
         [SerializeField] private float spawnRadiusMin = 8f;
         [SerializeField] private float spawnRadiusMax = 15f;
@@ -239,11 +239,11 @@ namespace FeaturesCombat
 
         /// <summary>
         /// Mengecek apakah sebuah koordinat dunia berada di dalam interior rumah.
-        /// Batas rumah: X: [9.0, 32.0], Z: [4.0, 27.0].
+        /// Batas rumah: X: [9.5, 31.5], Z: [4.5, 26.5].
         /// </summary>
         public static bool IsInsideHouse(Vector3 pos)
         {
-            return pos.x >= 9.0f && pos.x <= 32.0f && pos.z >= 4.0f && pos.z <= 27.0f;
+            return pos.x >= 9.5f && pos.x <= 31.5f && pos.z >= 4.5f && pos.z <= 26.5f;
         }
 
         /// <summary>
@@ -252,10 +252,10 @@ namespace FeaturesCombat
         /// </summary>
         public static Vector3 GetNearestOutdoorPosition(Vector3 pos, float margin = 1.5f)
         {
-            float minX = 9.0f - margin;
-            float maxX = 32.0f + margin;
-            float minZ = 4.0f - margin;
-            float maxZ = 27.0f + margin;
+            float minX = 9.5f - margin;
+            float maxX = 31.5f + margin;
+            float minZ = 4.5f - margin;
+            float maxZ = 26.5f + margin;
 
             float distNorth = Mathf.Abs(maxZ - pos.z);
             float distSouth = Mathf.Abs(pos.z - minZ);
@@ -275,8 +275,21 @@ namespace FeaturesCombat
         }
 
         /// <summary>
+        /// Mengecek apakah sebuah koordinat dunia berada di dalam batas kompleks pekarangan (Homestead Perimeter).
+        /// Batas pagar: X: [4.0, 38.0], Z: [2.0, 48.0].
+        /// </summary>
+        public static bool IsInsideCompound(Vector3 pos)
+        {
+            return pos.x >= 4.0f && pos.x <= 38.0f && pos.z >= 2.0f && pos.z <= 48.0f;
+        }
+
+        /// <summary>
         /// Menghasilkan titik spawn acak yang dijamin 100% berada di luar rumah (outdoor).
-        /// Memilih dari 4 sektor outdoor di sekitar kebun dan pekarangan, lalu memproyeksikannya ke permukaan tanah.
+        /// Terdistribusi di 4 sektor pekarangan dan luar gerbang:
+        /// 0: Gelombang penyerbu dari luar gerbang utama utara (Z: 49-56, X: 17-25)
+        /// 1: Pekarangan timur terbuka dekat sumur (X: 32-36.5, Z: 32-44)
+        /// 2: Lorong pekarangan barat antara pagar dan kebun/api unggun (X: 5.5-7.5, Z: 32-42)
+        /// 3: Plaza halaman selatan depan teras rumah (X: 18-24, Z: 29.5-33.5)
         /// </summary>
         public Vector3 CalculateRandomSpawnPoint()
         {
@@ -289,17 +302,17 @@ namespace FeaturesCombat
                 int sector = UnityEngine.Random.Range(0, 4);
                 switch (sector)
                 {
-                    case 0: // Sektor Utara: Pekarangan & Perkebunan Jagung/Ubi (Z: 33 s.d. 44, X: 12 s.d. 30)
-                        candidate = new Vector3(UnityEngine.Random.Range(12f, 30f), 10f, UnityEngine.Random.Range(33f, 44f));
+                    case 0: // Sektor Utara Luar: Menyerbu masuk melalui Gerbang Utama (Z: 49 s.d. 56, X: 17 s.d. 25)
+                        candidate = new Vector3(UnityEngine.Random.Range(17f, 25f), 10f, UnityEngine.Random.Range(49f, 56f));
                         break;
-                    case 1: // Sektor Timur: Rimba Liar (X: 34 s.d. 44, Z: 10 s.d. 32)
-                        candidate = new Vector3(UnityEngine.Random.Range(34f, 44f), 10f, UnityEngine.Random.Range(10f, 32f));
+                    case 1: // Sektor Timur: Pekarangan terbuka di timur sumur (X: 32f s.d. 36.5f, Z: 32f s.d. 44f)
+                        candidate = new Vector3(UnityEngine.Random.Range(32f, 36.5f), 10f, UnityEngine.Random.Range(32f, 44f));
                         break;
-                    case 2: // Sektor Barat: Kebun Buah Luar Garasi (X: 2 s.d. 8, Z: 12 s.d. 28)
-                        candidate = new Vector3(UnityEngine.Random.Range(2f, 8f), 10f, UnityEngine.Random.Range(12f, 28f));
+                    case 2: // Sektor Barat: Lorong barat dekat pagar (X: 5.5f s.d. 7.5f, Z: 32f s.d. 42f)
+                        candidate = new Vector3(UnityEngine.Random.Range(5.5f, 7.5f), 10f, UnityEngine.Random.Range(32f, 42f));
                         break;
-                    case 3: // Sektor Selatan: Hutan Belakang (X: 12 s.d. 30, Z: -2 s.d. 3.5)
-                        candidate = new Vector3(UnityEngine.Random.Range(12f, 30f), 10f, UnityEngine.Random.Range(-2f, 3.5f));
+                    case 3: // Sektor Selatan: Plaza halaman depan teras (X: 18f s.d. 24f, Z: 29.5f s.d. 33.5f)
+                        candidate = new Vector3(UnityEngine.Random.Range(18f, 24f), 10f, UnityEngine.Random.Range(29.5f, 33.5f));
                         break;
                 }
 
@@ -312,7 +325,7 @@ namespace FeaturesCombat
             // Fallback deterministik jika anomali
             if (IsInsideHouse(candidate))
             {
-                candidate = new Vector3(21.5f, 10f, 38f); // Jalur utara perkebunan
+                candidate = new Vector3(21.0f, 10f, 36.0f); // Titik tengah pekarangan depan
             }
 
             // Raycast ke tanah agar menempel tepat di permukaan terrain

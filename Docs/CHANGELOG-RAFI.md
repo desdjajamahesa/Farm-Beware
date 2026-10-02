@@ -2,6 +2,17 @@
 
 Semua perubahan penting pada proyek ini oleh Rafi akan dicatat di halaman ini.
 
+## - 2026-10-02
+
+### Ditambahkan (Added)
+- **Integrasi & Penggabungan Fitur dari `branch-roi-1` (Merge `branch-roi-1` ke `Sprint-branch`)**:
+  - Rekonsiliasi konflik scene [`StagingScene.unity`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scenes/StagingScene.unity) menggunakan strategi *Scene Reconstruction & Prefab Grafting* di Unity Editor.
+  - Integrasi struktur kompleks pekarangan (Homestead Compound Yard): Pagar luar perimeter [`HomesteadPerimeter`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Prefabs/Compound/HomesteadPerimeter.prefab) dengan gerbang utara, jalur setapak bebatuan [`CobblestonePathways`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Prefabs/Compound/CobblestonePathways.prefab), model sumur air pekarangan timur [`WaterWell`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Prefabs/Compound/WaterWell.prefab), area relaksasi api unggun luar ruangan [`RelaxationArea_Campfire`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Prefabs/Compound/RelaxationArea_Campfire.prefab) dengan skrip kelap-kelip cahaya [`CampfireLightFlicker.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Environment/CampfireLightFlicker.cs), serta pagar pembatas kebun [`GardenEnclosure`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Prefabs/Compound/GardenEnclosure.prefab) dan `GardenEnclosure_East`.
+  - Integrasi vegetasi pekarangan luar (`_WORLD/Foliage`): 13 pohon modular (8 `Tree_Stylized_Oak` dan 5 `Tree_Stylized_Pine`) yang membingkai perimeter luar pagar.
+  - Integrasi sistem Character Sheet 3 kolom pada UI: Menghubungkan [`Panel_PlayerStats`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Prefabs/UI/Panel_PlayerStats.prefab) (kolom kiri) dan [`Panel_Equipment`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Prefabs/UI/Panel_Equipment.prefab) (kolom tengah) dengan panel inventory pemain (kolom kanan) pada [`InventoryManagerUI.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Inventory/UI/InventoryManagerUI.cs) saat menekan tombol `Tab`.
+  - Penggabungan batas pekarangan compound pada [`NightBrawlManager.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Combat/NightBrawlManager.cs) (`IsInsideCompound()` dan 4 sektor spawn) yang berpadu mulus dengan mesin progresi `WaveProgressionEngine` dan `EnemyObjectPool` Rafi.
+  - Memastikan 100% fitur Rafi tetap beroperasi optimal tanpa regresi: 11 unit lampu taman Dual-Source (`OutdoorGardenLamp`), HUD indikator gelombang PvZ (`NightBrawlWaveUI`), 8 petak tanah interaktif POCO Farmland, serta pencahayaan aman Safe-Zone.
+
 ## - 2026-10-01
 
 ### Ditambahkan (Added)
