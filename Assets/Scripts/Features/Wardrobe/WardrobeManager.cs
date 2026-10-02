@@ -49,14 +49,12 @@ namespace FeaturesWardrobe
         [Tooltip("Wardrobe screen camera (untuk fallback enable/disable saja — pose diatur di scene).")]
         [SerializeField] private Camera wardrobeCamera;
 
-#pragma warning disable 0414
-        [Header("Mirror Positioning")]
-        [Tooltip("Jarak player dari permukaan cermin saat buka wardrobe.")]
-        [SerializeField] private float playerMirrorDistance = 3.5f;
+        [Header("Wardrobe Player Placement")]
+        [Tooltip("Exact world position of the player when inside wardrobe mode.")]
+        [SerializeField] private Vector3 wardrobePlayerPosition = new Vector3(27.100000381469728f, 0.040000081062316897f, 21.040000915527345f);
 
-        [Tooltip("Geser lateral player ke kiri dari sumbu cermin (meter).")]
-        [SerializeField] private float lateralShift = 0.8f;
-#pragma warning restore 0414
+        [Tooltip("Exact world rotation (Euler angles) of the player when inside wardrobe mode.")]
+        [SerializeField] private Vector3 wardrobePlayerRotation = new Vector3(0f, 180f, 0f);
 
         [Header("Animation")]
         [Tooltip("Durasi UI fade in/out (detik).")]
@@ -577,30 +575,10 @@ namespace FeaturesWardrobe
         {
             if (playerControl == null) return;
 
-            Vector3 target;
-            Quaternion facingMirror;
-
-            if (wardrobeRoot != null)
-            {
-                // Primary wardrobe pose: player stands in front of wardrobe chest, facing towards the mirror
-                target = wardrobeRoot.position + Vector3.right * 1.26f + Vector3.forward * 1.3f;
-                target.y = playerControl.transform.position.y;
-                facingMirror = Quaternion.Euler(0f, -90f, 0f);
-            }
-            else if (mirrorCamera != null && mirrorCamera.MirrorSurface != null)
-            {
-                Transform mirror = mirrorCamera.MirrorSurface;
-                float dist = playerMirrorDistance > 0.1f ? playerMirrorDistance : 1.3f;
-                float lateral = lateralShift > 0.1f ? lateralShift : 1.26f;
-                target = mirror.position + mirror.right * lateral + mirror.forward * dist;
-                target.y = playerControl.transform.position.y;
-                facingMirror = Quaternion.Euler(0f, -90f, 0f);
-            }
-            else
-            {
-                target = new Vector3(28.58f, 0.04f, 20.15f);
-                facingMirror = Quaternion.Euler(0f, -90f, 0f);
-            }
+            Vector3 target = wardrobePlayerPosition != Vector3.zero 
+                ? wardrobePlayerPosition 
+                : new Vector3(27.100000381469728f, 0.040000081062316897f, 21.040000915527345f);
+            Quaternion facingMirror = Quaternion.Euler(wardrobePlayerRotation);
 
             Rigidbody rb = playerControl.GetComponent<Rigidbody>();
             if (rb != null)
