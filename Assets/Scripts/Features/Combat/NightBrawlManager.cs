@@ -278,43 +278,47 @@ namespace FeaturesCombat
 
         /// <summary>
         /// Mengecek apakah sebuah koordinat dunia berada di dalam batas kompleks pekarangan (Homestead Perimeter).
-        /// Batas pagar: X: [4.0, 38.0], Z: [2.0, 48.0].
+        /// Batas pagar baru (42m x 65m): X: [0.0, 42.0], Z: [-17.0, 48.0].
         /// </summary>
         public static bool IsInsideCompound(Vector3 pos)
         {
-            return pos.x >= 4.0f && pos.x <= 38.0f && pos.z >= 2.0f && pos.z <= 48.0f;
+            return pos.x >= 0.0f && pos.x <= 42.0f && pos.z >= -17.0f && pos.z <= 48.0f;
         }
 
         /// <summary>
         /// Menghasilkan titik spawn acak yang dijamin 100% berada di luar rumah (outdoor).
-        /// Terdistribusi di 4 sektor pekarangan dan luar gerbang:
+        /// Terdistribusi di 5 sektor pekarangan, sayap samping, gerbang, dan hutan belakang:
         /// 0: Gelombang penyerbu dari luar gerbang utama utara (Z: 49-56, X: 17-25)
-        /// 1: Pekarangan timur terbuka dekat sumur (X: 32-36.5, Z: 32-44)
-        /// 2: Lorong pekarangan barat antara pagar dan kebun/api unggun (X: 5.5-7.5, Z: 32-42)
-        /// 3: Plaza halaman selatan depan teras rumah (X: 18-24, Z: 29.5-33.5)
+        /// 1: Pekarangan timur terbuka dekat sumur (X: 34-40, Z: 28-44)
+        /// 2: Lorong pekarangan barat antara pagar dan kebun/api unggun (X: 2-7.5, Z: 28-42)
+        /// 3: Pekarangan belakang rumah (Backyard) (X: 10-32, Z: -15 s.d. -2)
+        /// 4: Gelombang penyerbu dari hutan perimeter selatan belakang (X: 12-30, Z: -24 s.d. -18)
         /// </summary>
         public Vector3 CalculateRandomSpawnPoint()
         {
             Vector3 candidate = Vector3.zero;
             int attempts = 0;
 
-            while (attempts < 20)
+            while (attempts < 25)
             {
                 attempts++;
-                int sector = UnityEngine.Random.Range(0, 4);
+                int sector = UnityEngine.Random.Range(0, 5);
                 switch (sector)
                 {
                     case 0: // Sektor Utara Luar: Menyerbu masuk melalui Gerbang Utama (Z: 49 s.d. 56, X: 17 s.d. 25)
                         candidate = new Vector3(UnityEngine.Random.Range(17f, 25f), 10f, UnityEngine.Random.Range(49f, 56f));
                         break;
-                    case 1: // Sektor Timur: Pekarangan terbuka di timur sumur (X: 32f s.d. 36.5f, Z: 32f s.d. 44f)
-                        candidate = new Vector3(UnityEngine.Random.Range(32f, 36.5f), 10f, UnityEngine.Random.Range(32f, 44f));
+                    case 1: // Sektor Timur: Pekarangan terbuka di timur (X: 34f s.d. 40f, Z: 28f s.d. 44f)
+                        candidate = new Vector3(UnityEngine.Random.Range(34f, 40f), 10f, UnityEngine.Random.Range(28f, 44f));
                         break;
-                    case 2: // Sektor Barat: Lorong barat dekat pagar (X: 5.5f s.d. 7.5f, Z: 32f s.d. 42f)
-                        candidate = new Vector3(UnityEngine.Random.Range(5.5f, 7.5f), 10f, UnityEngine.Random.Range(32f, 42f));
+                    case 2: // Sektor Barat: Lorong barat dekat kebun (X: 2.0f s.d. 7.5f, Z: 28f s.d. 42f)
+                        candidate = new Vector3(UnityEngine.Random.Range(2.0f, 7.5f), 10f, UnityEngine.Random.Range(28f, 42f));
                         break;
-                    case 3: // Sektor Selatan: Plaza halaman depan teras (X: 18f s.d. 24f, Z: 29.5f s.d. 33.5f)
-                        candidate = new Vector3(UnityEngine.Random.Range(18f, 24f), 10f, UnityEngine.Random.Range(29.5f, 33.5f));
+                    case 3: // Sektor Halaman Belakang (Backyard): Area terbuka di belakang rumah (X: 10f s.d. 32f, Z: -15f s.d. -2f)
+                        candidate = new Vector3(UnityEngine.Random.Range(10f, 32f), 10f, UnityEngine.Random.Range(-15f, -2f));
+                        break;
+                    case 4: // Sektor Hutan Selatan: Menyerbu dari luar pagar belakang (X: 12f s.d. 30f, Z: -24f s.d. -18f)
+                        candidate = new Vector3(UnityEngine.Random.Range(12f, 30f), 10f, UnityEngine.Random.Range(-24f, -18f));
                         break;
                 }
 
