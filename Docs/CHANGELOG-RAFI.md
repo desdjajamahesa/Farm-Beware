@@ -5,6 +5,36 @@ Semua perubahan penting pada proyek ini oleh Rafi akan dicatat di halaman ini.
 ## - 2026-10-02
 
 ### Ditambahkan (Added)
+- **Overhaul Redesain Tata Letak Area Luar Pekarangan (Master Outdoor Compound Redesign)**:
+  - Dokumen master plan level design lengkap disimpan pada [`Docs/outdoor_redesign_plan.md`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Docs/outdoor_redesign_plan.md) (disetujui oleh pengguna).
+  - **Zona 2 (Social Hub - Focal Point Sentral)**:
+    - Merelokasi [`RelaxationArea_Campfire`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Prefabs/Compound/RelaxationArea_Campfire.prefab) tepat di titik tengah poros pekarangan `(20.5, 0.0, 35.5)`.
+    - Api unggun kini menjadi *Primary Visual Focal Point* yang menyambut pemain dari gerbang utama, sekaligus bertindak sebagai bundaran (*round-about*) sirkulasi ke seluruh sayap pekarangan.
+  - **Zona 1 (Production Wing - Agrikultur Terpadu)**:
+    - Memindahkan [`WaterWell`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Prefabs/Compound/WaterWell.prefab) ke bibir depan/barat kebun di `(24.0, 0.0, 31.5)` dengan bak air menghadap langsung ke arah bedengan kebun.
+    - Mengintegrasikan stasiun perkakas dan kompos `GardenToolCorner` (`(26.8, 0.0, 31.5)`) berdampingan dengan sumur air, memangkas travel distance penyiraman dan pemeliharaan 16 petak sawah.
+    - Menempatkan `Scarecrow` (`(23.5, 0.0, 39.5)`) dan `PoleLamp_Garden` tepat di gapura masuk kebun.
+  - **Zona 3 (Relaxation Sanctuary - Sudut Tenang Kolam)**:
+    - Merelokasi [`NaturalPond`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Prefabs/Compound/NaturalPond_Stylized.prefab) ke sudut kanan depan `(9.5, 0.01, 42.0)` dengan rotasi menghadap ke dalam pekarangan (dermaga kayu di `(11.7, 0.0, 42.0)` terhubung langsung dengan cabang jalan setapak).
+    - Menambahkan bangku santai kayu tepi kolam `Pond_RelaxationBench` di `(12.2, 0.0, 44.2)` menghadap air dan teratai.
+    - Menata ulang semak pelindung `Bush_Stylized` di sekeliling sudut pagar kolam.
+  - **Zona 4 (Workshop & Logistics Outpost - Depo Pertukangan)**:
+    - Menggeser [`CraftingShelter`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Prefabs/Compound/CraftingShelter_Stylized.prefab) ke arah barat `(8.5, 0.0, 27.5)` menghadap ke pekarangan timur, membebaskan ruang pandang fasad depan rumah.
+    - Menambahkan meja dagang luar ruangan [`MerchantTable_Outdoor`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Prefabs/Compound/MerchantTable_Outdoor.prefab) di `(12.0, 0.0, 27.5)`.
+    - Menambahkan tumpukan peti logistik `OutdoorWorkshopStorage` (`(6.8, 0.0, 26.5)`) untuk penyimpanan material crafting dan hasil jarahan.
+  - **Rekonfigurasi Hierarkis Jalan Setapak ([`CobblestonePathways`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Prefabs/Compound/CobblestonePathways.prefab))**:
+    - Menata ulang 106 batu pijakan menjadi jaringan jalan organik bertingkat:
+      1. *Central Spine* (2.5m lebar): Dari Gerbang Utama `(20.5, 47.5)` lurus ke selatan, melingkari bundaran *Campfire Plaza*, lalu menyambung mulus ke tangga teras rumah `(20.5, 26.4)`.
+      2. *East Branches*: Mengalir ke Gapura Kebun (9 batu) dan ke Sumur Air / Rak Perkakas (8 batu).
+      3. *West Branches*: Mengalir ke Dermaga Kolam (12 batu) dan ke Workshop Crafting (11 batu).
+    - Memperbarui prefab asset [`CobblestonePathways.prefab`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Prefabs/Compound/CobblestonePathways.prefab).
+  - **Pengecatan Terrain Splatmap & Pembersihan Noda Tanah**:
+    - Membersihkan bekas noda tanah lama di posisi awal api unggun kembali ke rumput hijau segar (`TL_Grass`).
+    - Mengecat lapisan tanah organik (`TL_DirtPath`) persis di bawah seluruh 106 batu pijakan, lingkaran *Campfire Plaza*, area sumur, workshop, dan dermaga kolam.
+  - **Distribusi Pencahayaan Dual-Source (`OutdoorGardenLamps`)**:
+    - 11 unit lampu taman ditempatkan strategis di simpul-simpul fungsional: 2 di Gerbang Utama, 2 di Teras Rumah, 2 mengapit *Campfire Plaza*, 1 di Gapura Kebun, 1 di Sumur Air, 1 di Dermaga Kolam, 1 di Workshop, dan 1 di Koridor Selatan.
+  - **NavMesh Regeneration**:
+    - Membangun ulang (*rebake*) permukaan `NavMeshSurface` di seluruh pekarangan untuk menjamin navigasi pemain, companion, dan AI musuh 100% mulus tanpa hambatan.
 - **Perluasan Pagar Pekarangan & Penataan Rumah di Tengah (Centered House & Expanded Compound)**:
   - Memperbesar dimensi batas pekarangan [`HomesteadPerimeter`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Prefabs/Compound/HomesteadPerimeter.prefab) dari semula `34.8m x 47.7m` menjadi `42.8m x 66.7m` (X: [0.0, 42.0], Z: [-17.0, 48.0]).
   - Rumah kini berada tepat di tengah-tengah compound (*perfect symmetry*): kedalaman pekarangan depan = 23.2m, kedalaman halaman belakang (*backyard*) = 22.4m, jarak samping barat = 9.5m, dan jarak samping timur = 10.5m.
