@@ -207,21 +207,27 @@ namespace FeaturesWardrobe
             if (!isInitialized || mirrorCamera == null || playerTarget == null || mirrorSurface == null)
                 return;
 
-            // Position camera at mirror surface, facing player
-            // mirrorSurface is the static mirror surface Transform (NOT this camera's transform)
-            Vector3 mirrorForward = -mirrorSurface.forward; // Cermin face ke player
-            Vector3 cameraPosition = mirrorSurface.position + mirrorForward * distanceFromMirror;
-
+            // Position camera directly on mirror surface looking into the room
+            Vector3 cameraPosition = mirrorSurface.position + mirrorSurface.forward * 0.02f;
             mirrorCamera.transform.position = cameraPosition;
 
-            // Face player (dengan tinggi bidikan minimal di atas kaki/root).
-            float aimHeight = Mathf.Max(verticalOffset, aimHeightOffset);
-            Vector3 lookTarget = playerTarget.position + Vector3.up * aimHeight;
-            Vector3 direction = (lookTarget - cameraPosition).normalized;
+            // Aim towards player center/torso
+            Vector3 lookTarget = playerTarget.position;
+            if (playerTarget.name.ToLower().Contains("head"))
+            {
+                lookTarget += Vector3.down * 0.55f;
+            }
+            else
+            {
+                lookTarget += Vector3.up * 0.85f;
+            }
 
-            // Keep camera upright (no roll) — only yaw/pitch
-            Quaternion targetRotation = Quaternion.LookRotation(direction, Vector3.up);
-            mirrorCamera.transform.rotation = targetRotation;
+            Vector3 direction = (lookTarget - cameraPosition).normalized;
+            if (direction != Vector3.zero)
+            {
+                Quaternion targetRotation = Quaternion.LookRotation(direction, Vector3.up);
+                mirrorCamera.transform.rotation = targetRotation;
+            }
         }
 
         public void SetPlayerTarget(Transform target)

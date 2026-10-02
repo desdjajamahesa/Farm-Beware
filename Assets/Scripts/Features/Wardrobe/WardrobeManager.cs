@@ -580,25 +580,25 @@ namespace FeaturesWardrobe
             Vector3 target;
             Quaternion facingMirror;
 
-            if (mirrorCamera != null && mirrorCamera.MirrorSurface != null)
+            if (wardrobeRoot != null)
+            {
+                // Primary wardrobe pose: player stands in front of wardrobe chest, facing towards the mirror
+                target = wardrobeRoot.position + Vector3.right * 1.26f + Vector3.forward * 1.3f;
+                target.y = playerControl.transform.position.y;
+                facingMirror = Quaternion.Euler(0f, -90f, 0f);
+            }
+            else if (mirrorCamera != null && mirrorCamera.MirrorSurface != null)
             {
                 Transform mirror = mirrorCamera.MirrorSurface;
-                float dist = playerMirrorDistance > 0.1f ? playerMirrorDistance : 1.8f;
-                target = mirror.position + mirror.forward * dist;
-                target.y = playerControl.transform.position.y;
-                // Hadapkan player menghadap cermin
-                facingMirror = Quaternion.LookRotation(-mirror.forward, Vector3.up);
-            }
-            else if (wardrobeRoot != null)
-            {
-                // Fallback jika mirrorSurface null
-                target = wardrobeRoot.position + Vector3.right * 1.26f + Vector3.forward * 1.3f;
+                float dist = playerMirrorDistance > 0.1f ? playerMirrorDistance : 1.3f;
+                float lateral = lateralShift > 0.1f ? lateralShift : 1.26f;
+                target = mirror.position + mirror.right * lateral + mirror.forward * dist;
                 target.y = playerControl.transform.position.y;
                 facingMirror = Quaternion.Euler(0f, -90f, 0f);
             }
             else
             {
-                target = new Vector3(26.72f, 0.1f, 23.05f);
+                target = new Vector3(28.58f, 0.04f, 20.15f);
                 facingMirror = Quaternion.Euler(0f, -90f, 0f);
             }
 
