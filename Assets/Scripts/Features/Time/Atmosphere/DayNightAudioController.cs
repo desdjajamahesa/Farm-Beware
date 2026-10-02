@@ -93,6 +93,19 @@ namespace FeaturesTime.Atmosphere
             crossfadeCoroutine = StartCoroutine(CrossfadeRoutine(newPhase == TimeManager.DayPhase.Night));
         }
 
+        public void ApplyInstant(TimeManager.DayPhase phase)
+        {
+            if (crossfadeCoroutine != null)
+            {
+                StopCoroutine(crossfadeCoroutine);
+                crossfadeCoroutine = null;
+            }
+
+            bool isNight = (phase == TimeManager.DayPhase.Night);
+            if (daySource != null) daySource.volume = (isNight || daySource.clip == null) ? 0f : maxVolume;
+            if (nightSource != null) nightSource.volume = (!isNight || nightSource.clip == null) ? 0f : maxVolume;
+        }
+
         private IEnumerator CrossfadeRoutine(bool toNight)
         {
             float targetDayVol = toNight ? 0f : maxVolume;

@@ -39,6 +39,8 @@ namespace FeaturesCombat
         public int ActiveEnemiesCount => activeEnemies.Count;
         public bool IsNightBrawlActive => isWaveInProgress;
         public Wave.WaveProgressionEngine WaveEngine => waveEngine;
+        public int CurrentWave => currentWave;
+        public int TotalWaves => totalWaves;
 
         private void Awake()
         {
@@ -381,6 +383,148 @@ namespace FeaturesCombat
             Debug.Log("[NightBrawlManager] All night brawl waves cleared! Next day transition ready.");
         }
 
+        /// <summary>
+        /// Restores complete night brawl state from save data.
+        /// </summary>
+        public void RestoreNightBrawlState(int day, int wave, int total, bool isCleared, bool isBrawlActive, List<FeaturesSaveSystem.SavedEnemyData> savedEnemies)
+        {
+            if (intermissionCoroutine != null)
+            {
+                StopCoroutine(intermissionCoroutine);
+                intermissionCoroutine = null;
+            }
+
+            // Cleanup any existing active enemies
+            foreach (var enemy in activeEnemies)
+            {
+                if (enemy != null)
+                {
+                    if (EnemyObjectPool.Instance != null) EnemyObjectPool.Instance.ReturnToPool(enemy);
+                    else Destroy(enemy.gameObject);
+                }
+            }
+            activeEnemies.Clear();
+
+            // Also clean up any orphan EnemyBase in scene
+            var allEnemies = FindObjectsByType<EnemyBase>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            foreach (var enemy in allEnemies)
+            {
+                if (enemy != null) Destroy(enemy.gameObject);
+            }
+
+            // Also clean up stray projectiles and dropped item pickups from previous sessions
+            var projectiles = FindObjectsByType<Projectiles.CombatProjectile>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            foreach (var p in projectiles)
+            {
+                if (p != null) Destroy(p.gameObject);
+            }
+
+            var pickups = FindObjectsByType<WorldItemPickup>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            foreach (var pi in pickups)
+            {
+                if (pi != null) Destroy(pi.gameObject);
+            }
+
+            currentDay = day;
+            totalWaves = total > 0 ? total : Mathf.Clamp(currentDay, 1, 5);
+            currentWave = wave;
+
+            bool isDay = TimeManager.Instance != null && TimeManager.Instance.currentPhase == TimeManager.DayPhase.Day;
+            bool hasSavedEnemies = (savedEnemies != null && savedEnemies.Count > 0);
+
+            // Check if night encounter is cleared: explicitly cleared, or night brawl inactive with no enemies, or final wave completed with no enemies
+            bool isEncounterDone = isCleared || (!isBrawlActive && !hasSavedEnemies) || (currentWave >= totalWaves && !hasSavedEnemies);
+
+            // Scenario 1: Night is cleared OR day phase
+            if (isDay || isEncounterDone)
+            {
+                isWaveInProgress = false;
+                waveEngine.EndNight();
+
+                if (TimeManager.Instance != null)
+                {
+                    TimeManager.Instance.isNightEncounterCleared = isEncounterDone;
+                }
+
+                if (CombatPhaseTrackerUI.Instance != null)
+                {
+                    CombatPhaseTrackerUI.Instance.SetEnemiesRemaining(0);
+                    if (isEncounterDone)
+                    {
+                        CombatPhaseTrackerUI.Instance.SetWaveInfo(totalWaves, totalWaves);
+                    }
+                }
+
+                var beds = FindObjectsByType<FeaturesInteraction.BedInteractable>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+                foreach (var b in beds)
+                {
+                    b?.UpdateLabel();
+                }
+                return;
+            }
+
+            // Scenario 2: It is Night and active
+            if (TimeManager.Instance != null)
+            {
+                TimeManager.Instance.isNightEncounterCleared = false;
+            }
+
+            // Are there specific active saved enemies?
+            if (hasSavedEnemies)
+            {
+                isWaveInProgress = true;
+                currentWave = Mathf.Max(1, wave);
+
+                waveEngine.RestoreNightState(currentDay, currentWave, savedEnemies.Count);
+
+                foreach (var se in savedEnemies)
+                {
+                    Vector3 pos = new Vector3(se.posX, se.posY, se.posZ);
+                    GameObject go = EnemyPrefabFactory.CreateEnemy((EnemyType)se.enemyType, pos);
+                    go.transform.rotation = Quaternion.Euler(0f, se.rotY, 0f);
+
+                    EnemyBase enemy = go.GetComponent<EnemyBase>();
+                    if (enemy != null)
+                    {
+                        enemy.currentHealth = Mathf.Clamp(se.currentHealth, 1, se.maxHealth);
+                        activeEnemies.Add(enemy);
+                        OnEnemySpawned?.Invoke(enemy);
+                    }
+                }
+
+                if (CombatPhaseTrackerUI.Instance != null)
+                {
+                    CombatPhaseTrackerUI.Instance.SetWaveInfo(currentWave, totalWaves);
+                    CombatPhaseTrackerUI.Instance.SetEnemiesRemaining(activeEnemies.Count);
+                }
+            }
+            else if (isBrawlActive && currentWave > 0 && currentWave < totalWaves)
+            {
+                // Intermission between waves: resume countdown to next wave
+                isWaveInProgress = true;
+                waveEngine.RestoreNightState(currentDay, currentWave, 0);
+
+                if (CombatPhaseTrackerUI.Instance != null)
+                {
+                    CombatPhaseTrackerUI.Instance.SetWaveInfo(currentWave, totalWaves);
+                    CombatPhaseTrackerUI.Instance.SetEnemiesRemaining(0);
+                }
+
+                intermissionCoroutine = StartCoroutine(RoutineIntermissionCountdown());
+            }
+            else
+            {
+                // Night just started from beginning
+                StartNightBrawl();
+            }
+
+            var bedsAfter = FindObjectsByType<FeaturesInteraction.BedInteractable>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            foreach (var b in bedsAfter)
+            {
+                b?.UpdateLabel();
+            }
+        }
+
         public void EndNightBrawl(bool cleanupRemaining)
         {
             if (intermissionCoroutine != null)
@@ -409,6 +553,15 @@ namespace FeaturesCombat
                     }
                 }
                 activeEnemies.Clear();
+
+                var allEnemies = FindObjectsByType<EnemyBase>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+                foreach (var enemy in allEnemies)
+                {
+                    if (enemy != null)
+                    {
+                        Destroy(enemy.gameObject);
+                    }
+                }
             }
         }
     }

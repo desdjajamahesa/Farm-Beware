@@ -41195,6 +41195,7 @@ GameObject:
   - component: {fileID: 861477378}
   - component: {fileID: 861477377}
   - component: {fileID: 861477376}
+  - component: {fileID: 861477379}
   m_Layer: 0
   m_Name: UI_Canvas
   m_TagString: Untagged
@@ -41306,6 +41307,34 @@ Canvas:
   m_SortingLayerID: 0
   m_SortingOrder: 0
   m_TargetDisplay: 0
+--- !u!114 &861477379
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 861477374}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 11174bbb3466ae6429f6a2e5cf8a32d3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FeaturesSaveSystem.SaveSystemUI
+  modalPanel: {fileID: 0}
+  cardRect: {fileID: 0}
+  saveNameInputField: {fileID: 0}
+  saveNewButton: {fileID: 0}
+  charCountText: {fileID: 0}
+  slotsContentContainer: {fileID: 0}
+  emptyStateText: {fileID: 0}
+  statusFeedbackText: {fileID: 0}
+  confirmDialogRoot: {fileID: 0}
+  confirmTitleText: {fileID: 0}
+  confirmMessageText: {fileID: 0}
+  confirmActionButton: {fileID: 0}
+  confirmActionBtnText: {fileID: 0}
+  confirmCancelButton: {fileID: 0}
+  closeButton: {fileID: 0}
+  backdropCloseButton: {fileID: 0}
 --- !u!1 &864747093
 GameObject:
   m_ObjectHideFlags: 0
@@ -72290,6 +72319,50 @@ MeshRenderer:
   m_CorrespondingSourceObject: {fileID: 8873345913108826982, guid: 8e5379054188d354daa33eb5bcd38447, type: 3}
   m_PrefabInstance: {fileID: 1299351934}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &1494902715
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1494902717}
+  - component: {fileID: 1494902716}
+  m_Layer: 0
+  m_Name: SaveSystemManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1494902716
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1494902715}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 99a05ae3eff980c4d8d6a5db9d7327ab, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FeaturesSaveSystem.SaveSystemManager
+--- !u!4 &1494902717
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1494902715}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1497365806
 GameObject:
   m_ObjectHideFlags: 0
@@ -114550,7 +114623,7 @@ GameObject:
   - component: {fileID: 1277145909}
   - component: {fileID: 6954878069516443346}
   - component: {fileID: 6954878069516443345}
-  - component: {fileID: 6954878069516443344}
+  - component: {fileID: 6954878069516443347}
   m_Layer: 0
   m_Name: Table
   m_TagString: Untagged
@@ -114558,21 +114631,6 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &6954878069516443344
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6954878069516443343}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 8477bc2d1896a554a8d1c62ff987e08e, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::FeaturesInteraction.GenericFurnitureInteractable
-  furnitureType: Bedroom Table
-  customInteractMessage: 
-  hasUsableFunction: 0
 --- !u!114 &6954878069516443345
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -114585,7 +114643,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ece06dd238bd35446a7735224afd633f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::FeaturesInteraction.WorldLabel
-  displayName: Table
+  displayName: Save / Load
 --- !u!114 &6954878069516443346
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -114599,6 +114657,19 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::FeaturesInteraction.Highlightable
   highlightMaterial: {fileID: 2100000, guid: be784b17b7fb42547a1ec9b4e3f88c21, type: 2}
+--- !u!114 &6954878069516443347
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6954878069516443343}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0f9906af96aac0a468af96ec7994b9c0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FeaturesSaveSystem.SaveStationInteractable
+  promptLabel: Save / Load
 --- !u!1 &6984485321878257698
 GameObject:
   m_ObjectHideFlags: 0
@@ -115467,3 +115538,4 @@ SceneRoots:
   - {fileID: 1875881880}
   - {fileID: 1831590921}
   - {fileID: 1461053478}
+  - {fileID: 1494902717}

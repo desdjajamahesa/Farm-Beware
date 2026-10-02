@@ -122,7 +122,7 @@ namespace PlayerUI
 
             while (elapsed < duration)
             {
-                elapsed += Time.deltaTime;
+                elapsed += Time.unscaledDeltaTime;
                 float progress = elapsed / duration;
 
                 // Punch scale bounce
@@ -181,7 +181,7 @@ namespace PlayerUI
 
             while (elapsed < duration)
             {
-                elapsed += Time.deltaTime;
+                elapsed += Time.unscaledDeltaTime;
                 float progress = elapsed / duration;
 
                 if (progress < 0.2f)

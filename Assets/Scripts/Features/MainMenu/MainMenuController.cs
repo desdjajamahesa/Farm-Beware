@@ -123,6 +123,10 @@ public class MainMenuController : MonoBehaviour
             var t = transform.Find("GameTitle");
             if (t != null) titleRoot = t.gameObject;
         }
+        if (titleCG == null && titleRoot != null)
+        {
+            titleCG = titleRoot.GetComponent<CanvasGroup>() ?? titleRoot.AddComponent<CanvasGroup>();
+        }
         if (titleText == null && titleRoot != null)
         {
             titleText = titleRoot.GetComponent<TextMeshProUGUI>();
@@ -328,6 +332,13 @@ public class MainMenuController : MonoBehaviour
         if (FeaturesEconomy.MerchantShopUI.Instance != null && FeaturesEconomy.MerchantShopUI.Instance.IsOpen)
         {
             FeaturesEconomy.MerchantShopUI.Instance.CloseShop();
+            closedAny = true;
+        }
+
+        // 7. Save System UI
+        if (FeaturesSaveSystem.SaveSystemUI.Instance != null && FeaturesSaveSystem.SaveSystemUI.Instance.IsOpen)
+        {
+            FeaturesSaveSystem.SaveSystemUI.Instance.Close();
             closedAny = true;
         }
 
@@ -743,25 +754,30 @@ public class MainMenuController : MonoBehaviour
         if (titleRoot != null) titleRoot.SetActive(active);
         if (backgroundOverlay != null) backgroundOverlay.gameObject.SetActive(active);
         if (titleText != null) titleText.gameObject.SetActive(active);
-        var pumpkin = transform.Find("PumpkinHead");
-        if (pumpkin != null) pumpkin.gameObject.SetActive(active);
-        var eyes = transform.Find("CornfieldLurkerEyes");
-        if (eyes != null) eyes.gameObject.SetActive(active);
+
     }
 
     private void UpdateStartButtonLabel()
     {
-        bool isGameplay = SceneManager.GetActiveScene().name != "MainMenuScene";
+        bool isMainMenu = SceneManager.GetActiveScene().name == "MainMenuScene";
 
         if (startButton != null)
         {
             var txt = startButton.GetComponentInChildren<TextMeshProUGUI>();
             if (txt != null)
             {
-                txt.text = isGameplay ? "RESUME" : "START";
-                txt.enableAutoSizing = true;
-                txt.fontSizeMin = 24f;
-                txt.fontSizeMax = 46f;
+                if (isMainMenu)
+                {
+                    txt.gameObject.SetActive(false);
+                }
+                else
+                {
+                    txt.gameObject.SetActive(true);
+                    txt.text = "RESUME";
+                    txt.enableAutoSizing = true;
+                    txt.fontSizeMin = 24f;
+                    txt.fontSizeMax = 46f;
+                }
             }
         }
 
@@ -770,10 +786,18 @@ public class MainMenuController : MonoBehaviour
             var quitTxt = quitButton.GetComponentInChildren<TextMeshProUGUI>();
             if (quitTxt != null)
             {
-                quitTxt.text = isGameplay ? "MAIN MENU" : "QUIT";
-                quitTxt.enableAutoSizing = true;
-                quitTxt.fontSizeMin = 24f;
-                quitTxt.fontSizeMax = 44f;
+                if (isMainMenu)
+                {
+                    quitTxt.gameObject.SetActive(false);
+                }
+                else
+                {
+                    quitTxt.gameObject.SetActive(true);
+                    quitTxt.text = "MAIN MENU";
+                    quitTxt.enableAutoSizing = true;
+                    quitTxt.fontSizeMin = 24f;
+                    quitTxt.fontSizeMax = 44f;
+                }
             }
         }
     }
@@ -929,18 +953,27 @@ public class MainMenuController : MonoBehaviour
         {
             float t = EaseOutCubic(Mathf.Clamp01(stateTimer / fadeDur));
             if (mainPanelCG != null) mainPanelCG.alpha = 1f - t;
+            if (titleCG != null) titleCG.alpha = 1f - t;
         }
         else
         {
-            // Pastikan MainMenuPanel tertutup dan tidak memblokir raycast
+            // Pastikan MainMenuPanel dan GameTitle tertutup dan tidak memblokir raycast
             if (mainMenuPanel != null && mainMenuPanel.activeSelf)
                 mainMenuPanel.SetActive(false);
+            if (titleRoot != null && titleRoot.activeSelf)
+                titleRoot.SetActive(false);
 
             if (mainPanelCG != null)
             {
                 mainPanelCG.alpha = 0f;
                 mainPanelCG.blocksRaycasts = false;
                 mainPanelCG.interactable = false;
+            }
+            if (titleCG != null)
+            {
+                titleCG.alpha = 0f;
+                titleCG.blocksRaycasts = false;
+                titleCG.interactable = false;
             }
 
             // Aktifkan SettingsPanel
@@ -1014,15 +1047,23 @@ public class MainMenuController : MonoBehaviour
                 settingsPanel.SetActive(false);
             }
 
-            // Aktifkan kembali MainMenuPanel
+            // Aktifkan kembali MainMenuPanel dan GameTitle
             if (mainMenuPanel != null && !mainMenuPanel.activeSelf)
             {
                 mainMenuPanel.SetActive(true);
+            }
+            if (titleRoot != null && !titleRoot.activeSelf)
+            {
+                titleRoot.SetActive(true);
             }
 
             if (mainPanelCG == null && mainMenuPanel != null)
             {
                 mainPanelCG = mainMenuPanel.GetComponent<CanvasGroup>() ?? mainMenuPanel.AddComponent<CanvasGroup>();
+            }
+            if (titleCG == null && titleRoot != null)
+            {
+                titleCG = titleRoot.GetComponent<CanvasGroup>() ?? titleRoot.AddComponent<CanvasGroup>();
             }
 
             float elapsed = stateTimer - hideDur;
@@ -1034,10 +1075,16 @@ public class MainMenuController : MonoBehaviour
                 mainPanelCG.blocksRaycasts = true;
                 mainPanelCG.interactable = true;
             }
+            if (titleCG != null)
+            {
+                titleCG.alpha = t;
+            }
 
             if (t >= 1f)
             {
                 currentState = MenuState.Active;
+                if (mainPanelCG != null) mainPanelCG.alpha = 1f;
+                if (titleCG != null) titleCG.alpha = 1f;
 
                 if (mainPanelCG != null)
                 {

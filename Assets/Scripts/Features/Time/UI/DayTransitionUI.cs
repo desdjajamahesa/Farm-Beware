@@ -7,13 +7,38 @@ using UnityEngine.UI;
 // dari TimeManager untuk menampilkan fade hitam "Day X".
 public class DayTransitionUI : MonoBehaviour
 {
+    public static DayTransitionUI Instance { get; private set; }
+
     [SerializeField] private CanvasGroup transitionCanvasGroup;
     [SerializeField] private Text dayText;
     [SerializeField] private float fadeDuration = 1.5f;
 
     void Awake()
     {
+        if (Instance != null && Instance != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
+        Instance = this;
+
         // Sembunyikan panel sejak awal agar tidak menghalangi UI lain.
+        if (transitionCanvasGroup != null)
+        {
+            transitionCanvasGroup.alpha = 0f;
+            transitionCanvasGroup.blocksRaycasts = false;
+        }
+    }
+
+    void OnDestroy()
+    {
+        if (Instance == this)
+            Instance = null;
+    }
+
+    public void CancelTransition()
+    {
+        StopAllCoroutines();
         if (transitionCanvasGroup != null)
         {
             transitionCanvasGroup.alpha = 0f;

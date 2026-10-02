@@ -103,6 +103,37 @@ namespace FeaturesCombat.Wave
             OnNightProgressChanged?.Invoke(0f, 0, _totalScheduledEnemies);
         }
 
+        /// <summary>
+        /// Restores state of an active or partially progressed night brawl session (used by Save/Load system).
+        /// </summary>
+        public void RestoreNightState(int day, int waveIndex, int activeEnemies)
+        {
+            _currentDay = Math.Max(1, day);
+            _totalWavesForDay = Math.Min(5, Math.Max(1, _currentDay));
+            _currentWaveIndex = waveIndex;
+            _activeEnemiesRemaining = activeEnemies;
+            _isNightActive = true;
+            _lastReachedMilestoneIndex = Math.Max(-1, waveIndex - 1);
+
+            PrecomputeNightSchedule();
+
+            int cumulative = 0;
+            for (int w = 1; w < _currentWaveIndex; w++)
+            {
+                var schedule = GetEnemiesScheduleForDayAndWave(_currentDay, w);
+                cumulative += schedule.Count;
+            }
+            _totalDefeatedEnemies = cumulative;
+
+            OnNightInitialized?.Invoke(_currentNightSummary);
+            if (_currentWaveIndex > 0)
+            {
+                OnWaveStarted?.Invoke(_currentDay, _currentWaveIndex);
+            }
+            OnEnemiesRemainingChanged?.Invoke(_activeEnemiesRemaining);
+            OnNightProgressChanged?.Invoke(NightProgress, _totalDefeatedEnemies, _totalScheduledEnemies);
+        }
+
         private void PrecomputeNightSchedule()
         {
             var milestones = new WaveMilestoneData[_totalWavesForDay];

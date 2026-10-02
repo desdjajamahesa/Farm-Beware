@@ -114,7 +114,7 @@ namespace FeaturesTime.UI
             }
         }
 
-        private void UpdatePhaseDisplay(TimeManager.DayPhase phase)
+        public void UpdatePhaseDisplay(TimeManager.DayPhase phase)
         {
             bool isNight = (phase == TimeManager.DayPhase.Night);
 

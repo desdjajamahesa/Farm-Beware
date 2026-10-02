@@ -179,5 +179,25 @@ namespace FeaturesCamera
             transform.position = smoothedPos + shakeOffset;
             transform.rotation = Quaternion.Slerp(transform.rotation, rotation, Time.deltaTime * smoothSpeed);
         }
+
+        /// <summary>
+        /// Instantly snaps the camera to the player target position without smoothing.
+        /// Essential when loading save games or teleporting between zones.
+        /// </summary>
+        public void SnapToTarget()
+        {
+            if (target == null)
+            {
+                var player = GameObject.FindWithTag("Player") ?? GameObject.Find("Player");
+                if (player != null) target = player.transform;
+            }
+            if (target == null) return;
+
+            Quaternion rotation = Quaternion.Euler(pitch, yaw, 0f);
+            Vector3 targetCenter = target.position;
+            Vector3 targetPosition = targetCenter - (rotation * Vector3.forward * distance);
+            transform.position = targetPosition;
+            transform.rotation = rotation;
+        }
     }
 }

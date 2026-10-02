@@ -219,6 +219,9 @@ namespace FeaturesTime
 
         private void Update()
         {
+            if (Time.timeScale <= 0f || (FeaturesSaveSystem.SaveSystemUI.Instance != null && FeaturesSaveSystem.SaveSystemUI.Instance.IsOpen))
+                return;
+
             if (isPaused || realSecondsPerInGameDay <= 0.01f)
                 return;
 
@@ -333,6 +336,12 @@ namespace FeaturesTime
             OnHourChanged?.Invoke(lastEmittedHour);
             OnMinuteChanged?.Invoke(lastEmittedMinute);
             OnTimePhaseChanged?.Invoke(currentPhase);
+        }
+
+        public void SetDayAndTime(int day, float targetHour)
+        {
+            currentDay = Mathf.Max(1, day);
+            SetTime(targetHour);
         }
 
         public void SetPaused(bool paused)

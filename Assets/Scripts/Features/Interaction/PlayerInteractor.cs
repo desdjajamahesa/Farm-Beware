@@ -6,8 +6,8 @@ namespace FeaturesInteraction
     public class PlayerInteractor : MonoBehaviour
     {
         [Header("Deteksi Interaksi")]
-        // Radius interaksi presisi dan dekat (default 1.5f).
-        [SerializeField] private float interactRadius = 1.5f;
+        // Radius interaksi presisi dan dekat (default 2.0f).
+        [SerializeField] private float interactRadius = 2.0f;
 
         [Header("Layer Interactable")]
         public LayerMask interactableLayer = ~0;
@@ -64,9 +64,13 @@ namespace FeaturesInteraction
                 if (!IsInSameZone(targetTransform))
                     continue;
 
-                // Pintu (DoorInteractable) tertanam pada kusen/bukaan dinding sehingga dikecualikan dari pemblokiran raycast dinding
-                bool isDoor = (interactable is DoorInteractable) || targetTransform.GetComponentInParent<DoorInteractable>() != null;
-                if (!isDoor && IsObstructedByWall(targetTransform))
+                // Pintu (DoorInteractable) dan Saving System Table (SaveStationInteractable) dikecualikan dari pemblokiran raycast dinding/furniture
+                bool isExempt = (interactable is DoorInteractable)
+                    || (interactable is FeaturesSaveSystem.SaveStationInteractable)
+                    || targetTransform.GetComponentInParent<DoorInteractable>() != null
+                    || targetTransform.GetComponentInParent<FeaturesSaveSystem.SaveStationInteractable>() != null;
+
+                if (!isExempt && IsObstructedByWall(targetTransform))
                     continue;
 
                 // CAN-INTERACT CHECK: Tanyakan ke objek apakah bisa diinteraksikan saat ini
@@ -79,7 +83,7 @@ namespace FeaturesInteraction
                     : hit.ClosestPoint(playerCenter);
                 Vector3 toTarget = closestPoint - playerCenter;
                 Vector3 toTargetH = Vector3.ProjectOnPlane(toTarget, Vector3.up);
-                float distSq = toTarget.sqrMagnitude;
+                float distSq = toTargetH.sqrMagnitude;
 
                 // Orientasi hadap pemain: prioritaskan objek di depan pemain
                 float dot = 1.0f;
@@ -117,9 +121,13 @@ namespace FeaturesInteraction
 
             if (dist < 0.1f) return false;
 
-            if (Physics.Raycast(origin, dir.normalized, out RaycastHit hit, dist, ~LayerMask.GetMask("Ignore Raycast"), QueryTriggerInteraction.Ignore))
+            // Hanya periksa layer dinding (Layer 12 "Wall") agar furniture/kursi/dekorasi tidak salah dideteksi sebagai dinding
+            int wallMask = LayerMask.GetMask("Wall");
+            if (wallMask == 0) wallMask = (1 << 12);
+
+            if (Physics.Raycast(origin, dir.normalized, out RaycastHit hit, dist, wallMask, QueryTriggerInteraction.Ignore))
             {
-                // Jika terkena collider solid yang bukan bagian dari target dan bukan collider player
+                // Jika terkena collider solid dinding yang bukan bagian dari target dan bukan collider player
                 if (hit.collider != null && hit.collider != playerCollider)
                 {
                     if (!hit.collider.transform.IsChildOf(target) && !target.IsChildOf(hit.collider.transform))

@@ -36,7 +36,10 @@ namespace FeaturesFarming
 
         [Tooltip("Durasi pertumbuhan tanaman dalam detik (diambil dari SeedItemData bila tersedia).")]
         [SerializeField] private float growthDuration = 30f;
+        public float GrowthDuration => growthDuration;
+
         [SerializeField] private float currentTimer = 0f;
+        public float CurrentTimer => currentTimer;
 
         [Header("Hasil Panen")]
         [Tooltip("Jika dicentang, panen otomatis mengutamakan varian kotor (Dirty) agar harus dicuci di wastafel.")]
@@ -129,7 +132,7 @@ namespace FeaturesFarming
             }
 
             // 2. Debug shortcut: Tekan tombol H untuk mempercepat panen secara instan (membantu testing)
-            if (Application.isPlaying && Keyboard.current != null && Keyboard.current.hKey.wasPressedThisFrame)
+            if (Application.isPlaying && Time.timeScale > 0f && Keyboard.current != null && Keyboard.current.hKey.wasPressedThisFrame)
             {
                 if (currentState == TileState.PlantedDry || currentState == TileState.PlantedWatered)
                 {
@@ -463,6 +466,21 @@ namespace FeaturesFarming
                 // Belum disiram, tidak bertumbuh
                 Debug.Log("[FarmlandTile] Dry crops did not grow overnight because they were not watered.");
             }
+        }
+
+        /// <summary>
+        /// Restores complete crop state (used by Save/Load system).
+        /// </summary>
+        public void RestoreCropState(TileState state, SeedItemData seed, float progress, float timer)
+        {
+            currentState = state;
+            plantedSeed = seed;
+            growthProgress = Mathf.Clamp01(progress);
+            currentTimer = timer;
+            lastVisualStage = -1;
+            UpdateVisuals();
+            UpdateLabelText(null);
+            UpdateCountdownUI();
         }
 
         public void UpdateLabelText(GameObject interactor)

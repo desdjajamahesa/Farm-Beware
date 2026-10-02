@@ -339,17 +339,34 @@ public class UIAnimationHandler : MonoBehaviour, IPointerEnterHandler, IPointerE
     {
         Vector3 start = transform.localScale;
         float elapsed = 0f;
+        bool isScalingUp = target.sqrMagnitude > start.sqrMagnitude;
+
         while (elapsed < duration)
         {
             elapsed += Time.unscaledDeltaTime;
             float t = Mathf.Clamp01(elapsed / duration);
-            float eased = 1f - Mathf.Pow(1f - t, 3f);
-            transform.localScale = Vector3.Lerp(start, target, eased);
+
+            float eased;
+            if (isScalingUp)
+            {
+                // EaseOutBack for juicy pop-up / timbul feel
+                float c1 = 1.35f;
+                float c3 = c1 + 1f;
+                eased = 1f + c3 * Mathf.Pow(t - 1f, 3f) + c1 * Mathf.Pow(t - 1f, 2f);
+            }
+            else
+            {
+                // EaseOutCubic for smooth return
+                eased = 1f - Mathf.Pow(1f - t, 3f);
+            }
+
+            transform.localScale = Vector3.LerpUnclamped(start, target, eased);
             yield return null;
         }
         transform.localScale = target;
         currentScaleAnim = null;
     }
+
 
     private void AnimateColor(Color target, float duration)
     {

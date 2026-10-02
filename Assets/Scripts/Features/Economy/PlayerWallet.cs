@@ -92,5 +92,14 @@ namespace FeaturesEconomy
             currentGold += amount;
             OnGoldChanged?.Invoke(currentGold);
         }
+
+        /// <summary>
+        /// Sets gold directly (used by Save/Load system).
+        /// </summary>
+        public void SetGold(int amount)
+        {
+            currentGold = Mathf.Max(0, amount);
+            OnGoldChanged?.Invoke(currentGold);
+        }
     }
 }
