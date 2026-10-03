@@ -20,13 +20,13 @@ namespace FeaturesTime
         #region Singleton (Awake-Safe Pattern §1.1)
 
         private static DayNightTimeManager _instance;
-        private static bool isQuitting = false;
+        private static bool _isApplicationQuitting = false;
 
         public static DayNightTimeManager Instance
         {
             get
             {
-                if (isQuitting) return null;
+                if (_isApplicationQuitting) return _instance;
 
                 if (_instance == null)
                 {
@@ -34,6 +34,14 @@ namespace FeaturesTime
                     if (found != null && found.Length > 0)
                     {
                         _instance = found[0];
+                    }
+                    else
+                    {
+                        var tm = FindFirstObjectByType<TimeManager>();
+                        if (tm != null)
+                        {
+                            _instance = tm.gameObject.AddComponent<DayNightTimeManager>();
+                        }
                     }
                 }
                 return _instance;
@@ -170,7 +178,7 @@ namespace FeaturesTime
                 return;
             }
 
-            isQuitting = false;
+            _isApplicationQuitting = false;
             Instance = this;
             FarmBeware.Core.Runtime.ServiceLocator.Register<FarmBeware.Core.Runtime.ITimeService>(this);
 
@@ -260,7 +268,7 @@ namespace FeaturesTime
 
         private void OnApplicationQuit()
         {
-            isQuitting = true;
+            _isApplicationQuitting = true;
         }
 
         private void OnDestroy()
@@ -269,7 +277,7 @@ namespace FeaturesTime
             if (Instance == this)
             {
                 Instance = null;
-                isQuitting = true;
+                _isApplicationQuitting = true;
             }
         }
 

@@ -25,6 +25,11 @@ namespace FeaturesSaveSystem
                 if (instance == null)
                 {
                     instance = FindFirstObjectByType<SaveSystemUI>(FindObjectsInactive.Include);
+                    if (instance == null)
+                    {
+                        var go = new GameObject("SaveSystemUI");
+                        instance = go.AddComponent<SaveSystemUI>();
+                    }
                 }
                 return instance;
             }
@@ -137,13 +142,49 @@ namespace FeaturesSaveSystem
             FarmBeware.Core.Runtime.UIModalHelper.IsSaveUIOpen = true;
             if (modalPanel != null)
             {
+                modalPanel.transform.SetAsLastSibling();
                 modalPanel.SetActive(true);
             }
 
+            bool isMainMenu = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name == "MainMenuScene";
             if (saveNameInputField != null)
             {
+                saveNameInputField.gameObject.SetActive(!isMainMenu);
                 saveNameInputField.text = "";
                 UpdateCharCount("");
+            }
+            if (charCountText != null)
+            {
+                charCountText.gameObject.SetActive(!isMainMenu);
+            }
+
+            if (saveNewButton != null)
+            {
+                var sTmp = saveNewButton.GetComponentInChildren<TextMeshProUGUI>();
+                if (sTmp != null)
+                {
+                    sTmp.text = isMainMenu ? "<b>+ New Game</b>" : "<b>Save New</b>";
+                }
+                var sRT = saveNewButton.GetComponent<RectTransform>();
+                if (sRT != null)
+                {
+                    if (isMainMenu)
+                    {
+                        sRT.anchorMin = new Vector2(0.5f, 0.5f);
+                        sRT.anchorMax = new Vector2(0.5f, 0.5f);
+                        sRT.pivot = new Vector2(0.5f, 0.5f);
+                        sRT.anchoredPosition = Vector2.zero;
+                        sRT.sizeDelta = new Vector2(260, 52);
+                    }
+                    else
+                    {
+                        sRT.anchorMin = new Vector2(1, 0.5f);
+                        sRT.anchorMax = new Vector2(1, 0.5f);
+                        sRT.pivot = new Vector2(1, 0.5f);
+                        sRT.sizeDelta = new Vector2(185, 52);
+                        sRT.anchoredPosition = new Vector2(-16, 0);
+                    }
+                }
             }
 
             if (statusFeedbackText != null)
@@ -187,6 +228,26 @@ namespace FeaturesSaveSystem
 
         public void OnSaveNewClicked()
         {
+            bool isMainMenu = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name == "MainMenuScene";
+            if (isMainMenu)
+            {
+                SaveSystemManager.PendingSaveIdToLoad = null;
+                Debug.Log("[SaveSystemUI] Starting fresh New Game from SaveSystemUI...");
+                Close();
+                if (FeaturesCommon.FadeManager.Instance != null)
+                {
+                    FeaturesCommon.FadeManager.Instance.FadeIn(0.4f, () =>
+                    {
+                        UnityEngine.SceneManagement.SceneManager.LoadScene("StagingScene");
+                    });
+                }
+                else
+                {
+                    UnityEngine.SceneManagement.SceneManager.LoadScene("StagingScene");
+                }
+                return;
+            }
+
             string rawName = saveNameInputField != null ? saveNameInputField.text : "";
             string sanitized = SaveSystemManager.SanitizeSaveName(rawName);
 
@@ -235,7 +296,18 @@ namespace FeaturesSaveSystem
 
             if (saves == null || saves.Count == 0)
             {
-                if (emptyStateText != null) emptyStateText.SetActive(true);
+                if (emptyStateText != null)
+                {
+                    emptyStateText.SetActive(true);
+                    var tmp = emptyStateText.GetComponent<TextMeshProUGUI>();
+                    if (tmp != null)
+                    {
+                        bool isMainMenu = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name == "MainMenuScene";
+                        tmp.text = isMainMenu
+                            ? "<color=#64748B><i>No saved games found yet.\nClick <b>+ New Game</b> above to begin your journey!</i></color>"
+                            : "<color=#64748B><i>No saved games found yet.\nEnter a name above and click <b>Save New</b> to record your progress!</i></color>";
+                    }
+                }
                 return;
             }
 
@@ -327,17 +399,22 @@ namespace FeaturesSaveSystem
             actHlg.childForceExpandWidth = false;
             actHlg.childForceExpandHeight = true;
 
+            bool isMainMenu = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name == "MainMenuScene";
+
             // 1. [LOAD] Button
             CreateMiniButton(actionsGO.transform, "Btn_Load", "Load", new Color(0.18f, 0.48f, 0.88f, 1f), 95, () =>
             {
                 OnLoadSlotClicked(meta.saveId);
             });
 
-            // 2. [OVERWRITE] Button
-            CreateMiniButton(actionsGO.transform, "Btn_Overwrite", "Overwrite", new Color(0.80f, 0.54f, 0.15f, 1f), 115, () =>
+            // 2. [OVERWRITE] Button (Only when in gameplay, not in Main Menu)
+            if (!isMainMenu)
             {
-                RequestOverwriteConfirmation(meta);
-            });
+                CreateMiniButton(actionsGO.transform, "Btn_Overwrite", "Overwrite", new Color(0.80f, 0.54f, 0.15f, 1f), 115, () =>
+                {
+                    RequestOverwriteConfirmation(meta);
+                });
+            }
 
             // 3. [DELETE] Button
             CreateMiniButton(actionsGO.transform, "Btn_Delete", "Delete", new Color(0.78f, 0.22f, 0.22f, 1f), 95, () =>
@@ -393,6 +470,31 @@ namespace FeaturesSaveSystem
 
         private void OnLoadSlotClicked(string saveId)
         {
+            bool isMainMenu = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name == "MainMenuScene";
+            if (isMainMenu)
+            {
+                SaveSystemManager.PendingSaveIdToLoad = saveId;
+                if (SaveSystemManager.Instance != null)
+                {
+                    SaveSystemManager.Instance.SetLastPlayedSaveId(saveId);
+                }
+                Debug.Log($"[SaveSystemUI] Main Menu loading selected save '{saveId}', transitioning to StagingScene...");
+                Close();
+
+                if (FeaturesCommon.FadeManager.Instance != null)
+                {
+                    FeaturesCommon.FadeManager.Instance.FadeIn(0.4f, () =>
+                    {
+                        UnityEngine.SceneManagement.SceneManager.LoadScene("StagingScene");
+                    });
+                }
+                else
+                {
+                    UnityEngine.SceneManagement.SceneManager.LoadScene("StagingScene");
+                }
+                return;
+            }
+
             bool success = SaveSystemManager.Instance.LoadSave(saveId, out string msg);
             if (statusFeedbackText != null)
             {

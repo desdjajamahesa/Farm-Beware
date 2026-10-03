@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 using System.Collections;
+using UnityEngine.SceneManagement;
 
 namespace FeaturesCommon
 {
@@ -32,6 +33,14 @@ namespace FeaturesCommon
             }
         }
 
+        private void OnDestroy()
+        {
+            if (Instance == this)
+            {
+                Instance = null;
+            }
+        }
+
         public Coroutine FadeIn(float duration = -1f, System.Action onComplete = null)
         {
             return StartFade(0f, 1f, duration > 0 ? duration : defaultFadeDuration, onComplete);
@@ -58,6 +67,8 @@ namespace FeaturesCommon
                 StopCoroutine(currentFadeCoroutine);
             }
 
+            fadeImage.raycastTarget = toAlpha > 0.05f;
+
             currentFadeCoroutine = StartCoroutine(FadeCoroutine(fromAlpha, toAlpha, duration, onComplete));
             return currentFadeCoroutine;
         }
@@ -81,6 +92,7 @@ namespace FeaturesCommon
 
             color.a = toAlpha;
             fadeImage.color = color;
+            fadeImage.raycastTarget = toAlpha > 0.05f;
 
             currentFadeCoroutine = null;
             onComplete?.Invoke();

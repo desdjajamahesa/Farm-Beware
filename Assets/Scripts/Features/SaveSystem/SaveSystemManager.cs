@@ -46,6 +46,37 @@ namespace FeaturesSaveSystem
 
         private SaveManifest cachedManifest = new SaveManifest();
         private bool isManifestLoaded = false;
+        public static string PendingSaveIdToLoad { get; set; } = null;
+
+        private void OnEnable()
+        {
+            UnityEngine.SceneManagement.SceneManager.sceneLoaded += HandleSceneLoaded;
+        }
+
+        private void OnDisable()
+        {
+            UnityEngine.SceneManagement.SceneManager.sceneLoaded -= HandleSceneLoaded;
+        }
+
+        private void HandleSceneLoaded(UnityEngine.SceneManagement.Scene scene, UnityEngine.SceneManagement.LoadSceneMode mode)
+        {
+            if (scene.name == "StagingScene")
+            {
+                if (!string.IsNullOrEmpty(PendingSaveIdToLoad))
+                {
+                    string saveToLoad = PendingSaveIdToLoad;
+                    PendingSaveIdToLoad = null;
+                    StartCoroutine(RoutineApplyPendingLoad(saveToLoad));
+                }
+            }
+        }
+
+        private System.Collections.IEnumerator RoutineApplyPendingLoad(string saveId)
+        {
+            yield return new WaitForEndOfFrame();
+            bool success = LoadSave(saveId, out string msg);
+            Debug.Log($"[SaveSystemManager] Auto-applied pending save on scene start: '{saveId}' - Success: {success}, {msg}");
+        }
 
         private void Awake()
         {
@@ -227,6 +258,32 @@ namespace FeaturesSaveSystem
             // Sort newest first
             cachedManifest.slots.Sort((a, b) => string.Compare(b.timestamp, a.timestamp, StringComparison.Ordinal));
             return new List<SaveMetadata>(cachedManifest.slots);
+        }
+
+        public string GetLastPlayedSaveId()
+        {
+            if (!isManifestLoaded) LoadManifest();
+            if (!string.IsNullOrEmpty(cachedManifest.lastPlayedSaveId))
+            {
+                var meta = GetMetadataById(cachedManifest.lastPlayedSaveId);
+                if (meta != null && File.Exists(Path.Combine(SavesDirectory, meta.fileName)))
+                    return cachedManifest.lastPlayedSaveId;
+            }
+
+            var list = GetSaveList();
+            if (list != null && list.Count > 0)
+            {
+                return list[0].saveId;
+            }
+
+            return null;
+        }
+
+        public void SetLastPlayedSaveId(string saveId)
+        {
+            if (!isManifestLoaded) LoadManifest();
+            cachedManifest.lastPlayedSaveId = saveId;
+            SaveManifestToDisk();
         }
 
         public SaveMetadata GetMetadataById(string saveId)
@@ -586,12 +643,26 @@ namespace FeaturesSaveSystem
                         tileState = (int)tile.CurrentState,
                         seedItemId = seedId,
                         growthProgress = tile.GrowthProgress,
-                        currentTimer = tile.CurrentTimer
+                        currentTimer = tile.CurrentTimer,
+                        growthDuration = tile.GrowthDuration
                     });
                 }
             }
 
-            // 6. Wardrobe
+            // 6. Daily Economy Market Prices & Stats
+            if (DailyEconomyManager.Instance != null)
+            {
+                data.sweetPotatoPrice = DailyEconomyManager.Instance.SweetPotatoPrice;
+                data.taroPrice = DailyEconomyManager.Instance.TaroPrice;
+                data.cornPrice = DailyEconomyManager.Instance.CornPrice;
+                data.dailyCropsHarvested = DailyEconomyManager.Instance.dailyCropsHarvested;
+                data.dailyCropsSold = DailyEconomyManager.Instance.dailyCropsSold;
+                data.dailyGoldEarnedTrading = DailyEconomyManager.Instance.dailyGoldEarnedTrading;
+                data.dailyMonstersSlain = DailyEconomyManager.Instance.dailyMonstersSlain;
+                data.dailyGoldEarnedCombat = DailyEconomyManager.Instance.dailyGoldEarnedCombat;
+            }
+
+            // 7. Wardrobe
             if (PlayerOutfit.Instance != null && PlayerOutfit.Instance.CurrentOutfit != null)
             {
                 data.outfitName = PlayerOutfit.Instance.CurrentOutfit.name;
@@ -756,7 +827,7 @@ namespace FeaturesSaveSystem
                     data.currentDay,
                     phase,
                     data.isNightEncounterCleared,
-                    notifyPhaseChanged: false
+                    notifyPhaseChanged: true
                 );
             }
 
@@ -842,7 +913,8 @@ namespace FeaturesSaveSystem
                             (TileState)savedTile.tileState,
                             seed,
                             savedTile.growthProgress,
-                            savedTile.currentTimer
+                            savedTile.currentTimer,
+                            savedTile.growthDuration
                         );
                     }
                 }
@@ -855,14 +927,33 @@ namespace FeaturesSaveSystem
                 b?.UpdateLabel();
             }
 
-            // 14. Wardrobe Outfit
-            if (PlayerOutfit.Instance != null && !string.IsNullOrEmpty(data.outfitName))
+            // 14. Wardrobe Outfit & Hat
+            if (PlayerOutfit.Instance != null)
             {
-                var outfit = Resources.Load<OutfitData>("Player/model/" + data.outfitName);
-                if (outfit != null)
+                if (!string.IsNullOrEmpty(data.outfitName))
                 {
-                    PlayerOutfit.Instance.EquipOutfit(outfit);
+                    var outfit = Resources.Load<OutfitData>("Player/model/" + data.outfitName);
+                    if (outfit != null)
+                    {
+                        PlayerOutfit.Instance.EquipOutfit(outfit);
+                    }
                 }
+                PlayerOutfit.Instance.SetHatActive(data.isHatEquipped);
+            }
+
+            // 15. Daily Economy Market Prices & Stats
+            if (DailyEconomyManager.Instance != null && data.sweetPotatoPrice > 0)
+            {
+                DailyEconomyManager.Instance.RestoreEconomyState(
+                    data.sweetPotatoPrice,
+                    data.taroPrice,
+                    data.cornPrice,
+                    data.dailyCropsHarvested,
+                    data.dailyCropsSold,
+                    data.dailyGoldEarnedTrading,
+                    data.dailyMonstersSlain,
+                    data.dailyGoldEarnedCombat
+                );
             }
         }
 
@@ -875,6 +966,26 @@ namespace FeaturesSaveSystem
                 if (inv != null && inv.slots != null)
                 {
                     var saved = new SavedContainerInventory { containerId = "Refrigerator" };
+                    for (int i = 0; i < inv.slots.Count; i++)
+                    {
+                        var s = inv.slots[i];
+                        if (s != null && !s.IsEmpty && s.item != null)
+                        {
+                            string id = !string.IsNullOrEmpty(s.item.itemId) ? s.item.itemId : s.item.name;
+                            saved.slots.Add(new SavedInventorySlot { slotIndex = i, itemId = id, quantity = s.quantity });
+                        }
+                    }
+                    data.containerInventories.Add(saved);
+                }
+            }
+
+            var sink = FindFirstObjectByType<KitchenSinkInteractable>(FindObjectsInactive.Include);
+            if (sink != null)
+            {
+                var inv = sink.GetComponent<InventoryComponent>();
+                if (inv != null && inv.slots != null)
+                {
+                    var saved = new SavedContainerInventory { containerId = "KitchenSink" };
                     for (int i = 0; i < inv.slots.Count; i++)
                     {
                         var s = inv.slots[i];
@@ -936,6 +1047,34 @@ namespace FeaturesSaveSystem
                     if (fridge != null)
                     {
                         var inv = fridge.GetComponent<InventoryComponent>();
+                        if (inv != null && inv.slots != null)
+                        {
+                            for (int i = 0; i < inv.slots.Count; i++)
+                            {
+                                if (inv.slots[i] != null) { inv.slots[i].item = null; inv.slots[i].quantity = 0; }
+                            }
+                            foreach (var s in container.slots)
+                            {
+                                if (s.slotIndex >= 0 && s.slotIndex < inv.slots.Count)
+                                {
+                                    var item = ResolveItem(s.itemId);
+                                    if (item != null)
+                                    {
+                                        inv.slots[s.slotIndex].item = item;
+                                        inv.slots[s.slotIndex].quantity = s.quantity;
+                                    }
+                                }
+                            }
+                            inv.OnInventoryChanged?.Invoke();
+                        }
+                    }
+                }
+                else if (container.containerId == "KitchenSink")
+                {
+                    var sink = FindFirstObjectByType<KitchenSinkInteractable>(FindObjectsInactive.Include);
+                    if (sink != null)
+                    {
+                        var inv = sink.GetComponent<InventoryComponent>();
                         if (inv != null && inv.slots != null)
                         {
                             for (int i = 0; i < inv.slots.Count; i++)
@@ -1036,19 +1175,30 @@ namespace FeaturesSaveSystem
         {
             if (string.IsNullOrEmpty(itemId)) return null;
 
-            if (ItemDatabase.Instance != null)
+            var db = ItemDatabase.Instance ?? Resources.Load<ItemDatabase>("Database/ItemDatabase");
+            if (db != null)
             {
-                var item = ItemDatabase.Instance.GetItem(itemId);
+                var item = db.GetItem(itemId);
                 if (item != null) return item;
-            }
 
-            var allItems = Resources.LoadAll<ItemData>("");
-            if (allItems != null)
-            {
-                foreach (var it in allItems)
+                var allItems = db.GetAllItems();
+                if (allItems != null)
                 {
-                    if (it != null && (it.itemId == itemId || it.name == itemId))
-                        return it;
+                    string cleanTarget = itemId.Replace("_", "").Replace(" ", "");
+                    foreach (var it in allItems)
+                    {
+                        if (it == null) continue;
+                        if (string.Equals(it.itemId, itemId, StringComparison.OrdinalIgnoreCase) ||
+                            string.Equals(it.name, itemId, StringComparison.OrdinalIgnoreCase))
+                        {
+                            return it;
+                        }
+                        if (string.Equals((it.itemId ?? "").Replace("_", "").Replace(" ", ""), cleanTarget, StringComparison.OrdinalIgnoreCase) ||
+                            string.Equals(it.name.Replace("_", "").Replace(" ", ""), cleanTarget, StringComparison.OrdinalIgnoreCase))
+                        {
+                            return it;
+                        }
+                    }
                 }
             }
 

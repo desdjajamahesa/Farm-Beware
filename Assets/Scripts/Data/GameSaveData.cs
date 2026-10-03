@@ -56,8 +56,16 @@ namespace FeaturesSaveSystem
         public float hunger;
         public float thirst;
 
-        // Economy
+        // Economy & Daily Market
         public int gold;
+        public int sweetPotatoPrice;
+        public int taroPrice;
+        public int cornPrice;
+        public int dailyCropsHarvested;
+        public int dailyCropsSold;
+        public int dailyGoldEarnedTrading;
+        public int dailyMonstersSlain;
+        public int dailyGoldEarnedCombat;
 
         // Water Bottle
         public float waterBottleAmount;
@@ -128,5 +136,6 @@ namespace FeaturesSaveSystem
         public string seedItemId;
         public float growthProgress;
         public float currentTimer;
+        public float growthDuration;
     }
 }

@@ -457,12 +457,22 @@ namespace FeaturesFarming
         /// <summary>
         /// Restores complete crop state (used by Save/Load system).
         /// </summary>
-        public void RestoreCropState(TileState state, SeedItemData seed, float progress, float timer)
+        public void RestoreCropState(TileState state, SeedItemData seed, float progress, float timer, float duration = -1f)
         {
             currentState = state;
             plantedSeed = seed;
+
+            if (duration > 0f)
+            {
+                growthDuration = duration;
+            }
+            else
+            {
+                growthDuration = (seed != null && seed.growthDuration > 0f) ? seed.growthDuration : 30f;
+            }
+
             growthProgress = Mathf.Clamp01(progress);
-            currentTimer = timer;
+            currentTimer = Mathf.Clamp(timer, 0f, growthDuration);
             lastVisualStage = -1;
             UpdateVisuals();
             UpdateLabelText(null);

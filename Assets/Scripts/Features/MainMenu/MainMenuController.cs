@@ -26,6 +26,7 @@ public class MainMenuController : MonoBehaviour
     [SerializeField] private Button startButton;
     [SerializeField] private Button settingsButton;
     [SerializeField] private Button checkpointButton;
+    [SerializeField] private Button loadGameButton;
     [SerializeField] private Button quitButton;
     [SerializeField] private Button quitDesktopButton;
     [SerializeField] private Button settingsBackButton;
@@ -65,6 +66,7 @@ public class MainMenuController : MonoBehaviour
     private PlayerControl playerControl;
     private bool menuActive = false;
     private bool hasStartedGame = false;
+    private bool isReturningToMainMenu = false;
     private Vector3 titleOriginalPos;
     private Vector3 titleOriginalScale;
     private Camera mainCamera;
@@ -87,31 +89,43 @@ public class MainMenuController : MonoBehaviour
         playerControl = FindFirstObjectByType<PlayerControl>();
         mainCamera = Camera.main;
 
-        if (startButton != null) startButton.onClick.AddListener(OnStartClicked);
-        if (settingsButton != null) settingsButton.onClick.AddListener(OnSettingsClicked);
-        if (checkpointButton != null) checkpointButton.onClick.AddListener(OnCheckpointClicked);
-        if (quitButton != null) quitButton.onClick.AddListener(OnQuitClicked);
-        if (quitDesktopButton != null) quitDesktopButton.onClick.AddListener(OnQuitDesktopClicked);
-        if (settingsBackButton != null) settingsBackButton.onClick.AddListener(OnSettingsBackClicked);
+        if (startButton != null) { startButton.onClick.RemoveListener(OnStartClicked); startButton.onClick.AddListener(OnStartClicked); }
+        if (settingsButton != null) { settingsButton.onClick.RemoveListener(OnSettingsClicked); settingsButton.onClick.AddListener(OnSettingsClicked); }
+        if (checkpointButton != null) { checkpointButton.onClick.RemoveListener(OnCheckpointClicked); checkpointButton.onClick.AddListener(OnCheckpointClicked); }
+        if (loadGameButton != null) { loadGameButton.onClick.RemoveListener(OnLoadGameClicked); loadGameButton.onClick.AddListener(OnLoadGameClicked); }
+        if (quitButton != null) { quitButton.onClick.RemoveListener(OnQuitClicked); quitButton.onClick.AddListener(OnQuitClicked); }
+        if (quitDesktopButton != null) { quitDesktopButton.onClick.RemoveListener(OnQuitDesktopClicked); quitDesktopButton.onClick.AddListener(OnQuitDesktopClicked); }
+        if (settingsBackButton != null) { settingsBackButton.onClick.RemoveListener(OnSettingsBackClicked); settingsBackButton.onClick.AddListener(OnSettingsBackClicked); }
     }
 
     private void ResolveReferences()
     {
         if (menuCanvasGroup == null) menuCanvasGroup = GetComponent<CanvasGroup>();
         if (mainMenuPanel == null)
-        { var t = transform.Find("MainMenuPanel"); if (t != null) mainMenuPanel = t.gameObject; }
+        {
+            var t = transform.Find("MainMenuPanel");
+            if (t == null) t = transform.Find("SignpostPanel");
+            if (t != null) mainMenuPanel = t.gameObject;
+        }
         if (settingsPanel == null)
         { var t = transform.Find("SettingsPanel"); if (t != null) settingsPanel = t.gameObject; }
         if (startButton == null && mainMenuPanel != null)
         {
             var t = mainMenuPanel.transform.Find("StartButton");
             if (t == null) t = mainMenuPanel.transform.Find("ContinueButton");
+            if (t == null) t = mainMenuPanel.transform.Find("ResumeButton");
             if (t != null) startButton = t.GetComponent<Button>();
         }
         if (settingsButton == null && mainMenuPanel != null)
         { var t = mainMenuPanel.transform.Find("SettingsButton"); if (t != null) settingsButton = t.GetComponent<Button>(); }
         if (checkpointButton == null && mainMenuPanel != null)
         { var t = mainMenuPanel.transform.Find("CheckpointButton"); if (t != null) checkpointButton = t.GetComponent<Button>(); }
+        if (loadGameButton == null)
+        {
+            var t = transform.Find("LoadGameButton");
+            if (t == null && mainMenuPanel != null) t = mainMenuPanel.transform.Find("LoadGameButton");
+            if (t != null) loadGameButton = t.GetComponent<Button>();
+        }
         if (quitButton == null && mainMenuPanel != null)
         {
             var t = mainMenuPanel.transform.Find("QuitButton");
@@ -125,6 +139,7 @@ public class MainMenuController : MonoBehaviour
         if (titleRoot == null)
         {
             var t = transform.Find("GameTitle");
+            if (t == null && mainMenuPanel != null) t = mainMenuPanel.transform.Find("PausedTitle") ?? mainMenuPanel.transform.Find("GameTitle");
             if (t != null) titleRoot = t.gameObject;
         }
         if (titleCG == null && titleRoot != null)
@@ -133,7 +148,7 @@ public class MainMenuController : MonoBehaviour
         }
         if (titleText == null && titleRoot != null)
         {
-            titleText = titleRoot.GetComponent<TextMeshProUGUI>();
+            titleText = titleRoot.GetComponent<TextMeshProUGUI>() ?? titleRoot.GetComponentInChildren<TextMeshProUGUI>();
         }
         if (backgroundContainer == null)
         {
@@ -162,13 +177,25 @@ public class MainMenuController : MonoBehaviour
 
         if (isMainMenu)
         {
+            isReturningToMainMenu = false;
             hasStartedGame = false;
+            Time.timeScale = 1f;
+            LockPlayerInput(false);
+            Cursor.visible = true;
+            Cursor.lockState = CursorLockMode.None;
+
             ShowMenu(isPause: false);
+
+            if (FadeManager.Instance != null)
+            {
+                FadeManager.Instance.FadeOut(0.35f);
+            }
         }
         else
         {
             // Already in gameplay scene (e.g. StagingScene): start hidden so gameplay is immediately active.
             hasStartedGame = true;
+            menuActive = false;
             currentState = MenuState.Hidden;
             SetMenuVisualsActive(false);
             LockPlayerInput(false);
@@ -391,6 +418,10 @@ public class MainMenuController : MonoBehaviour
 
     private void UpdateFadingOut(float dt)
     {
+        var fantasyAnimator = GetComponent<FantasyMenuAnimator>();
+        if (fantasyAnimator != null && fantasyAnimator.IsTransitioningToGame)
+            return;
+
         stateTimer += dt;
         float t = Mathf.Clamp01(stateTimer / stateDuration);
         if (menuCanvasGroup != null)
@@ -496,85 +527,36 @@ public class MainMenuController : MonoBehaviour
     {
         if (settingsPanel == null) return;
         var rt = settingsPanel.GetComponent<RectTransform>();
-        rt.anchorMin = new Vector2(0.5f, 0.5f);
-        rt.anchorMax = new Vector2(0.5f, 0.5f);
-        rt.pivot = new Vector2(0.5f, 0.5f);
-        rt.localPosition = Vector3.zero;
-        rt.sizeDelta = new Vector2(560, 480);
+        if (rt != null)
+        {
+            rt.anchorMin = new Vector2(0.5f, 0.5f);
+            rt.anchorMax = new Vector2(0.5f, 0.5f);
+            rt.pivot = new Vector2(0.5f, 0.5f);
+            rt.anchoredPosition = Vector2.zero;
+            rt.sizeDelta = new Vector2(920, 613);
+        }
 
         var vlg = settingsPanel.GetComponent<VerticalLayoutGroup>();
-        if (vlg == null) vlg = settingsPanel.gameObject.AddComponent<VerticalLayoutGroup>();
-        vlg.spacing = 10;
-        vlg.childAlignment = TextAnchor.UpperCenter;
-        vlg.childForceExpandWidth = true;
-        vlg.childForceExpandHeight = false;
-        vlg.childControlWidth = true;
-        vlg.childControlHeight = true;
-        vlg.padding = new RectOffset(50, 50, 30, 30);
+        if (vlg != null) Destroy(vlg);
 
         var bg = settingsPanel.transform.Find("SettingsBackground");
         if (bg != null)
         {
             var bgRT = bg.GetComponent<RectTransform>();
-            bgRT.anchorMin = Vector2.zero;
-            bgRT.anchorMax = Vector2.one;
-            bgRT.sizeDelta = Vector2.zero;
-            bgRT.localPosition = Vector3.zero;
-            var bgImg = bg.GetComponent<Image>();
-            if (bgImg != null) bgImg.color = new Color(0.06f, 0.07f, 0.10f, 0.94f);
-        }
-
-        var st = settingsPanel.transform.Find("SettingsTitle");
-        if (st != null)
-        {
-            var stLE = st.GetComponent<LayoutElement>();
-            if (stLE == null) stLE = st.gameObject.AddComponent<LayoutElement>();
-            stLE.preferredHeight = 55;
-            stLE.flexibleWidth = 1;
-            var tmp = st.GetComponent<TextMeshProUGUI>();
-            if (tmp != null) { tmp.fontSize = 34; tmp.alignment = TextAlignmentOptions.Center; tmp.fontStyle = FontStyles.Bold; tmp.color = new Color(0.95f, 0.92f, 0.82f, 1f); }
-        }
-
-        string[] rowNames = { "VolumeRow", "FullscreenRow", "ResolutionRow", "QualityRow" };
-        foreach (string rn in rowNames)
-        {
-            var row = settingsPanel.transform.Find(rn);
-            if (row == null) continue;
-            var rowLE = row.GetComponent<LayoutElement>();
-            if (rowLE == null) rowLE = row.gameObject.AddComponent<LayoutElement>();
-            rowLE.preferredHeight = 44;
-            rowLE.flexibleWidth = 1;
-
-            var hlg = row.GetComponent<HorizontalLayoutGroup>();
-            if (hlg == null) hlg = row.gameObject.AddComponent<HorizontalLayoutGroup>();
-            hlg.spacing = 15f;
-            hlg.childAlignment = TextAnchor.MiddleLeft;
-            hlg.childForceExpandWidth = false;
-            hlg.childForceExpandHeight = true;
-            hlg.childControlWidth = true;
-            hlg.childControlHeight = true;
-            hlg.padding = new RectOffset(10, 10, 0, 0);
-
-            foreach (Transform child in row)
+            if (bgRT != null)
             {
-                var le = child.GetComponent<LayoutElement>();
-                if (le == null) le = child.gameObject.AddComponent<LayoutElement>();
-                var label = child.GetComponent<TextMeshProUGUI>();
-                if (label != null) { le.preferredWidth = 140; le.flexibleWidth = 0; label.fontSize = 20; label.alignment = TextAlignmentOptions.MidlineLeft; label.color = new Color(0.85f, 0.85f, 0.85f, 1f); }
-                else { le.preferredWidth = 280; le.flexibleWidth = 1; }
+                bgRT.anchorMin = Vector2.zero;
+                bgRT.anchorMax = Vector2.one;
+                bgRT.sizeDelta = Vector2.zero;
+                bgRT.anchoredPosition = Vector2.zero;
             }
+            var bgImg = bg.GetComponent<Image>();
+            if (bgImg != null) bgImg.color = Color.white;
         }
 
         var backBtn = settingsPanel.transform.Find("BackButton");
         if (backBtn != null)
         {
-            var backLE = backBtn.GetComponent<LayoutElement>();
-            if (backLE == null) backLE = backBtn.gameObject.AddComponent<LayoutElement>();
-            backLE.preferredHeight = 48;
-            backLE.flexibleWidth = 1;
-            backLE.minWidth = 240;
-            var backImg = backBtn.GetComponent<Image>();
-            if (backImg != null) backImg.color = new Color(0.22f, 0.22f, 0.28f, 0.9f);
             EnsureAnimationHandler(backBtn.gameObject);
         }
     }
@@ -664,7 +646,7 @@ public class MainMenuController : MonoBehaviour
         SetMenuVisualsActive(true);
         UpdateStartButtonLabel();
 
-        LockPlayerInput(true);
+        LockPlayerInput(isPause);
         Cursor.visible = true;
         Cursor.lockState = CursorLockMode.None;
 
@@ -686,11 +668,18 @@ public class MainMenuController : MonoBehaviour
             bgOverlayCG.alpha = 1f;
         }
 
+        if (titleRoot != null)
+        {
+            titleCG = titleRoot.GetComponent<CanvasGroup>();
+            if (titleCG == null) titleCG = titleRoot.AddComponent<CanvasGroup>();
+            titleCG.alpha = 1f;
+            titleCG.blocksRaycasts = false;
+            titleCG.interactable = false;
+        }
+
         if (titleText != null)
         {
-            titleCG = titleText.GetComponent<CanvasGroup>();
-            if (titleCG == null) titleCG = titleText.gameObject.AddComponent<CanvasGroup>();
-            titleCG.alpha = 1f;
+            titleText.gameObject.SetActive(true);
         }
 
         if (mainMenuPanel != null)
@@ -698,12 +687,16 @@ public class MainMenuController : MonoBehaviour
             mainPanelCG = mainMenuPanel.GetComponent<CanvasGroup>();
             if (mainPanelCG == null) mainPanelCG = mainMenuPanel.AddComponent<CanvasGroup>();
             mainPanelCG.alpha = 1f;
+            mainPanelCG.blocksRaycasts = true;
+            mainPanelCG.interactable = true;
 
             foreach (Transform child in mainMenuPanel.transform)
             {
                 var cg = child.GetComponent<CanvasGroup>();
                 if (cg == null) cg = child.gameObject.AddComponent<CanvasGroup>();
                 cg.alpha = 1f;
+                cg.blocksRaycasts = true;
+                cg.interactable = true;
             }
         }
 
@@ -758,6 +751,7 @@ public class MainMenuController : MonoBehaviour
         if (titleRoot != null) titleRoot.SetActive(active);
         if (backgroundOverlay != null) backgroundOverlay.gameObject.SetActive(active);
         if (titleText != null) titleText.gameObject.SetActive(active);
+        if (loadGameButton != null) loadGameButton.gameObject.SetActive(active);
 
     }
 
@@ -765,42 +759,64 @@ public class MainMenuController : MonoBehaviour
     {
         bool isMainMenu = SceneManager.GetActiveScene().name == "MainMenuScene";
 
-        if (startButton != null)
+        if (isMainMenu)
         {
-            var txt = startButton.GetComponentInChildren<TextMeshProUGUI>();
-            if (txt != null)
+            if (startButton != null)
             {
-                if (isMainMenu)
-                {
-                    txt.gameObject.SetActive(false);
-                }
-                else
+                var txt = startButton.GetComponentInChildren<TextMeshProUGUI>();
+                if (txt != null && !useLegacyCodeStyling) txt.gameObject.SetActive(false);
+            }
+            if (quitButton != null)
+            {
+                var quitTxt = quitButton.GetComponentInChildren<TextMeshProUGUI>();
+                if (quitTxt != null && !useLegacyCodeStyling) quitTxt.gameObject.SetActive(false);
+            }
+        }
+        else
+        {
+            if (titleText != null)
+            {
+                titleText.gameObject.SetActive(true);
+                titleText.text = "PAUSED";
+            }
+
+            if (startButton != null)
+            {
+                var txt = startButton.GetComponentInChildren<TextMeshProUGUI>();
+                if (txt != null)
                 {
                     txt.gameObject.SetActive(true);
                     txt.text = "RESUME";
-                    txt.enableAutoSizing = true;
-                    txt.fontSizeMin = 24f;
-                    txt.fontSizeMax = 46f;
                 }
             }
-        }
 
-        if (quitButton != null)
-        {
-            var quitTxt = quitButton.GetComponentInChildren<TextMeshProUGUI>();
-            if (quitTxt != null)
+            if (settingsButton != null)
             {
-                if (isMainMenu)
+                var setTxt = settingsButton.GetComponentInChildren<TextMeshProUGUI>();
+                if (setTxt != null)
                 {
-                    quitTxt.gameObject.SetActive(false);
+                    setTxt.gameObject.SetActive(true);
+                    setTxt.text = "SETTING";
                 }
-                else
+            }
+
+            if (quitButton != null)
+            {
+                var quitTxt = quitButton.GetComponentInChildren<TextMeshProUGUI>();
+                if (quitTxt != null)
                 {
                     quitTxt.gameObject.SetActive(true);
                     quitTxt.text = "MAIN MENU";
-                    quitTxt.enableAutoSizing = true;
-                    quitTxt.fontSizeMin = 24f;
-                    quitTxt.fontSizeMax = 44f;
+                }
+            }
+
+            if (quitDesktopButton != null)
+            {
+                var qdTxt = quitDesktopButton.GetComponentInChildren<TextMeshProUGUI>();
+                if (qdTxt != null)
+                {
+                    qdTxt.gameObject.SetActive(true);
+                    qdTxt.text = "EXIT TO DESKTOP";
                 }
             }
         }
@@ -831,6 +847,9 @@ public class MainMenuController : MonoBehaviour
 
         SetMenuVisualsActive(false);
 
+        Cursor.visible = false;
+        Cursor.lockState = CursorLockMode.Locked;
+
         if (FadeManager.Instance != null && FadeManager.Instance.IsFading)
         {
             FadeManager.Instance.FadeOut(0.2f);
@@ -848,7 +867,31 @@ public class MainMenuController : MonoBehaviour
             return;
         }
 
+        // When starting from Main Menu: automatically enter the last saved game if one exists!
+        if (FeaturesSaveSystem.SaveSystemManager.Instance != null)
+        {
+            string lastSaveId = FeaturesSaveSystem.SaveSystemManager.Instance.GetLastPlayedSaveId();
+            FeaturesSaveSystem.SaveSystemManager.PendingSaveIdToLoad = lastSaveId;
+            Debug.Log($"[MainMenuController] OnStartClicked: Auto-loading last save '{lastSaveId}'");
+        }
+
         bool willLoadScene = loadSceneOnStart && !string.IsNullOrEmpty(targetSceneName);
+
+        var fantasyAnimator = GetComponent<FantasyMenuAnimator>();
+        if (fantasyAnimator != null && willLoadScene)
+        {
+            hasStartedGame = true;
+            menuActive = false;
+            currentState = MenuState.FadingOut;
+            stateTimer = 0f;
+            stateDuration = 999f;
+            fantasyAnimator.PlayEnterGameTransition(targetSceneName, () =>
+            {
+                currentState = MenuState.Hidden;
+                SetMenuVisualsActive(false);
+            });
+            return;
+        }
 
         hasStartedGame = true;
         menuActive = false;
@@ -897,6 +940,15 @@ public class MainMenuController : MonoBehaviour
 #endif
     }
 
+    public void OnLoadGameClicked()
+    {
+        if (!menuActive) return;
+        if (FeaturesSaveSystem.SaveSystemUI.Instance != null)
+        {
+            FeaturesSaveSystem.SaveSystemUI.Instance.Open();
+        }
+    }
+
     private void OnCheckpointClicked()
     {
         if (!menuActive) return;
@@ -929,12 +981,17 @@ public class MainMenuController : MonoBehaviour
 
     public void ReturnToMainMenu()
     {
+        if (isReturningToMainMenu) return;
+        isReturningToMainMenu = true;
+
         Time.timeScale = 1f;
         LockPlayerInput(false);
+        Cursor.visible = true;
+        Cursor.lockState = CursorLockMode.None;
 
         if (FadeManager.Instance != null)
         {
-            FadeManager.Instance.FadeIn(0.3f, () =>
+            FadeManager.Instance.FadeIn(0.25f, () =>
             {
                 Debug.Log("[MainMenuController] Returning to MainMenuScene.");
                 SceneManager.LoadScene("MainMenuScene");
@@ -966,6 +1023,8 @@ public class MainMenuController : MonoBehaviour
                 mainMenuPanel.SetActive(false);
             if (titleRoot != null && titleRoot.activeSelf)
                 titleRoot.SetActive(false);
+            if (loadGameButton != null && loadGameButton.gameObject.activeSelf)
+                loadGameButton.gameObject.SetActive(false);
 
             if (mainPanelCG != null)
             {
@@ -1059,6 +1118,10 @@ public class MainMenuController : MonoBehaviour
             if (titleRoot != null && !titleRoot.activeSelf)
             {
                 titleRoot.SetActive(true);
+            }
+            if (loadGameButton != null && !loadGameButton.gameObject.activeSelf)
+            {
+                loadGameButton.gameObject.SetActive(true);
             }
 
             if (mainPanelCG == null && mainMenuPanel != null)

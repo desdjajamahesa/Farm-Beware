@@ -76,12 +76,17 @@ public class PlayerStats : MonoBehaviour, FeaturesCombat.IDamageable, IPlayerDam
         ServiceLocator.Register<IPlayerDamageNotifier>(this);
     }
 
+    private bool isStatsRestored = false;
+
     void Start()
     {
-        currentHealth = maxHealth;
-        currentStamina = maxStamina;
-        currentHunger = maxHunger;
-        currentThirst = maxThirst;
+        if (!isStatsRestored)
+        {
+            currentHealth = maxHealth;
+            currentStamina = maxStamina;
+            currentHunger = maxHunger;
+            currentThirst = maxThirst;
+        }
 
         OnHealthChanged?.Invoke(currentHealth, maxHealth);
         OnStaminaChanged?.Invoke(currentStamina, maxStamina);
@@ -364,6 +369,7 @@ public class PlayerStats : MonoBehaviour, FeaturesCombat.IDamageable, IPlayerDam
     /// </summary>
     public void RestoreStats(int hp, float stamina, float hunger, float thirst)
     {
+        isStatsRestored = true;
         currentHealth = Mathf.Clamp(hp, 1, maxHealth);
         currentStamina = Mathf.Clamp(stamina, 0f, maxStamina);
         currentHunger = Mathf.Clamp(hunger, 0f, maxHunger);

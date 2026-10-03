@@ -1,14 +1,17 @@
 using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.SceneManagement;
+using FeaturesCommon;
 
 /// <summary>
 /// FantasyMenuAnimator brings the Farm Beware dual-realm main menu to life:
 /// - Smooth 2.5D mouse parallax with multi-plane depth (Background, Portal, Signpost/Buttons, Title)
 /// - Ethereal pulse and gentle rotation on the central rift vortex and cosmic galaxy
-/// - Graceful floating bob and golden aura breathing on the 'FARM BEWARE' title plaque
+/// - Graceful floating bob on the 'FARM BEWARE' title plaque
 /// - Gentle organic breeze sway for individual wooden signboards
 /// - Interactive hover glows and responsive button micro-animations
+/// - Punchy & cinematic portal dive transition when clicking 'PLAY' to enter the game
 /// </summary>
 public class FantasyMenuAnimator : MonoBehaviour
 {
@@ -29,12 +32,8 @@ public class FantasyMenuAnimator : MonoBehaviour
     [SerializeField] private float parallaxSmoothSpeed = 5f;
 
     [Header("Title Plaque Animation")]
-    [SerializeField] private CanvasGroup titleGlowGroup;
     [SerializeField] private float titleFloatAmplitude = 6f;
     [SerializeField] private float titleFloatSpeed = 0.85f;
-    [SerializeField] private float titleGlowPulseSpeed = 1.6f;
-    [SerializeField] private float titleGlowMin = 0.20f;
-    [SerializeField] private float titleGlowMax = 0.60f;
     [SerializeField] private float titleScaleBreathAmount = 0.015f;
     [SerializeField] private float titleScaleBreathSpeed = 0.9f;
 
@@ -59,6 +58,16 @@ public class FantasyMenuAnimator : MonoBehaviour
     [SerializeField] private float swayAngleMax = 1.2f;
     [SerializeField] private float swaySpeed = 1.3f;
 
+    [Header("Game Enter Transition")]
+    [Tooltip("Total duration of the enter-game portal rush animation.")]
+    [SerializeField] private float enterTransitionDuration = 1.2f;
+    [Tooltip("Rapid rotation boost applied to the vortex portal when entering game.")]
+    [SerializeField] private float vortexSpinBoost = 240f;
+    [Tooltip("Scale zoom factor for the background when diving into the portal.")]
+    [SerializeField] private float bgZoomScale = 1.35f;
+    [Tooltip("Screen energy flash overlay during portal entry.")]
+    [SerializeField] private Image lightningFlashOverlay;
+
     // Internal State
     private Vector2 bgInitialPos;
     private Vector2 signpostInitialPos;
@@ -69,6 +78,9 @@ public class FantasyMenuAnimator : MonoBehaviour
     private Vector2 currentParallaxOffset;
 
     private MainMenuController menuController;
+    private bool isTransitioningToGame = false;
+
+    public bool IsTransitioningToGame => isTransitioningToGame;
 
     private void Awake()
     {
@@ -105,10 +117,14 @@ public class FantasyMenuAnimator : MonoBehaviour
             if (t != null) titleRect = t.GetComponent<RectTransform>();
         }
 
-        if (titleGlowGroup == null && titleRect != null)
+        // Ensure yellow glow aura on "farm beware" is completely disabled
+        if (titleRect != null)
         {
             var tg = titleRect.Find("TitleGlow");
-            if (tg != null) titleGlowGroup = tg.GetComponent<CanvasGroup>();
+            if (tg != null)
+            {
+                tg.gameObject.SetActive(false);
+            }
         }
 
         if (vortexRect == null)
@@ -129,6 +145,12 @@ public class FantasyMenuAnimator : MonoBehaviour
                 galaxyRect = g.GetComponent<RectTransform>();
                 galaxyCanvasGroup = g.GetComponent<CanvasGroup>();
             }
+        }
+
+        if (lightningFlashOverlay == null)
+        {
+            var l = transform.Find("BackgroundContainer/LightningFlashOverlay");
+            if (l != null) lightningFlashOverlay = l.GetComponent<Image>();
         }
 
         if (playButtonRect == null && signpostPanel != null)
@@ -159,10 +181,20 @@ public class FantasyMenuAnimator : MonoBehaviour
             titleInitialPos = titleRect.anchoredPosition;
             titleInitialScale = titleRect.localScale != Vector3.zero ? titleRect.localScale : Vector3.one;
         }
+
+        // Double check title yellow glow stays disabled
+        if (titleRect != null)
+        {
+            var tg = titleRect.Find("TitleGlow");
+            if (tg != null) tg.gameObject.SetActive(false);
+        }
     }
 
     private void Update()
     {
+        if (isTransitioningToGame)
+            return;
+
         if (menuController != null && !menuController.IsMenuActive)
             return;
 
@@ -213,7 +245,7 @@ public class FantasyMenuAnimator : MonoBehaviour
     }
     #endregion
 
-    #region Title Plaque Animation
+    #region Title Plaque Animation (Clean & Floating, Yellow Glow Removed)
     private void UpdateTitle(float time)
     {
         if (titleRect == null) return;
@@ -226,13 +258,6 @@ public class FantasyMenuAnimator : MonoBehaviour
         // Subtle scale breathing
         float scaleBreath = 1f + Mathf.Sin(time * titleScaleBreathSpeed * Mathf.PI * 2f) * titleScaleBreathAmount;
         titleRect.localScale = titleInitialScale * scaleBreath;
-
-        // Radiant golden aura pulse
-        if (titleGlowGroup != null)
-        {
-            float t = (Mathf.Sin(time * titleGlowPulseSpeed * Mathf.PI * 2f) + 1f) * 0.5f;
-            titleGlowGroup.alpha = Mathf.Lerp(titleGlowMin, titleGlowMax, t);
-        }
     }
     #endregion
 
@@ -281,6 +306,262 @@ public class FantasyMenuAnimator : MonoBehaviour
             float sway = Mathf.Sin(time * (swaySpeed * 1.08f) + 2.5f) * (swayAngleMax * 1.1f);
             exitButtonRect.localRotation = Quaternion.Euler(0f, 0f, sway);
         }
+    }
+    #endregion
+
+    #region Enter Game Transition Animation
+    /// <summary>
+    /// Triggers the cinematic portal rush transition when user clicks 'PLAY'.
+    /// </summary>
+    public void PlayEnterGameTransition(string targetSceneName, System.Action onComplete = null)
+    {
+        if (isTransitioningToGame) return;
+        StartCoroutine(EnterGameTransitionRoutine(targetSceneName, onComplete));
+    }
+
+    private IEnumerator EnterGameTransitionRoutine(string targetSceneName, System.Action onComplete)
+    {
+        isTransitioningToGame = true;
+
+        // 1. Play crisp tactile game-start audio chime
+        PlayGameStartAudio();
+
+        // 2. Prevent further clicks
+        if (signpostPanel != null)
+        {
+            var cg = signpostPanel.GetComponent<CanvasGroup>() ?? signpostPanel.gameObject.AddComponent<CanvasGroup>();
+            cg.blocksRaycasts = false;
+        }
+
+        // Disable UIAnimationHandler on buttons to prevent scale/color fighting
+        if (playButtonRect != null)
+        {
+            var uih = playButtonRect.GetComponent<UIAnimationHandler>();
+            if (uih != null) uih.enabled = false;
+            var ind = playButtonRect.Find("IndicatorIcon");
+            if (ind != null) ind.gameObject.SetActive(false);
+            var glow = playButtonRect.Find("SelectionGlow");
+            if (glow != null) glow.gameObject.SetActive(false);
+        }
+        if (settingsButtonRect != null)
+        {
+            var uih = settingsButtonRect.GetComponent<UIAnimationHandler>();
+            if (uih != null) uih.enabled = false;
+            var ind = settingsButtonRect.Find("IndicatorIcon");
+            if (ind != null) ind.gameObject.SetActive(false);
+            var glow = settingsButtonRect.Find("SelectionGlow");
+            if (glow != null) glow.gameObject.SetActive(false);
+        }
+        if (exitButtonRect != null)
+        {
+            var uih = exitButtonRect.GetComponent<UIAnimationHandler>();
+            if (uih != null) uih.enabled = false;
+            var ind = exitButtonRect.Find("IndicatorIcon");
+            if (ind != null) ind.gameObject.SetActive(false);
+            var glow = exitButtonRect.Find("SelectionGlow");
+            if (glow != null) glow.gameObject.SetActive(false);
+        }
+
+        // Cache initial positions and scales
+        Vector3 playBtnStartScale = playButtonRect != null ? playButtonRect.localScale : Vector3.one;
+        Vector2 playBtnStartPos = playButtonRect != null ? playButtonRect.anchoredPosition : Vector2.zero;
+        Vector2 settingsStartPos = settingsButtonRect != null ? settingsButtonRect.anchoredPosition : Vector2.zero;
+        Vector2 exitStartPos = exitButtonRect != null ? exitButtonRect.anchoredPosition : Vector2.zero;
+        Vector2 titleStartPos = titleRect != null ? titleRect.anchoredPosition : Vector2.zero;
+        Vector3 bgStartScale = backgroundRect != null ? backgroundRect.localScale : Vector3.one;
+        Vector3 vortexStartScale = vortexRect != null ? vortexRect.localScale : Vector3.one;
+
+        var playCG = playButtonRect != null ? (playButtonRect.GetComponent<CanvasGroup>() ?? playButtonRect.gameObject.AddComponent<CanvasGroup>()) : null;
+        var settingsCG = settingsButtonRect != null ? (settingsButtonRect.GetComponent<CanvasGroup>() ?? settingsButtonRect.gameObject.AddComponent<CanvasGroup>()) : null;
+        var exitCG = exitButtonRect != null ? (exitButtonRect.GetComponent<CanvasGroup>() ?? exitButtonRect.gameObject.AddComponent<CanvasGroup>()) : null;
+        var titleCG = titleRect != null ? (titleRect.GetComponent<CanvasGroup>() ?? titleRect.gameObject.AddComponent<CanvasGroup>()) : null;
+
+        // Fade in screen dark transition
+        if (FadeManager.Instance != null)
+        {
+            FadeManager.Instance.FadeIn(enterTransitionDuration * 0.95f);
+        }
+
+        float elapsed = 0f;
+        float duration = enterTransitionDuration;
+
+        while (elapsed < duration)
+        {
+            elapsed += Time.unscaledDeltaTime;
+            float t = Mathf.Clamp01(elapsed / duration);
+
+            float smoothT = Mathf.SmoothStep(0f, 1f, t);
+            float easeInCubic = t * t * t;
+            float easeOutQuad = 1f - (1f - t) * (1f - t);
+
+            // --- A. Play Button Impact Punch & Forward Dive ---
+            if (playButtonRect != null)
+            {
+                if (t < 0.22f)
+                {
+                    // Snappy punch bounce scale up to 1.25x
+                    float punchT = t / 0.22f;
+                    float punchScale = 1f + Mathf.Sin(punchT * Mathf.PI) * 0.26f;
+                    playButtonRect.localScale = playBtnStartScale * punchScale;
+                    playButtonRect.localRotation = Quaternion.Euler(0f, 0f, Mathf.Sin(punchT * Mathf.PI * 2f) * 2.5f);
+                }
+                else
+                {
+                    // Fly towards camera / portal center and fade away
+                    float expandT = (t - 0.22f) / (1f - 0.22f);
+                    float scaleMultiplier = Mathf.Lerp(1.15f, 1.55f, Mathf.Pow(expandT, 2f));
+                    playButtonRect.localScale = playBtnStartScale * scaleMultiplier;
+
+                    if (playCG != null)
+                    {
+                        playCG.alpha = Mathf.Clamp01(Mathf.Lerp(1f, 0f, expandT * 1.7f));
+                    }
+                }
+            }
+
+            // --- B. Settings, Exit, and Title Dispersal ---
+            float disperseT = Mathf.Clamp01(t / 0.32f);
+            float disperseEase = 1f - Mathf.Pow(1f - disperseT, 3f);
+
+            if (settingsButtonRect != null)
+            {
+                settingsButtonRect.anchoredPosition = settingsStartPos + new Vector2(0f, -75f * disperseEase);
+                if (settingsCG != null) settingsCG.alpha = 1f - disperseEase;
+            }
+
+            if (exitButtonRect != null)
+            {
+                exitButtonRect.anchoredPosition = exitStartPos + new Vector2(0f, -100f * disperseEase);
+                if (exitCG != null) exitCG.alpha = 1f - disperseEase;
+            }
+
+            if (titleRect != null)
+            {
+                titleRect.anchoredPosition = titleStartPos + new Vector2(0f, 70f * disperseEase);
+                if (titleCG != null) titleCG.alpha = 1f - disperseEase;
+            }
+
+            // --- C. Vortex Portal Acceleration & Energy Flare ---
+            if (vortexRect != null)
+            {
+                // Rapidly accelerating vortex spin
+                float spinRate = Mathf.Lerp(vortexRotateSpeed, vortexSpinBoost, easeInCubic);
+                vortexRect.Rotate(0f, 0f, spinRate * Time.unscaledDeltaTime);
+
+                // Vortex expands and pulses into view
+                float vortexExpansion = Mathf.Lerp(1f, 1.45f, smoothT);
+                vortexRect.localScale = vortexStartScale * vortexExpansion;
+            }
+
+            if (vortexCanvasGroup != null)
+            {
+                vortexCanvasGroup.alpha = Mathf.Lerp(vortexCanvasGroup.alpha, 1f, easeOutQuad);
+            }
+
+            if (galaxyCanvasGroup != null)
+            {
+                galaxyCanvasGroup.alpha = Mathf.Lerp(galaxyCanvasGroup.alpha, 1f, easeOutQuad);
+            }
+
+            // --- D. Background Zoom Into the Portal Rift ---
+            if (backgroundRect != null)
+            {
+                float bgScale = Mathf.Lerp(1f, bgZoomScale, smoothT);
+                backgroundRect.localScale = bgStartScale * bgScale;
+            }
+
+            // --- E. Soft Energy Bloom Flash Overlay ---
+            if (lightningFlashOverlay != null)
+            {
+                if (t > 0.40f && t < 0.85f)
+                {
+                    float flashT = (t - 0.40f) / 0.45f;
+                    float flashAlpha = Mathf.Sin(flashT * Mathf.PI) * 0.35f;
+                    Color c = lightningFlashOverlay.color;
+                    c.a = flashAlpha;
+                    lightningFlashOverlay.color = c;
+                }
+                else
+                {
+                    Color c = lightningFlashOverlay.color;
+                    c.a = 0f;
+                    lightningFlashOverlay.color = c;
+                }
+            }
+
+            yield return null;
+        }
+
+        // Clean up overlay
+        if (lightningFlashOverlay != null)
+        {
+            Color c = lightningFlashOverlay.color;
+            c.a = 0f;
+            lightningFlashOverlay.color = c;
+        }
+
+        onComplete?.Invoke();
+
+        // Load scene asynchronously for 0 hitching
+        if (!string.IsNullOrEmpty(targetSceneName))
+        {
+            AsyncOperation asyncLoad = SceneManager.LoadSceneAsync(targetSceneName);
+            while (!asyncLoad.isDone)
+            {
+                yield return null;
+            }
+        }
+    }
+
+    private void PlayGameStartAudio()
+    {
+        AudioSource audioSource = GetComponent<AudioSource>();
+        if (audioSource == null)
+            audioSource = gameObject.AddComponent<AudioSource>();
+
+        audioSource.playOnAwake = false;
+        audioSource.spatialBlend = 0f; // 2D UI audio
+
+        AudioClip startClip = CreateGameStartClip();
+        if (startClip != null)
+        {
+            audioSource.PlayOneShot(startClip, 0.7f);
+        }
+    }
+
+    private static AudioClip cachedStartClip;
+    private static AudioClip CreateGameStartClip()
+    {
+        if (cachedStartClip != null) return cachedStartClip;
+
+        int sampleRate = 44100;
+        float duration = 0.55f;
+        int sampleCount = (int)(sampleRate * duration);
+        float[] samples = new float[sampleCount];
+
+        // Pleasant magical rising chord: C5 (523Hz) -> E5 (659Hz) -> G5 (784Hz) -> C6 (1046Hz)
+        float f1 = 523.25f;
+        float f2 = 659.25f;
+        float f3 = 783.99f;
+        float f4 = 1046.50f;
+
+        for (int i = 0; i < sampleCount; i++)
+        {
+            float t = (float)i / sampleRate;
+            float env = Mathf.Exp(-t * 6.5f);
+
+            float s1 = Mathf.Sin(2f * Mathf.PI * f1 * t);
+            float s2 = Mathf.Sin(2f * Mathf.PI * f2 * t + 0.1f);
+            float s3 = Mathf.Sin(2f * Mathf.PI * f3 * t + 0.2f);
+            float s4 = Mathf.Sin(2f * Mathf.PI * f4 * t + 0.3f);
+            float sparkle = Mathf.Sin(2f * Mathf.PI * f4 * 2f * t) * 0.12f;
+
+            samples[i] = (s1 * 0.35f + s2 * 0.30f + s3 * 0.25f + s4 * 0.20f + sparkle) * env * 0.45f;
+        }
+
+        cachedStartClip = AudioClip.Create("PlayGameStartChime", sampleCount, 1, sampleRate, false);
+        cachedStartClip.SetData(samples, 0);
+        return cachedStartClip;
     }
     #endregion
 }
