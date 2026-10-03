@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
+using FarmBeware.Core.Runtime;
 
 namespace PlayerUI
 {
@@ -11,7 +12,7 @@ namespace PlayerUI
     /// 2. Incoming Damage (Monster memukul pemain): Warna Merah Darah pekat dengan tanda minus dan label HP (-X HP).
     /// Menggunakan dynamic camera tracking, high-contrast outlines, dan object pooling 0-GC.
     /// </summary>
-    public class FloatingCombatTextManager : MonoBehaviour
+    public class FloatingCombatTextManager : MonoBehaviour, IFloatingTextService
     {
         private static FloatingCombatTextManager _instance;
         public static FloatingCombatTextManager Instance
@@ -72,6 +73,7 @@ namespace PlayerUI
                 return;
             }
             Instance = this;
+            ServiceLocator.Register<IFloatingTextService>(this);
 
             if (containerCanvas == null)
             {
@@ -297,6 +299,20 @@ namespace PlayerUI
             var item = obj.AddComponent<FloatingTextItem>();
             item.EnsureComponents();
             return item;
+        }
+
+        void IFloatingTextService.SpawnEnemyDamage(Vector3 position, float damage, bool isCritical)
+        {
+            SpawnEnemyDamage(position, Mathf.RoundToInt(damage), isCritical);
+        }
+
+        private void OnDestroy()
+        {
+            if (Instance == this)
+            {
+                ServiceLocator.Unregister<IFloatingTextService>();
+                Instance = null;
+            }
         }
     }
 }

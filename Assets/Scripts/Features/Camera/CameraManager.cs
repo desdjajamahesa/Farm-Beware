@@ -1,4 +1,5 @@
 using UnityEngine;
+using FarmBeware.Core.Runtime;
 
 namespace FeaturesCamera
 {
@@ -6,7 +7,7 @@ namespace FeaturesCamera
     /// Centralized camera management singleton. Single source of truth for all camera state.
     /// Manages state machine (Gameplay/Trophy/Wardrobe), positioning, and component lifecycle.
     /// </summary>
-    public class CameraManager : MonoBehaviour
+    public class CameraManager : MonoBehaviour, ICameraService
     {
         #region Singleton
         private static CameraManager _instance;
@@ -74,6 +75,7 @@ namespace FeaturesCamera
                 return;
             }
             Instance = this;
+            ServiceLocator.Register<ICameraService>(this);
 
             // Auto-resolve references if not wired in Inspector
             if (mainCamera == null)
@@ -112,8 +114,19 @@ namespace FeaturesCamera
         private void OnDestroy()
         {
             if (Instance == this)
+            {
+                ServiceLocator.Unregister<ICameraService>();
                 Instance = null;
+            }
         }
+
+        #region ICameraService Implementation
+        FarmBeware.Core.Runtime.CameraMode ICameraService.CurrentMode => (FarmBeware.Core.Runtime.CameraMode)(int)_currentMode;
+        void ICameraService.SetMode(FarmBeware.Core.Runtime.CameraMode mode, Transform contextRoot)
+        {
+            SetMode((CameraMode)(int)mode, contextRoot);
+        }
+        #endregion
 
         /// <summary>
         /// Set camera mode with validation. Positions cameras, manages component lifecycle,

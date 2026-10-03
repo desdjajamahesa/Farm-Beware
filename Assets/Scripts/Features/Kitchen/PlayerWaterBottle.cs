@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+using FarmBeware.Core.Runtime;
 
 namespace FeaturesKitchen
 {
@@ -7,7 +8,7 @@ namespace FeaturesKitchen
     /// Manages the player's refillable 100L water bottle system as specified in the MVP design guidelines.
     /// Tracks current water volume (0-100L) used for drinking, cooking recipes, and irrigating farmland tiles.
     /// </summary>
-    public class PlayerWaterBottle : MonoBehaviour
+    public class PlayerWaterBottle : MonoBehaviour, IWaterService
     {
         public static PlayerWaterBottle Instance
         {
@@ -48,6 +49,7 @@ namespace FeaturesKitchen
                 return;
             }
             _instance = this;
+            ServiceLocator.Register<IWaterService>(this);
         }
 
         private void Start()
@@ -145,6 +147,20 @@ namespace FeaturesKitchen
         {
             currentWater = Mathf.Clamp(amount, 0f, maxWater);
             OnWaterChanged?.Invoke(currentWater, maxWater);
+        }
+
+        void IWaterService.DrinkSip(float amount)
+        {
+            DrinkSip(amount);
+        }
+
+        private void OnDestroy()
+        {
+            if (_instance == this)
+            {
+                ServiceLocator.Unregister<IWaterService>();
+                _instance = null;
+            }
         }
     }
 }

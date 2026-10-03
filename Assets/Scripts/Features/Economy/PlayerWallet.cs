@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+using FarmBeware.Core.Runtime;
 
 namespace FeaturesEconomy
 {
@@ -7,7 +8,7 @@ namespace FeaturesEconomy
     /// Manages the player's currency (Gold).
     /// Provides methods for spending and earning gold, firing events for UI updates.
     /// </summary>
-    public class PlayerWallet : MonoBehaviour
+    public class PlayerWallet : MonoBehaviour, IWalletService
     {
         public static PlayerWallet Instance
         {
@@ -52,6 +53,7 @@ namespace FeaturesEconomy
                 return;
             }
             instance = this;
+            ServiceLocator.Register<IWalletService>(this);
             if (!hasInitialized)
             {
                 currentGold = startingGold;
@@ -62,7 +64,10 @@ namespace FeaturesEconomy
         private void OnDestroy()
         {
             if (instance == this)
+            {
+                ServiceLocator.Unregister<IWalletService>();
                 instance = null;
+            }
         }
 
         private void Start()

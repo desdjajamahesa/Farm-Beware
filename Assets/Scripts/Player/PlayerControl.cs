@@ -2,9 +2,10 @@ using System.Collections;
 using FeaturesInteraction;
 using UnityEngine;
 using UnityEngine.InputSystem; // Pastikan ini tetap ada
+using FarmBeware.Core.Runtime;
 
 [RequireComponent(typeof(Rigidbody))]
-public class PlayerControl : MonoBehaviour
+public class PlayerControl : MonoBehaviour, IPlayerContext
 {
     [Header("Pengaturan Pergerakan")]
     public float walkSpeed = 5f;
@@ -82,8 +83,20 @@ public class PlayerControl : MonoBehaviour
     // inventori, melompat, dash, atau berinteraksi (dipakai mode Trophy, dst).
     public bool isInputLocked = false;
 
+    #region IPlayerContext Implementation
+    public Transform Transform => transform;
+    bool IPlayerContext.IsInputLocked { get => isInputLocked; set => isInputLocked = value; }
+    public void PlayAnimation(string triggerName)
+    {
+        if (animator != null && !string.IsNullOrEmpty(triggerName))
+            animator.SetTrigger(triggerName);
+    }
+    public T GetPlayerComponent<T>() where T : class => GetComponent<T>();
+    #endregion
+
     void Awake()
     {
+        ServiceLocator.Register<IPlayerContext>(this);
         rb = GetComponent<Rigidbody>();
         animator = GetComponentInChildren<Animator>();
         playerCollider = GetComponent<CapsuleCollider>();
@@ -1182,5 +1195,10 @@ public class PlayerControl : MonoBehaviour
         transform.position = position;
         transform.rotation = rotation;
         Physics.SyncTransforms();
+    }
+
+    private void OnDestroy()
+    {
+        ServiceLocator.Unregister<IPlayerContext>();
     }
 }

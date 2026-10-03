@@ -33,6 +33,8 @@ namespace FarmBeware.Core.Runtime
             }
         }
 
+        public static T Get<T>() where T : class => Resolve<T>();
+
         public static bool TryResolve<T>(out T service) where T : class
         {
             service = Resolve<T>();
