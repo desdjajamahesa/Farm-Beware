@@ -25,13 +25,13 @@ namespace FeaturesCamera
         [Header("Orbit Controls")]
         [Tooltip("Camera pitch angle (vertical).")]
         [Range(10f, 85f)]
-        public float pitch = 35.264f;
+        public float pitch = 30f;
 
         [Tooltip("Camera yaw angle (horizontal).")]
-        public float yaw = 0f;
+        public float yaw = 45f;
 
         [Tooltip("Distance from target.")]
-        public float distance = 34f;
+        public float distance = 20f;
 
         [Tooltip("Enable mouse right-drag orbit.")]
         public bool allowMouseOrbit = true;
@@ -41,17 +41,17 @@ namespace FeaturesCamera
         public float zoomSpeed = 4f;
 
         [Tooltip("Minimum orthographic size.")]
-        public float minSize = 6f;
+        public float minSize = 4f;
 
         [Tooltip("Maximum orthographic size.")]
-        public float maxSize = 45f;
+        public float maxSize = 12f;
 
         [Header("Projection")]
         [Tooltip("Use orthographic projection (eliminates perspective narrowing).")]
         public bool isOrthographic = true;
 
         [Tooltip("Orthographic camera size.")]
-        public float orthographicSize = 19.5f;
+        public float orthographicSize = 6f;
 
         public static IsometricCameraController Instance { get; private set; }
 
@@ -118,7 +118,10 @@ namespace FeaturesCamera
             if (cam != null)
             {
                 cam.orthographic = isOrthographic;
-                cam.orthographicSize = orthographicSize;
+                if (orthographicSize > 0f)
+                    cam.orthographicSize = orthographicSize;
+                else if (cam.orthographicSize > 0f)
+                    orthographicSize = cam.orthographicSize;
             }
         }
 
