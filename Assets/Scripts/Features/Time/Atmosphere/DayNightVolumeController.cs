@@ -5,6 +5,7 @@ using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
 using FeaturesTime;
 using FeaturesRendering.Lighting;
+using FarmBeware.Core.Runtime;
 
 namespace FeaturesTime.Atmosphere
 {
@@ -159,7 +160,7 @@ namespace FeaturesTime.Atmosphere
 
         private Coroutine _transitionCoroutine;
         private Coroutine _impulseCoroutine;
-        private PlayerStats _cachedPlayerStats;
+        private IPlayerDamageNotifier _cachedPlayerStats;
 
         #endregion
 
@@ -789,7 +790,21 @@ namespace FeaturesTime.Atmosphere
         private void BindPlayerStats()
         {
             if (_cachedPlayerStats == null)
-                _cachedPlayerStats = FindFirstObjectByType<PlayerStats>();
+            {
+                _cachedPlayerStats = ServiceLocator.Resolve<IPlayerDamageNotifier>();
+                if (_cachedPlayerStats == null)
+                {
+                    var allBehaviors = FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.None);
+                    for (int i = 0; i < allBehaviors.Length; i++)
+                    {
+                        if (allBehaviors[i] is IPlayerDamageNotifier notifier)
+                        {
+                            _cachedPlayerStats = notifier;
+                            break;
+                        }
+                    }
+                }
+            }
 
             if (_cachedPlayerStats != null)
             {

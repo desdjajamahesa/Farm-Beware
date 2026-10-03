@@ -2,7 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AI;
-using PlayerUI;
+using FarmBeware.Core.Runtime;
 using FeaturesTime.UI;
 
 namespace FeaturesCombat
@@ -451,10 +451,13 @@ namespace FeaturesCombat
                     }
                 }
 
-                var beds = FindObjectsByType<FeaturesInteraction.BedInteractable>(FindObjectsInactive.Include, FindObjectsSortMode.None);
-                foreach (var b in beds)
+                var allBehaviours = FindObjectsByType<MonoBehaviour>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+                foreach (var b in allBehaviours)
                 {
-                    b?.UpdateLabel();
+                    if (b is FarmBeware.Core.Runtime.IBedInteractable bed)
+                    {
+                        bed.UpdateLabel();
+                    }
                 }
                 return;
             }
@@ -514,10 +517,13 @@ namespace FeaturesCombat
                 StartNightBrawl();
             }
 
-            var bedsAfter = FindObjectsByType<FeaturesInteraction.BedInteractable>(FindObjectsInactive.Include, FindObjectsSortMode.None);
-            foreach (var b in bedsAfter)
+            var allBehavioursAfter = FindObjectsByType<MonoBehaviour>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            foreach (var b in allBehavioursAfter)
             {
-                b?.UpdateLabel();
+                if (b is FarmBeware.Core.Runtime.IBedInteractable bed)
+                {
+                    bed.UpdateLabel();
+                }
             }
         }
 

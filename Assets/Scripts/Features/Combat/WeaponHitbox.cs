@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
-using PlayerUI;
+using FarmBeware.Core.Runtime;
 
 namespace FeaturesCombat
 {
@@ -192,8 +192,8 @@ namespace FeaturesCombat
             int effectiveDamage = currentDamage;
             if (attacker != null)
             {
-                var stats = attacker.GetComponent<PlayerStats>() ?? attacker.GetComponentInParent<PlayerStats>();
-                if (stats != null && stats.isGodMode)
+                var pc = attacker.GetComponent<IPlayerContext>() ?? attacker.GetComponentInParent<IPlayerContext>();
+                if (pc != null && pc.IsGodMode)
                 {
                     effectiveDamage = 9999;
                 }

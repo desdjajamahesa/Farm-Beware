@@ -1,7 +1,7 @@
 using System.Collections;
 using UnityEngine;
-using PlayerUI;
 using FeaturesCombat.Projectiles;
+using FarmBeware.Core.Runtime;
 
 namespace FeaturesCombat
 {

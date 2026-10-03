@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
+using FarmBeware.Core.Runtime;
 
 public class InventorySlotUI : MonoBehaviour, IDropHandler, IPointerClickHandler, IPointerEnterHandler, IPointerExitHandler
 {
@@ -23,8 +24,8 @@ public class InventorySlotUI : MonoBehaviour, IDropHandler, IPointerClickHandler
     public int SlotIndex { get; private set; }
     public InventorySlot BoundSlot { get; set; }
 
-    // State progress per-slot (hanya untuk inventory yang memiliki KitchenStation; selain itu null).
-    private KitchenStation station;
+    // State progress per-slot (hanya untuk inventory yang memiliki ISlotProgressProvider; selain itu null).
+    private ISlotProgressProvider station;
     private bool stationChecked;
 
     // Kontainer tunggal indikator progress (track + fill + teks %).
@@ -56,7 +57,7 @@ public class InventorySlotUI : MonoBehaviour, IDropHandler, IPointerClickHandler
             defaultColor = backgroundImage.color;
 
         // Resolve stasiun dapur bila inventory ini adalah stasiun (Sink/Stove).
-        station = owner != null ? owner.GetComponent<KitchenStation>() : null;
+        station = owner != null ? owner.GetComponent<ISlotProgressProvider>() : null;
         stationChecked = true;
 
         BuildProgressIndicator();
@@ -165,19 +166,11 @@ public class InventorySlotUI : MonoBehaviour, IDropHandler, IPointerClickHandler
         if (dragItem == null)
         {
             // Support dropping from Sink (OutputSlot clean item or InputSlot returned item)
-            var sinkHandler = eventData.pointerDrag != null ? eventData.pointerDrag.GetComponent<SinkDragDropHandler>() : null;
-            if (sinkHandler != null && sinkHandler.sinkManager != null)
+            var sinkHandler = eventData.pointerDrag != null ? eventData.pointerDrag.GetComponent<ISinkDropHandler>() : null;
+            if (sinkHandler != null)
             {
-                if (sinkHandler.slotType == SinkDragDropHandler.SlotType.OutputSlot)
-                {
-                    sinkHandler.sinkManager.TransferFromOutputToPlayer(this.SlotIndex);
-                    return;
-                }
-                else if (sinkHandler.slotType == SinkDragDropHandler.SlotType.InputSlot)
-                {
-                    sinkHandler.sinkManager.TransferFromInputToPlayer(this.SlotIndex);
-                    return;
-                }
+                sinkHandler.HandleDropToPlayer(this.SlotIndex);
+                return;
             }
             return;
         }
@@ -353,7 +346,7 @@ public class InventorySlotUI : MonoBehaviour, IDropHandler, IPointerClickHandler
     {
         if (!stationChecked)
         {
-            station = ownerInventory != null ? ownerInventory.GetComponent<KitchenStation>() : null;
+            station = ownerInventory != null ? ownerInventory.GetComponent<ISlotProgressProvider>() : null;
             stationChecked = true;
         }
 

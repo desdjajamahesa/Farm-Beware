@@ -1,11 +1,11 @@
-using FeaturesCamera;
+using FarmBeware.Core.Runtime;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 
 // Manager mode First-Person Trophy Arrangement (singleton).
 // Delegates camera switching to CameraManager. ESC untuk keluar dari mode.
-public class TrophySystemManager : MonoBehaviour
+public class TrophySystemManager : MonoBehaviour, FarmBeware.Core.Runtime.ITrophyService
 {
     private static TrophySystemManager _instance;
 
@@ -51,8 +51,9 @@ public class TrophySystemManager : MonoBehaviour
             if (trophyCamera != null)
                 return trophyCamera;
 
-            if (CameraManager.Instance != null && CameraManager.Instance.TrophyCamera != null)
-                return CameraManager.Instance.TrophyCamera;
+            var cameraService = ServiceLocator.Resolve<ICameraService>();
+            if (cameraService != null && cameraService.TrophyCamera != null)
+                return cameraService.TrophyCamera;
 
             return null;
         }
@@ -76,6 +77,7 @@ public class TrophySystemManager : MonoBehaviour
         }
 
         Instance = this;
+        FarmBeware.Core.Runtime.ServiceLocator.Register<FarmBeware.Core.Runtime.ITrophyService>(this);
 
         // Auto-resolve trophy camera from the scene hierarchy (child of trophySystemRoot).
         // Must include inactive objects so camera can be found when disabled by default.
@@ -83,10 +85,57 @@ public class TrophySystemManager : MonoBehaviour
             trophyCamera = trophySystemRoot.GetComponentInChildren<Camera>(true);
     }
 
+    private void OnEnable()
+    {
+        DraggableItem.HybridWorldDropHandler = HandleTrophyWorldDrop;
+    }
+
+    private void OnDisable()
+    {
+        if (DraggableItem.HybridWorldDropHandler == HandleTrophyWorldDrop)
+            DraggableItem.HybridWorldDropHandler = null;
+    }
+
+    private bool HandleTrophyWorldDrop(InventorySlotUI originSlot)
+    {
+        if (!isInTrophyMode || originSlot == null)
+            return false;
+
+        Camera cam = TrophyFirstPersonCamera;
+        if (cam == null || !cam.enabled)
+            cam = Camera.main;
+        if (cam == null || Mouse.current == null)
+            return false;
+
+        ItemData item = originSlot.BoundSlot != null ? originSlot.BoundSlot.item : null;
+        if (item == null || item is not TrophyItemData)
+            return false;
+
+        Vector2 mousePos = Mouse.current.position.ReadValue();
+        Ray ray = cam.ScreenPointToRay(mousePos);
+
+        if (!Physics.Raycast(ray, out RaycastHit hit, Mathf.Infinity, LayerMask.GetMask("SnapPoint")))
+            return false;
+
+        TrophySnapPoint snap = hit.collider != null ? hit.collider.GetComponent<TrophySnapPoint>() : null;
+        if (snap == null || snap.slotIndex < 0)
+            return false;
+
+        InventoryComponent rack = currentRackInventory;
+        if (rack == null || originSlot.ownerInventory == null)
+            return false;
+
+        originSlot.ownerInventory.MoveItemToSlot(originSlot.SlotIndex, rack, snap.slotIndex);
+        return true;
+    }
+
     private void OnDestroy()
     {
         if (Instance == this)
+        {
+            FarmBeware.Core.Runtime.ServiceLocator.Unregister<FarmBeware.Core.Runtime.ITrophyService>();
             Instance = null;
+        }
     }
 
     private void Update()
@@ -98,7 +147,7 @@ public class TrophySystemManager : MonoBehaviour
         // ESC untuk keluar dari mode trophy.
         if (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame)
         {
-            MainMenuController.LastFrameUIPanelClosed = Time.frameCount;
+            FarmBeware.Core.Runtime.UIModalHelper.LastFrameUIPanelClosed = Time.frameCount;
             ExitTrophyMode();
             return;
         }
@@ -147,15 +196,16 @@ public class TrophySystemManager : MonoBehaviour
 
         isInTrophyMode = true;
 
-        // Delegate camera switching to CameraManager
-        if (CameraManager.Instance != null)
+        // Delegate camera switching to ICameraService
+        var cameraService = ServiceLocator.Resolve<ICameraService>();
+        if (cameraService != null)
         {
-            CameraManager.Instance.SetMode(CameraManager.CameraMode.TrophyMode, trophySystemRoot);
-            CameraManager.Instance.PositionPlayerBehindTrophyCamera();
+            cameraService.SetMode(CameraMode.TrophyMode, trophySystemRoot);
+            cameraService.PositionPlayerBehindTrophyCamera();
         }
         else
         {
-            Debug.LogError("[TrophySystemManager] CameraManager.Instance not found!");
+            Debug.LogError("[TrophySystemManager] ICameraService not found!");
         }
 
         Debug.Log("Masuk First-Person Trophy Mode");
@@ -169,10 +219,11 @@ public class TrophySystemManager : MonoBehaviour
 
         isInTrophyMode = false;
 
-        // Delegate camera switching to CameraManager
-        if (CameraManager.Instance != null)
+        // Delegate camera switching to ICameraService
+        var camService = ServiceLocator.Resolve<ICameraService>();
+        if (camService != null)
         {
-            CameraManager.Instance.SetMode(CameraManager.CameraMode.Gameplay);
+            camService.SetMode(CameraMode.Gameplay);
         }
 
         // Tutup panel storage/inventori yang dibuka saat masuk mode trophy.

@@ -1,5 +1,5 @@
-using FeaturesWardrobe;
 using UnityEngine;
+using FarmBeware.Core.Runtime;
 
 namespace FeaturesInteraction
 {
@@ -24,11 +24,12 @@ namespace FeaturesInteraction
         void Update()
         {
             // Early exit if in Wardrobe Mode (prevents interaction detection)
-            if (WardrobeManager.IsInWardrobeMode) return;
+            var cam = ServiceLocator.Resolve<ICameraService>();
+            if (cam != null && cam.CurrentMode == CameraMode.WardrobeMode) return;
 
             // Jangan cari interaksi saat player input terkunci (UI sedang terbuka)
-            var pc = GetComponent<PlayerControl>();
-            if (pc != null && pc.isInputLocked)
+            var pc = GetComponent<IPlayerContext>();
+            if (pc != null && pc.IsInputLocked)
             {
                 currentInteractable = null;
                 return;
@@ -64,11 +65,10 @@ namespace FeaturesInteraction
                 if (!IsInSameZone(targetTransform))
                     continue;
 
-                // Pintu (DoorInteractable) dan Saving System Table (SaveStationInteractable) dikecualikan dari pemblokiran raycast dinding/furniture
-                bool isExempt = (interactable is DoorInteractable)
-                    || (interactable is FeaturesSaveSystem.SaveStationInteractable)
-                    || targetTransform.GetComponentInParent<DoorInteractable>() != null
-                    || targetTransform.GetComponentInParent<FeaturesSaveSystem.SaveStationInteractable>() != null;
+                // Objek yang mengimplementasikan IObstructionExempt dikecualikan dari pemblokiran raycast dinding/furniture
+                bool isExempt = (interactable is IObstructionExempt)
+                    || targetTransform.GetComponent<IObstructionExempt>() != null
+                    || targetTransform.GetComponentInParent<IObstructionExempt>() != null;
 
                 if (!isExempt && IsObstructedByWall(targetTransform))
                     continue;
@@ -181,9 +181,10 @@ namespace FeaturesInteraction
 
         public void OnInteractInput()
         {
-            if (WardrobeManager.IsInWardrobeMode)
+            var camService = ServiceLocator.Resolve<ICameraService>();
+            if (camService != null && camService.CurrentMode == CameraMode.WardrobeMode)
             {
-                Debug.LogWarning("[PlayerInteractor] Interaksi dibatalkan karena WardrobeManager.IsInWardrobeMode = true.");
+                Debug.LogWarning("[PlayerInteractor] Interaksi dibatalkan karena mode Wardrobe aktif.");
                 return;
             }
 

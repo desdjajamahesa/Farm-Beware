@@ -1,4 +1,5 @@
 using UnityEngine;
+using FarmBeware.Core.Runtime;
 
 namespace FeaturesInteraction
 {
@@ -39,7 +40,7 @@ namespace FeaturesInteraction
 
             // Jika objek ini sedang mengalami oklusi kamera (transparan agar pemain terlihat),
             // jangan menimpa dengan highlight solid yang akan menutupi pemain lagi.
-            var selfOcc = GetComponent<FeaturesCamera.WallOccluder>() ?? GetComponentInParent<FeaturesCamera.WallOccluder>();
+            var selfOcc = GetComponent<IOccluder>() ?? GetComponentInParent<IOccluder>();
             if (on && selfOcc != null && selfOcc.IsOccluding)
             {
                 return;
@@ -53,7 +54,7 @@ namespace FeaturesInteraction
                 if (r == null)
                     continue;
 
-                var rOcc = r.GetComponent<FeaturesCamera.WallOccluder>() ?? r.GetComponentInParent<FeaturesCamera.WallOccluder>();
+                var rOcc = r.GetComponent<IOccluder>() ?? r.GetComponentInParent<IOccluder>();
                 if (on)
                 {
                     if (rOcc != null && rOcc.IsOccluding)
@@ -181,7 +182,7 @@ namespace FeaturesInteraction
             for (int i = 0; i < allRends.Length; i++)
             {
                 // Jangan highlight permukaan cermin atau kamera cermin
-                if (allRends[i].name.ToLower().Contains("mirror") || allRends[i].GetComponent<FeaturesWardrobe.MirrorCamera>() != null)
+                if (allRends[i].name.ToLower().Contains("mirror") || allRends[i].GetComponent("MirrorCamera") != null)
                     continue;
                 list.Add(allRends[i]);
             }
@@ -189,7 +190,7 @@ namespace FeaturesInteraction
             originalMaterials = new Material[cachedRenderers.Length][];
             for (int i = 0; i < cachedRenderers.Length; i++)
             {
-                var occ = cachedRenderers[i].GetComponent<FeaturesCamera.WallOccluder>() ?? cachedRenderers[i].GetComponentInParent<FeaturesCamera.WallOccluder>();
+                var occ = cachedRenderers[i].GetComponent<IOccluder>() ?? cachedRenderers[i].GetComponentInParent<IOccluder>();
                 if (occ != null && occ.OriginalMaterials != null && occ.OriginalMaterials.Length > 0)
                 {
                     originalMaterials[i] = occ.OriginalMaterials;

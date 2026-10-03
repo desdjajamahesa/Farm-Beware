@@ -1,0 +1,22 @@
+{
+    "name": "FarmBeware.Features.Wardrobe",
+    "rootNamespace": "FeaturesWardrobe",
+    "references": [
+        "FarmBeware.Core.Runtime",
+        "FarmBeware.Features.Interaction",
+        "FarmBeware.Features.Inventory",
+        "Unity.RenderPipelines.Core.Runtime",
+        "Unity.RenderPipelines.Universal.Runtime",
+        "Unity.InputSystem",
+        "Unity.TextMeshPro"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

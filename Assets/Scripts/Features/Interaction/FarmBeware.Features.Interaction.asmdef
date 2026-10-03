@@ -1,0 +1,18 @@
+{
+    "name": "FarmBeware.Features.Interaction",
+    "rootNamespace": "FeaturesInteraction",
+    "references": [
+        "FarmBeware.Core.Runtime",
+        "FarmBeware.Data.Runtime",
+        "FarmBeware.Features.Inventory"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

@@ -7,8 +7,16 @@ using UnityEngine.UI;
 /// Uses static ghost tracking to prevent orphaned ghost icons
 /// when source slot is destroyed before OnEndDrag fires.
 /// </summary>
-public class SinkDragDropHandler : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHandler, IDropHandler, IPointerClickHandler
+public class SinkDragDropHandler : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHandler, IDropHandler, IPointerClickHandler, FarmBeware.Core.Runtime.ISinkDropHandler
 {
+    public void HandleDropToPlayer(int targetSlotIndex)
+    {
+        if (sinkManager == null) return;
+        if (slotType == SlotType.OutputSlot)
+            sinkManager.TransferFromOutputToPlayer(targetSlotIndex);
+        else if (slotType == SlotType.InputSlot)
+            sinkManager.TransferFromInputToPlayer(targetSlotIndex);
+    }
     public enum SlotType { PlayerInventory, InputSlot, OutputSlot }
 
     [Tooltip("Type of this slot.")]

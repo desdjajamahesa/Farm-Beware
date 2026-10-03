@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using FarmBeware.Core.Runtime;
 
 namespace FeaturesCamera
 {
@@ -7,7 +8,7 @@ namespace FeaturesCamera
     /// Per-wall occlusion transparency controller.
     /// Handles fade in/out when wall occludes camera view of player.
     /// </summary>
-    public class WallOccluder : MonoBehaviour
+    public class WallOccluder : MonoBehaviour, IOccluder
     {
         [Header("Settings")]
         [Tooltip("Target alpha when wall is occluding (0 = invisible, 1 = opaque)")]

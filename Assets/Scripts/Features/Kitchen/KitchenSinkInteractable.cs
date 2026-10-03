@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using FeaturesInteraction;
+using FarmBeware.Core.Runtime;
 
 /// <summary>
 /// Kitchen Sink: owns washing processor logic and slots.
@@ -50,6 +51,7 @@ public class KitchenSinkInteractable : KitchenStation, IInteractable
     {
         base.Awake();
         Instance = this;
+        InventoryManagerUI.IsSinkOpenCheck = () => (Instance != null && Instance.IsPanelOpen);
 
         // Initialize slots
         if (inputSlot == null) inputSlot = new InventorySlot();
@@ -115,9 +117,9 @@ public class KitchenSinkInteractable : KitchenStation, IInteractable
         Cursor.visible = true;
         Cursor.lockState = CursorLockMode.None;
 
-        var playerControl = interactor != null ? interactor.GetComponent<PlayerControl>() : null;
+        var playerControl = interactor != null ? interactor.GetComponent<IPlayerContext>() : ServiceLocator.Resolve<IPlayerContext>();
         if (playerControl != null)
-            playerControl.isInputLocked = true;
+            playerControl.IsInputLocked = true;
 
         // Sync UI to current processor state
         if (sinkMgr != null)
@@ -133,7 +135,7 @@ public class KitchenSinkInteractable : KitchenStation, IInteractable
             Keyboard.current != null &&
             Keyboard.current.escapeKey.wasPressedThisFrame)
         {
-            MainMenuController.LastFrameUIPanelClosed = Time.frameCount;
+            UIModalHelper.LastFrameUIPanelClosed = Time.frameCount;
             ClosePanel();
             return;
         }
@@ -260,9 +262,9 @@ public class KitchenSinkInteractable : KitchenStation, IInteractable
         Cursor.visible = false;
         Cursor.lockState = CursorLockMode.Locked;
 
-        var player = FindFirstObjectByType<PlayerControl>();
+        var player = ServiceLocator.Resolve<IPlayerContext>();
         if (player != null)
-            player.isInputLocked = false;
+            player.IsInputLocked = false;
     }
 
     /// <summary>

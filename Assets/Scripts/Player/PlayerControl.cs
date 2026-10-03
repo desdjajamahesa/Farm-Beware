@@ -86,6 +86,7 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
     #region IPlayerContext Implementation
     public Transform Transform => transform;
     bool IPlayerContext.IsInputLocked { get => isInputLocked; set => isInputLocked = value; }
+    public bool IsGodMode => playerStats != null && playerStats.isGodMode;
     public void PlayAnimation(string triggerName)
     {
         if (animator != null && !string.IsNullOrEmpty(triggerName))

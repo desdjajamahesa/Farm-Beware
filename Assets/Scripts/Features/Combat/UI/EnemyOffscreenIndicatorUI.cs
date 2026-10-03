@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using FarmBeware.Core.Runtime;
 
 namespace FeaturesCombat.UI
 {
@@ -74,9 +75,10 @@ namespace FeaturesCombat.UI
             // Ambil kamera aktif
             if (targetCamera == null || !targetCamera.isActiveAndEnabled)
             {
-                if (FeaturesCamera.CameraManager.Instance != null && FeaturesCamera.CameraManager.Instance.MainCamera != null)
+                var cameraService = ServiceLocator.Resolve<ICameraService>();
+                if (cameraService != null && cameraService.MainCamera != null)
                 {
-                    targetCamera = FeaturesCamera.CameraManager.Instance.MainCamera;
+                    targetCamera = cameraService.MainCamera;
                 }
                 else
                 {

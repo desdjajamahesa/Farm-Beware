@@ -301,9 +301,9 @@ namespace PlayerUI
             return item;
         }
 
-        void IFloatingTextService.SpawnEnemyDamage(Vector3 position, float damage, bool isCritical)
+        void IFloatingTextService.SpawnEnemyDamage(Vector3 position, float damage, bool isCrit, bool isSkill)
         {
-            SpawnEnemyDamage(position, Mathf.RoundToInt(damage), isCritical);
+            SpawnEnemyDamage(position, Mathf.RoundToInt(damage), isCrit, isSkill);
         }
 
         private void OnDestroy()

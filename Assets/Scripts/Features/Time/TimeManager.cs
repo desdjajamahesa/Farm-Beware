@@ -63,7 +63,7 @@ public class TimeManager : MonoBehaviour
     {
         // Do not process debug keys when paused or when Save UI is open
         if (Time.timeScale <= 0f) return;
-        if (FeaturesSaveSystem.SaveSystemUI.Instance != null && FeaturesSaveSystem.SaveSystemUI.Instance.IsOpen) return;
+        if (FarmBeware.Core.Runtime.UIModalHelper.IsSaveUIOpen) return;
 
         // DEBUG SEMENTARA: tekan N untuk melompat ke fase malam (uji tidur Kasur).
         if (Keyboard.current != null && Keyboard.current.nKey.wasPressedThisFrame)

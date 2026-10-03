@@ -1,6 +1,6 @@
 using UnityEngine;
 using FeaturesInteraction;
-using FeaturesCommon;
+using FarmBeware.Core.Runtime;
 
 /// <summary>
 /// Pintu: menjembatani pemain antar area dalam scene yang sama (Opsi A saat ini).
@@ -14,7 +14,7 @@ public enum ThresholdAxis
     Z
 }
 
-public class DoorInteractable : MonoBehaviour, IInteractable
+public class DoorInteractable : MonoBehaviour, IInteractable, IDynamicLabelProvider, IObstructionExempt
 {
     [Header("Spawn Points (Two-Way)")]
     [Tooltip("Spawn point when player is inside (teleporting outside).")]
@@ -47,7 +47,7 @@ public class DoorInteractable : MonoBehaviour, IInteractable
     [SerializeField] private string exitLabel = "Living Room";
 
     private WorldLabel worldLabel;
-    private PlayerControl cachedPlayer;
+    private IPlayerContext cachedPlayer;
 
     private void Awake()
     {
@@ -61,17 +61,19 @@ public class DoorInteractable : MonoBehaviour, IInteractable
     private void Start()
     {
         if (cachedPlayer == null)
-            cachedPlayer = FindFirstObjectByType<PlayerControl>();
+            cachedPlayer = ServiceLocator.Resolve<IPlayerContext>();
         UpdateDynamicLabel();
     }
 
     private void Update()
     {
         if (cachedPlayer == null)
-            cachedPlayer = FindFirstObjectByType<PlayerControl>();
+            cachedPlayer = ServiceLocator.Resolve<IPlayerContext>();
 
         UpdateDynamicLabel();
     }
+
+    void IDynamicLabelProvider.UpdateDynamicLabel(GameObject interactor) => UpdateDynamicLabel();
 
     public void UpdateDynamicLabel()
     {
@@ -79,12 +81,12 @@ public class DoorInteractable : MonoBehaviour, IInteractable
             worldLabel = GetComponent<WorldLabel>() ?? GetComponentInChildren<WorldLabel>();
 
         if (cachedPlayer == null)
-            cachedPlayer = FindFirstObjectByType<PlayerControl>();
+            cachedPlayer = ServiceLocator.Resolve<IPlayerContext>();
 
         if (worldLabel == null || spawnPointInside == null || spawnPointOutside == null || cachedPlayer == null) return;
 
-        float distToInside = Vector3.Distance(cachedPlayer.transform.position, spawnPointInside.position);
-        float distToOutside = Vector3.Distance(cachedPlayer.transform.position, spawnPointOutside.position);
+        float distToInside = Vector3.Distance(cachedPlayer.Transform.position, spawnPointInside.position);
+        float distToOutside = Vector3.Distance(cachedPlayer.Transform.position, spawnPointOutside.position);
         bool isInside = distToInside < distToOutside;
 
         worldLabel.displayName = isInside ? exitLabel : enterLabel;
@@ -98,43 +100,42 @@ public class DoorInteractable : MonoBehaviour, IInteractable
             return;
         }
 
-        PlayerControl player = interactor != null ? interactor.GetComponent<PlayerControl>() : null;
-        if (player == null)
-            player = FindFirstObjectByType<PlayerControl>();
+        IPlayerContext player = interactor != null ? interactor.GetComponent<IPlayerContext>() : ServiceLocator.Resolve<IPlayerContext>();
 
         if (player == null)
             return;
 
         // Kunci gerakan pemain selama proses teleport
-        player.StopMovement();
-        player.isInputLocked = true;
+        player.IsInputLocked = true;
 
         // Deteksi posisi player: bandingkan jarak ke spawnPointInside vs spawnPointOutside
         // Jika lebih dekat ke luar -> target adalah ke dalam (spawnPointInside)
         // Jika lebih dekat ke dalam -> target adalah ke luar (spawnPointOutside)
-        float distToInside = Vector3.Distance(player.transform.position, spawnPointInside.position);
-        float distToOutside = Vector3.Distance(player.transform.position, spawnPointOutside.position);
+        float distToInside = Vector3.Distance(player.Transform.position, spawnPointInside.position);
+        float distToOutside = Vector3.Distance(player.Transform.position, spawnPointOutside.position);
         bool isInside = distToInside < distToOutside;
 
         Transform targetSpawn = isInside ? spawnPointOutside : spawnPointInside;
 
-        if (useFadeEffect && FadeManager.Instance != null)
+        var fade = ServiceLocator.Resolve<IFadeService>();
+        if (useFadeEffect && fade != null)
         {
-            StartCoroutine(TeleportWithFade(player, targetSpawn.position, isInside));
+            StartCoroutine(TeleportWithFade(player, targetSpawn.position, isInside, fade));
         }
         else
         {
             TeleportPlayer(player, targetSpawn.position);
-            player.isInputLocked = false; // Langsung buka kunci jika tanpa fade
+            player.IsInputLocked = false; // Langsung buka kunci jika tanpa fade
         }
 
         Debug.Log($"[DoorInteractable] Player teleported to " + (isInside ? "outside" : "inside") + " via " + gameObject.name);
     }
 
-    private System.Collections.IEnumerator TeleportWithFade(PlayerControl player, Vector3 targetPosition, bool isInside)
+    private System.Collections.IEnumerator TeleportWithFade(IPlayerContext player, Vector3 targetPosition, bool isInside, IFadeService fade)
     {
         // Fade to black
-        yield return FadeManager.Instance.FadeIn(fadeDuration);
+        fade.FadeIn(fadeDuration);
+        yield return new WaitForSeconds(fadeDuration);
 
         // Teleport player
         TeleportPlayer(player, targetPosition);
@@ -143,22 +144,23 @@ public class DoorInteractable : MonoBehaviour, IInteractable
         yield return null;
 
         // Fade back to clear
-        yield return FadeManager.Instance.FadeOut(fadeDuration);
+        fade.FadeOut(fadeDuration);
+        yield return new WaitForSeconds(fadeDuration);
 
         // Buka kunci gerakan setelah fade selesai
         if (player != null)
-            player.isInputLocked = false;
+            player.IsInputLocked = false;
     }
 
-    private void TeleportPlayer(PlayerControl player, Vector3 targetPosition)
+    private void TeleportPlayer(IPlayerContext player, Vector3 targetPosition)
     {
-        Rigidbody rb = player.GetComponent<Rigidbody>();
+        Rigidbody rb = player.Transform.GetComponent<Rigidbody>();
         if (rb != null)
         {
             rb.linearVelocity = Vector3.zero;
             rb.position = targetPosition;
         }
-        player.transform.position = targetPosition;
+        player.Transform.position = targetPosition;
         Physics.SyncTransforms();
     }
 

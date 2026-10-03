@@ -1,7 +1,7 @@
 using System.Collections;
 using UnityEngine;
-using PlayerUI;
 using FeaturesCombat.Projectiles;
+using FarmBeware.Core.Runtime;
 
 namespace FeaturesCombat
 {
@@ -191,7 +191,7 @@ namespace FeaturesCombat
                         var playerDmg = bossEnemy.PlayerTarget.GetComponent<IDamageable>();
                         playerDmg?.TakeDamage(aoeDamage, bossEnemy.PlayerTarget.position, (bossEnemy.PlayerTarget.position - transform.position).normalized);
 
-                        var playerCtrl = bossEnemy.PlayerTarget.GetComponent<PlayerControl>();
+                        var playerCtrl = bossEnemy.PlayerTarget.GetComponent<IPlayerContext>();
                         if (playerCtrl != null)
                         {
                             Vector3 kbDir = (bossEnemy.PlayerTarget.position - transform.position).normalized;

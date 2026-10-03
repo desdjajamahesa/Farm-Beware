@@ -1,6 +1,6 @@
 using System.Collections;
 using UnityEngine;
-using PlayerUI;
+using FarmBeware.Core.Runtime;
 
 namespace FeaturesCombat
 {
@@ -55,7 +55,7 @@ namespace FeaturesCombat
             isGrappling = true;
             bossEnemy.IsPerformingSkill = true;
 
-            var playerCtrl = bossEnemy.PlayerTarget != null ? bossEnemy.PlayerTarget.GetComponent<PlayerControl>() : null;
+            var playerCtrl = bossEnemy.PlayerTarget != null ? bossEnemy.PlayerTarget.GetComponent<IPlayerContext>() : null;
 
             // 1. Wind-up telegraf cengkeraman (0.4s)
             if (FloatingCombatTextManager.Instance != null)
@@ -87,7 +87,7 @@ namespace FeaturesCombat
                     if (FloatingCombatTextManager.Instance != null)
                     {
                         FloatingCombatTextManager.Instance.SpawnText(
-                            playerCtrl.transform.position + Vector3.up * 1.8f,
+                            playerCtrl.Transform.position + Vector3.up * 1.8f,
                             "💥 GRAPPLED!",
                             new Color(1f, 0.1f, 0.1f));
                     }
@@ -96,8 +96,8 @@ namespace FeaturesCombat
                     yield return new WaitForSeconds(holdDuration);
 
                     // Bantingan (Slam phase)
-                    var playerDmg = playerCtrl.GetComponent<IDamageable>();
-                    playerDmg?.TakeDamage(grappleDamage, playerCtrl.transform.position, Vector3.down);
+                    var playerDmg = playerCtrl.GetPlayerComponent<IDamageable>() ?? bossEnemy.PlayerTarget.GetComponent<IDamageable>();
+                    playerDmg?.TakeDamage(grappleDamage, playerCtrl.Transform.position, Vector3.down);
 
                     // Terapkan stun dan knockback terukur sesuai batasan PlayerControl
                     playerCtrl.ApplyStun(stunDuration);
@@ -138,7 +138,7 @@ namespace FeaturesCombat
             {
                 if (bossEnemy != null && bossEnemy.PlayerTarget != null)
                 {
-                    var playerCtrl = bossEnemy.PlayerTarget.GetComponent<PlayerControl>();
+                    var playerCtrl = bossEnemy.PlayerTarget.GetComponent<IPlayerContext>();
                     if (playerCtrl != null)
                     {
                         playerCtrl.SetControlLock(false);

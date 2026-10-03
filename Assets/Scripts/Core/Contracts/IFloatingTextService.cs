@@ -8,6 +8,6 @@ namespace FarmBeware.Core.Runtime
     public interface IFloatingTextService
     {
         void SpawnText(Vector3 position, string message, Color color);
-        void SpawnEnemyDamage(Vector3 position, float damage, bool isCritical);
+        void SpawnEnemyDamage(Vector3 position, float damage, bool isCrit = false, bool isSkill = false);
     }
 }

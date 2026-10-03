@@ -17,9 +17,14 @@ namespace FarmBeware.Core.Runtime
     {
         int CurrentDay { get; }
         float TimeOfDay { get; }
+        float CurrentHour { get; }
         DayPhase CurrentPhase { get; }
         bool IsNight { get; }
+        bool IsNightEncounterCleared { get; }
+        event Action<int> OnMinuteChanged;
         event Action<int, DayPhase> OnPhaseChanged;
         event Action<int> OnDayChanged;
+        void StartNightPhase();
+        void AdvanceToNextDay();
     }
 }

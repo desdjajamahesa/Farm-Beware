@@ -60,7 +60,7 @@ namespace FeaturesKitchen
 
         private void EnsureBottleInInventory()
         {
-            var inv = GetComponent<InventoryComponent>() ?? FindFirstObjectByType<PlayerControl>()?.GetComponent<InventoryComponent>();
+            var inv = GetComponent<InventoryComponent>() ?? ServiceLocator.Resolve<IPlayerContext>()?.GetPlayerComponent<InventoryComponent>();
             if (inv != null)
             {
                 var db = Resources.Load<ItemDatabase>("Database/ItemDatabase");
@@ -131,10 +131,14 @@ namespace FeaturesKitchen
             currentWater -= sipAmount;
             OnWaterChanged?.Invoke(currentWater, maxWater);
 
-            var stats = GetComponent<PlayerStats>() ?? FindFirstObjectByType<PlayerStats>();
-            if (stats != null)
+            var player = ServiceLocator.Resolve<IPlayerContext>();
+            if (player != null)
             {
-                stats.Drink(sipAmount);
+                player.Transform.SendMessage("Drink", sipAmount, SendMessageOptions.DontRequireReceiver);
+            }
+            else
+            {
+                SendMessage("Drink", sipAmount, SendMessageOptions.DontRequireReceiver);
             }
 
             return true;

@@ -1,5 +1,6 @@
 using UnityEngine;
 using FeaturesInteraction;
+using FarmBeware.Core.Runtime;
 
 namespace FeaturesSaveSystem
 {
@@ -9,7 +10,7 @@ namespace FeaturesSaveSystem
     /// When approached, displays the interact prompt '[ E ] Load' matching door/bed interactions.
     /// Pressing E opens the Saving System modal with Save and Load capabilities.
     /// </summary>
-    public class SaveStationInteractable : MonoBehaviour, IInteractable
+    public class SaveStationInteractable : MonoBehaviour, IInteractable, IObstructionExempt
     {
         [Header("Interaction Prompt")]
         [Tooltip("The label shown on screen when player approaches (e.g. 'Save / Load')")]

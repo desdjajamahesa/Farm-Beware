@@ -2,9 +2,9 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.InputSystem;
-using FeaturesWardrobe;
 using UnityEngine.Serialization;
 using System.Linq;
+using FarmBeware.Core.Runtime;
 
 public class InventoryManagerUI : MonoBehaviour
 {
@@ -94,9 +94,9 @@ public class InventoryManagerUI : MonoBehaviour
 
         if (playerInventory == null)
         {
-            var player = FindFirstObjectByType<PlayerControl>();
+            var player = ServiceLocator.Resolve<IPlayerContext>();
             if (player != null)
-                playerInventory = player.GetComponent<InventoryComponent>();
+                playerInventory = player.GetPlayerComponent<InventoryComponent>();
 
             if (playerInventory == null)
                 playerInventory = GetComponent<InventoryComponent>();
@@ -141,9 +141,9 @@ public class InventoryManagerUI : MonoBehaviour
     {
         if (playerInventory == null)
         {
-            var player = FindFirstObjectByType<PlayerControl>();
+            var player = ServiceLocator.Resolve<IPlayerContext>();
             if (player != null)
-                playerInventory = player.GetComponent<InventoryComponent>();
+                playerInventory = player.GetPlayerComponent<InventoryComponent>();
 
             if (playerInventory == null)
                 playerInventory = GetComponent<InventoryComponent>();
@@ -188,12 +188,12 @@ public class InventoryManagerUI : MonoBehaviour
                IsKitchenSinkOpen();
     }
 
+    public static System.Func<bool> IsSinkOpenCheck;
+    public static System.Func<int, bool> SinkTransferInputHandler;
+
     public bool IsKitchenSinkOpen()
     {
-        var sink = KitchenSinkInteractable.Instance;
-        if (sink != null && sink.IsPanelOpen) return true;
-        var sinkMgr = FindFirstObjectByType<SinkManager>();
-        return sinkMgr != null && sinkMgr.gameObject.activeInHierarchy;
+        return IsSinkOpenCheck != null && IsSinkOpenCheck();
     }
 
     void Update()
@@ -224,7 +224,7 @@ public class InventoryManagerUI : MonoBehaviour
         {
             if (IsAnyInventoryUIRelatedOpen())
             {
-                MainMenuController.LastFrameUIPanelClosed = Time.frameCount;
+                UIModalHelper.LastFrameUIPanelClosed = Time.frameCount;
                 CloseAllUI();
             }
         }
@@ -270,12 +270,9 @@ public class InventoryManagerUI : MonoBehaviour
     // Hanya membuka/menutup panel pemain. Jika storage/Kabinet sedang terbuka, tutup semua.
     public void TogglePlayerInventory()
     {
-        // Guard: jangan buka inventory jika sedang Trophy Mode
-        if (TrophySystemManager.Instance != null && TrophySystemManager.Instance.IsInTrophyMode)
-            return;
-
-        // Guard: jangan buka inventory jika sedang Wardrobe Mode
-        if (WardrobeManager.IsInWardrobeMode)
+        // Guard: jangan buka inventory jika sedang mode Trophy atau Wardrobe
+        var camService = ServiceLocator.Resolve<ICameraService>();
+        if (camService != null && (camService.CurrentMode == CameraMode.TrophyMode || camService.CurrentMode == CameraMode.WardrobeMode))
             return;
 
         if (currentStorageInventory != null)
@@ -317,8 +314,7 @@ public class InventoryManagerUI : MonoBehaviour
 
         if (isPlayerOpen && playerStatsPanel != null)
         {
-            var statsUI = playerStatsPanel.GetComponent<PlayerUI.PlayerStatsDisplayUI>() ?? playerStatsPanel.GetComponentInChildren<PlayerUI.PlayerStatsDisplayUI>();
-            statsUI?.UpdateAllStats();
+            playerStatsPanel.SendMessage("UpdateAllStats", SendMessageOptions.DontRequireReceiver);
         }
 
         // Ensure hotbar is visible when player inventory is open
@@ -349,9 +345,9 @@ public class InventoryManagerUI : MonoBehaviour
         if (isPlayerOpen && leftPanelTitle != null)
             leftPanelTitle.text = "Inventory";
 
-        var playerControl = FindFirstObjectByType<PlayerControl>();
-        if (playerControl != null)
-            playerControl.isInputLocked = isPlayerOpen;
+        var player = ServiceLocator.Resolve<IPlayerContext>();
+        if (player != null)
+            player.IsInputLocked = isPlayerOpen;
 
         SetCursorFree(isPlayerOpen);
     }
@@ -482,8 +478,8 @@ if (customPanel != null)
         var rightTitleText = activeRightPanel?.transform.Find("HeaderTitle")?.GetComponent<Text>();
         if (rightTitleText != null) rightTitleText.text = storageTitle;
 
-        var pc = FindFirstObjectByType<PlayerControl>();
-        if (pc != null) pc.isInputLocked = true;
+        var pc = ServiceLocator.Resolve<IPlayerContext>();
+        if (pc != null) pc.IsInputLocked = true;
 
         SetCursorFree(true);
         UpdateUI();
@@ -572,8 +568,8 @@ if (customPanel != null)
         var rightTitleText = trophyPanel?.transform.Find("HeaderTitle")?.GetComponent<Text>();
         if (rightTitleText != null) rightTitleText.text = "Rak Trophy";
 
-        var pcCabinet = FindFirstObjectByType<PlayerControl>();
-        if (pcCabinet != null) pcCabinet.isInputLocked = true;
+        var pcCabinet = ServiceLocator.Resolve<IPlayerContext>();
+        if (pcCabinet != null) pcCabinet.IsInputLocked = true;
 
         SetCursorFree(true);
         UpdateUI();
@@ -618,10 +614,10 @@ if (customPanel != null)
         }
 
         // Restore player input (unlock movement/interaction)
-        var playerControl = FindFirstObjectByType<PlayerControl>();
-        if (playerControl != null)
+        var pcClose = ServiceLocator.Resolve<IPlayerContext>();
+        if (pcClose != null)
         {
-            playerControl.isInputLocked = false;
+            pcClose.IsInputLocked = false;
         }
 
         // Restore time scale in case it was paused
@@ -779,13 +775,9 @@ if (customPanel != null)
         if (slotOwner == playerInventory)
         {
             // Jika UI Kitchen Sink sedang terbuka, transfer langsung ke slot input wastafel
-            if (IsKitchenSinkOpen())
+            if (IsKitchenSinkOpen() && SinkTransferInputHandler != null)
             {
-                var sinkMgr = FindFirstObjectByType<SinkManager>();
-                if (sinkMgr != null)
-                {
-                    return sinkMgr.TransferToInputSlot(slotIndex);
-                }
+                return SinkTransferInputHandler(slotIndex);
             }
 
             // Clicked a player slot → transfer to storage (if open).

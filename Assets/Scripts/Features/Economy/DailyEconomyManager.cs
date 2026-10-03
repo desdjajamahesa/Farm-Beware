@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using FeaturesCombat;
+using FarmBeware.Core.Runtime;
 
 namespace FeaturesEconomy
 {
@@ -10,7 +11,7 @@ namespace FeaturesEconomy
     /// Manages randomized daily crop prices within MVP ranges (Sweet Potato: 750-1000G, Taro: 1400-1800G, Corn: 1400-1800G),
     /// and logs operational metrics (monsters slain, crops harvested/sold, gold earned) for the Daily Morning Report.
     /// </summary>
-    public class DailyEconomyManager : MonoBehaviour
+    public class DailyEconomyManager : MonoBehaviour, IDailyEconomyService
     {
         public static DailyEconomyManager Instance
         {
@@ -65,6 +66,7 @@ namespace FeaturesEconomy
             }
             _instance = this;
 
+            ServiceLocator.Register<IDailyEconomyService>(this);
             RollDailyMarketPrices();
         }
 
@@ -186,6 +188,16 @@ namespace FeaturesEconomy
         {
             dailyCropsSold += count;
             dailyGoldEarnedTrading += goldEarned;
+        }
+
+        void IDailyEconomyService.RecordCropHarvested(object item, int count)
+        {
+            RecordCropHarvested(item as ItemData, count);
+        }
+
+        private void OnDestroy()
+        {
+            ServiceLocator.Unregister<IDailyEconomyService>();
         }
     }
 }

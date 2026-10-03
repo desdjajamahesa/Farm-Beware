@@ -1,7 +1,8 @@
 using System;
 using UnityEngine;
+using FarmBeware.Core.Runtime;
 
-public class PlayerStats : MonoBehaviour, FeaturesCombat.IDamageable
+public class PlayerStats : MonoBehaviour, FeaturesCombat.IDamageable, IPlayerDamageNotifier
 {
     // Event Darah, Stamina, Hunger & Thirst
     public event Action<int, int> OnHealthChanged;
@@ -71,6 +72,8 @@ public class PlayerStats : MonoBehaviour, FeaturesCombat.IDamageable
         playerRenderers = GetComponentsInChildren<Renderer>(true);
         hurtPropBlock = new MaterialPropertyBlock();
         playerAnimator = GetComponentInChildren<Animator>();
+
+        ServiceLocator.Register<IPlayerDamageNotifier>(this);
     }
 
     void Start()
@@ -372,5 +375,10 @@ public class PlayerStats : MonoBehaviour, FeaturesCombat.IDamageable
         OnStaminaChanged?.Invoke(currentStamina, maxStamina);
         OnHungerChanged?.Invoke(currentHunger, maxHunger);
         OnThirstChanged?.Invoke(currentThirst, maxThirst);
+    }
+
+    private void OnDestroy()
+    {
+        ServiceLocator.Unregister<IPlayerDamageNotifier>();
     }
 }

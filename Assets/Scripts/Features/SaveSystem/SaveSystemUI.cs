@@ -95,6 +95,7 @@ namespace FeaturesSaveSystem
             {
                 Time.timeScale = 1f;
                 isOpen = false;
+                FarmBeware.Core.Runtime.UIModalHelper.IsSaveUIOpen = false;
             }
         }
 
@@ -135,6 +136,7 @@ namespace FeaturesSaveSystem
             Cursor.lockState = CursorLockMode.None;
 
             isOpen = true;
+            FarmBeware.Core.Runtime.UIModalHelper.IsSaveUIOpen = true;
             if (modalPanel != null)
             {
                 modalPanel.SetActive(true);
@@ -156,6 +158,7 @@ namespace FeaturesSaveSystem
         public void Close()
         {
             isOpen = false;
+            FarmBeware.Core.Runtime.UIModalHelper.IsSaveUIOpen = false;
             CloseConfirmDialog();
 
             Time.timeScale = 1f;

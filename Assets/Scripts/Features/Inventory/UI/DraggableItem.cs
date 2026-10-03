@@ -95,45 +95,14 @@ public class DraggableItem : MonoBehaviour, IBeginDragHandler, IDragHandler, IEn
     // Data-driven: pindahkan item dari slot asal (Kabinet) ke Rack pada index snap.slotIndex
     // via backend MoveItemToSlot. Model 3D di-render otomatis oleh TrophyRackVisuals
     // (listener OnInventoryChanged) — TIDAK di-instantiate langsung di sini.
+    public static System.Func<InventorySlotUI, bool> HybridWorldDropHandler;
+
+    // Drop ke dunia 3D: didelegasikan ke listener mode aktif (mis. TrophySystemManager).
     private bool TryHybridWorldDrop()
     {
-        if (TrophySystemManager.Instance == null || !TrophySystemManager.Instance.IsInTrophyMode)
-            return false;
-
-        Camera cam = TrophySystemManager.Instance.TrophyFirstPersonCamera;
-        if (cam == null || !cam.enabled)
-            cam = Camera.main;
-        if (cam == null || Mouse.current == null || OriginSlot == null)
-            return false;
-
-        ItemData item = OriginSlot.BoundSlot != null ? OriginSlot.BoundSlot.item : null;
-        if (item == null || item is not TrophyItemData trophy)
-            return false;
-
-        Vector2 mousePos = Mouse.current.position.ReadValue();
-        Ray ray = cam.ScreenPointToRay(mousePos);
-        Debug.Log($"[D&D] Shooting ray from {cam.name}. MousePos: {mousePos}");
-
-        if (!Physics.Raycast(ray, out RaycastHit hit, Mathf.Infinity, LayerMask.GetMask("SnapPoint")))
-        {
-            Debug.LogWarning("[D&D] FAIL: Raycast missed all SnapPoints on Layer 10!");
-            return false;
-        }
-
-        Debug.Log($"[D&D] SUCCESS: Hit {hit.collider.name}");
-
-        TrophySnapPoint snap = hit.collider != null ? hit.collider.GetComponent<TrophySnapPoint>() : null;
-        if (snap == null || snap.slotIndex < 0)
-            return false;
-
-        InventoryComponent rack = TrophySystemManager.Instance.RackInventory;
-        if (rack == null || OriginSlot.ownerInventory == null)
-            return false;
-
-        // Backend command: pindahkan slot asal ke slot rack pada snap.slotIndex.
-        // MoveItemToSlot menangani: pindah ke slot kosong, stack item sama, atau swap item beda.
-        OriginSlot.ownerInventory.MoveItemToSlot(OriginSlot.SlotIndex, rack, snap.slotIndex);
-        return true;
+        if (HybridWorldDropHandler != null)
+            return HybridWorldDropHandler(OriginSlot);
+        return false;
     }
 
     // Dipanggil oleh InventorySlotUI.OnDrop bila transaksi backend berhasil.

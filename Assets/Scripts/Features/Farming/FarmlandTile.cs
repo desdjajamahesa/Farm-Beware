@@ -2,6 +2,7 @@ using System.Collections;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using FeaturesInteraction;
+using FarmBeware.Core.Runtime;
 
 namespace FeaturesFarming
 {
@@ -21,7 +22,7 @@ namespace FeaturesFarming
     [RequireComponent(typeof(BoxCollider))]
     [RequireComponent(typeof(WorldLabel))]
     [RequireComponent(typeof(Highlightable))]
-    public class FarmlandTile : MonoBehaviour, IInteractable
+    public class FarmlandTile : MonoBehaviour, IInteractable, FarmBeware.Core.Runtime.IDynamicLabelProvider
     {
         [Header("State Petak Tanah")]
         [SerializeField] private TileState currentState = TileState.Untilled;
@@ -149,18 +150,15 @@ namespace FeaturesFarming
             if (TimeManager.Instance != null && TimeManager.Instance.currentPhase == TimeManager.DayPhase.Night)
             {
                 Debug.LogWarning("[FarmlandTile] Farming is only allowed during the day!");
-                if (PlayerUI.FloatingCombatTextManager.Instance != null)
-                {
-                    PlayerUI.FloatingCombatTextManager.Instance.SpawnText(
-                        transform.position + Vector3.up * 1.2f,
-                        "Farming is only allowed during the day!",
-                        new Color(1f, 0.4f, 0.4f));
-                }
+                ServiceLocator.Resolve<IFloatingTextService>()?.SpawnText(
+                    transform.position + Vector3.up * 1.2f,
+                    "Farming is only allowed during the day!",
+                    new Color(1f, 0.4f, 0.4f));
                 return;
             }
 
             InventoryComponent playerInventory = interactor.GetComponent<InventoryComponent>();
-            PlayerControl playerControl = interactor.GetComponent<PlayerControl>();
+            IPlayerContext playerControl = interactor.GetComponent<IPlayerContext>() ?? ServiceLocator.Resolve<IPlayerContext>();
 
             switch (currentState)
             {
@@ -168,13 +166,10 @@ namespace FeaturesFarming
                     if (!IsHoldingHoe(interactor))
                     {
                         Debug.LogWarning("[FarmlandTile] Requires a Hoe in hand to till soil!");
-                        if (PlayerUI.FloatingCombatTextManager.Instance != null)
-                        {
-                            PlayerUI.FloatingCombatTextManager.Instance.SpawnText(
-                                transform.position + Vector3.up * 1.2f,
-                                "Requires Hoe to till soil!",
-                                new Color(1f, 0.6f, 0.2f));
-                        }
+                        ServiceLocator.Resolve<IFloatingTextService>()?.SpawnText(
+                            transform.position + Vector3.up * 1.2f,
+                            "Requires Hoe to till soil!",
+                            new Color(1f, 0.6f, 0.2f));
                         return;
                     }
                     TillSoil();
@@ -207,7 +202,7 @@ namespace FeaturesFarming
             Debug.Log("[FarmlandTile] Soil tilled. Ready for seeds.");
         }
 
-        private void TryPlantSeed(InventoryComponent inventory, PlayerControl playerControl)
+        private void TryPlantSeed(InventoryComponent inventory, IPlayerContext playerControl)
         {
             if (inventory == null || isPlantingAction) return;
 
@@ -223,7 +218,7 @@ namespace FeaturesFarming
             StartCoroutine(RoutinePlantSeedToTile(inventory, seed, playerControl));
         }
 
-        private IEnumerator RoutinePlantSeedToTile(InventoryComponent inventory, SeedItemData seed, PlayerControl playerControl)
+        private IEnumerator RoutinePlantSeedToTile(InventoryComponent inventory, SeedItemData seed, IPlayerContext playerControl)
         {
             isPlantingAction = true;
 
@@ -253,29 +248,23 @@ namespace FeaturesFarming
         private void TryWaterCrop(GameObject interactor)
         {
             const float waterRequired = 10f;
-            var bottle = FeaturesKitchen.PlayerWaterBottle.Instance;
+            var bottle = ServiceLocator.Resolve<IWaterService>();
 
             if (bottle != null && bottle.ConsumeWater(waterRequired))
             {
                 WaterCrop();
-                if (PlayerUI.FloatingCombatTextManager.Instance != null)
-                {
-                    PlayerUI.FloatingCombatTextManager.Instance.SpawnText(
-                        transform.position + Vector3.up * 1.2f,
-                        $"💧 Watered (-{waterRequired:F0}L Water)",
-                        new Color(0.35f, 0.75f, 1f));
-                }
+                ServiceLocator.Resolve<IFloatingTextService>()?.SpawnText(
+                    transform.position + Vector3.up * 1.2f,
+                    $"💧 Watered (-{waterRequired:F0}L Water)",
+                    new Color(0.35f, 0.75f, 1f));
                 return;
             }
 
             // Peringatan bila botol air kosong atau kurang dari 10L
-            if (PlayerUI.FloatingCombatTextManager.Instance != null)
-            {
-                PlayerUI.FloatingCombatTextManager.Instance.SpawnText(
-                    transform.position + Vector3.up * 1.2f,
-                    $"Need {waterRequired:F0}L Water! Refill at Kitchen Sink.",
-                    new Color(1f, 0.5f, 0.2f));
-            }
+            ServiceLocator.Resolve<IFloatingTextService>()?.SpawnText(
+                transform.position + Vector3.up * 1.2f,
+                $"Need {waterRequired:F0}L Water! Refill at Kitchen Sink.",
+                new Color(1f, 0.5f, 0.2f));
             Debug.LogWarning("[FarmlandTile] Cannot water crop: Player water bottle is empty or has less than 10L!");
         }
 
@@ -285,13 +274,13 @@ namespace FeaturesFarming
             Debug.Log("[FarmlandTile] Crop watered! Growth countdown started.");
         }
 
-        private void HarvestCrop(InventoryComponent inventory, PlayerControl playerControl)
+        private void HarvestCrop(InventoryComponent inventory, IPlayerContext playerControl)
         {
             if (plantedSeed == null || inventory == null || isHarvestingAction) return;
             StartCoroutine(RoutineHarvestCrop(inventory, playerControl));
         }
 
-        private IEnumerator RoutineHarvestCrop(InventoryComponent inventory, PlayerControl playerControl)
+        private IEnumerator RoutineHarvestCrop(InventoryComponent inventory, IPlayerContext playerControl)
         {
             isHarvestingAction = true;
 
@@ -331,11 +320,8 @@ namespace FeaturesFarming
                         seedAdded = inventory.AddItem(plantedSeed, seedBonusCount);
                     }
 
-                    // Catat hasil panen ke DailyEconomyManager
-                    if (FeaturesEconomy.DailyEconomyManager.Instance != null)
-                    {
-                        FeaturesEconomy.DailyEconomyManager.Instance.RecordCropHarvested(dropItem, yieldCount);
-                    }
+                    // Catat hasil panen ke DailyEconomyManager via service
+                    ServiceLocator.Resolve<IDailyEconomyService>()?.RecordCropHarvested(dropItem, yieldCount);
 
                     if (added)
                     {
@@ -344,9 +330,9 @@ namespace FeaturesFarming
                             : $"+{yieldCount} {dropItem.itemName}";
 
                         Debug.Log($"[FarmlandTile] Harvest successful! Obtained {yieldCount}x {dropItem.itemName} and {seedBonusCount}x seeds.");
-                        if (PlayerUI.FloatingCombatTextManager.Instance != null && playerControl != null)
+                        if (playerControl != null)
                         {
-                            PlayerUI.FloatingCombatTextManager.Instance.SpawnText(
+                            ServiceLocator.Resolve<IFloatingTextService>()?.SpawnText(
                                 transform.position + Vector3.up * 1.2f,
                                 harvestMsg,
                                 new Color(0.25f, 0.90f, 0.35f));
@@ -483,6 +469,8 @@ namespace FeaturesFarming
             UpdateCountdownUI();
         }
 
+        void FarmBeware.Core.Runtime.IDynamicLabelProvider.UpdateDynamicLabel(GameObject interactor) => UpdateLabelText(interactor);
+
         public void UpdateLabelText(GameObject interactor)
         {
             if (worldLabel == null) return;
@@ -512,7 +500,8 @@ namespace FeaturesFarming
                     break;
 
                 case TileState.PlantedDry:
-                    float currentLitre = FeaturesKitchen.PlayerWaterBottle.Instance != null ? FeaturesKitchen.PlayerWaterBottle.Instance.CurrentWater : 0f;
+                    var bottle = ServiceLocator.Resolve<IWaterService>();
+                    float currentLitre = bottle != null ? bottle.CurrentWater : 0f;
                     worldLabel.displayName = $"Water {plantedSeed?.itemName ?? "Crop"} (10L | {Mathf.FloorToInt(currentLitre)}/100L)";
                     break;
 
@@ -532,8 +521,8 @@ namespace FeaturesFarming
             if (interactor == null)
             {
                 // Fallback: cari player aktif di scene
-                var player = FindFirstObjectByType<PlayerControl>();
-                if (player != null) interactor = player.gameObject;
+                var player = ServiceLocator.Resolve<IPlayerContext>();
+                if (player != null) interactor = player.Transform.gameObject;
             }
 
             if (interactor == null) return false;
@@ -560,8 +549,8 @@ namespace FeaturesFarming
             if (interactor == null)
             {
                 // Fallback: cari player aktif di scene
-                var player = FindFirstObjectByType<PlayerControl>();
-                if (player != null) interactor = player.gameObject;
+                var player = ServiceLocator.Resolve<IPlayerContext>();
+                if (player != null) interactor = player.Transform.gameObject;
             }
 
             if (interactor == null) return null;

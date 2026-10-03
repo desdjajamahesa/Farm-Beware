@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
+using FarmBeware.Core.Runtime;
 
 /// <summary>
 /// UI-only Sink Manager. Reads washing state from KitchenSinkInteractable (processor).
@@ -102,10 +103,10 @@ public class SinkManager : MonoBehaviour
             return;
         }
 
-        var pc = FindFirstObjectByType<PlayerControl>();
+        var pc = ServiceLocator.Resolve<IPlayerContext>();
         if (pc != null)
         {
-            playerInventory = pc.GetComponent<InventoryComponent>();
+            playerInventory = pc.GetPlayerComponent<InventoryComponent>();
             if (playerInventory != null)
                 playerInventory.HasHotbar = true;
             return;
@@ -142,6 +143,7 @@ public class SinkManager : MonoBehaviour
 
         PopulatePlayerInventory();
         SyncToProcessor();
+        InventoryManagerUI.SinkTransferInputHandler = TransferToInputSlot;
     }
 
     private void OnDisable()
@@ -151,6 +153,8 @@ public class SinkManager : MonoBehaviour
             playerInventory.OnInventoryChanged -= OnPlayerInventoryChanged;
         }
         ClearSpawnedSlots();
+        if (InventoryManagerUI.SinkTransferInputHandler == TransferToInputSlot)
+            InventoryManagerUI.SinkTransferInputHandler = null;
         // NOTE: Washing does NOT stop here. Processor keeps running on Kitchen_Sink.
     }
 
@@ -170,9 +174,9 @@ public class SinkManager : MonoBehaviour
         Cursor.visible = true;
         Cursor.lockState = CursorLockMode.None;
 
-        var player = FindFirstObjectByType<PlayerControl>();
+        var player = ServiceLocator.Resolve<IPlayerContext>();
         if (player != null)
-            player.isInputLocked = false;
+            player.IsInputLocked = false;
 
         gameObject.SetActive(false);
     }
@@ -246,11 +250,12 @@ public class SinkManager : MonoBehaviour
         if (bottle != null)
         {
             bottle.RefillWater(100f);
-            if (PlayerUI.FloatingCombatTextManager.Instance != null)
+            var floatText = ServiceLocator.Resolve<IFloatingTextService>();
+            if (floatText != null)
             {
-                var player = FindFirstObjectByType<PlayerControl>();
-                Vector3 pos = player != null ? player.transform.position + Vector3.up * 1.5f : transform.position;
-                PlayerUI.FloatingCombatTextManager.Instance.SpawnText(
+                var player = ServiceLocator.Resolve<IPlayerContext>();
+                Vector3 pos = player != null ? player.Transform.position + Vector3.up * 1.5f : transform.position;
+                floatText.SpawnText(
                     pos,
                     "💧 Water Bottle Refilled (100/100 L)!",
                     new Color(0.25f, 0.85f, 1f));

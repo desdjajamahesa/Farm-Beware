@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using FarmBeware.Core.Runtime;
 
 namespace FeaturesRendering.Vision
 {
@@ -108,10 +109,11 @@ namespace FeaturesRendering.Vision
 
         private void Start()
         {
-            if (autoSyncWithTimeManager && TimeManager.Instance != null)
+            var timeService = ServiceLocator.Resolve<ITimeService>();
+            if (autoSyncWithTimeManager && timeService != null)
             {
-                TimeManager.Instance.OnPhaseChanged += HandleTimePhaseChanged;
-                SetNightState(TimeManager.Instance.currentPhase == TimeManager.DayPhase.Night, instant: true);
+                timeService.OnPhaseChanged += HandleTimePhaseChanged;
+                SetNightState(timeService.IsNight, instant: true);
             }
             else
             {
@@ -130,9 +132,10 @@ namespace FeaturesRendering.Vision
                 _instance = null;
             }
 
-            if (TimeManager.Instance != null)
+            var timeService = ServiceLocator.Resolve<ITimeService>();
+            if (timeService != null)
             {
-                TimeManager.Instance.OnPhaseChanged -= HandleTimePhaseChanged;
+                timeService.OnPhaseChanged -= HandleTimePhaseChanged;
             }
         }
 
@@ -237,9 +240,9 @@ namespace FeaturesRendering.Vision
             }
         }
 
-        private void HandleTimePhaseChanged(TimeManager.DayPhase phase)
+        private void HandleTimePhaseChanged(int day, DayPhase phase)
         {
-            SetNightState(phase == TimeManager.DayPhase.Night, instant: false);
+            SetNightState(phase == DayPhase.Night, instant: false);
         }
         #endregion
 

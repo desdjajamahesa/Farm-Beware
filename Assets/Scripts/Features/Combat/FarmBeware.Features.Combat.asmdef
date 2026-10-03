@@ -1,0 +1,23 @@
+{
+    "name": "FarmBeware.Features.Combat",
+    "rootNamespace": "FeaturesCombat",
+    "references": [
+        "FarmBeware.Core.Runtime",
+        "FarmBeware.Data.Runtime",
+        "FarmBeware.Features.Inventory",
+        "FarmBeware.Features.Time",
+        "Unity.TextMeshPro",
+        "Unity.InputSystem",
+        "Unity.RenderPipelines.Core.Runtime",
+        "Unity.RenderPipelines.Universal.Runtime"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

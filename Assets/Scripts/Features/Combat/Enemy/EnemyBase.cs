@@ -2,8 +2,7 @@ using System;
 using System.Collections;
 using UnityEngine;
 using UnityEngine.AI;
-using PlayerUI;
-using FeaturesEconomy;
+using FarmBeware.Core.Runtime;
 
 namespace FeaturesCombat
 {

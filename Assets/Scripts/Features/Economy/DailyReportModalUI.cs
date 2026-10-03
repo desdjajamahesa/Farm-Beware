@@ -3,6 +3,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.InputSystem;
 using TMPro;
+using FarmBeware.Core.Runtime;
 
 namespace FeaturesEconomy
 {
@@ -11,7 +12,7 @@ namespace FeaturesEconomy
     /// Displays Night Brawl results (monsters slain, combat gold) and Farm & Trade operations
     /// (crops harvested, crops sold, market revenue, wallet balance) before advancing to the new day.
     /// </summary>
-    public class DailyReportModalUI : MonoBehaviour
+    public class DailyReportModalUI : MonoBehaviour, IDailyReportService
     {
         public static DailyReportModalUI Instance
         {
@@ -57,8 +58,15 @@ namespace FeaturesEconomy
                 return;
             }
             _instance = this;
+            ServiceLocator.Register<IDailyReportService>(this);
 
             BuildUIHierarchy();
+        }
+
+        private void OnDestroy()
+        {
+            ServiceLocator.Unregister<IDailyReportService>();
+            if (_instance == this) _instance = null;
         }
 
         private void Update()

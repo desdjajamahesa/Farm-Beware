@@ -54,9 +54,6 @@ namespace FeaturesCamera
         [Tooltip("Wardrobe root transform (for local camera positioning).")]
         [SerializeField] private Transform wardrobeRoot;
 
-        [Header("Player Control")]
-        [Tooltip("PlayerControl component for input locking.")]
-        [SerializeField] private PlayerControl playerControl;
 
         public Camera MainCamera => mainCamera;
         public Camera TrophyCamera => trophyCamera;
@@ -84,8 +81,6 @@ namespace FeaturesCamera
             if (isometricCameraController == null && mainCamera != null)
                 isometricCameraController = mainCamera.GetComponent<IsometricCameraController>();
 
-            if (playerControl == null)
-                playerControl = FindFirstObjectByType<PlayerControl>();
 
             // Enforce initial mode: gameplay cameras on, feature cameras off (both component and GameObject).
             if (mainCamera != null)
@@ -107,8 +102,9 @@ namespace FeaturesCamera
             _currentMode = CameraMode.Gameplay;
             Cursor.lockState = CursorLockMode.None;
             Cursor.visible = true;
-            if (playerControl != null)
-                playerControl.isInputLocked = false;
+            var player = ServiceLocator.Resolve<IPlayerContext>();
+            if (player != null)
+                player.IsInputLocked = false;
         }
 
         private void OnDestroy()
@@ -205,16 +201,15 @@ namespace FeaturesCamera
             }
 
             // Unlock input, keep cursor free
-            if (playerControl == null)
-                playerControl = FindFirstObjectByType<PlayerControl>();
-            if (playerControl != null)
+            var player = ServiceLocator.Resolve<IPlayerContext>();
+            if (player != null)
             {
-                playerControl.isInputLocked = false;
-                Debug.Log("[DEBUG] CameraManager successfully unlocked PlayerControl.");
+                player.IsInputLocked = false;
+                Debug.Log("[DEBUG] CameraManager successfully unlocked player input.");
             }
             else
             {
-                Debug.LogWarning("[DEBUG] CameraManager could not find PlayerControl to unlock!");
+                Debug.LogWarning("[DEBUG] CameraManager could not find IPlayerContext to unlock!");
             }
 
             Cursor.lockState = CursorLockMode.None;
@@ -259,8 +254,9 @@ namespace FeaturesCamera
             }
 
             // Lock input, free cursor
-            if (playerControl != null)
-                playerControl.isInputLocked = true;
+            var player = ServiceLocator.Resolve<IPlayerContext>();
+            if (player != null)
+                player.IsInputLocked = true;
 
             Cursor.lockState = CursorLockMode.None;
             Cursor.visible = true;
@@ -296,10 +292,9 @@ namespace FeaturesCamera
             wardrobeCamera.enabled = true;
 
             // Lock input, free cursor
-            if (playerControl == null)
-                playerControl = FindFirstObjectByType<PlayerControl>();
-            if (playerControl != null)
-                playerControl.isInputLocked = true;
+            var player = ServiceLocator.Resolve<IPlayerContext>();
+            if (player != null)
+                player.IsInputLocked = true;
 
             Cursor.lockState = CursorLockMode.None;
             Cursor.visible = true;
@@ -313,7 +308,8 @@ namespace FeaturesCamera
         /// </summary>
         public void PositionPlayerBehindTrophyCamera()
         {
-            if (playerControl == null || trophyCamera == null)
+            var player = ServiceLocator.Resolve<IPlayerContext>();
+            if (player == null || trophyCamera == null)
                 return;
 
             Vector3 behind = trophyCamera.transform.position - trophyCamera.transform.forward * 0.4f;
@@ -322,7 +318,7 @@ namespace FeaturesCamera
             if (Physics.Raycast(behind, Vector3.down, out RaycastHit hit, 5f))
                 behind.y = hit.point.y + 1f;
 
-            Rigidbody rb = playerControl.GetComponent<Rigidbody>();
+            Rigidbody rb = player.GetPlayerComponent<Rigidbody>();
             if (rb != null)
             {
                 rb.linearVelocity = Vector3.zero;
@@ -330,7 +326,7 @@ namespace FeaturesCamera
             }
             else
             {
-                playerControl.transform.position = behind;
+                player.Transform.position = behind;
             }
 
             Debug.Log($"[CameraManager] Player positioned behind trophy camera: {behind}");

@@ -3,6 +3,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.InputSystem;
 using TMPro;
+using FarmBeware.Core.Runtime;
 
 /// <summary>
 /// UI View/Presenter for the Kitchen Stove cooking panel.
@@ -146,7 +147,7 @@ public class StoveUIManager : MonoBehaviour
             Keyboard.current != null &&
             Keyboard.current.escapeKey.wasPressedThisFrame)
         {
-            MainMenuController.LastFrameUIPanelClosed = Time.frameCount;
+            UIModalHelper.LastFrameUIPanelClosed = Time.frameCount;
             Close();
         }
     }
@@ -161,10 +162,10 @@ public class StoveUIManager : MonoBehaviour
         UnsubscribeFromStove(currentStove);
 
         // Ensure player movement lock is safely released if panel is disabled externally
-        var playerControl = FindFirstObjectByType<PlayerControl>();
-        if (playerControl != null && playerControl.isInputLocked)
+        var playerControl = ServiceLocator.Resolve<IPlayerContext>();
+        if (playerControl != null && playerControl.IsInputLocked)
         {
-            playerControl.isInputLocked = false;
+            playerControl.IsInputLocked = false;
         }
 
         if (Cursor.lockState != CursorLockMode.Locked)
@@ -264,9 +265,9 @@ public class StoveUIManager : MonoBehaviour
         Cursor.lockState = CursorLockMode.None;
 
         // Lock player input
-        var playerControl = FindFirstObjectByType<PlayerControl>();
+        var playerControl = ServiceLocator.Resolve<IPlayerContext>();
         if (playerControl != null)
-            playerControl.isInputLocked = true;
+            playerControl.IsInputLocked = true;
     }
 
     /// <summary>Closes the stove panel.</summary>
@@ -295,9 +296,9 @@ public class StoveUIManager : MonoBehaviour
         Cursor.lockState = CursorLockMode.Locked;
 
         // Unlock player input
-        var playerControl = FindFirstObjectByType<PlayerControl>();
-        if (playerControl != null)
-            playerControl.isInputLocked = false;
+        var playerClose = ServiceLocator.Resolve<IPlayerContext>();
+        if (playerClose != null)
+            playerClose.IsInputLocked = false;
     }
 
     #endregion
@@ -902,9 +903,9 @@ public class StoveUIManager : MonoBehaviour
         bool success = currentStove.CollectCookedOutput(playerInventory, out string failReason);
         if (success)
         {
-            if (PlayerUI.FloatingCombatTextManager.Instance != null && currentStove != null)
+            if (currentStove != null)
             {
-                PlayerUI.FloatingCombatTextManager.Instance.SpawnText(
+                ServiceLocator.Resolve<IFloatingTextService>()?.SpawnText(
                     currentStove.transform.position + Vector3.up * 1.5f,
                     "Collected cooked dish!",
                     new Color(0.3f, 0.9f, 0.4f));
@@ -912,9 +913,9 @@ public class StoveUIManager : MonoBehaviour
         }
         else
         {
-            if (PlayerUI.FloatingCombatTextManager.Instance != null && currentStove != null)
+            if (currentStove != null)
             {
-                PlayerUI.FloatingCombatTextManager.Instance.SpawnText(
+                ServiceLocator.Resolve<IFloatingTextService>()?.SpawnText(
                     currentStove.transform.position + Vector3.up * 1.5f,
                     failReason,
                     new Color(1f, 0.4f, 0.4f));

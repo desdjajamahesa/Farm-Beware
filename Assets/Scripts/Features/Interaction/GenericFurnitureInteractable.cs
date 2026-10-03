@@ -38,13 +38,14 @@ namespace FeaturesInteraction
                 ? customInteractMessage
                 : $"Interacted with {furnitureType} ({gameObject.name})";
 
-            if (furnitureType == "Merchant Table")
+            var otherInteractables = GetComponents<IInteractable>();
+            foreach (var other in otherInteractables)
             {
-                var merchant = GetComponent<FeaturesEconomy.MerchantTableInteractable>();
-                if (merchant == null)
-                    merchant = gameObject.AddComponent<FeaturesEconomy.MerchantTableInteractable>();
-                merchant.Interact(interactor);
-                return;
+                if (other != (IInteractable)this)
+                {
+                    other.Interact(interactor);
+                    return;
+                }
             }
 
             Debug.Log($"[GenericFurnitureInteractable] {message}");

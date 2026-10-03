@@ -1,12 +1,12 @@
 using UnityEngine;
-using FeaturesEconomy;
+using FarmBeware.Core.Runtime;
 
 namespace FeaturesInteraction
 {
     // Kasur hanya bertindak sebagai TRIGGER (pemicu), bukan pengontrol UI.
     // Tidak mengelola layar hitam/efek fade; urusan visual tetap di tangan
     // sistem lain (mis. SleepScreen di masa depan).
-    public class BedInteractable : MonoBehaviour, IInteractable
+    public class BedInteractable : MonoBehaviour, IInteractable, IBedInteractable
     {
         // Jumlah HP yang dipulihkan saat pemain tidur.
         [SerializeField] private int sleepHealAmount = 100;
@@ -20,22 +20,24 @@ namespace FeaturesInteraction
 
         private void OnEnable()
         {
-            if (TimeManager.Instance != null)
+            var timeService = ServiceLocator.Resolve<ITimeService>();
+            if (timeService != null)
             {
-                TimeManager.Instance.OnPhaseChanged += HandlePhaseChanged;
+                timeService.OnPhaseChanged += HandlePhaseChanged;
             }
             UpdateLabel();
         }
 
         private void OnDisable()
         {
-            if (TimeManager.Instance != null)
+            var timeService = ServiceLocator.Resolve<ITimeService>();
+            if (timeService != null)
             {
-                TimeManager.Instance.OnPhaseChanged -= HandlePhaseChanged;
+                timeService.OnPhaseChanged -= HandlePhaseChanged;
             }
         }
 
-        private void HandlePhaseChanged(TimeManager.DayPhase newPhase)
+        private void HandlePhaseChanged(int day, DayPhase newPhase)
         {
             UpdateLabel();
         }
@@ -44,13 +46,14 @@ namespace FeaturesInteraction
         {
             if (worldLabel == null) return;
 
-            if (TimeManager.Instance == null || TimeManager.Instance.currentPhase == TimeManager.DayPhase.Day)
+            var timeService = ServiceLocator.Resolve<ITimeService>();
+            if (timeService == null || timeService.CurrentPhase == DayPhase.Day)
             {
                 worldLabel.displayName = "Sleep (Start Night Phase)";
             }
             else
             {
-                if (TimeManager.Instance.isNightEncounterCleared)
+                if (timeService.IsNightEncounterCleared)
                     worldLabel.displayName = "Sleep (Advance to Next Day)";
                 else
                     worldLabel.displayName = "Bed (Monsters Lurking Outside!)";
@@ -59,28 +62,24 @@ namespace FeaturesInteraction
 
         public void Interact(GameObject interactor)
         {
-            if (TimeManager.Instance == null)
+            var timeService = ServiceLocator.Resolve<ITimeService>();
+            if (timeService == null)
             {
-                Debug.LogWarning("TimeManager tidak ditemukan di scene!");
+                Debug.LogWarning("ITimeService tidak ditemukan via ServiceLocator!");
                 return;
             }
 
-            PlayerControl pc = interactor != null ? interactor.GetComponent<PlayerControl>() : null;
-            PlayerStats stats = interactor != null ? interactor.GetComponent<PlayerStats>() : null;
+            var pc = interactor != null ? interactor.GetComponent<IPlayerContext>() : ServiceLocator.Resolve<IPlayerContext>();
+            var floatingText = ServiceLocator.Resolve<IFloatingTextService>();
 
             // 1. Interaksi di siang hari: memicu fase malam (Night Brawl)
-            if (TimeManager.Instance.currentPhase == TimeManager.DayPhase.Day)
+            if (timeService.CurrentPhase == DayPhase.Day)
             {
-                if (pc != null)
-                {
-                    pc.StopMovement();
-                }
+                timeService.StartNightPhase();
 
-                TimeManager.Instance.StartNightPhase();
-
-                if (PlayerUI.FloatingCombatTextManager.Instance != null && interactor != null)
+                if (floatingText != null && interactor != null)
                 {
-                    PlayerUI.FloatingCombatTextManager.Instance.SpawnText(
+                    floatingText.SpawnText(
                         transform.position + Vector3.up * 1.2f,
                         "🌙 Nightfall begins! Prepare for battle!",
                         new Color(1f, 0.45f, 0.45f));
@@ -92,12 +91,12 @@ namespace FeaturesInteraction
 
             // 2. Interaksi di malam hari:
             // Cek apakah gelombang musuh sudah tuntas
-            if (!TimeManager.Instance.isNightEncounterCleared)
+            if (!timeService.IsNightEncounterCleared)
             {
                 Debug.Log("[BedInteractable] Monsters are still lurking outside! Clear the wave first.");
-                if (PlayerUI.FloatingCombatTextManager.Instance != null && interactor != null)
+                if (floatingText != null && interactor != null)
                 {
-                    PlayerUI.FloatingCombatTextManager.Instance.SpawnText(
+                    floatingText.SpawnText(
                         transform.position + Vector3.up * 1.2f,
                         "Monsters are still outside! Clear the wave first.",
                         new Color(1f, 0.4f, 0.4f));
@@ -109,37 +108,41 @@ namespace FeaturesInteraction
             // Kunci gerakan pemain selama proses tidur
             if (pc != null)
             {
-                pc.StopMovement();
-                pc.isInputLocked = true;
+                pc.IsInputLocked = true;
             }
 
             // Malam selesai: pulihkan HP pemain bila komponen PlayerStats tersedia.
-            if (stats != null)
-                stats.Heal(sleepHealAmount);
+            if (interactor != null)
+            {
+                interactor.SendMessage("Heal", sleepHealAmount, SendMessageOptions.DontRequireReceiver);
+            }
 
-            int completedDay = TimeManager.Instance.currentDay;
+            int completedDay = timeService.CurrentDay;
 
             // Tampilkan laporan pagi operasi perkebunan & hasil Night Brawl sebelum transisi hari baru
-            if (DailyReportModalUI.Instance != null)
+            var dailyReport = ServiceLocator.Resolve<IDailyReportService>();
+            if (dailyReport != null)
             {
-                DailyReportModalUI.Instance.ShowReport(completedDay, () =>
+                dailyReport.ShowReport(completedDay, () =>
                 {
-                    TimeManager.Instance.AdvanceToNextDay();
-                    if (PlayerUI.FloatingCombatTextManager.Instance != null && interactor != null)
+                    timeService.AdvanceToNextDay();
+                    if (floatingText != null && interactor != null)
                     {
-                        PlayerUI.FloatingCombatTextManager.Instance.SpawnText(
+                        floatingText.SpawnText(
                             transform.position + Vector3.up * 1.2f,
-                            $"☀️ Day {TimeManager.Instance.currentDay} begins!",
+                            $"☀️ Day {timeService.CurrentDay} begins!",
                             new Color(1f, 0.9f, 0.3f));
                     }
+                    if (pc != null)
+                        pc.IsInputLocked = false;
                     UpdateLabel();
                 });
             }
             else
             {
-                TimeManager.Instance.AdvanceToNextDay();
+                timeService.AdvanceToNextDay();
                 if (pc != null)
-                    pc.isInputLocked = false;
+                    pc.IsInputLocked = false;
                 UpdateLabel();
             }
         }

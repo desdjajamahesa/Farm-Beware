@@ -11,7 +11,11 @@ public class MainMenuController : MonoBehaviour
     /// <summary>
     /// Frame counter to prevent ESC from pausing when it was used to close a gameplay UI panel on the same frame.
     /// </summary>
-    public static int LastFrameUIPanelClosed = -1;
+    public static int LastFrameUIPanelClosed
+    {
+        get => FarmBeware.Core.Runtime.UIModalHelper.LastFrameUIPanelClosed;
+        set => FarmBeware.Core.Runtime.UIModalHelper.LastFrameUIPanelClosed = value;
+    }
 
     [Header("References")]
     [SerializeField] private GameObject mainMenuPanel;

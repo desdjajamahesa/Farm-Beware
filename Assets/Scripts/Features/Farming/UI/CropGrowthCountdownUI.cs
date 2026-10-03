@@ -1,6 +1,7 @@
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
+using FarmBeware.Core.Runtime;
 
 namespace FeaturesFarming
 {
@@ -47,8 +48,9 @@ namespace FeaturesFarming
             if (cachedCamera != null && cachedCamera.isActiveAndEnabled)
                 return cachedCamera;
 
-            if (FeaturesCamera.CameraManager.Instance != null && FeaturesCamera.CameraManager.Instance.MainCamera != null)
-                cachedCamera = FeaturesCamera.CameraManager.Instance.MainCamera;
+            var camService = ServiceLocator.Resolve<ICameraService>();
+            if (camService != null && camService.MainCamera != null)
+                cachedCamera = camService.MainCamera;
             else if (Camera.main != null)
                 cachedCamera = Camera.main;
             else
@@ -57,7 +59,7 @@ namespace FeaturesFarming
             return cachedCamera;
         }
 
-        private static PlayerControl cachedPlayerControl;
+        private static IPlayerContext cachedPlayerControl;
 
         /// <summary>
         /// Mengembalikan true bila ada jendela modal/menu yang sedang terbuka (Inventori, Storage, Toko, Pause, dsb.),
@@ -71,30 +73,23 @@ namespace FeaturesFarming
                 return true;
             }
 
-            // 2. State umum kunci input (digunakan saat modal Shop, Workbench, Cooking terbuka)
+            // 2. State umum kunci input (digunakan saat modal Shop, Workbench, Wardrobe, Cooking terbuka)
             if (cachedPlayerControl == null)
             {
-                var p = GameObject.FindWithTag("Player") ?? GameObject.Find("Player");
-                if (p != null) cachedPlayerControl = p.GetComponent<PlayerControl>();
+                cachedPlayerControl = ServiceLocator.Resolve<IPlayerContext>();
             }
-            if (cachedPlayerControl != null && cachedPlayerControl.isInputLocked)
+            if (cachedPlayerControl != null && cachedPlayerControl.IsInputLocked)
             {
                 return true;
             }
 
-            // 3. Workbench UI Modal
-            if (FeaturesWorkbench.UI.WorkbenchUI.Instance != null && FeaturesWorkbench.UI.WorkbenchUI.Instance.IsOpen)
+            // 3. Save UI Modal
+            if (UIModalHelper.IsSaveUIOpen)
             {
                 return true;
             }
 
-            // 4. Wardrobe Mode
-            if (FeaturesWardrobe.WardrobeManager.IsInWardrobeMode)
-            {
-                return true;
-            }
-
-            // 5. Game pause (Pause menu)
+            // 4. Game pause (Pause menu)
             if (Time.timeScale <= 0f)
             {
                 return true;

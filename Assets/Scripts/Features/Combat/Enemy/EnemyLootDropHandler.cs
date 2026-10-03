@@ -1,6 +1,5 @@
 using UnityEngine;
-using PlayerUI;
-using FeaturesEconomy;
+using FarmBeware.Core.Runtime;
 
 namespace FeaturesCombat
 {
@@ -18,13 +17,11 @@ namespace FeaturesCombat
             if (Random.value <= enemy.goldChance)
             {
                 int goldAmount = Random.Range(enemy.minGold, enemy.maxGold + 1);
-                if (PlayerWallet.Instance != null)
+                var wallet = ServiceLocator.Resolve<IWalletService>();
+                if (wallet != null)
                 {
-                    PlayerWallet.Instance.AddGold(goldAmount);
-                    if (DailyEconomyManager.Instance != null)
-                    {
-                        DailyEconomyManager.Instance.RecordCombatGold(goldAmount);
-                    }
+                    wallet.AddGold(goldAmount);
+                    ServiceLocator.Resolve<IDailyEconomyService>()?.RecordCombatGold(goldAmount);
 
                     if (FloatingCombatTextManager.Instance != null)
                     {

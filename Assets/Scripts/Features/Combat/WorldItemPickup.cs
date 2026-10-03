@@ -1,6 +1,6 @@
 using System.Collections;
 using UnityEngine;
-using PlayerUI;
+using FarmBeware.Core.Runtime;
 
 namespace FeaturesCombat
 {
@@ -224,7 +224,7 @@ namespace FeaturesCombat
         {
             if (isTossing) return;
 
-            if (other.CompareTag("Player") || other.GetComponent<PlayerControl>() != null)
+            if (other.CompareTag("Player") || other.GetComponent<IPlayerContext>() != null)
             {
                 isFlyingToPlayer = true;
             }

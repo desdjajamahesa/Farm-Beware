@@ -4,6 +4,7 @@ using UnityEngine.InputSystem;
 using FeaturesFarming.Core;
 using FeaturesFarming.Data;
 using FeaturesInteraction;
+using FarmBeware.Core.Runtime;
 
 namespace FeaturesFarming.Adapters
 {
@@ -26,7 +27,7 @@ namespace FeaturesFarming.Adapters
         [Header("Manager References")]
         [SerializeField] private FarmGridManager gridManager;
         [SerializeField] private InventoryComponent playerInventory;
-        [SerializeField] private PlayerControl playerControl;
+        private IPlayerContext playerControl;
         [SerializeField] private Camera playerCamera;
 
         [Header("Raycast & Range Settings")]
@@ -86,14 +87,14 @@ namespace FeaturesFarming.Adapters
 
             if (playerControl == null)
             {
-                playerControl = GetComponent<PlayerControl>() ?? FindFirstObjectByType<PlayerControl>();
+                playerControl = GetComponent<IPlayerContext>() ?? ServiceLocator.Resolve<IPlayerContext>();
             }
 
             if (playerInventory == null)
             {
                 if (playerControl != null)
                 {
-                    playerInventory = playerControl.GetComponent<InventoryComponent>();
+                    playerInventory = playerControl.GetPlayerComponent<InventoryComponent>();
                 }
                 if (playerInventory == null)
                 {
@@ -110,7 +111,7 @@ namespace FeaturesFarming.Adapters
         private void Update()
         {
             // Do not process interactions if player movement/interaction is locked (e.g. Wardrobe or Menu open)
-            if (playerControl != null && playerControl.isInputLocked) return;
+            if (playerControl != null && playerControl.IsInputLocked) return;
 
             bool isLeftClick = WasLeftClickPressed();
             bool isInteractKey = WasInteractKeyPressed();
@@ -173,7 +174,7 @@ namespace FeaturesFarming.Adapters
 
             if (gridManager == null) return false;
 
-            Transform playerTrans = playerControl != null ? playerControl.transform : transform;
+            Transform playerTrans = playerControl != null ? playerControl.Transform : transform;
             Vector3 playerPos = playerTrans.position;
 
             // 1. Raycast through camera under mouse pointer
@@ -339,7 +340,7 @@ namespace FeaturesFarming.Adapters
             var grid = GridManager.Grid;
             if (grid == null) return false;
 
-            var bottle = FeaturesKitchen.PlayerWaterBottle.Instance;
+            var bottle = ServiceLocator.Resolve<IWaterService>();
             if (bottle == null || !bottle.HasWater(waterAmountPerIrrigation))
             {
                 Debug.LogWarning("[PlayerFarmInteraction] Insufficient water in bottle! Refill at kitchen sink.");
@@ -492,9 +493,9 @@ namespace FeaturesFarming.Adapters
             }
 
             // Economy logging
-            if (FeaturesEconomy.DailyEconomyManager.Instance != null && yieldItem != null)
+            if (yieldItem != null)
             {
-                FeaturesEconomy.DailyEconomyManager.Instance.RecordCropHarvested(yieldItem, yieldCount);
+                ServiceLocator.Resolve<IDailyEconomyService>()?.RecordCropHarvested(yieldItem, yieldCount);
             }
 
             // Player harvest animation
@@ -599,10 +600,7 @@ namespace FeaturesFarming.Adapters
 
         private void ShowFeedbackText(Vector3 worldPos, string message, Color color)
         {
-            if (PlayerUI.FloatingCombatTextManager.Instance != null)
-            {
-                PlayerUI.FloatingCombatTextManager.Instance.SpawnText(worldPos + Vector3.up * 1.2f, message, color);
-            }
+            ServiceLocator.Resolve<IFloatingTextService>()?.SpawnText(worldPos + Vector3.up * 1.2f, message, color);
         }
     }
 

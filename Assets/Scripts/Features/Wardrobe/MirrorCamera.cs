@@ -1,6 +1,6 @@
 using UnityEngine;
 using UnityEngine.Rendering.Universal;
-using FeaturesCamera;
+using FarmBeware.Core.Runtime;
 
 namespace FeaturesWardrobe
 {
@@ -201,7 +201,8 @@ namespace FeaturesWardrobe
                 return;
 
             // Only auto-position when CameraManager exists AND we're in WardrobeMode
-            if (CameraManager.Instance == null || CameraManager.Instance.CurrentMode != CameraManager.CameraMode.WardrobeMode)
+            var cameraService = ServiceLocator.Resolve<ICameraService>();
+            if (cameraService == null || cameraService.CurrentMode != CameraMode.WardrobeMode)
                 return;
 
             if (!isInitialized || mirrorCamera == null || playerTarget == null || mirrorSurface == null)

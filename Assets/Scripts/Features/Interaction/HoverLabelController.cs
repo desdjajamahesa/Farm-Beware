@@ -1,6 +1,6 @@
 using FeaturesInteraction;
-using FeaturesWardrobe;
 using UnityEngine;
+using FarmBeware.Core.Runtime;
 
 /// <summary>
 /// Presenter feedback interaksi dunia:
@@ -49,24 +49,17 @@ public class HoverLabelController : MonoBehaviour
             return;
         }
 
-        // Sembunyikan saat Trophy Mode (mode khusus rak piala).
-        if (TrophySystemManager.Instance != null && TrophySystemManager.Instance.IsInTrophyMode)
-        {
-            ClearAll();
-            return;
-        }
-
-        // Sembunyikan saat Wardrobe Mode
-        if (WardrobeManager.IsInWardrobeMode)
+        // Sembunyikan saat mode non-gameplay (Trophy Mode, Wardrobe Mode)
+        var camService = ServiceLocator.Resolve<ICameraService>();
+        if (camService != null && (camService.CurrentMode == CameraMode.TrophyMode || camService.CurrentMode == CameraMode.WardrobeMode))
         {
             ClearAll();
             return;
         }
 
         // Sembunyikan saat player input terkunci (UI modal sedang terbuka: toko, masak, inventori, dll.)
-        var pc = GetComponent<PlayerControl>();
-        if (pc == null) pc = GetComponentInParent<PlayerControl>();
-        if (pc != null && pc.isInputLocked)
+        var pc = GetComponent<IPlayerContext>() ?? GetComponentInParent<IPlayerContext>();
+        if (pc != null && pc.IsInputLocked)
         {
             ClearAll();
             return;
@@ -89,16 +82,10 @@ public class HoverLabelController : MonoBehaviour
                 lastHighlight.SetHighlight(true);
         }
 
-        var farmland = target.GetComponent<FeaturesFarming.FarmlandTile>() ?? target.GetComponentInChildren<FeaturesFarming.FarmlandTile>();
-        if (farmland != null && interactor != null)
+        var dynamicLabel = target.GetComponent<IDynamicLabelProvider>() ?? target.GetComponentInChildren<IDynamicLabelProvider>();
+        if (dynamicLabel != null)
         {
-            farmland.UpdateLabelText(interactor.gameObject);
-        }
-
-        var door = target.GetComponent<DoorInteractable>() ?? target.GetComponentInChildren<DoorInteractable>();
-        if (door != null)
-        {
-            door.UpdateDynamicLabel();
+            dynamicLabel.UpdateDynamicLabel(interactor != null ? interactor.gameObject : null);
         }
 
         WorldLabel label = target.GetComponent<WorldLabel>() ?? target.GetComponentInChildren<WorldLabel>();

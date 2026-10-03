@@ -15,7 +15,7 @@ namespace FeaturesTime
     /// dilakukan secara terisolasi oleh komponen Observer/Listener (Fase 2).
     /// </summary>
     [DisallowMultipleComponent]
-    public class DayNightTimeManager : MonoBehaviour, IDayNightTimeService
+    public class DayNightTimeManager : MonoBehaviour, IDayNightTimeService, FarmBeware.Core.Runtime.ITimeService
     {
         #region Singleton (Awake-Safe Pattern §1.1)
 
@@ -121,6 +121,13 @@ namespace FeaturesTime
         public event Action<int> OnDayChanged;
         public event Action<float> OnNormalizedTimeChanged;
 
+        private Action<int, FarmBeware.Core.Runtime.DayPhase> _corePhaseChanged;
+        event Action<int, FarmBeware.Core.Runtime.DayPhase> FarmBeware.Core.Runtime.ITimeService.OnPhaseChanged
+        {
+            add => _corePhaseChanged += value;
+            remove => _corePhaseChanged -= value;
+        }
+
         #endregion
 
         #region Public Properties
@@ -132,6 +139,26 @@ namespace FeaturesTime
         public EnvironmentPhase CurrentPhase => currentPhase;
         public float NormalizedTime => Mathf.Clamp01(currentHour / 24.0f);
         public bool IsPaused => isPaused;
+
+        float FarmBeware.Core.Runtime.ITimeService.TimeOfDay => currentHour;
+        FarmBeware.Core.Runtime.DayPhase FarmBeware.Core.Runtime.ITimeService.CurrentPhase => (FarmBeware.Core.Runtime.DayPhase)currentPhase;
+        bool FarmBeware.Core.Runtime.ITimeService.IsNight => currentPhase == EnvironmentPhase.Night;
+        bool FarmBeware.Core.Runtime.ITimeService.IsNightEncounterCleared => TimeManager.Instance != null ? TimeManager.Instance.isNightEncounterCleared : true;
+
+        void FarmBeware.Core.Runtime.ITimeService.StartNightPhase()
+        {
+            if (TimeManager.Instance != null)
+                TimeManager.Instance.StartNightPhase();
+            else
+                SetTime(nightStartHour);
+        }
+
+        void FarmBeware.Core.Runtime.ITimeService.AdvanceToNextDay()
+        {
+            if (TimeManager.Instance != null)
+                TimeManager.Instance.AdvanceToNextDay();
+            AdvanceToNextDay();
+        }
 
         #endregion
 
@@ -146,6 +173,7 @@ namespace FeaturesTime
             }
 
             Instance = this;
+            FarmBeware.Core.Runtime.ServiceLocator.Register<FarmBeware.Core.Runtime.ITimeService>(this);
 
             currentHour = initialHour;
             currentDay = initialDay;
@@ -177,6 +205,7 @@ namespace FeaturesTime
             OnHourChanged?.Invoke(hourInt);
             OnMinuteChanged?.Invoke(minuteInt);
             OnTimePhaseChanged?.Invoke(currentPhase);
+            _corePhaseChanged?.Invoke(currentDay, (FarmBeware.Core.Runtime.DayPhase)currentPhase);
             OnDayChanged?.Invoke(currentDay);
             OnNormalizedTimeChanged?.Invoke(NormalizedTime);
         }
@@ -219,7 +248,7 @@ namespace FeaturesTime
 
         private void Update()
         {
-            if (Time.timeScale <= 0f || (FeaturesSaveSystem.SaveSystemUI.Instance != null && FeaturesSaveSystem.SaveSystemUI.Instance.IsOpen))
+            if (Time.timeScale <= 0f || FarmBeware.Core.Runtime.UIModalHelper.IsSaveUIOpen)
                 return;
 
             if (isPaused || realSecondsPerInGameDay <= 0.01f)
@@ -232,6 +261,7 @@ namespace FeaturesTime
 
         private void OnDestroy()
         {
+            FarmBeware.Core.Runtime.ServiceLocator.Unregister<FarmBeware.Core.Runtime.ITimeService>();
             if (Instance == this)
                 Instance = null;
         }
@@ -300,6 +330,7 @@ namespace FeaturesTime
                 currentPhase = newPhase;
                 lastEmittedPhase = newPhase;
                 OnTimePhaseChanged?.Invoke(currentPhase);
+                _corePhaseChanged?.Invoke(currentDay, (FarmBeware.Core.Runtime.DayPhase)currentPhase);
             }
         }
 

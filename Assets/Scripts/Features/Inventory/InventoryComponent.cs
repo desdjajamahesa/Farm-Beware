@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using FarmBeware.Core.Runtime;
 
 public class InventoryComponent : MonoBehaviour
 {
@@ -35,7 +36,7 @@ public class InventoryComponent : MonoBehaviour
         }
 
         // Auto-detect player inventory agar hasHotbar aktif otomatis tanpa perlu konfigurasi inspector manual
-        if (CompareTag("Player") || GetComponent<PlayerControl>() != null || blockTrophyItems)
+        if (CompareTag("Player") || GetComponent<IPlayerContext>() != null || blockTrophyItems)
         {
             hasHotbar = true;
         }
@@ -405,14 +406,15 @@ public class InventoryComponent : MonoBehaviour
             // Penanganan khusus botol air isi ulang (100L): minum per tegukan (25L) tanpa menghancurkan botol
             if (item.itemId == "food_bottle_water")
             {
-                var bottle = FeaturesKitchen.PlayerWaterBottle.Instance;
+                var bottle = ServiceLocator.Resolve<IWaterService>();
                 if (bottle != null)
                 {
+                    var textService = ServiceLocator.Resolve<IFloatingTextService>();
                     if (bottle.CurrentWater <= 0.01f)
                     {
-                        if (PlayerUI.FloatingCombatTextManager.Instance != null)
+                        if (textService != null)
                         {
-                            PlayerUI.FloatingCombatTextManager.Instance.SpawnText(
+                            textService.SpawnText(
                                 transform.position + Vector3.up * 1.5f,
                                 "Water bottle is empty! Refill at Kitchen Sink.",
                                 new Color(1f, 0.5f, 0.2f));
@@ -421,9 +423,9 @@ public class InventoryComponent : MonoBehaviour
                     }
 
                     bottle.DrinkSip(25f);
-                    if (PlayerUI.FloatingCombatTextManager.Instance != null)
+                    if (textService != null)
                     {
-                        PlayerUI.FloatingCombatTextManager.Instance.SpawnText(
+                        textService.SpawnText(
                             transform.position + Vector3.up * 1.5f,
                             $"💧 Gulp! (+25 Hydration | {Mathf.FloorToInt(bottle.CurrentWater)}/100L)",
                             new Color(0.2f, 0.85f, 1f));
@@ -432,26 +434,18 @@ public class InventoryComponent : MonoBehaviour
                 }
             }
 
-            // Terapkan efek penyembuhan, nutrisi lapar & haus, serta buff status
-            PlayerStats playerStats = GetComponent<PlayerStats>();
-            PlayerBuffManager buffManager = GetComponent<PlayerBuffManager>();
+            // Terapkan efek penyembuhan, nutrisi lapar & haus, serta buff status via decoupled messaging
+            if (food.healAmount > 0)
+                SendMessage("Heal", food.healAmount, SendMessageOptions.DontRequireReceiver);
 
-            if (playerStats != null)
-            {
-                if (food.healAmount > 0)
-                    playerStats.Heal(food.healAmount);
+            if (food.hungerRestore != 0)
+                SendMessage("Eat", food.hungerRestore, SendMessageOptions.DontRequireReceiver);
 
-                if (food.hungerRestore != 0)
-                    playerStats.Eat(food.hungerRestore);
+            if (food.hydrationRestore != 0)
+                SendMessage("Drink", food.hydrationRestore, SendMessageOptions.DontRequireReceiver);
 
-                if (food.hydrationRestore != 0)
-                    playerStats.Drink(food.hydrationRestore);
-            }
-
-            if (buffManager != null && food.buffEffects != null && food.buffEffects.Count > 0)
-            {
-                buffManager.ApplyBuffs(food.buffEffects);
-            }
+            if (food.buffEffects != null && food.buffEffects.Count > 0)
+                SendMessage("ApplyBuffs", food.buffEffects, SendMessageOptions.DontRequireReceiver);
 
             Debug.Log($"[Inventory] Mengonsumsi {item.itemName}: Heal={food.healAmount}, Hunger={food.hungerRestore}, Thirst={food.hydrationRestore}, Buffs={food.buffEffects?.Count ?? 0}");
 

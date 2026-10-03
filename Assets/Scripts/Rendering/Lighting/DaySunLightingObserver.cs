@@ -1,5 +1,5 @@
 using UnityEngine;
-using FeaturesTime;
+using FarmBeware.Core.Runtime;
 
 namespace FeaturesRendering.Lighting
 {
@@ -126,33 +126,36 @@ namespace FeaturesRendering.Lighting
 
         private void OnEnable()
         {
-            // Mendaftar sebagai Observer ke DayNightTimeManager
-            if (DayNightTimeManager.Instance != null)
+            // Mendaftar sebagai Observer ke ITimeService
+            var timeService = ServiceLocator.Resolve<ITimeService>();
+            if (timeService != null)
             {
-                DayNightTimeManager.Instance.OnMinuteChanged += HandleMinuteChanged;
-                DayNightTimeManager.Instance.OnTimePhaseChanged += HandlePhaseChanged;
+                timeService.OnMinuteChanged += HandleMinuteChanged;
+                timeService.OnPhaseChanged += HandlePhaseChanged;
 
                 // Evaluasi awal saat komponen aktif
-                EvaluateSunParameters(DayNightTimeManager.Instance.CurrentHour);
+                EvaluateSunParameters(timeService.CurrentHour);
             }
         }
 
         private void OnDisable()
         {
             // Pelepasan pendaftaran bersih untuk mencegah memory leak / dangling delegate
-            if (DayNightTimeManager.Instance != null)
+            var timeService = ServiceLocator.Resolve<ITimeService>();
+            if (timeService != null)
             {
-                DayNightTimeManager.Instance.OnMinuteChanged -= HandleMinuteChanged;
-                DayNightTimeManager.Instance.OnTimePhaseChanged -= HandlePhaseChanged;
+                timeService.OnMinuteChanged -= HandleMinuteChanged;
+                timeService.OnPhaseChanged -= HandlePhaseChanged;
             }
         }
 
         private void Start()
         {
-            // Defensive resolution jika DayNightTimeManager belum siap di Awake/OnEnable
-            if (DayNightTimeManager.Instance != null)
+            // Defensive resolution jika ITimeService belum siap di Awake/OnEnable
+            var timeService = ServiceLocator.Resolve<ITimeService>();
+            if (timeService != null)
             {
-                EvaluateSunParameters(DayNightTimeManager.Instance.CurrentHour);
+                EvaluateSunParameters(timeService.CurrentHour);
             }
             else
             {
@@ -170,26 +173,28 @@ namespace FeaturesRendering.Lighting
         #region Observer Event Handlers
 
         /// <summary>
-        /// Handler dipanggil secara reaktif hanya ketika menit berganti pada DayNightTimeManager.
+        /// Handler dipanggil secara reaktif hanya ketika menit berganti pada ITimeService.
         /// </summary>
         private void HandleMinuteChanged(int minute)
         {
-            if (DayNightTimeManager.Instance != null)
+            var timeService = ServiceLocator.Resolve<ITimeService>();
+            if (timeService != null)
             {
-                EvaluateSunParameters(DayNightTimeManager.Instance.CurrentHour);
+                EvaluateSunParameters(timeService.CurrentHour);
             }
         }
 
         /// <summary>
         /// Handler dipanggil saat transisi fase besar (Dawn, Day, Dusk, Night).
         /// </summary>
-        private void HandlePhaseChanged(EnvironmentPhase phase)
+        private void HandlePhaseChanged(int day, DayPhase phase)
         {
-            isDaytime = (phase == EnvironmentPhase.Dawn || phase == EnvironmentPhase.Day || phase == EnvironmentPhase.Dusk);
+            isDaytime = (phase == DayPhase.Dawn || phase == DayPhase.Day || phase == DayPhase.Dusk);
 
-            if (DayNightTimeManager.Instance != null)
+            var timeService = ServiceLocator.Resolve<ITimeService>();
+            if (timeService != null)
             {
-                EvaluateSunParameters(DayNightTimeManager.Instance.CurrentHour);
+                EvaluateSunParameters(timeService.CurrentHour);
             }
         }
 

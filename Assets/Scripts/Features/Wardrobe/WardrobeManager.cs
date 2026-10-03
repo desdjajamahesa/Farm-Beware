@@ -1,4 +1,4 @@
-using FeaturesCamera;
+using FarmBeware.Core.Runtime;
 using FeaturesInteraction;
 using System.Collections;
 using System.Collections.Generic;
@@ -65,7 +65,7 @@ namespace FeaturesWardrobe
         [SerializeField] private Transform mirrorFallbackAnchor;
 
         [Header("Player & Outfit")]
-        [SerializeField] private PlayerControl playerControl;
+        private IPlayerContext PlayerContext => ServiceLocator.Resolve<IPlayerContext>();
         
         [SerializeField] private PlayerOutfit playerOutfit;
         
@@ -165,17 +165,15 @@ namespace FeaturesWardrobe
             // Initialize wardrobe items data if not already done
             InitializeWardrobeItems();
 
-            // Re-resolve in case a prefab swap invalidated earlier lookups.
-            if (playerControl == null) playerControl = FindFirstObjectByType<PlayerControl>();
-
-            if (playerControl != null)
+            var playerCtx = PlayerContext;
+            if (playerCtx != null)
             {
-                playerOriginalPosition = playerControl.transform.position;
-                playerOriginalRotation = playerControl.transform.rotation;
+                playerOriginalPosition = playerCtx.Transform.position;
+                playerOriginalRotation = playerCtx.Transform.rotation;
             }
             else
             {
-                Debug.LogError("[WardrobeManager] playerControl still null at EnterWardrobeMode line 140 — wardrobe entry aborted gracefully.");
+                Debug.LogError("[WardrobeManager] PlayerContext still null at EnterWardrobeMode — wardrobe entry aborted gracefully.");
                 return;
             }
 
@@ -197,17 +195,18 @@ namespace FeaturesWardrobe
                 Debug.LogWarning($"[WardrobeManager] MirrorCamera init failed: {e.Message}");
             }
 
-            // Delegate camera switching to CameraManager (preferred)
+            // Delegate camera switching to ICameraService (preferred)
             try
             {
-                if (CameraManager.Instance != null)
+                var cameraService = ServiceLocator.Resolve<ICameraService>();
+                if (cameraService != null)
                 {
-                    CameraManager.Instance.SetMode(CameraManager.CameraMode.WardrobeMode, wardrobeRoot);
+                    cameraService.SetMode(CameraMode.WardrobeMode, wardrobeRoot);
                 // Camera pose is authored in the scene — no runtime override needed.
                 }
                 else
                 {
-                    Debug.LogWarning("[WardrobeManager] CameraManager not found! Using fallback camera control.");
+                    Debug.LogWarning("[WardrobeManager] ICameraService not found! Using fallback camera control.");
 
                     // FALLBACK: Manual camera control
                     if (mainCamera != null)
@@ -218,8 +217,8 @@ namespace FeaturesWardrobe
                         wardrobeCamera.enabled = true;
 
                     // Lock input and cursor manually
-                    if (playerControl != null)
-                        playerControl.isInputLocked = true;
+                    if (PlayerContext != null)
+                        PlayerContext.IsInputLocked = true;
 
                     Cursor.lockState = CursorLockMode.None;
                     Cursor.visible = true;
@@ -353,13 +352,13 @@ namespace FeaturesWardrobe
             if (chestLidAnimator != null)
                 chestLidAnimator.SetBool("IsOpen", false);
 
-            // 2. Camera transition (delegate to CameraManager; it now auto-resolves
-            //    PlayerControl if its serialized field is null).
+            // 2. Camera transition (delegate to ICameraService)
             try
             {
-                if (CameraManager.Instance != null)
+                var camService = ServiceLocator.Resolve<ICameraService>();
+                if (camService != null)
                 {
-                    CameraManager.Instance.SetMode(CameraManager.CameraMode.Gameplay, null);
+                    camService.SetMode(CameraMode.Gameplay, null);
                 }
             }
             catch (System.Exception e)
@@ -367,34 +366,18 @@ namespace FeaturesWardrobe
                 UnityEngine.Debug.LogError("Camera reset error: " + e.Message);
             }
 
-            // 3. Brute-force unlock (backup) — uses FindObjectOfType so it works
-            //    even when CameraManager's serialized playerControl ref is null.
+            // 3. Unlock player input via IPlayerContext
             try
             {
-                var player = UnityEngine.Object.FindFirstObjectByType<PlayerControl>();
-                if (player != null)
+                if (PlayerContext != null)
                 {
-                    var t = player.GetType();
-                    var field = t.GetField("isInputLocked", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                    if (field != null)
-                    {
-                        field.SetValue(player, false);
-                    }
-                    else
-                    {
-                        var prop = t.GetProperty("isInputLocked", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                        if (prop != null && prop.CanWrite) prop.SetValue(player, false);
-                    }
-                    UnityEngine.Debug.Log("[DEBUG] Forcefully unlocked PlayerControl.isInputLocked.");
-                }
-                else
-                {
-                    UnityEngine.Debug.LogWarning("[DEBUG] Brute-force unlock found no PlayerControl in scene.");
+                    PlayerContext.IsInputLocked = false;
+                    UnityEngine.Debug.Log("[DEBUG] Forcefully unlocked PlayerContext.IsInputLocked.");
                 }
             }
             catch (System.Exception e)
             {
-                UnityEngine.Debug.LogError("Brute-force unlock error: " + e.Message);
+                UnityEngine.Debug.LogError("Player unlock error: " + e.Message);
             }
 
             // 4. Cleanup UI & interaction systems.
@@ -463,9 +446,10 @@ namespace FeaturesWardrobe
             // Restore hotbar
             try
             {
+                var trophyService = ServiceLocator.Resolve<ITrophyService>();
                 bool trophyOwnsHotbar = InventoryManagerUI.Instance != null &&
                     InventoryManagerUI.Instance.currentStorageInventory != null &&
-                    TrophySystemManager.Instance != null && TrophySystemManager.Instance.IsInTrophyMode;
+                    trophyService != null && trophyService.IsInTrophyMode;
                 if (!trophyOwnsHotbar && InventoryManagerUI.Instance != null &&
                     InventoryManagerUI.Instance.playerHotbarContainer != null)
                     InventoryManagerUI.Instance.playerHotbarContainer.gameObject.SetActive(true);
@@ -573,26 +557,28 @@ namespace FeaturesWardrobe
 
         private void PositionPlayerToMirror()
         {
-            if (playerControl == null) return;
+            var playerCtx = PlayerContext;
+            if (playerCtx == null) return;
 
             Vector3 target = wardrobePlayerPosition != Vector3.zero 
                 ? wardrobePlayerPosition 
                 : new Vector3(27.100000381469728f, 0.040000081062316897f, 21.040000915527345f);
             Quaternion facingMirror = Quaternion.Euler(wardrobePlayerRotation);
 
-            Rigidbody rb = playerControl.GetComponent<Rigidbody>();
+            Transform pTransform = playerCtx.Transform;
+            Rigidbody rb = pTransform.GetComponent<Rigidbody>();
             if (rb != null)
             {
                 rb.linearVelocity = Vector3.zero;
                 rb.position = target;
                 rb.rotation = facingMirror;
-                playerControl.transform.position = target;
-                playerControl.transform.rotation = facingMirror;
+                pTransform.position = target;
+                pTransform.rotation = facingMirror;
             }
             else
             {
-                playerControl.transform.position = target;
-                playerControl.transform.rotation = facingMirror;
+                pTransform.position = target;
+                pTransform.rotation = facingMirror;
             }
 
             Physics.SyncTransforms();
@@ -613,18 +599,16 @@ namespace FeaturesWardrobe
             isInWardrobeMode = false;
             _isInWardrobeMode = false;
 
-            // Self-healing: if the Player prefab was replaced and serialized
-            // references were lost, resolve them dynamically.
-            if (playerControl == null) playerControl = FindFirstObjectByType<PlayerControl>();
+            // Self-healing: if references were lost, resolve them dynamically.
             if (playerOutfit == null) playerOutfit = FindFirstObjectByType<PlayerOutfit>();
             if (playerInteractor == null) playerInteractor = FindFirstObjectByType<PlayerInteractor>();
             if (hoverLabelController == null) hoverLabelController = FindFirstObjectByType<HoverLabelController>();
             if (wardrobeUI == null) wardrobeUI = FindFirstObjectByType<WardrobeUI>();
             if (mainCamera == null && Camera.main != null) mainCamera = Camera.main;
             if (mirrorCamera == null) mirrorCamera = FindFirstObjectByType<MirrorCamera>();
-            if (playerHead == null && playerControl != null)
+            if (playerHead == null && PlayerContext != null)
             {
-                foreach (var t in playerControl.GetComponentsInChildren<Transform>(true))
+                foreach (var t in PlayerContext.Transform.GetComponentsInChildren<Transform>(true))
                 {
                     if (t.name.ToLower().Contains("head") && !t.name.ToLower().Contains("end"))
                     {
@@ -654,7 +638,7 @@ namespace FeaturesWardrobe
 
             if (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame)
             {
-                MainMenuController.LastFrameUIPanelClosed = Time.frameCount;
+                UIModalHelper.LastFrameUIPanelClosed = Time.frameCount;
                 ExitWardrobeMode();
             }
         }

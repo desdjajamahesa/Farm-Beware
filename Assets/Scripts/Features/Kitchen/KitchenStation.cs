@@ -7,7 +7,7 @@ using UnityEngine;
 /// - Bereaksi pada OnInventoryChanged dari stationInventory (auto-mulai saat slot terisi).
 /// - Sinyal event untuk listener UI: OnProcessStarted / OnProcessProgress / OnProcessCompleted.
 /// </summary>
-public abstract class KitchenStation : MonoBehaviour
+public abstract class KitchenStation : MonoBehaviour, FarmBeware.Core.Runtime.ISlotProgressProvider
 {
     [Tooltip("Inventori stasiun (slot tempat bahan ditaruh). Jika kosong, memakai komponen sendiri.")]
     [SerializeField] protected InventoryComponent stationInventory;
