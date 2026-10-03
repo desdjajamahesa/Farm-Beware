@@ -16,6 +16,9 @@ namespace FeaturesCamera
         [Tooltip("Player transform to follow.")]
         public Transform target;
 
+        [Tooltip("Offset applied to target position to center player character nicely (e.g. chest/center).")]
+        public Vector3 targetOffset = new Vector3(0f, 1.0f, 0f);
+
         [Tooltip("Camera offset from target (isometric default).")]
         public Vector3 offset = new Vector3(-10f, 10f, -10f);
 
@@ -174,7 +177,7 @@ namespace FeaturesCamera
 
             // Calculate camera position (orbit-based)
             Quaternion rotation = Quaternion.Euler(pitch, yaw, 0f);
-            Vector3 targetCenter = target.position;
+            Vector3 targetCenter = target.position + targetOffset;
             Vector3 targetPosition = targetCenter - (rotation * Vector3.forward * distance);
 
             // Smooth follow + Shake offset
@@ -197,7 +200,7 @@ namespace FeaturesCamera
             if (target == null) return;
 
             Quaternion rotation = Quaternion.Euler(pitch, yaw, 0f);
-            Vector3 targetCenter = target.position;
+            Vector3 targetCenter = target.position + targetOffset;
             Vector3 targetPosition = targetCenter - (rotation * Vector3.forward * distance);
             transform.position = targetPosition;
             transform.rotation = rotation;

@@ -553,6 +553,23 @@ if (customPanel != null)
 
         isPlayerOpen = true;
 
+        // Mode Trophy Cabinet: Sembunyikan Stats dan Equipment, kembalikan posisi Player Panel ke KIRI
+        if (characterSheetRoot != null) characterSheetRoot.SetActive(false);
+        if (playerStatsPanel != null) playerStatsPanel.SetActive(false);
+        if (equipmentPanel != null) equipmentPanel.SetActive(false);
+
+        if (playerPanel != null)
+        {
+            var rt = playerPanel.GetComponent<RectTransform>();
+            if (rt != null)
+            {
+                rt.anchorMin = new Vector2(0.0f, 0.5f);
+                rt.anchorMax = new Vector2(0.0f, 0.5f);
+                rt.pivot = new Vector2(0.0f, 0.5f);
+                rt.anchoredPosition = defaultPlayerPanelPos;
+            }
+        }
+
         // Activate panels - LEFT panel only for Trophy mode
         if (playerPanel != null) playerPanel.SetActive(true);
         
@@ -569,11 +586,11 @@ if (customPanel != null)
         if (playerViewport != null)
             playerViewport.offsetMin = new Vector2(playerViewport.offsetMin.x, 0);
 
-        // Set panel titles for Trophy Cabinet mode
-        if (leftPanelTitle != null) leftPanelTitle.text = "Kabinet Trophy";
+        // Set panel titles for Trophy Cabinet mode in English
+        if (leftPanelTitle != null) leftPanelTitle.text = "Trophy Cabinet";
         
         var rightTitleText = trophyPanel?.transform.Find("HeaderTitle")?.GetComponent<Text>();
-        if (rightTitleText != null) rightTitleText.text = "Rak Trophy";
+        if (rightTitleText != null) rightTitleText.text = "Trophy Rack";
 
         var pcCabinet = ServiceLocator.Resolve<IPlayerContext>();
         if (pcCabinet != null) pcCabinet.IsInputLocked = true;
