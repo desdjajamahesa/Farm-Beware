@@ -46,11 +46,14 @@ namespace FeaturesTime.Atmosphere
         [SerializeField] private Color nightCameraBackground = new Color(0.06f, 0.09f, 0.16f); // Background malam jelas
 
         [Header("Camera Projection Settings")]
+        [Tooltip("Jika true, mengontrol orthographic size kamera utama saat transisi fase.")]
+        [SerializeField] private bool controlCameraOrthoSize = false;
         [Tooltip("Orthographic size kamera utama saat siang hari.")]
-        [SerializeField] private float dayCameraOrthoSize = 7.0f;
+        [SerializeField] private float dayCameraOrthoSize = 6.0f;
         [Tooltip("Orthographic size kamera utama saat malam hari.")]
-        [SerializeField] private float nightCameraOrthoSize = 7.0f;
+        [SerializeField] private float nightCameraOrthoSize = 6.0f;
 
+        public bool ControlCameraOrthoSize { get => controlCameraOrthoSize; set => controlCameraOrthoSize = value; }
         public float NightLightIntensity { get => nightLightIntensity; set => nightLightIntensity = value; }
         public float DayCameraOrthoSize { get => dayCameraOrthoSize; set => dayCameraOrthoSize = value; }
         public float NightCameraOrthoSize { get => nightCameraOrthoSize; set => nightCameraOrthoSize = value; }
@@ -177,7 +180,7 @@ namespace FeaturesTime.Atmosphere
                 if (mainCamera != null)
                 {
                     mainCamera.backgroundColor = Color.Lerp(startCamBg, targetCamBg, t);
-                    if (mainCamera.orthographic)
+                    if (controlCameraOrthoSize && mainCamera.orthographic)
                     {
                         mainCamera.orthographicSize = Mathf.Lerp(startCamOrtho, targetCamOrtho, t);
                     }
@@ -205,7 +208,7 @@ namespace FeaturesTime.Atmosphere
             if (mainCamera != null)
             {
                 mainCamera.backgroundColor = targetCamBg;
-                if (mainCamera.orthographic)
+                if (controlCameraOrthoSize && mainCamera.orthographic)
                 {
                     mainCamera.orthographicSize = targetCamOrtho;
                 }
@@ -239,7 +242,7 @@ namespace FeaturesTime.Atmosphere
             if (mainCamera != null)
             {
                 mainCamera.backgroundColor = isNight ? nightCameraBackground : dayCameraBackground;
-                if (mainCamera.orthographic)
+                if (controlCameraOrthoSize && mainCamera.orthographic)
                 {
                     mainCamera.orthographicSize = isNight ? nightCameraOrthoSize : dayCameraOrthoSize;
                 }

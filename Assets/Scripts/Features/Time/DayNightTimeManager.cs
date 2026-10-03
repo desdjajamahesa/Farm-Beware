@@ -60,9 +60,12 @@ namespace FeaturesTime
         [Tooltip("Total durasi dunia nyata (dalam detik) untuk menyelesaikan 1 hari permainan (24 jam in-game). Default 720 detik = 12 menit.")]
         [SerializeField] private float realSecondsPerInGameDay = 720f;
 
-        [Tooltip("Jam awal saat game pertama kali dimulai (0.0f - 24.0f). Contoh 6.0f = 06:00.")]
+        [Tooltip("Jika true, simulasi waktu berjalan secara realtime kontinu. Jika false (default), waktu statis berbasis fase (Day/Night) dan hanya berpindah saat aksi tidur/event.")]
+        [SerializeField] private bool useContinuousTime = false;
+
+        [Tooltip("Jam awal saat game pertama kali dimulai (0.0f - 24.0f). Contoh 7.0f = 07:00.")]
         [Range(0f, 24f)]
-        [SerializeField] private float initialHour = 6.0f;
+        [SerializeField] private float initialHour = 7.0f;
 
         [Tooltip("Hari awal kalender saat game dimulai.")]
         [Min(1)]
@@ -139,11 +142,17 @@ namespace FeaturesTime
         public EnvironmentPhase CurrentPhase => currentPhase;
         public float NormalizedTime => Mathf.Clamp01(currentHour / 24.0f);
         public bool IsPaused => isPaused;
+        public bool UseContinuousTime
+        {
+            get => useContinuousTime;
+            set => useContinuousTime = value;
+        }
 
         float FarmBeware.Core.Runtime.ITimeService.TimeOfDay => currentHour;
         FarmBeware.Core.Runtime.DayPhase FarmBeware.Core.Runtime.ITimeService.CurrentPhase => (FarmBeware.Core.Runtime.DayPhase)currentPhase;
         bool FarmBeware.Core.Runtime.ITimeService.IsNight => currentPhase == EnvironmentPhase.Night;
         bool FarmBeware.Core.Runtime.ITimeService.IsNightEncounterCleared => TimeManager.Instance != null ? TimeManager.Instance.isNightEncounterCleared : true;
+        bool FarmBeware.Core.Runtime.ITimeService.UseContinuousTime => useContinuousTime;
 
         void FarmBeware.Core.Runtime.ITimeService.StartNightPhase()
         {
@@ -251,7 +260,7 @@ namespace FeaturesTime
             if (Time.timeScale <= 0f || FarmBeware.Core.Runtime.UIModalHelper.IsSaveUIOpen)
                 return;
 
-            if (isPaused || realSecondsPerInGameDay <= 0.01f)
+            if (!useContinuousTime || isPaused || realSecondsPerInGameDay <= 0.01f)
                 return;
 
             // Hitung progresi waktu visual murni (matematika independen)
@@ -367,6 +376,7 @@ namespace FeaturesTime
             OnHourChanged?.Invoke(lastEmittedHour);
             OnMinuteChanged?.Invoke(lastEmittedMinute);
             OnTimePhaseChanged?.Invoke(currentPhase);
+            _corePhaseChanged?.Invoke(currentDay, (FarmBeware.Core.Runtime.DayPhase)currentPhase);
         }
 
         public void SetDayAndTime(int day, float targetHour)
@@ -387,7 +397,7 @@ namespace FeaturesTime
 
         public void AdvanceToNextDay()
         {
-            currentHour = dawnStartHour;
+            currentHour = dayStartHour;
             currentDay = TimeManager.Instance != null ? TimeManager.Instance.currentDay : (currentDay + 1);
             currentPhase = EvaluatePhase(currentHour);
 
@@ -400,6 +410,7 @@ namespace FeaturesTime
             OnHourChanged?.Invoke(lastEmittedHour);
             OnMinuteChanged?.Invoke(lastEmittedMinute);
             OnTimePhaseChanged?.Invoke(currentPhase);
+            _corePhaseChanged?.Invoke(currentDay, (FarmBeware.Core.Runtime.DayPhase)currentPhase);
         }
 
         public void SkipToNight()

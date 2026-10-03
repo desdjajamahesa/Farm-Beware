@@ -21,6 +21,7 @@ namespace FarmBeware.Core.Runtime
         DayPhase CurrentPhase { get; }
         bool IsNight { get; }
         bool IsNightEncounterCleared { get; }
+        bool UseContinuousTime { get; }
         event Action<int> OnMinuteChanged;
         event Action<int, DayPhase> OnPhaseChanged;
         event Action<int> OnDayChanged;

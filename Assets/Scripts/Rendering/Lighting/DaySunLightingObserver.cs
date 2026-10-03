@@ -155,12 +155,21 @@ namespace FeaturesRendering.Lighting
             var timeService = ServiceLocator.Resolve<ITimeService>();
             if (timeService != null)
             {
-                EvaluateSunParameters(timeService.CurrentHour);
+                if (!timeService.UseContinuousTime)
+                {
+                    if (timeService.IsNight)
+                        ApplyNightLighting();
+                    else
+                        ApplyDayLighting();
+                }
+                else
+                {
+                    EvaluateSunParameters(timeService.CurrentHour);
+                }
             }
             else
             {
-                // Fallback default: tengah hari 12:00
-                EvaluateSunParameters(12.0f);
+                ApplyDayLighting();
             }
         }
 
@@ -178,7 +187,7 @@ namespace FeaturesRendering.Lighting
         private void HandleMinuteChanged(int minute)
         {
             var timeService = ServiceLocator.Resolve<ITimeService>();
-            if (timeService != null)
+            if (timeService != null && timeService.UseContinuousTime)
             {
                 EvaluateSunParameters(timeService.CurrentHour);
             }
@@ -192,6 +201,15 @@ namespace FeaturesRendering.Lighting
             isDaytime = (phase == DayPhase.Dawn || phase == DayPhase.Day || phase == DayPhase.Dusk);
 
             var timeService = ServiceLocator.Resolve<ITimeService>();
+            if (timeService != null && !timeService.UseContinuousTime)
+            {
+                if (isDaytime)
+                    ApplyDayLighting();
+                else
+                    ApplyNightLighting();
+                return;
+            }
+
             if (timeService != null)
             {
                 EvaluateSunParameters(timeService.CurrentHour);
@@ -209,6 +227,17 @@ namespace FeaturesRendering.Lighting
         public void EvaluateSunParameters(float hour)
         {
             if (sunLight == null) return;
+
+            var timeService = ServiceLocator.Resolve<ITimeService>();
+            if (timeService != null && !timeService.UseContinuousTime)
+            {
+                bool isDay = !timeService.IsNight;
+                if (isDay)
+                    ApplyDayLighting();
+                else
+                    ApplyNightLighting();
+                return;
+            }
 
             // Apakah berada di dalam siklus matahari siang?
             if (hour >= sunriseHour && hour <= sunsetHour)
@@ -255,6 +284,45 @@ namespace FeaturesRendering.Lighting
             {
                 // Phase 3: Night Lighting (Pencahayaan Malam Minimal & APV Sync)
                 ApplyNightLighting();
+            }
+        }
+
+        /// <summary>
+        /// Mengatur pencahayaan siang hari (Phase 2: Day Lighting):
+        /// Menggunakan tema dayTheme (pitch 50°, yaw -30°, lux 1.1, warna 5000K daylight) secara statis
+        /// tanpa iterasi trajektori bergerak saat mode kontinu tidak aktif.
+        /// </summary>
+        public void ApplyDayLighting()
+        {
+            if (sunLight == null) return;
+
+            isDaytime = true;
+
+            if (dayTheme != null)
+            {
+                currentAzimuth = dayTheme.MainLightEulerAngles.y;
+                currentElevation = dayTheme.MainLightEulerAngles.x;
+                currentIntensity = Mathf.Clamp(dayTheme.MainLightIntensity, 0.1f, 3.0f);
+                currentEvaluatedColor = dayTheme.GetEvaluatedLightColor();
+                currentKelvin = dayTheme.ColorTemperatureKelvin;
+                ApplyToLight(currentElevation, currentAzimuth, currentEvaluatedColor, currentIntensity);
+
+                RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Trilight;
+                RenderSettings.ambientSkyColor = dayTheme.AmbientSkyColor;
+                RenderSettings.ambientEquatorColor = dayTheme.AmbientEquatorColor;
+                RenderSettings.ambientGroundColor = dayTheme.AmbientGroundColor;
+                RenderSettings.fogColor = dayTheme.FogColor;
+                RenderSettings.fogStartDistance = dayTheme.FogStartDistance;
+                RenderSettings.fogEndDistance = dayTheme.FogEndDistance;
+            }
+            else
+            {
+                currentAzimuth = -30f;
+                currentElevation = 50f;
+                currentIntensity = 1.0f;
+                currentKelvin = 5000f;
+                currentEvaluatedColor = new Color(1.0f, 0.95f, 0.88f);
+                ApplyToLight(currentElevation, currentAzimuth, currentEvaluatedColor, currentIntensity);
             }
         }
 

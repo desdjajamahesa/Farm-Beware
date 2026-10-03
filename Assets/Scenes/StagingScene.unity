@@ -22,7 +22,7 @@ RenderSettings:
   m_LinearFogEnd: 120
   m_AmbientSkyColor: {r: 0.7, g: 0.74, b: 0.8, a: 1}
   m_AmbientEquatorColor: {r: 0.55, g: 0.52, b: 0.48, a: 1}
-  m_AmbientGroundColor: {r: 0.35, g: 0.32, b: 0.28, a: 1}
+  m_AmbientGroundColor: {r: 0.42, g: 0.38, b: 0.3, a: 1}
   m_AmbientIntensity: 1
   m_AmbientMode: 1
   m_SubtractiveShadowColor: {r: 0.42, g: 0.478, b: 0.627, a: 1}
@@ -3183,7 +3183,7 @@ MonoBehaviour:
   blockTrophyItems: 1
   hasHotbar: 1
   allowedFoodCategories: 
-  selectedHotbarIndex: 0
+  selectedHotbarIndex: 2
 --- !u!114 &81193524
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3199,7 +3199,7 @@ MonoBehaviour:
   maxHealth: 100
   currentHealth: 100
   maxStamina: 120
-  currentStamina: 10
+  currentStamina: 100
   staminaRegenRate: 20
   staminaDrainRate: 20
   staminaRegenDelay: 1.2
@@ -14509,7 +14509,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::FeaturesTime.DayNightTimeManager
   realSecondsPerInGameDay: 720
-  initialHour: 6
+  useContinuousTime: 0
+  initialHour: 7
   initialDay: 1
   autoStart: 1
   dawnStartHour: 5
@@ -14517,9 +14518,9 @@ MonoBehaviour:
   duskStartHour: 17
   nightStartHour: 19.5
   syncWithLegacyTimeManager: 1
-  currentHour: 6
+  currentHour: 7
   currentDay: 1
-  currentPhase: 0
+  currentPhase: 1
   isPaused: 0
 --- !u!114 &351680746
 MonoBehaviour:
@@ -16297,8 +16298,8 @@ Light:
   m_Enabled: 1
   serializedVersion: 12
   m_Type: 1
-  m_Color: {r: 1, g: 0.95, b: 0.88, a: 1}
-  m_Intensity: 1
+  m_Color: {r: 1, g: 0.84945834, b: 0.7106618, a: 1}
+  m_Intensity: 1.1
   m_Range: 10
   m_SpotAngle: 30
   m_InnerSpotAngle: 21.80208
@@ -16428,11 +16429,11 @@ MonoBehaviour:
   maxIntensity: 1.15
   minDayIntensity: 0.2
   shadowNearPlaneOffset: 0.15
-  currentAzimuth: 178.2
-  currentElevation: 54.9112
-  currentKelvin: 5500
-  currentEvaluatedColor: {r: 1, g: 0.93134546, b: 0.8715508, a: 1}
-  currentIntensity: 1.1481254
+  currentAzimuth: -30
+  currentElevation: 50
+  currentKelvin: 5000
+  currentEvaluatedColor: {r: 1, g: 0.84945834, b: 0.7106618, a: 1}
+  currentIntensity: 1.1
   isDaytime: 1
 --- !u!1001 &411189173
 PrefabInstance:
@@ -20422,47 +20423,6 @@ MonoBehaviour:
   m_IgnoreFromBuild: 1
   m_ApplyToChildren: 1
   m_AffectedAgents: ffffffff
---- !u!21 &505072236
-Material:
-  serializedVersion: 8
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_Name: Sprites/Default
-  m_Shader: {fileID: 10753, guid: 0000000000000000f000000000000000, type: 0}
-  m_Parent: {fileID: 0}
-  m_ModifiedSerializedProperties: 0
-  m_ValidKeywords: []
-  m_InvalidKeywords: []
-  m_LightmapFlags: 4
-  m_EnableInstancingVariants: 0
-  m_DoubleSidedGI: 0
-  m_CustomRenderQueue: -1
-  stringTagMap: {}
-  disabledShaderPasses: []
-  m_LockedProperties: 
-  m_SavedProperties:
-    serializedVersion: 3
-    m_TexEnvs:
-    - _AlphaTex:
-        m_Texture: {fileID: 0}
-        m_Scale: {x: 1, y: 1}
-        m_Offset: {x: 0, y: 0}
-    - _MainTex:
-        m_Texture: {fileID: 0}
-        m_Scale: {x: 1, y: 1}
-        m_Offset: {x: 0, y: 0}
-    m_Ints: []
-    m_Floats:
-    - PixelSnap: 0
-    - _EnableExternalAlpha: 0
-    m_Colors:
-    - _Color: {r: 1, g: 1, b: 1, a: 1}
-    - _Flip: {r: 1, g: 1, b: 1, a: 1}
-    - _RendererColor: {r: 1, g: 1, b: 1, a: 1}
-  m_BuildTextureStacks: []
-  m_AllowLocking: 1
 --- !u!1 &505399957
 GameObject:
   m_ObjectHideFlags: 0
@@ -38282,7 +38242,7 @@ LineRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 505072236}
+  - {fileID: 1314737684}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -59119,6 +59079,47 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1313151569}
   m_CullTransparentMesh: 1
+--- !u!21 &1314737684
+Material:
+  serializedVersion: 8
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: Sprites/Default
+  m_Shader: {fileID: 10753, guid: 0000000000000000f000000000000000, type: 0}
+  m_Parent: {fileID: 0}
+  m_ModifiedSerializedProperties: 0
+  m_ValidKeywords: []
+  m_InvalidKeywords: []
+  m_LightmapFlags: 4
+  m_EnableInstancingVariants: 0
+  m_DoubleSidedGI: 0
+  m_CustomRenderQueue: -1
+  stringTagMap: {}
+  disabledShaderPasses: []
+  m_LockedProperties: 
+  m_SavedProperties:
+    serializedVersion: 3
+    m_TexEnvs:
+    - _AlphaTex:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _MainTex:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    m_Ints: []
+    m_Floats:
+    - PixelSnap: 0
+    - _EnableExternalAlpha: 0
+    m_Colors:
+    - _Color: {r: 1, g: 1, b: 1, a: 1}
+    - _Flip: {r: 1, g: 1, b: 1, a: 1}
+    - _RendererColor: {r: 1, g: 1, b: 1, a: 1}
+  m_BuildTextureStacks: []
+  m_AllowLocking: 1
 --- !u!1 &1315051262
 GameObject:
   m_ObjectHideFlags: 0
@@ -98818,6 +98819,7 @@ MonoBehaviour:
   nightFogStart: 52
   nightFogEnd: 115
   nightCameraBackground: {r: 0.06, g: 0.09, b: 0.16, a: 1}
+  controlCameraOrthoSize: 0
   dayCameraOrthoSize: 6
   nightCameraOrthoSize: 7
 --- !u!1 &2029031038
