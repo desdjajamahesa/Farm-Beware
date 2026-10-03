@@ -14,8 +14,10 @@ using FarmBeware.Core.Runtime;
 /// - Allows the player to collect cooked dishes into their inventory without auto-dumping on panel close.
 /// - Dispatches cooking commands to the backend controller (KitchenStove).
 /// </summary>
-public class StoveUIManager : MonoBehaviour
+public class StoveUIManager : MonoBehaviour, IModalWindow
 {
+    bool IModalWindow.IsOpen => IsPanelOpen;
+
     #region Serialized UI References
 
     [Header("Panel Root")]
@@ -245,6 +247,8 @@ public class StoveUIManager : MonoBehaviour
         if (panelStove != null)
             panelStove.SetActive(true);
 
+        ModalStackManager.Instance?.Push(this);
+
         EnsureCookedSlotUI();
         PopulateRecipeList();
         UpdateCookedSlotUI();
@@ -299,7 +303,17 @@ public class StoveUIManager : MonoBehaviour
         var playerClose = ServiceLocator.Resolve<IPlayerContext>();
         if (playerClose != null)
             playerClose.IsInputLocked = false;
+
+        ModalStackManager.Instance?.PopSpecific(this);
     }
+
+    void IModalWindow.OpenModal()
+    {
+        var inv = FindFirstObjectByType<InventoryComponent>();
+        Open(KitchenStove.Instance, inv);
+    }
+
+    void IModalWindow.CloseModal() => Close();
 
     #endregion
 

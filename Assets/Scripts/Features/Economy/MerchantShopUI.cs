@@ -12,7 +12,7 @@ namespace FeaturesEconomy
     /// Perfectly anchored to the player's 2D Screen Space Overlay Canvas (UI_Canvas), centered with a dark backdrop,
     /// ensuring zero-lag in-place UI updates, atomic transactions, reliable close triggers, and crisp responsive button feedback.
     /// </summary>
-    public class MerchantShopUI : MonoBehaviour
+    public class MerchantShopUI : MonoBehaviour, IModalWindow
     {
         public static MerchantShopUI Instance
         {
@@ -182,6 +182,7 @@ namespace FeaturesEconomy
             Cursor.lockState = CursorLockMode.None;
 
             isOpen = true;
+            ModalStackManager.Instance?.Push(this);
             if (shopPanel != null)
                 shopPanel.SetActive(true);
 
@@ -193,6 +194,7 @@ namespace FeaturesEconomy
         public void CloseShop()
         {
             isOpen = false;
+            ModalStackManager.Instance?.PopSpecific(this);
             if (shopPanel != null)
                 shopPanel.SetActive(false);
 
@@ -206,6 +208,9 @@ namespace FeaturesEconomy
             // Signal UIModalHelper that a UI panel just closed to avoid accidental pause menu trigger
             UIModalHelper.LastFrameUIPanelClosed = Time.frameCount;
         }
+
+        void IModalWindow.OpenModal() => OpenShop();
+        void IModalWindow.CloseModal() => CloseShop();
 
         public void SwitchTab(ShopTab tab)
         {

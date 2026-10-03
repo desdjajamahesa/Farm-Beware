@@ -6,8 +6,10 @@ using UnityEngine.Serialization;
 using System.Linq;
 using FarmBeware.Core.Runtime;
 
-public class InventoryManagerUI : MonoBehaviour
+public class InventoryManagerUI : MonoBehaviour, IModalWindow
 {
+    bool IModalWindow.IsOpen => IsAnyInventoryUIRelatedOpen();
+
     private static InventoryManagerUI _instance;
     public static InventoryManagerUI Instance
     {
@@ -282,6 +284,10 @@ public class InventoryManagerUI : MonoBehaviour
         }
 
         isPlayerOpen = !isPlayerOpen;
+        if (isPlayerOpen)
+            ModalStackManager.Instance?.Push(this);
+        else
+            ModalStackManager.Instance?.PopSpecific(this);
 
         if (playerPanel != null)
         {
@@ -482,6 +488,7 @@ if (customPanel != null)
         if (pc != null) pc.IsInputLocked = true;
 
         SetCursorFree(true);
+        ModalStackManager.Instance?.Push(this);
         UpdateUI();
     }
 
@@ -572,6 +579,7 @@ if (customPanel != null)
         if (pcCabinet != null) pcCabinet.IsInputLocked = true;
 
         SetCursorFree(true);
+        ModalStackManager.Instance?.Push(this);
         UpdateUI();
     }
 
@@ -582,6 +590,7 @@ if (customPanel != null)
     public void CloseAllUI()
     {
         isPlayerOpen = false;
+        ModalStackManager.Instance?.PopSpecific(this);
 
         // Close all panels
         if (playerPanel != null) playerPanel.SetActive(false);
@@ -625,6 +634,14 @@ if (customPanel != null)
 
         SetCursorFree(false);
     }
+
+    void IModalWindow.OpenModal()
+    {
+        if (!IsAnyInventoryUIRelatedOpen())
+            TogglePlayerInventory();
+    }
+
+    void IModalWindow.CloseModal() => CloseAllUI();
 
     /// <summary>
     /// Update the item detail panel (bottom of player inventory).

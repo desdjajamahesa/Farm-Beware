@@ -16,7 +16,7 @@ namespace FeaturesSaveSystem
     /// - Built-in confirmation dialog for overwrite and deletion to prevent accidental loss.
     /// - Full keyboard ESC support and player movement locking.
     /// </summary>
-    public class SaveSystemUI : MonoBehaviour
+    public class SaveSystemUI : MonoBehaviour, FarmBeware.Core.Runtime.IModalWindow
     {
         public static SaveSystemUI Instance
         {
@@ -133,6 +133,7 @@ namespace FeaturesSaveSystem
             Cursor.lockState = CursorLockMode.None;
 
             isOpen = true;
+            FarmBeware.Core.Runtime.ModalStackManager.Instance?.Push(this);
             FarmBeware.Core.Runtime.UIModalHelper.IsSaveUIOpen = true;
             if (modalPanel != null)
             {
@@ -176,7 +177,11 @@ namespace FeaturesSaveSystem
 
             // Prevent ESC from triggering the Pause Menu simultaneously
             FarmBeware.Core.Runtime.UIModalHelper.LastFrameUIPanelClosed = Time.frameCount;
+            FarmBeware.Core.Runtime.ModalStackManager.Instance?.PopSpecific(this);
         }
+
+        void FarmBeware.Core.Runtime.IModalWindow.OpenModal() => Open();
+        void FarmBeware.Core.Runtime.IModalWindow.CloseModal() => Close();
 
         #region New Save Creation
 

@@ -10,7 +10,7 @@ namespace FeaturesWorkbench.UI
     /// Modal UI untuk meja kerja upgrade senjata di garasi.
     /// Mematuhi standar resolusi 1920x1080 dan prioritas stack tombol ESC.
     /// </summary>
-    public class WorkbenchUI : MonoBehaviour
+    public class WorkbenchUI : MonoBehaviour, IModalWindow
     {
         public static WorkbenchUI Instance { get; private set; }
 
@@ -104,6 +104,7 @@ namespace FeaturesWorkbench.UI
         {
             FindPlayerReferences();
             isOpen = true;
+            ModalStackManager.Instance.Push(this);
 
             if (panelRoot != null)
             {
@@ -125,6 +126,7 @@ namespace FeaturesWorkbench.UI
         public void Close()
         {
             isOpen = false;
+            ModalStackManager.Instance.PopSpecific(this);
 
             if (panelRoot != null)
             {
@@ -141,6 +143,9 @@ namespace FeaturesWorkbench.UI
             Cursor.lockState = CursorLockMode.None;
             Cursor.visible = true;
         }
+
+        void IModalWindow.OpenModal() => Open();
+        void IModalWindow.CloseModal() => Close();
 
         public void RefreshView()
         {

@@ -1,7 +1,9 @@
 {
     "name": "FarmBeware.Core.Runtime",
     "rootNamespace": "FarmBeware.Core.Runtime",
-    "references": [],
+    "references": [
+        "Unity.InputSystem"
+    ],
     "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": false,
