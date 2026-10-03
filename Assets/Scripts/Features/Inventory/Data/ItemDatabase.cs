@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using FarmBeware.Core.Runtime;
+using FarmBeware.Data.Runtime;
 
 [CreateAssetMenu(fileName = "ItemDatabase", menuName = "FarmBeware/Database/Item Database")]
 public class ItemDatabase : ScriptableObject, IItemCatalog

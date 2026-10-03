@@ -1,10 +1,10 @@
 using System.Collections.Generic;
 
-namespace FarmBeware.Core.Runtime
+namespace FarmBeware.Data.Runtime
 {
     /// <summary>
     /// Abstraction contract for item catalogs and databases.
-    /// Decouples systems from concrete Resources paths or ScriptableObject assets.
+    /// Allows systems to look up ItemData without binding directly to concrete Resources or ScriptableObjects.
     /// </summary>
     public interface IItemCatalog
     {
