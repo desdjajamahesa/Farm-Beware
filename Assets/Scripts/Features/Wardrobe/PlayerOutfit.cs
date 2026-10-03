@@ -298,7 +298,7 @@ namespace FeaturesWardrobe
 
         /// <summary>Finds the "hat" GameObject anywhere in the Player
         /// hierarchy and toggles it. Replaces OutfitMeshSwapper dependency.</summary>
-        private void SetHatActive(bool active)
+        public void SetHatActive(bool active)
         {
             var root = characterModel != null ? characterModel : FindCharacterModel();
             if (root == null) return;

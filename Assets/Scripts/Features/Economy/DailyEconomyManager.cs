@@ -40,6 +40,26 @@ namespace FeaturesEconomy
         [SerializeField] private int taroPrice = 1600;
         [SerializeField] private int cornPrice = 1600;
 
+        public int SweetPotatoPrice => sweetPotatoPrice;
+        public int TaroPrice => taroPrice;
+        public int CornPrice => cornPrice;
+
+        public void RestoreEconomyState(int sweetPotato, int taro, int corn, int cropsHarvested, int cropsSold, int goldTrading, int monstersSlain, int goldCombat)
+        {
+            if (sweetPotato > 0) sweetPotatoPrice = sweetPotato;
+            if (taro > 0) taroPrice = taro;
+            if (corn > 0) cornPrice = corn;
+
+            dailyCropsHarvested = cropsHarvested;
+            dailyCropsSold = cropsSold;
+            dailyGoldEarnedTrading = goldTrading;
+            dailyMonstersSlain = monstersSlain;
+            dailyGoldEarnedCombat = goldCombat;
+
+            Debug.Log($"[DailyEconomyManager] Economy restored: Sweet Potato={sweetPotatoPrice}G, Taro={taroPrice}G, Corn={cornPrice}G");
+            OnMarketPricesChanged?.Invoke();
+        }
+
         [Header("Daily Activity Statistics (Reset on New Day)")]
         public int dailyCropsHarvested = 0;
         public int dailyCropsSold = 0;

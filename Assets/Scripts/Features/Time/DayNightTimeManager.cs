@@ -20,11 +20,14 @@ namespace FeaturesTime
         #region Singleton (Awake-Safe Pattern §1.1)
 
         private static DayNightTimeManager _instance;
+        private static bool _isApplicationQuitting = false;
 
         public static DayNightTimeManager Instance
         {
             get
             {
+                if (_isApplicationQuitting) return _instance;
+
                 if (_instance == null)
                 {
                     DayNightTimeManager[] found = FindObjectsByType<DayNightTimeManager>(FindObjectsInactive.Include, FindObjectsSortMode.None);
@@ -39,17 +42,16 @@ namespace FeaturesTime
                         {
                             _instance = tm.gameObject.AddComponent<DayNightTimeManager>();
                         }
-                        else
-                        {
-                            var go = new GameObject("DayNightTimeManager");
-                            _instance = go.AddComponent<DayNightTimeManager>();
-                            if (Application.isPlaying) DontDestroyOnLoad(go);
-                        }
                     }
                 }
                 return _instance;
             }
             private set => _instance = value;
+        }
+
+        private void OnApplicationQuit()
+        {
+            _isApplicationQuitting = true;
         }
 
         #endregion

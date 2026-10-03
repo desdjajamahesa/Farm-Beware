@@ -32,6 +32,14 @@ namespace FeaturesCommon
             }
         }
 
+        private void OnDestroy()
+        {
+            if (Instance == this)
+            {
+                Instance = null;
+            }
+        }
+
         public Coroutine FadeIn(float duration = -1f, System.Action onComplete = null)
         {
             return StartFade(0f, 1f, duration > 0 ? duration : defaultFadeDuration, onComplete);
