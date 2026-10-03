@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 using System.Collections;
+using UnityEngine.SceneManagement;
 
 namespace FeaturesCommon
 {
@@ -57,6 +58,8 @@ namespace FeaturesCommon
                 StopCoroutine(currentFadeCoroutine);
             }
 
+            fadeImage.raycastTarget = toAlpha > 0.05f;
+
             currentFadeCoroutine = StartCoroutine(FadeCoroutine(fromAlpha, toAlpha, duration, onComplete));
             return currentFadeCoroutine;
         }
@@ -80,6 +83,7 @@ namespace FeaturesCommon
 
             color.a = toAlpha;
             fadeImage.color = color;
+            fadeImage.raycastTarget = toAlpha > 0.05f;
 
             currentFadeCoroutine = null;
             onComplete?.Invoke();

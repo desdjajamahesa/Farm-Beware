@@ -387,6 +387,10 @@ public class MainMenuController : MonoBehaviour
 
     private void UpdateFadingOut(float dt)
     {
+        var fantasyAnimator = GetComponent<FantasyMenuAnimator>();
+        if (fantasyAnimator != null && fantasyAnimator.IsTransitioningToGame)
+            return;
+
         stateTimer += dt;
         float t = Mathf.Clamp01(stateTimer / stateDuration);
         if (menuCanvasGroup != null)
@@ -492,85 +496,36 @@ public class MainMenuController : MonoBehaviour
     {
         if (settingsPanel == null) return;
         var rt = settingsPanel.GetComponent<RectTransform>();
-        rt.anchorMin = new Vector2(0.5f, 0.5f);
-        rt.anchorMax = new Vector2(0.5f, 0.5f);
-        rt.pivot = new Vector2(0.5f, 0.5f);
-        rt.localPosition = Vector3.zero;
-        rt.sizeDelta = new Vector2(560, 480);
+        if (rt != null)
+        {
+            rt.anchorMin = new Vector2(0.5f, 0.5f);
+            rt.anchorMax = new Vector2(0.5f, 0.5f);
+            rt.pivot = new Vector2(0.5f, 0.5f);
+            rt.anchoredPosition = Vector2.zero;
+            rt.sizeDelta = new Vector2(920, 613);
+        }
 
         var vlg = settingsPanel.GetComponent<VerticalLayoutGroup>();
-        if (vlg == null) vlg = settingsPanel.gameObject.AddComponent<VerticalLayoutGroup>();
-        vlg.spacing = 10;
-        vlg.childAlignment = TextAnchor.UpperCenter;
-        vlg.childForceExpandWidth = true;
-        vlg.childForceExpandHeight = false;
-        vlg.childControlWidth = true;
-        vlg.childControlHeight = true;
-        vlg.padding = new RectOffset(50, 50, 30, 30);
+        if (vlg != null) Destroy(vlg);
 
         var bg = settingsPanel.transform.Find("SettingsBackground");
         if (bg != null)
         {
             var bgRT = bg.GetComponent<RectTransform>();
-            bgRT.anchorMin = Vector2.zero;
-            bgRT.anchorMax = Vector2.one;
-            bgRT.sizeDelta = Vector2.zero;
-            bgRT.localPosition = Vector3.zero;
-            var bgImg = bg.GetComponent<Image>();
-            if (bgImg != null) bgImg.color = new Color(0.06f, 0.07f, 0.10f, 0.94f);
-        }
-
-        var st = settingsPanel.transform.Find("SettingsTitle");
-        if (st != null)
-        {
-            var stLE = st.GetComponent<LayoutElement>();
-            if (stLE == null) stLE = st.gameObject.AddComponent<LayoutElement>();
-            stLE.preferredHeight = 55;
-            stLE.flexibleWidth = 1;
-            var tmp = st.GetComponent<TextMeshProUGUI>();
-            if (tmp != null) { tmp.fontSize = 34; tmp.alignment = TextAlignmentOptions.Center; tmp.fontStyle = FontStyles.Bold; tmp.color = new Color(0.95f, 0.92f, 0.82f, 1f); }
-        }
-
-        string[] rowNames = { "VolumeRow", "FullscreenRow", "ResolutionRow", "QualityRow" };
-        foreach (string rn in rowNames)
-        {
-            var row = settingsPanel.transform.Find(rn);
-            if (row == null) continue;
-            var rowLE = row.GetComponent<LayoutElement>();
-            if (rowLE == null) rowLE = row.gameObject.AddComponent<LayoutElement>();
-            rowLE.preferredHeight = 44;
-            rowLE.flexibleWidth = 1;
-
-            var hlg = row.GetComponent<HorizontalLayoutGroup>();
-            if (hlg == null) hlg = row.gameObject.AddComponent<HorizontalLayoutGroup>();
-            hlg.spacing = 15f;
-            hlg.childAlignment = TextAnchor.MiddleLeft;
-            hlg.childForceExpandWidth = false;
-            hlg.childForceExpandHeight = true;
-            hlg.childControlWidth = true;
-            hlg.childControlHeight = true;
-            hlg.padding = new RectOffset(10, 10, 0, 0);
-
-            foreach (Transform child in row)
+            if (bgRT != null)
             {
-                var le = child.GetComponent<LayoutElement>();
-                if (le == null) le = child.gameObject.AddComponent<LayoutElement>();
-                var label = child.GetComponent<TextMeshProUGUI>();
-                if (label != null) { le.preferredWidth = 140; le.flexibleWidth = 0; label.fontSize = 20; label.alignment = TextAlignmentOptions.MidlineLeft; label.color = new Color(0.85f, 0.85f, 0.85f, 1f); }
-                else { le.preferredWidth = 280; le.flexibleWidth = 1; }
+                bgRT.anchorMin = Vector2.zero;
+                bgRT.anchorMax = Vector2.one;
+                bgRT.sizeDelta = Vector2.zero;
+                bgRT.anchoredPosition = Vector2.zero;
             }
+            var bgImg = bg.GetComponent<Image>();
+            if (bgImg != null) bgImg.color = Color.white;
         }
 
         var backBtn = settingsPanel.transform.Find("BackButton");
         if (backBtn != null)
         {
-            var backLE = backBtn.GetComponent<LayoutElement>();
-            if (backLE == null) backLE = backBtn.gameObject.AddComponent<LayoutElement>();
-            backLE.preferredHeight = 48;
-            backLE.flexibleWidth = 1;
-            backLE.minWidth = 240;
-            var backImg = backBtn.GetComponent<Image>();
-            if (backImg != null) backImg.color = new Color(0.22f, 0.22f, 0.28f, 0.9f);
             EnsureAnimationHandler(backBtn.gameObject);
         }
     }
@@ -845,6 +800,22 @@ public class MainMenuController : MonoBehaviour
         }
 
         bool willLoadScene = loadSceneOnStart && !string.IsNullOrEmpty(targetSceneName);
+
+        var fantasyAnimator = GetComponent<FantasyMenuAnimator>();
+        if (fantasyAnimator != null && willLoadScene)
+        {
+            hasStartedGame = true;
+            menuActive = false;
+            currentState = MenuState.FadingOut;
+            stateTimer = 0f;
+            stateDuration = 999f;
+            fantasyAnimator.PlayEnterGameTransition(targetSceneName, () =>
+            {
+                currentState = MenuState.Hidden;
+                SetMenuVisualsActive(false);
+            });
+            return;
+        }
 
         hasStartedGame = true;
         menuActive = false;
