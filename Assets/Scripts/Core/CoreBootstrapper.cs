@@ -17,12 +17,15 @@ namespace FarmBeware.Core.Runtime
             InitializeCoreSubsystems();
         }
 
-        public void InitializeCoreSubsystems()
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
+        public static void InitializeCoreSubsystems()
         {
             if (_isInitialized) return;
 
             _isInitialized = true;
             Debug.Log("[CoreBootstrapper] Tier 0 Core subsystem contracts and ServiceLocator active.");
         }
+
+        public void InitializeSubsystems() => InitializeCoreSubsystems();
     }
 }

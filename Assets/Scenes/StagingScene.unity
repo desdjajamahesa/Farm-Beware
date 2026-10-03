@@ -14351,6 +14351,7 @@ GameObject:
   - component: {fileID: 351680741}
   - component: {fileID: 351680744}
   - component: {fileID: 351680745}
+  - component: {fileID: 351680746}
   m_Layer: 0
   m_Name: GameManager
   m_TagString: Untagged
@@ -14519,6 +14520,18 @@ MonoBehaviour:
   currentDay: 1
   currentPhase: 0
   isPaused: 0
+--- !u!114 &351680746
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 351680740}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f3441a46b455616498183f12314c3270, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: FarmBeware.Core.Runtime::FarmBeware.Core.Runtime.CoreBootstrapper
 --- !u!1 &357412287 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 8751517789415653616, guid: ac2f88c1521cf72439d6cb864ca0ced9, type: 3}
@@ -36075,7 +36088,6 @@ MonoBehaviour:
   wardrobeCamera: {fileID: 2101716605}
   trophySystemRoot: {fileID: 1591572853}
   wardrobeRoot: {fileID: 2037915621}
-  playerControl: {fileID: 81193519}
 --- !u!4 &828425628
 Transform:
   m_ObjectHideFlags: 0
@@ -72243,6 +72255,9 @@ MonoBehaviour:
   cookedOutputSlot:
     item: {fileID: 0}
     quantity: 0
+  _escrowContainer:
+    _heldIngredients: []
+    _heldWater: 0
 --- !u!1 &1513112201
 GameObject:
   m_ObjectHideFlags: 0
@@ -109366,7 +109381,6 @@ MonoBehaviour:
   wardrobePlayerRotation: {x: 0, y: 180, z: 0}
   uiFadeDuration: 0.3
   mirrorFallbackAnchor: {fileID: 0}
-  playerControl: {fileID: 81193519}
   playerOutfit: {fileID: 81193522}
   hoverLabelController: {fileID: 81193521}
   playerInteractor: {fileID: 81193518}
