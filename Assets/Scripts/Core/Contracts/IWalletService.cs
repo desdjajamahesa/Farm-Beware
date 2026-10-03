@@ -6,6 +6,7 @@ namespace FarmBeware.Core.Runtime
     public interface IWalletService
     {
         int CurrentGold { get; }
+        event System.Action<int> OnGoldChanged;
         bool CanAfford(int amount);
         bool SpendGold(int amount);
         void AddGold(int amount);

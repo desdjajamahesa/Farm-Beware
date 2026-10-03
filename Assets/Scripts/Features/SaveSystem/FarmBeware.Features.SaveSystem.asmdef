@@ -1,0 +1,31 @@
+{
+    "name": "FarmBeware.Features.SaveSystem",
+    "rootNamespace": "FeaturesSaveSystem",
+    "references": [
+        "FarmBeware.Core.Runtime",
+        "FarmBeware.Data.Runtime",
+        "FarmBeware.Features.Inventory",
+        "FarmBeware.Features.Time",
+        "FarmBeware.Features.Interaction",
+        "FarmBeware.Features.Farming",
+        "FarmBeware.Features.Kitchen",
+        "FarmBeware.Features.Wardrobe",
+        "FarmBeware.Features.Workbench",
+        "FarmBeware.Features.Combat",
+        "FarmBeware.Features.Economy",
+        "FarmBeware.Features.Camera",
+        "FarmBeware.Rendering.Runtime",
+        "FarmBeware.Features.Trophy",
+        "Unity.InputSystem",
+        "Unity.TextMeshPro"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

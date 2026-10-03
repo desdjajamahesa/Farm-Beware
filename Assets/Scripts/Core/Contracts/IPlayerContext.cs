@@ -16,6 +16,14 @@ namespace FarmBeware.Core.Runtime
         void ApplyStun(float duration);
         void SetControlLock(bool locked);
         bool IsGodMode { get; }
+        void StopMovement();
+        void Teleport(Vector3 position, Quaternion rotation);
+        int Health { get; }
+        float Stamina { get; }
+        float Hunger { get; }
+        float Thirst { get; }
+        void RestoreStats(int health, float stamina, float hunger, float thirst);
+        void UpdateEquipmentVisual(int slotIndex);
         T GetPlayerComponent<T>() where T : class;
     }
 }

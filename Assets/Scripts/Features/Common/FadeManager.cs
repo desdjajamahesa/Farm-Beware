@@ -4,7 +4,7 @@ using System.Collections;
 
 namespace FeaturesCommon
 {
-    public class FadeManager : MonoBehaviour
+    public class FadeManager : MonoBehaviour, FarmBeware.Core.Runtime.IFadeService
     {
         public static FadeManager Instance { get; private set; }
 
@@ -23,6 +23,7 @@ namespace FeaturesCommon
                 return;
             }
             Instance = this;
+            FarmBeware.Core.Runtime.ServiceLocator.Register<FarmBeware.Core.Runtime.IFadeService>(this);
 
             if (fadeImage != null)
             {
@@ -96,5 +97,24 @@ namespace FeaturesCommon
         }
 
         public bool IsFading => currentFadeCoroutine != null;
+
+        void FarmBeware.Core.Runtime.IFadeService.FadeIn(float duration, System.Action onComplete)
+        {
+            FadeIn(duration, onComplete);
+        }
+
+        void FarmBeware.Core.Runtime.IFadeService.FadeOut(float duration, System.Action onComplete)
+        {
+            FadeOut(duration, onComplete);
+        }
+
+        private void OnDestroy()
+        {
+            if (Instance == this)
+            {
+                FarmBeware.Core.Runtime.ServiceLocator.Unregister<FarmBeware.Core.Runtime.IFadeService>();
+                Instance = null;
+            }
+        }
     }
 }

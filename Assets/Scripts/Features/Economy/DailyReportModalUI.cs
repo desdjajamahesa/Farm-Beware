@@ -118,11 +118,11 @@ namespace FeaturesEconomy
             Cursor.visible = true;
             Cursor.lockState = CursorLockMode.None;
 
-            var pc = FindFirstObjectByType<PlayerControl>();
+            var pc = ServiceLocator.Resolve<IPlayerContext>();
             if (pc != null)
             {
                 pc.StopMovement();
-                pc.isInputLocked = true;
+                pc.IsInputLocked = true;
             }
         }
 
@@ -135,9 +135,9 @@ namespace FeaturesEconomy
             Cursor.visible = false;
             Cursor.lockState = CursorLockMode.Locked;
 
-            var pc = FindFirstObjectByType<PlayerControl>();
+            var pc = ServiceLocator.Resolve<IPlayerContext>();
             if (pc != null)
-                pc.isInputLocked = false;
+                pc.IsInputLocked = false;
 
             onContinueCallback?.Invoke();
             onContinueCallback = null;

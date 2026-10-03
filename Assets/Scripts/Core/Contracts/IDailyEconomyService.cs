@@ -7,5 +7,6 @@ namespace FarmBeware.Core.Runtime
     {
         void RecordCropHarvested(object item, int count);
         void RecordCombatGold(int goldAmount);
+        void RecordMonsterSlain();
     }
 }

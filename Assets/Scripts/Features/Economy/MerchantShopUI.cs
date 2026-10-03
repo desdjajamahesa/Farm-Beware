@@ -3,6 +3,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.InputSystem;
 using TMPro;
+using FarmBeware.Core.Runtime;
 
 namespace FeaturesEconomy
 {
@@ -51,7 +52,6 @@ namespace FeaturesEconomy
         private ShopTab currentTab = ShopTab.Buy;
 
         private InventoryComponent playerInventory;
-        private PlayerControl playerControl;
 
         private readonly Color activeTabColor = new Color(0.12f, 0.35f, 0.65f, 1f); // Vibrant Blue
         private readonly Color inactiveTabColor = new Color(0.12f, 0.16f, 0.22f, 1f); // Muted Dark
@@ -174,11 +174,9 @@ namespace FeaturesEconomy
             }
 
             playerInventory = GetPlayerInventory();
-            if (playerControl == null)
-                playerControl = FindFirstObjectByType<PlayerControl>();
-
-            if (playerControl != null)
-                playerControl.isInputLocked = true;
+            var playerCtx = ServiceLocator.Resolve<IPlayerContext>();
+            if (playerCtx != null)
+                playerCtx.IsInputLocked = true;
 
             Cursor.visible = true;
             Cursor.lockState = CursorLockMode.None;
@@ -198,17 +196,15 @@ namespace FeaturesEconomy
             if (shopPanel != null)
                 shopPanel.SetActive(false);
 
-            if (playerControl == null)
-                playerControl = FindFirstObjectByType<PlayerControl>();
-
-            if (playerControl != null)
-                playerControl.isInputLocked = false;
+            var playerCtx = ServiceLocator.Resolve<IPlayerContext>();
+            if (playerCtx != null)
+                playerCtx.IsInputLocked = false;
 
             Cursor.visible = false;
             Cursor.lockState = CursorLockMode.Locked;
 
-            // Signal MainMenuController that a UI panel just closed to avoid accidental pause menu trigger
-            MainMenuController.LastFrameUIPanelClosed = Time.frameCount;
+            // Signal UIModalHelper that a UI panel just closed to avoid accidental pause menu trigger
+            UIModalHelper.LastFrameUIPanelClosed = Time.frameCount;
         }
 
         public void SwitchTab(ShopTab tab)
@@ -672,7 +668,7 @@ namespace FeaturesEconomy
         /// </summary>
         public InventoryComponent GetPlayerInventory()
         {
-            if (playerInventory != null && (playerInventory.CompareTag("Player") || playerInventory.GetComponent<PlayerControl>() != null))
+            if (playerInventory != null && playerInventory.CompareTag("Player"))
                 return playerInventory;
 
             var player = GameObject.FindWithTag("Player");
@@ -682,8 +678,8 @@ namespace FeaturesEconomy
                 return playerInventory;
             }
 
-            var pc = FindFirstObjectByType<PlayerControl>();
-            if (pc != null && pc.TryGetComponent<InventoryComponent>(out inv))
+            var playerCtx = ServiceLocator.Resolve<IPlayerContext>();
+            if (playerCtx != null && playerCtx.Transform.TryGetComponent<InventoryComponent>(out inv))
             {
                 playerInventory = inv;
                 return playerInventory;
@@ -692,7 +688,7 @@ namespace FeaturesEconomy
             var allInvs = FindObjectsByType<InventoryComponent>(FindObjectsInactive.Include, FindObjectsSortMode.None);
             foreach (var candidate in allInvs)
             {
-                if (candidate.CompareTag("Player") || candidate.GetComponent<PlayerControl>() != null)
+                if (candidate.CompareTag("Player"))
                 {
                     playerInventory = candidate;
                     return playerInventory;
@@ -704,10 +700,12 @@ namespace FeaturesEconomy
 
         private void ShowFloatingNotify(string msg, Color col)
         {
-            if (PlayerUI.FloatingCombatTextManager.Instance != null && playerControl != null)
+            var fct = ServiceLocator.Resolve<IFloatingTextService>();
+            var playerCtx = ServiceLocator.Resolve<IPlayerContext>();
+            if (fct != null && playerCtx != null)
             {
-                PlayerUI.FloatingCombatTextManager.Instance.SpawnText(
-                    playerControl.transform.position + Vector3.up * 1.5f,
+                fct.SpawnText(
+                    playerCtx.Transform.position + Vector3.up * 1.5f,
                     msg,
                     col);
             }

@@ -1,7 +1,6 @@
 using System;
 using UnityEngine;
-using FeaturesEconomy;
-using PlayerUI;
+using FarmBeware.Core.Runtime;
 
 namespace FeaturesWorkbench
 {
@@ -117,14 +116,16 @@ namespace FeaturesWorkbench
             }
 
             int cost = GetNextUpgradeCost();
-            if (PlayerWallet.Instance != null && PlayerWallet.Instance.SpendGold(cost))
+            var wallet = ServiceLocator.Resolve<IWalletService>();
+            if (wallet != null && wallet.SpendGold(cost))
             {
                 weaponLevel++;
                 RecalculateStats();
 
-                if (FloatingCombatTextManager.Instance != null)
+                var fct = ServiceLocator.Resolve<IFloatingTextService>();
+                if (fct != null)
                 {
-                    FloatingCombatTextManager.Instance.SpawnText(
+                    fct.SpawnText(
                         transform.position + Vector3.up * 1.5f,
                         $"⚔️ Weapon Upgraded to Lv.{weaponLevel}!",
                         new Color(0.2f, 0.95f, 0.4f));
@@ -139,7 +140,8 @@ namespace FeaturesWorkbench
 
         public bool UnlockSpecialPath(string pathName, int goldCost, ItemData requiredMat, int matCount, InventoryComponent inv)
         {
-            if (inv == null || PlayerWallet.Instance == null) return false;
+            var wallet = ServiceLocator.Resolve<IWalletService>();
+            if (inv == null || wallet == null) return false;
 
             if (!HasDummySword(inv))
             {
@@ -153,13 +155,13 @@ namespace FeaturesWorkbench
                 return false;
             }
 
-            if (!PlayerWallet.Instance.CanAfford(goldCost))
+            if (!wallet.CanAfford(goldCost))
             {
                 Debug.LogWarning($"[PlayerWeaponUpgradeState] Gagal unlock {pathName}: Gold tidak cukup ({goldCost} Gold)!");
                 return false;
             }
 
-            PlayerWallet.Instance.SpendGold(goldCost);
+            wallet.SpendGold(goldCost);
             if (matCount > 0)
             {
                 inv.RemoveItem(requiredMat, matCount);
@@ -174,9 +176,10 @@ namespace FeaturesWorkbench
 
             RecalculateStats();
 
-            if (FloatingCombatTextManager.Instance != null)
+            var fct = ServiceLocator.Resolve<IFloatingTextService>();
+            if (fct != null)
             {
-                FloatingCombatTextManager.Instance.SpawnText(
+                fct.SpawnText(
                     transform.position + Vector3.up * 1.5f,
                     $"✨ {pathName} Path Unlocked!",
                     new Color(0.95f, 0.85f, 0.25f));

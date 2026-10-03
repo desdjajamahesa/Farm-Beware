@@ -8,6 +8,7 @@ using FeaturesFarming;
 using FeaturesKitchen;
 using FeaturesWardrobe;
 using FeaturesInteraction;
+using FarmBeware.Core.Runtime;
 
 namespace FeaturesSaveSystem
 {
@@ -486,13 +487,13 @@ namespace FeaturesSaveSystem
                 data.playerPosZ = player.transform.position.z;
                 data.playerRotY = player.transform.eulerAngles.y;
 
-                var stats = player.GetComponent<PlayerStats>();
-                if (stats != null)
+                var playerCtx = ServiceLocator.Resolve<IPlayerContext>();
+                if (playerCtx != null)
                 {
-                    data.health = stats.currentHealth;
-                    data.stamina = stats.currentStamina;
-                    data.hunger = stats.currentHunger;
-                    data.thirst = stats.currentThirst;
+                    data.health = playerCtx.Health;
+                    data.stamina = playerCtx.Stamina;
+                    data.hunger = playerCtx.Hunger;
+                    data.thirst = playerCtx.Thirst;
                 }
 
                 var inv = player.GetComponent<InventoryComponent>();
@@ -638,10 +639,10 @@ namespace FeaturesSaveSystem
                 Vector3 targetPos = new Vector3(data.playerPosX, data.playerPosY, data.playerPosZ);
                 Quaternion targetRot = Quaternion.Euler(0f, data.playerRotY, 0f);
 
-                var pc = player.GetComponent<PlayerControl>();
-                if (pc != null)
+                var playerCtx = ServiceLocator.Resolve<IPlayerContext>();
+                if (playerCtx != null)
                 {
-                    pc.Teleport(targetPos, targetRot);
+                    playerCtx.Teleport(targetPos, targetRot);
                 }
                 else
                 {
@@ -659,10 +660,9 @@ namespace FeaturesSaveSystem
                 }
 
                 // 2. Stats
-                var stats = player.GetComponent<PlayerStats>();
-                if (stats != null)
+                if (playerCtx != null)
                 {
-                    stats.RestoreStats(data.health, data.stamina, data.hunger, data.thirst);
+                    playerCtx.RestoreStats(data.health, data.stamina, data.hunger, data.thirst);
                 }
 
                 // 3. Inventory & Hotbar Selection
@@ -695,10 +695,9 @@ namespace FeaturesSaveSystem
                     inv.OnInventoryChanged?.Invoke();
                     inv.OnHotbarSelected?.Invoke(inv.selectedHotbarIndex);
 
-                    var equip = player.GetComponent<PlayerEquipment>();
-                    if (equip != null)
+                    if (playerCtx != null)
                     {
-                        equip.UpdateEquipmentVisual(inv.selectedHotbarIndex);
+                        playerCtx.UpdateEquipmentVisual(inv.selectedHotbarIndex);
                     }
                 }
             }
@@ -1046,11 +1045,12 @@ namespace FeaturesSaveSystem
 
         private void ShowNotification(string msg, Color col)
         {
-            if (PlayerUI.FloatingCombatTextManager.Instance != null)
+            var fct = ServiceLocator.Resolve<IFloatingTextService>();
+            if (fct != null)
             {
                 var player = GameObject.FindWithTag("Player") ?? GameObject.Find("Player");
                 Vector3 pos = player != null ? player.transform.position + Vector3.up * 1.8f : Vector3.zero;
-                PlayerUI.FloatingCombatTextManager.Instance.SpawnText(pos, msg, col);
+                fct.SpawnText(pos, msg, col);
             }
         }
 

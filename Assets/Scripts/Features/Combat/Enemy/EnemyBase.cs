@@ -1049,6 +1049,7 @@ namespace FeaturesCombat
             EnemyLootDropHandler.ProcessDeathDrops(this);
 
             OnAnyEnemyDied?.Invoke(this);
+            ServiceLocator.Resolve<IDailyEconomyService>()?.RecordMonsterSlain();
 
             if (EnemyObjectPool.Instance != null)
             {

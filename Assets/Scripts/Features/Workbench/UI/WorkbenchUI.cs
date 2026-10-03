@@ -2,7 +2,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.InputSystem;
 using TMPro;
-using FeaturesEconomy;
+using FarmBeware.Core.Runtime;
 
 namespace FeaturesWorkbench.UI
 {
@@ -34,7 +34,7 @@ namespace FeaturesWorkbench.UI
         private Button cornButton;
         private TextMeshProUGUI cornButtonText;
 
-        private PlayerControl playerControl;
+        private IPlayerContext PlayerContext => ServiceLocator.Resolve<IPlayerContext>();
         private InventoryComponent playerInventory;
         private PlayerWeaponUpgradeState upgradeState;
 
@@ -64,7 +64,6 @@ namespace FeaturesWorkbench.UI
             var p = GameObject.FindWithTag("Player") ?? GameObject.Find("Player");
             if (p != null)
             {
-                playerControl = p.GetComponent<PlayerControl>();
                 playerInventory = p.GetComponent<InventoryComponent>();
                 upgradeState = p.GetComponent<PlayerWeaponUpgradeState>() ?? p.AddComponent<PlayerWeaponUpgradeState>();
             }
@@ -72,17 +71,19 @@ namespace FeaturesWorkbench.UI
 
         private void OnEnable()
         {
-            if (PlayerWallet.Instance != null)
+            var wallet = ServiceLocator.Resolve<IWalletService>();
+            if (wallet != null)
             {
-                PlayerWallet.Instance.OnGoldChanged += HandleGoldChanged;
+                wallet.OnGoldChanged += HandleGoldChanged;
             }
         }
 
         private void OnDisable()
         {
-            if (PlayerWallet.Instance != null)
+            var wallet = ServiceLocator.Resolve<IWalletService>();
+            if (wallet != null)
             {
-                PlayerWallet.Instance.OnGoldChanged -= HandleGoldChanged;
+                wallet.OnGoldChanged -= HandleGoldChanged;
             }
         }
 
@@ -109,10 +110,10 @@ namespace FeaturesWorkbench.UI
                 panelRoot.SetActive(true);
             }
 
-            if (playerControl != null)
+            if (PlayerContext != null)
             {
-                playerControl.isInputLocked = true;
-                playerControl.StopMovement();
+                PlayerContext.IsInputLocked = true;
+                PlayerContext.StopMovement();
             }
 
             Cursor.lockState = CursorLockMode.None;
@@ -130,10 +131,12 @@ namespace FeaturesWorkbench.UI
                 panelRoot.SetActive(false);
             }
 
-            if (playerControl != null)
+            if (PlayerContext != null)
             {
-                playerControl.isInputLocked = false;
+                PlayerContext.IsInputLocked = false;
             }
+
+            UIModalHelper.LastFrameUIPanelClosed = Time.frameCount;
 
             Cursor.lockState = CursorLockMode.None;
             Cursor.visible = true;
@@ -147,7 +150,7 @@ namespace FeaturesWorkbench.UI
             bool hasDummySword = upgradeState.HasDummySword(playerInventory);
 
             // 1. Gold balance
-            int currentGold = PlayerWallet.Instance != null ? PlayerWallet.Instance.CurrentGold : 0;
+            int currentGold = ServiceLocator.Resolve<IWalletService>()?.CurrentGold ?? 0;
             if (goldText != null)
             {
                 goldText.text = $"Gold: <color=#FFD700>{currentGold:N0}</color>";

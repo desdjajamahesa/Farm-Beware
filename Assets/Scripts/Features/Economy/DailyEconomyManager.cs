@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
-using FeaturesCombat;
 using FarmBeware.Core.Runtime;
 
 namespace FeaturesEconomy
@@ -72,20 +71,20 @@ namespace FeaturesEconomy
 
         private void OnEnable()
         {
-            if (TimeManager.Instance != null)
+            var timeService = ServiceLocator.Resolve<ITimeService>();
+            if (timeService != null)
             {
-                TimeManager.Instance.OnDayChanged += HandleDayChanged;
+                timeService.OnDayChanged += HandleDayChanged;
             }
-            EnemyBase.OnAnyEnemyDied += HandleEnemyDied;
         }
 
         private void OnDisable()
         {
-            if (TimeManager.Instance != null)
+            var timeService = ServiceLocator.Resolve<ITimeService>();
+            if (timeService != null)
             {
-                TimeManager.Instance.OnDayChanged -= HandleDayChanged;
+                timeService.OnDayChanged -= HandleDayChanged;
             }
-            EnemyBase.OnAnyEnemyDied -= HandleEnemyDied;
         }
 
         private void HandleDayChanged(int newDay)
@@ -108,7 +107,7 @@ namespace FeaturesEconomy
             dailyGoldEarnedCombat = 0;
         }
 
-        private void HandleEnemyDied(EnemyBase enemy)
+        public void RecordMonsterSlain()
         {
             dailyMonstersSlain++;
         }

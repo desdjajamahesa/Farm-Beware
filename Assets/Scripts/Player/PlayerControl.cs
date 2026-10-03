@@ -1198,6 +1198,28 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
         Physics.SyncTransforms();
     }
 
+    int IPlayerContext.Health => playerStats != null ? playerStats.currentHealth : 100;
+    float IPlayerContext.Stamina => playerStats != null ? playerStats.currentStamina : 100f;
+    float IPlayerContext.Hunger => playerStats != null ? playerStats.currentHunger : 100f;
+    float IPlayerContext.Thirst => playerStats != null ? playerStats.currentThirst : 100f;
+
+    void IPlayerContext.RestoreStats(int health, float stamina, float hunger, float thirst)
+    {
+        if (playerStats != null)
+        {
+            playerStats.RestoreStats(health, stamina, hunger, thirst);
+        }
+    }
+
+    void IPlayerContext.UpdateEquipmentVisual(int slotIndex)
+    {
+        var equip = GetComponent<PlayerEquipment>();
+        if (equip != null)
+        {
+            equip.UpdateEquipmentVisual(slotIndex);
+        }
+    }
+
     private void OnDestroy()
     {
         ServiceLocator.Unregister<IPlayerContext>();

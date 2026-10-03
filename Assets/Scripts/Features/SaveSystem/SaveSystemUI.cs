@@ -61,7 +61,6 @@ namespace FeaturesSaveSystem
         private bool isOpen = false;
         public bool IsOpen => isOpen;
 
-        private PlayerControl playerControl;
         private Action pendingConfirmAction;
 
         private void Awake()
@@ -123,13 +122,11 @@ namespace FeaturesSaveSystem
 
             Time.timeScale = 0f;
 
-            if (playerControl == null)
-                playerControl = FindFirstObjectByType<PlayerControl>();
-
-            if (playerControl != null)
+            var playerCtx = FarmBeware.Core.Runtime.ServiceLocator.Resolve<FarmBeware.Core.Runtime.IPlayerContext>();
+            if (playerCtx != null)
             {
-                playerControl.StopMovement();
-                playerControl.isInputLocked = true;
+                playerCtx.StopMovement();
+                playerCtx.IsInputLocked = true;
             }
 
             Cursor.visible = true;
@@ -168,19 +165,17 @@ namespace FeaturesSaveSystem
                 modalPanel.SetActive(false);
             }
 
-            if (playerControl == null)
-                playerControl = FindFirstObjectByType<PlayerControl>();
-
-            if (playerControl != null)
+            var closePlayerCtx = FarmBeware.Core.Runtime.ServiceLocator.Resolve<FarmBeware.Core.Runtime.IPlayerContext>();
+            if (closePlayerCtx != null)
             {
-                playerControl.isInputLocked = false;
+                closePlayerCtx.IsInputLocked = false;
             }
 
             Cursor.visible = true;
             Cursor.lockState = CursorLockMode.None;
 
             // Prevent ESC from triggering the Pause Menu simultaneously
-            MainMenuController.LastFrameUIPanelClosed = Time.frameCount;
+            FarmBeware.Core.Runtime.UIModalHelper.LastFrameUIPanelClosed = Time.frameCount;
         }
 
         #region New Save Creation
