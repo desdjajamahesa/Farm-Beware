@@ -145,7 +145,8 @@ namespace FeaturesInteraction
 
 #if UNITY_EDITOR
             // Editor fallback: muat langsung dari path aset
-            var mat = UnityEditor.AssetDatabase.LoadAssetAtPath<Material>("Assets/Materials/Kitchen/Mat_Highlight.mat");
+            var mat = UnityEditor.AssetDatabase.LoadAssetAtPath<Material>("Assets/Art/Materials/Kitchen/Mat_Highlight.mat")
+                   ?? UnityEditor.AssetDatabase.LoadAssetAtPath<Material>("Assets/Materials/Kitchen/Mat_Highlight.mat");
             if (mat != null)
             {
                 sharedFallbackMaterial = mat;

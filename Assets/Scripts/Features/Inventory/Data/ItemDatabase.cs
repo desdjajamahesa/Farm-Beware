@@ -1,9 +1,20 @@
 using System.Collections.Generic;
 using UnityEngine;
+using FarmBeware.Core.Runtime;
 
 [CreateAssetMenu(fileName = "ItemDatabase", menuName = "FarmBeware/Database/Item Database")]
-public class ItemDatabase : ScriptableObject
+public class ItemDatabase : ScriptableObject, IItemCatalog
 {
+    private static IItemCatalog _customCatalog;
+
+    /// <summary>
+    /// Injects an active catalog implementation (e.g. ItemRegistrySO from CoreBootstrapper/ServiceLocator).
+    /// </summary>
+    public static void SetCatalog(IItemCatalog catalog)
+    {
+        _customCatalog = catalog;
+    }
+
     private static ItemDatabase _instance;
     public static ItemDatabase Instance
     {
@@ -52,6 +63,11 @@ public class ItemDatabase : ScriptableObject
 
     public ItemData GetItem(string itemId)
     {
+        if (_customCatalog != null)
+        {
+            return _customCatalog.GetItem(itemId);
+        }
+
         if (string.IsNullOrEmpty(itemId)) return null;
         if (!isInitialized || itemLookup.Count == 0) Initialize();
 
@@ -64,8 +80,24 @@ public class ItemDatabase : ScriptableObject
         return null;
     }
 
+    public bool TryGetItem(string itemId, out ItemData item)
+    {
+        if (_customCatalog != null)
+        {
+            return _customCatalog.TryGetItem(itemId, out item);
+        }
+
+        item = GetItem(itemId);
+        return item != null;
+    }
+
     public List<ItemData> GetItemsByCategory(ItemCategory category)
     {
+        if (_customCatalog != null)
+        {
+            return _customCatalog.GetItemsByCategory(category);
+        }
+
         List<ItemData> result = new List<ItemData>();
         if (allItems == null) return result;
 
@@ -81,6 +113,11 @@ public class ItemDatabase : ScriptableObject
 
     public IReadOnlyList<ItemData> GetAllItems()
     {
+        if (_customCatalog != null)
+        {
+            return _customCatalog.GetAllItems();
+        }
+
         return allItems;
     }
 
