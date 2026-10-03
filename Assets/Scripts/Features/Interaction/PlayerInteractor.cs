@@ -39,17 +39,20 @@ namespace FeaturesInteraction
         }
 
         private InteractionZone currentZone;
+        private static readonly Collider[] _interactHits = new Collider[64];
 
         private IInteractable FindClosestInteractable()
         {
             Vector3 playerCenter = transform.position + Vector3.up * 0.8f;
-            Collider[] hits = Physics.OverlapSphere(playerCenter, interactRadius, interactableLayer.value);
+            int hitCount = NonAllocPhysics.OverlapSphereNonAlloc(playerCenter, interactRadius, _interactHits, interactableLayer.value);
 
             IInteractable best = null;
             float bestDist = float.MaxValue;
 
-            foreach (Collider hit in hits)
+            for (int h = 0; h < hitCount; h++)
             {
+                Collider hit = _interactHits[h];
+                if (hit == null) continue;
                 // Abaikan trigger collider zona ruangan (misal BedroomZone)
                 if (hit.GetComponent<InteractionZone>() != null)
                     continue;
@@ -107,6 +110,12 @@ namespace FeaturesInteraction
                     bestDist = effectiveScore;
                     best = interactable;
                 }
+            }
+
+            // Clear buffer to prevent memory retention
+            for (int h = 0; h < hitCount; h++)
+            {
+                _interactHits[h] = null;
             }
 
             return best;

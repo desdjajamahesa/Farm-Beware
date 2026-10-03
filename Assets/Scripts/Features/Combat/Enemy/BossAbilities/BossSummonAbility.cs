@@ -28,6 +28,7 @@ namespace FeaturesCombat
         private float lastSummonTime = 0f;
         private bool isSummoning = false;
         private readonly List<EnemyBase> activeMinions = new List<EnemyBase>();
+        private MaterialPropertyBlock _mpb;
 
         private void Awake()
         {
@@ -92,9 +93,16 @@ namespace FeaturesCombat
                     new Color(0.9f, 0.2f, 0.4f));
             }
 
-            // Efek visual / wind-up channeling
+            // Efek visual / wind-up channeling via MaterialPropertyBlock
             var rend = GetComponent<Renderer>();
-            Color originalCol = rend != null ? rend.material.color : Color.white;
+            if (_mpb == null) _mpb = new MaterialPropertyBlock();
+            Color originalCol = Color.white;
+            if (rend != null && rend.sharedMaterial != null)
+            {
+                originalCol = rend.sharedMaterial.HasProperty("_BaseColor") 
+                    ? rend.sharedMaterial.GetColor("_BaseColor") 
+                    : (rend.sharedMaterial.HasProperty("_Color") ? rend.sharedMaterial.GetColor("_Color") : Color.white);
+            }
             float timer = 0f;
             while (timer < channelDuration)
             {
@@ -102,14 +110,21 @@ namespace FeaturesCombat
                 if (rend != null)
                 {
                     float pulse = Mathf.PingPong(timer * 6f, 1f);
-                    rend.material.color = Color.Lerp(originalCol, new Color(1f, 0.1f, 0.3f), pulse);
+                    Color pulseCol = Color.Lerp(originalCol, new Color(1f, 0.1f, 0.3f), pulse);
+                    rend.GetPropertyBlock(_mpb);
+                    _mpb.SetColor("_BaseColor", pulseCol);
+                    _mpb.SetColor("_Color", pulseCol);
+                    rend.SetPropertyBlock(_mpb);
                 }
                 yield return null;
             }
 
             if (rend != null)
             {
-                rend.material.color = originalCol;
+                rend.GetPropertyBlock(_mpb);
+                _mpb.SetColor("_BaseColor", originalCol);
+                _mpb.SetColor("_Color", originalCol);
+                rend.SetPropertyBlock(_mpb);
             }
 
             // Eksekusi pemanggilan minion

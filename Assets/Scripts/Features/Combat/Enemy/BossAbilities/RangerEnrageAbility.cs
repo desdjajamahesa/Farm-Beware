@@ -26,6 +26,7 @@ namespace FeaturesCombat
         private EnemyBase bossEnemy;
         private bool hasEnraged = false;
         private bool isBursting = false;
+        private MaterialPropertyBlock _mpb;
 
         public bool HasEnraged => hasEnraged;
 
@@ -96,14 +97,17 @@ namespace FeaturesCombat
                     new Color(1f, 0.15f, 0.1f));
             }
 
-            // Visual: Ubah warna dan intensitas pendaran material menjadi Crimson Fury
+            // Visual: Ubah warna dan intensitas pendaran material menjadi Crimson Fury via MaterialPropertyBlock
             var rend = GetComponent<Renderer>();
             if (rend != null)
             {
                 Color enrageColor = new Color(1f, 0.18f, 0.12f);
-                rend.material.color = enrageColor;
-                if (rend.material.HasProperty("_BaseColor")) rend.material.SetColor("_BaseColor", enrageColor);
-                if (rend.material.HasProperty("_FresnelColor")) rend.material.SetColor("_FresnelColor", new Color(3f, 0.5f, 0.1f));
+                if (_mpb == null) _mpb = new MaterialPropertyBlock();
+                rend.GetPropertyBlock(_mpb);
+                _mpb.SetColor("_BaseColor", enrageColor);
+                _mpb.SetColor("_Color", enrageColor);
+                _mpb.SetColor("_FresnelColor", new Color(3f, 0.5f, 0.1f));
+                rend.SetPropertyBlock(_mpb);
             }
 
             // Wind-up channeling sebelum peluru meledak (0.45s)
