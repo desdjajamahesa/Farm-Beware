@@ -54,8 +54,11 @@ namespace FarmBeware.Editor.Rendering
             }
 
             // 1a. Configure Bedroom Mirror and Frame as additionalRenderers of the wall behind them
-            var mirrorObj = GameObject.Find("_WORLD/Zones/BedroomZone/MirrorRoot/Mirror") ?? GameObject.Find("Mirror");
-            var frameObj = GameObject.Find("_WORLD/Zones/BedroomZone/MirrorRoot/Mirror/MirrorFrame") 
+            var mirrorObj = GameObject.Find("MirrorQuad")
+                        ?? GameObject.Find("_WORLD/Zones/BedroomZone/MirrorRoot/Mirror") 
+                        ?? GameObject.Find("Mirror");
+            var frameObj = GameObject.Find("_WORLD/Zones/BedroomZone/MirrorRoot/MirrorQuad/MirrorFrame")
+                        ?? GameObject.Find("_WORLD/Zones/BedroomZone/MirrorRoot/Mirror/MirrorFrame") 
                         ?? GameObject.Find("_WORLD/Zones/BedroomZone/MirrorRoot/MirrorFrame")
                         ?? GameObject.Find("MirrorFrame") 
                         ?? GameObject.Find("Frame");
@@ -99,8 +102,10 @@ namespace FarmBeware.Editor.Rendering
                 }
             }
 
-            // Attach Mirror & Frame renderers to wall_2m_bedroom.001's WallOccluder (South wall directly behind mirror)
-            var wallBehindMirror = GameObject.Find("wall_2m_bedroom.001") ?? GameObject.Find("wall_2m_bedroom.002");
+            // Attach Mirror & Frame renderers to Wall_Bedroom_South's WallOccluder (South wall directly behind mirror)
+            var wallBehindMirror = GameObject.Find("Wall_Bedroom_South") 
+                                ?? GameObject.Find("wall_2m_bedroom.001") 
+                                ?? GameObject.Find("wall_2m_bedroom.002");
             if (wallBehindMirror != null)
             {
                 var wallOcc = wallBehindMirror.GetComponent<WallOccluder>();
