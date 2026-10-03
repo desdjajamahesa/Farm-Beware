@@ -19,26 +19,23 @@ namespace FeaturesSaveSystem
     /// </summary>
     public class SaveSystemManager : MonoBehaviour
     {
+        private static SaveSystemManager instance;
+        private static bool isQuitting = false;
+
         public static SaveSystemManager Instance
         {
             get
             {
+                if (isQuitting) return null;
+
                 if (instance == null)
                 {
                     instance = FindFirstObjectByType<SaveSystemManager>(FindObjectsInactive.Include);
-                    if (instance == null)
-                    {
-                        var go = new GameObject("SaveSystemManager");
-                        instance = go.AddComponent<SaveSystemManager>();
-                        if (Application.isPlaying)
-                            DontDestroyOnLoad(go);
-                    }
                 }
                 return instance;
             }
             private set => instance = value;
         }
-        private static SaveSystemManager instance;
 
         public event Action OnSaveListChanged;
         public event Action<GameSaveData> OnSaveCompleted;
@@ -57,12 +54,27 @@ namespace FeaturesSaveSystem
                 Destroy(gameObject);
                 return;
             }
+            isQuitting = false;
             instance = this;
             if (Application.isPlaying)
                 DontDestroyOnLoad(gameObject);
 
             EnsureDirectory();
             LoadManifest();
+        }
+
+        private void OnApplicationQuit()
+        {
+            isQuitting = true;
+        }
+
+        private void OnDestroy()
+        {
+            if (instance == this)
+            {
+                instance = null;
+                isQuitting = true;
+            }
         }
 
         private void EnsureDirectory()
