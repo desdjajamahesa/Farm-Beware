@@ -72,14 +72,15 @@ AI agents and automated workflows communicate through the Unity MCP server:
 
 ## 5. Critical Scene GameObjects (`StagingScene`)
 
-- **System Managers**: `_SYSTEMS` (contains `CameraManager`, `GameManager`, `EventSystem`, `WallOcclusionManager`, `TrophySystemManager`).
+- **System Managers**: `_SYSTEMS` (contains `CameraManager`, `GameManager`, `EventSystem`, `WallOcclusionManager`, `TrophySystemManager`, `NightBrawlManager`).
 - **Environment Lighting**: `_LIGHTING` (contains `Directional Light`, `Global Volume`).
-- **Camera Controller**: `_CAMERAS/Main Camera` (contains `IsometricCameraController`, `CameraManager`, `WallOcclusionManager`).
+- **Camera Controller**: `_CAMERAS/Main Camera` (contains `IsometricCameraController`, `CameraManager`, `WallOcclusionManager` with proximity detection).
 - **Player**: `_ENTITIES/Player` (contains `PlayerControl`, `PlayerStats`, `InventoryComponent`, `PlayerEquipment`, `PlayerOutfit`).
 - **World Structure & Terrain**: `_WORLD/Terrain` and `_WORLD/Structure` (`House`, `House_UnifiedFloorCollider`).
 - **World Zones**: `_WORLD/Zones` (`Bedroom`, `Kitchen`, `LivingRoom_Foyer`, `Garage`, `Warehouse`, `MiddleArea_Stairs`).
-- **Gameplay Anchors**: `_GAMEPLAY/SpawnPoints` and `_GAMEPLAY/Testing/TestChest` (populated with 21 active MVP test items).
-- **User Interface**: `_UI/UI_Canvas` (holds all HUDs, modal panels, and menus).
+  - **Bedroom Mirror**: `_WORLD/Zones/Bedroom/WardrobeRoot/Mirror` (holds `MirrorCamera`, quad surface with `Mat_Mirror_WoodFrame.mat`, and wood frame linked as `additionalRenderers` on the south bedroom wall occluder).
+- **Combat & Spawns**: `_GAMEPLAY/NightBrawlManager` with 3 front gate spawn points (`Z > 52m` outside the front entrance fence) and `_GAMEPLAY/Testing/TestChest` (populated with active MVP test items).
+- **User Interface**: `_UI/UI_Canvas` (holds all HUDs, modal panels, Wardrobe UI, and menus).
 
 ---
 

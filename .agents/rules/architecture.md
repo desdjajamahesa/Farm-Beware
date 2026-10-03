@@ -113,22 +113,56 @@ The cooking system is decoupled following a strict Backend Controller & View/Pre
 
 ---
 
-## 5. Wardrobe & Customization (`Features/Wardrobe/`)
+## 5. Wardrobe & Customization Subsystem (`Features/Wardrobe/`)
 
-- **PlayerOutfit**: Applies mesh/material configurations to character `SkinnedMeshRenderer` components based on `OutfitData`.
-- **OutfitPartResolver**: Pure C# logic mapping outfit categories and variants to sub-renderer names.
-- **MirrorCamera**: Dedicated off-screen camera rendering the bedroom mirror in real time to a `RenderTexture`.
+The wardrobe subsystem integrates character customization with live in-world mirror reflection and dedicated camera orchestration:
+
+- **WardrobeManager (`WardrobeManager.cs`)**:
+  - Central controller managing wardrobe session lifecycle, player positioning, UI transitions, and outfit synchronization.
+  - **Camera Switching**: Delegates mode transitions strictly through `CameraManager.Instance.SetMode(CameraMode.WardrobeMode, wardrobeRoot)`.
+  - **Exact Player Placement**: Teleports and aligns the player character to exact coordinates facing the bedroom mirror:
+    - Position: `(27.10, 0.04, 21.04)`
+    - Rotation: `Euler(0, 180, 0)` (facing mirror at `(27.10, 1.25, 19.38)`)
+    - Physics synchronization: Forces `rb.linearVelocity = Vector3.zero`, sets transform position/rotation, and calls `Physics.SyncTransforms()`.
+  - **Chest Lid Animation**: Toggles `chestLidAnimator.SetBool("IsOpen", true/false)` to smoothly open the wardrobe chest on enter and close on exit.
+  - **UI & Input Management**: Performs smooth CanvasGroup fading (`uiFadeDuration = 0.3f`), hides player hotbar container during interaction, and restores full movement input and cursor states upon exit with brute-force fallback guards.
+- **MirrorCamera Subsystem (`MirrorCamera.cs`)**:
+  - Dedicated off-screen camera rendering real-time reflections of the player and bedroom to a `RenderTexture` (`WardrobeMirrorTexture`, portrait aspect `0.5`).
+  - **UniversalAdditionalCameraData Hardening**:
+    - `renderType = CameraRenderType.Base`
+    - `renderPostProcessing = false` (eliminates recursive post-processing passes and VRAM bloat)
+    - `depth = -100` (renders before main camera passes so texture is ready for GBuffer/Forward passes)
+    - AudioListener disabled by default to avoid duplicate listener warnings.
+  - **Mirror Quad & Authentic Reflection**:
+    - Quad surface renderer bound to `Mat_Mirror_WoodFrame.mat`.
+    - Horizontal reflection flip applied via UV scale and offset: `_BaseMap_ST: (-1, 1, 1, 0)`.
+    - Pure wood frame aesthetic (`_Metallic = 0`, `_Smoothness = 0.25`) with natural wood texturing.
+  - **Performance Optimization**: MirrorCamera is disabled by default in gameplay; it is only activated while the player is inside WardrobeMode.
+- **PlayerOutfit & OutfitPartResolver**:
+  - `PlayerOutfit`: Applies meshes and materials to `SkinnedMeshRenderer` components based on `OutfitData`. Manages preview (`TryOn`), commit (`Commit`), and cancel/revert (`Revert`).
+  - `OutfitPartResolver`: Pure C# logic mapping outfit categories (Top, Bottom, Shoes, Hat) and variant indices to sub-renderer game objects.
 
 ---
 
 ## 6. Camera & Occlusion System (`Features/Camera/`)
 
-- **IsometricCameraController**:
+The camera system combines isometric tactical navigation with intelligent zero-GC wall and canopy occlusion fading:
+
+- **IsometricCameraController (`IsometricCameraController.cs`)**:
   - Handles isometric perspective with smooth target follow, right-drag orbital rotation, and scroll zoom.
   - Encapsulated by a *Mode Guard*: runs strictly when `CameraManager.CurrentMode == Gameplay`.
-- **WallOcclusionManager & WallOccluder**:
-  - Raycasts from the main camera to the player position.
-  - Dynamically fades obscuring wall meshes to `alpha = 0.15` via material parameter swapping.
+- **WallOcclusionManager (`WallOcclusionManager.cs`)**:
+  - Runs in `LateUpdate()` after camera positioning.
+  - **Raycast Occlusion**: Casts multiple raycasts from the main camera to the player's head, center, and base using a pre-allocated `RaycastHit[32]` buffer.
+  - **Camera Proximity Occlusion**: Uses `Physics.OverlapSphereNonAlloc` with `cameraProximityRadius = 2.0f` around the camera position (`Collider[16]` buffer) to detect penetrating tree branches, overhead eaves, or nearby foliage geometry with **zero runtime GC allocations**.
+  - **Hierarchical Group Fading**: Resolves `WallOcclusionGroup` and `RoomOcclusionTrigger` to fade entire wall facades or roof segments together to prevent visual patchwork.
+- **WallOccluder & Linked Additional Renderers (`WallOccluder.cs`)**:
+  - Manages per-wall smooth transparency fading (`transparentAlpha = 0.15f`, `fadeSpeed = 4.8f`).
+  - **Linked Additional Renderers (`additionalRenderers`, `hideAdditionalRenderersOnFade`)**:
+    - Supports attached wall accessories (e.g., bedroom mirror quad, mirror wood frame, hanging lanterns, wall sconces, paintings).
+    - When the south/front wall is occluding the player and fades to transparent, all linked renderers fade synchronously.
+    - **Dynamic Texture & UV Preservation**: Automatically preserves dynamic textures (`RenderTexture` on mirror) and UV transforms (`GetTextureScale`, `GetTextureOffset`) onto runtime transparent materials, preventing lost reflection textures or incorrect UV flipping during occlusion.
+    - **Instant Restoration (`ForceOpaque()`)**: Snaps wall and all linked renderers back to fully opaque instantly with zero transition latency during camera mode transitions (WardrobeMode / TrophyMode).
 
 ---
 
@@ -223,4 +257,75 @@ Farm-Beware features a modern high-fidelity rendering pipeline tailored for Unit
 - **Mirror Camera Post-Processing Exclusion (`MirrorCamera.cs`)**:
   - The wardrobe mirror secondary camera explicitly sets `renderPostProcessing = false` on its `UniversalAdditionalCameraData`.
   - Prevents recursive post-processing passes, eliminates VRAM bloat on render textures, and preserves mirror fidelity.
+
+### 8.7 Foliage, Tree LOD & Camera Near-Clipping Architecture
+- **Camera Near-Clip Precision Guard**:
+  - `Camera.main.nearClipPlane` is configured to `0.08f` (avoiding sub-millimeter values `< 0.03f` that compromise 24-bit depth buffer precision and cause Z-fighting in Deferred+).
+  - Overhead leaf near-plane slicing is prevented at the source through the combination of `0.08f` near plane and `WallOcclusionManager` camera proximity fading (`cameraProximityRadius = 2.0f`).
+- **Smooth Tree LOD Transitions (`LODFadeMode.CrossFade`)**:
+  - All compound and forest trees (`Tree_Stylized_Oak`, `Tree_Stylized_Pine`, etc.) utilize `LODGroup` with crossfading enabled.
+  - Eliminates jarring geometric popping during camera orbit and zoom transitions.
+- **Two-Sided Leaf Material Shading (`_Cull = 0`)**:
+  - Foliage materials (`Mat_Tree_Leaf_Oak`, `Mat_Tree_Leaf_Pine`, `Mat_Bush_Leaf`) enforce two-sided rendering (`_Cull = 0`).
+  - Eliminates black backfaces or invisible canopy holes when viewed from steep isometric overhead camera angles.
+
+---
+
+## 9. Combat & Night Brawl System Architecture (`Features/Combat/`)
+
+The combat engine orchestrates wave-based monster survival encounters during the night phase:
+
+```
+                            ┌────────────────────────┐
+                            │    TimeManager (Night) │
+                            └───────────┬────────────┘
+                                        │
+                                        ▼
+                            ┌────────────────────────┐
+                            │   NightBrawlManager    │
+                            │  (Wave Orchestrator)   │
+                            └───────────┬────────────┘
+                                        │
+                  ┌─────────────────────┼─────────────────────┐
+                  ▼                     ▼                     ▼
+        ┌───────────────────┐ ┌───────────────────┐ ┌───────────────────┐
+        │  Front Gate Left  │ │ Front Gate Center │ │ Front Gate Right  │
+        │(16.5, 0.08, 53.0) │ │(21.0, 0.08, 55.0) │ │(25.5, 0.08, 53.0) │
+        └─────────┬─────────┘ └─────────┬─────────┘ └─────────┬─────────┘
+                  │                     │                     │
+                  └─────────────────────┼─────────────────────┘
+                                        ▼
+                            ┌────────────────────────┐
+                            │  NavMesh Snapped Spawn │
+                            │ (1.2m Scatter Radius)  │
+                            └───────────┬────────────┘
+                                        │
+                                        ▼
+                            ┌────────────────────────┐
+                            │    Compound Approach   │
+                            │  (Road → Front Gate)   │
+                            └────────────────────────┘
+```
+
+### 9.1 Front Gate 3-Point Spawn System
+- Monsters spawn exclusively outside the compound perimeter fence in front of the main entrance gate (`Z > 52m`):
+  - **Point 1 (Left Flank)**: `(16.5, 0.08, 53.0)`
+  - **Point 2 (Center Road)**: `(21.0, 0.08, 55.0)`
+  - **Point 3 (Right Flank)**: `(25.5, 0.08, 53.0)`
+- **Scatter & NavMesh Snapping**:
+  - `CalculateRandomSpawnPoint()` randomly picks one of the 3 points, applies a horizontal scatter offset (`spawnScatterRadius = 1.2f`), raycasts downward to locate surface elevation, and snaps to the nearest walkable `NavMesh` area (`NavMesh.SamplePosition`).
+- **Compound & Interior Spatial Boundaries**:
+  - Compound perimeter (homestead): `X: [0.0, 42.0], Z: [-17.0, 48.0]`.
+  - House interior bounds: `X: [9.5, 31.5], Z: [4.5, 26.5]`.
+  - If a monster somehow penetrates indoor space or skills attempt to move indoors, `GetNearestOutdoorPosition()` ejects them to the nearest exterior boundary.
+
+### 9.2 Wave Progression Engine (`WaveProgressionEngine.cs`)
+- Manages 5 distinct nightly encounter tiers:
+  - **Day 1**: 1 Wave (introductory pack).
+  - **Day 2**: 2 Waves.
+  - **Day 3**: 3 Waves.
+  - **Day 4**: 4 Waves (Boss introduction: Cyclops Tuber Maw + minions).
+  - **Day 5**: 5 Waves (Climactic finale: 2 simultaneous bosses + heavy horde).
+- Cleared encounter sets `TimeManager.Instance.isNightEncounterCleared = true`, unlocking bed sleep to advance to the next day.
+
 

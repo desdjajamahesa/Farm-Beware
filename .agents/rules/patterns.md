@@ -189,6 +189,49 @@ public void TriggerCombatImpulse(float duration, float maxIntensity)
 }
 ```
 
+### 1.13 Linked Additional Renderers & Dynamic Texture Sync in Occlusion Fading
+Wall-mounted accessories (bedroom mirrors, wood frames, wall sconces, paintings) must fade synchronously with parent walls. When applying transparent materials, dynamic textures (`RenderTexture`) and UV transforms (`_BaseMap_ST`) must be explicitly synchronized:
+```csharp
+// In WallOccluder: synchronize dynamic texture & UV scale/offset to transparent material
+if (orig.HasProperty("_BaseMap") && trans.HasProperty("_BaseMap"))
+{
+    var tex = orig.GetTexture("_BaseMap");
+    if (tex != null && trans.GetTexture("_BaseMap") != tex)
+        trans.SetTexture("_BaseMap", tex);
+    trans.SetTextureScale("_BaseMap", orig.GetTextureScale("_BaseMap"));
+    trans.SetTextureOffset("_BaseMap", orig.GetTextureOffset("_BaseMap"));
+}
+```
+
+### 1.14 Camera Proximity Geometry Detection (Zero-GC Non-Alloc)
+Detect foliage canopy or overhang geometry penetrating close to the camera without allocating heap memory:
+```csharp
+// Pre-allocated non-alloc buffer
+private readonly Collider[] cameraProximityBuffer = new Collider[16];
+
+int hitCount = Physics.OverlapSphereNonAlloc(
+    camPos, 
+    cameraProximityRadius, 
+    cameraProximityBuffer, 
+    occluderLayerMask.value, 
+    QueryTriggerInteraction.Collide
+);
+for (int i = 0; i < hitCount; i++)
+{
+    var occluder = cameraProximityBuffer[i].GetComponentInParent<WallOccluder>();
+    if (occluder != null) RegisterOccluder(occluder);
+}
+```
+
+### 1.15 Dedicated Off-Screen Secondary Camera Checklist
+Auxiliary cameras rendering to `RenderTexture` (e.g., wardrobe mirror) must follow this strict configuration:
+- `depth = -100`: Render prior to the main camera so buffers are ready for the primary frame pass.
+- `UniversalAdditionalCameraData.renderType = CameraRenderType.Base`.
+- `UniversalAdditionalCameraData.renderPostProcessing = false`: Zero post-processing recursion or VRAM duplication.
+- `AudioListener.enabled = false`: Avoid duplicate listener warnings.
+- `camera.enabled = false` by default: Activate strictly while interacting in the feature mode.
+- Idempotent `targetTexture` binding and explicit aspect ratio (e.g., `0.5f` for portrait mirror).
+
 ---
 
 ## 2. Coding Standards & Conventions
@@ -241,4 +284,8 @@ private void Awake()
 10. ❌ **Static Batching in GPU Resident Drawer (BRG) Pipelines**: Never enable Unity Static Batching when using BRG (`gpuResidentDrawerMode: InstancedDrawing`). Static batching duplicates vertex data into CPU RAM and fractures instanced draw batches.
 11. ❌ **UI Managers Mutating Inventories or Running Logic Timers**: UI components must never invoke `inventory.RemoveItem()`, `inventory.AddItem()`, or execute backend countdown coroutines. All mutations and timers belong strictly to backend controllers/services.
 12. ❌ **Secondary Cameras Executing Post-Processing Passes**: Mirror or auxiliary off-screen render texture cameras must explicitly set `renderPostProcessing = false` on `UniversalAdditionalCameraData` to prevent redundant tonemapping/blur passes and eliminate VRAM bloat.
+13. ❌ **Sub-Millimeter Camera Near Clip Planes**: Never set `Camera.main.nearClipPlane < 0.03f` in Deferred+ rendering pipelines. Excessively small near-plane distances compress 24-bit depth buffer precision and cause severe Z-fighting across distant geometry. Use `0.08f` combined with proximity occlusion fading instead.
+14. ❌ **One-Sided Alpha-Tested Canopy Materials**: Never leave top-down foliage materials with `_Cull = 2` (Back). Overhead isometric angles expose underside leaf polygons; always set `_Cull = 0` (Two-Sided) to avoid black or invisible leaf artifacts.
+15. ❌ **Blind Material Swapping on Dynamic Texture Surfaces**: Never swap materials on objects with dynamic textures or customized UV tiling/offset without copying the active `RenderTexture` and `_BaseMap_ST` scale and offset to the replacement material.
+
 

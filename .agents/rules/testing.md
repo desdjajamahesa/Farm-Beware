@@ -181,6 +181,65 @@ bool mirrorIsolated = camData != null && !camData.renderPostProcessing;
 return $"PASS: Post-Processing. Tone={hasTone}, Bloom={hasBloom}, Color={hasColor}, Motion={hasMotion}, Chroma={hasChroma}, MirrorIsolated={mirrorIsolated}";
 ```
 
+### 2.8 Bedroom Mirror, Surface Frame & Wall Occlusion Link Audit
+Validates `MirrorCamera` configuration, `RenderTexture` binding, wood frame material, and `WallOccluder.additionalRenderers` linking on the bedroom south wall:
+
+```csharp
+var mirrorCam = UnityEngine.Object.FindFirstObjectByType<FeaturesWardrobe.MirrorCamera>(UnityEngine.FindObjectsInactive.Include);
+if (mirrorCam == null) return "FAIL: MirrorCamera component not found!";
+
+bool rtAssigned = mirrorCam.MirrorTexture != null;
+var quad = GameObject.Find("MirrorQuad");
+var frame = GameObject.Find("MirrorFrame");
+
+var wallSouth = GameObject.Find("Wall_Bedroom_South");
+var occluder = wallSouth != null ? wallSouth.GetComponent<FeaturesCamera.WallOccluder>() : null;
+bool linked = occluder != null && occluder.AdditionalRenderers != null && occluder.AdditionalRenderers.Count > 0;
+
+return $"PASS: Mirror System Audit. RT={rtAssigned}, Quad={(quad != null ? "OK" : "MISSING")}, Frame={(frame != null ? "OK" : "MISSING")}, WallOccluderLinked={linked} (LinkedCount={(occluder != null ? occluder.AdditionalRenderers.Count : 0)})";
+```
+
+### 2.9 NightBrawl Front-Gate Spawn Points Audit
+Ensures that all 3 night brawl spawn points are positioned outside the compound front gate (`Z >= 52m`):
+
+```csharp
+var nbm = UnityEngine.Object.FindFirstObjectByType<FeaturesCombat.NightBrawlManager>(UnityEngine.FindObjectsInactive.Include);
+if (nbm == null) return "FAIL: NightBrawlManager not found!";
+
+int validSpawns = 0;
+for (int i = 0; i < 3; i++)
+{
+    var pt = nbm.GetSpawnPoint(i);
+    if (pt.z >= 50f) validSpawns++;
+}
+
+return $"PASS: Night Brawl Spawns Audit. ValidFrontGateSpawns={validSpawns}/3 (All Z >= 50m). ScatterRadius={nbm.SpawnScatterRadius}";
+```
+
+### 2.10 Foliage Two-Sided Shading & Camera Near-Clip Audit
+Validates camera near clip plane safety and two-sided foliage material rendering:
+
+```csharp
+var cam = UnityEngine.Camera.main;
+if (cam == null) return "FAIL: Camera.main not found!";
+bool clipOk = cam.nearClipPlane >= 0.07f && cam.nearClipPlane <= 0.10f;
+
+string[] matNames = new string[] { "Mat_Tree_Leaf_Oak", "Mat_Tree_Leaf_Pine", "Mat_Bush_Leaf" };
+int twoSidedCount = 0;
+foreach (var name in matNames)
+{
+    var guids = UnityEditor.AssetDatabase.FindAssets($"{name} t:Material");
+    if (guids.Length > 0)
+    {
+        var mat = UnityEditor.AssetDatabase.LoadAssetAtPath<UnityEngine.Material>(UnityEditor.AssetDatabase.GUIDToAssetPath(guids[0]));
+        if (mat != null && mat.HasProperty("_Cull") && mat.GetFloat("_Cull") == 0f)
+            twoSidedCount++;
+    }
+}
+
+return $"PASS: Foliage & NearClip Audit. NearClip={cam.nearClipPlane:F3} (Safe={clipOk}), TwoSidedMats={twoSidedCount}/{matNames.Length}";
+```
+
 ---
 
 ## 3. Manual Play Mode Verification Checklist
@@ -228,6 +287,25 @@ return $"PASS: Post-Processing. Tone={hasTone}, Bloom={hasBloom}, Color={hasColo
    - Roof and front walls smoothly fade with fine Bayer $4 \times 4$ dither pattern.
    - Interior floor and furniture are illuminated exclusively by amber lamps (Layer 1) with **zero blue moonlight contamination** (Layer 0).
 
+### 3.6 Wardrobe Mirror, Wood Frame & Wall Occlusion Link
+1. Approach the wardrobe in the bedroom, press `E`.
+2. Observe player placement: player should snap to `(27.10, 0.04, 21.04)` facing the mirror.
+3. Check mirror reflection: live player model and bedroom interior render crisply in portrait aspect with authentic horizontal reflection.
+4. Verify the mirror frame displays a natural wood surface (`Mat_Mirror_WoodFrame.mat`).
+5. Close wardrobe (`ESC`). Walk south outside the bedroom so the south bedroom wall occludes the player:
+   - Verify the south wall smoothly fades to `0.15` alpha.
+   - Verify the attached mirror and frame **also fade synchronously** without rendering artifacts.
+
+### 3.7 Top-Down Tree Foliage & Smooth LOD Transitions
+1. Walk the player around the trees near the house and front perimeter fence.
+2. Observe high-angle camera framing: tree canopy leaves do not get sliced or show black backface holes (`_Cull = 0`).
+3. Orbit and zoom the camera: verify tree geometry smoothly crossfades between LOD levels with zero pop-in.
+
+### 3.8 Night Brawl Front-Gate Monster Approach
+1. Press `N` to enter the night phase.
+2. Stand near the house porch or yard.
+3. Verify all monsters spawn exclusively outside the front gate (`Z > 52m`) and advance along the main road into the compound.
+
 ---
 
 ## 4. Troubleshooting Matrix
@@ -246,4 +324,10 @@ return $"PASS: Post-Processing. Tone={hasTone}, Bloom={hasBloom}, Color={hasColo
 | Items rejected during inventory drag-and-drop | `CanAcceptItem` backend rules active | Verify `blockTrophyItems` flag or `allowedFoodCategories` on destination component |
 | Ingredients lost when closing stove panel mid-cook | StoveUIManager bypassed backend rollback on panel close | Ensure `StoveUIManager.Close()` calls `currentStove.CancelCooking(refundIngredients: true)` |
 | Mirror camera shows blown-out bloom / VRAM bloat | `MirrorCamera` executing secondary post-processing pass | Ensure `MirrorCamera` sets `UniversalAdditionalCameraData.renderPostProcessing = false` in `Awake()` |
+| Mirror reflection inverted / flipped incorrectly | Mirror quad texture tiling not flipped horizontally | Ensure `_BaseMap_ST` scale is `(-1, 1, 1, 0)` on mirror surface material |
+| Mirror turns solid black or white when wall fades | `WallOccluder` replaced material without copying dynamic texture | Verify `WallOccluder` copies `_BaseMap` and scale/offset to transparent instances |
+| Tree leaves show black triangles or disappear at overhead angles | Foliage material has backface culling active (`_Cull = 2`) | Set `_Cull = 0` (Two-Sided) on leaf materials |
+| Camera near-plane slices through foliage canopies | `cameraProximityRadius` is 0 or near plane is excessively large | Set `Camera.main.nearClipPlane = 0.08f` and `WallOcclusionManager.cameraProximityRadius = 2.0f` |
+| Monsters spawn inside house or behind player at night | Spawn points misconfigured or using legacy arena center | Ensure `NightBrawlManager.frontGateSpawnPoints` are set to `Z > 52m` outside the front gate |
+
 

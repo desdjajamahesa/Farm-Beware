@@ -55,7 +55,12 @@ Development roadmap, milestone tracking, and feature goals for **Farm-Beware** b
 - [x] **KitchenStove Architectural Refactor**: Decoupled backend controller and state machine (`CookingState: Idle, Cooking, Completed, Cancelled`), event-driven broadcaster, safe inventory & water transaction snapshots with rollback upon cancellation/interruption, and `StoveUIManager` as pure view presenter.
 - [x] **Dynamic Washing Mechanic**: `KitchenSinkInteractable` with item-level dirty/clean data transformation.
 - [x] **Item Overhaul & Central Registry**: 33 active items in `ItemDatabase` (8 Food, 2 Crops, 2 Seeds, 4 Kitchen Materials, 4 Monster Drops, 1 Dummy Sword, 12 Trophies).
-- [x] **Wardrobe System**: `PlayerOutfit` with in-world `MirrorCamera` live preview.
+- [x] **Wardrobe & Bedroom Mirror System**:
+  - `PlayerOutfit` with in-world `MirrorCamera` live preview (`RenderTexture`, portrait aspect `0.5`, horizontal flip `_BaseMap_ST: (-1, 1, 1, 0)`).
+  - Pure wood frame surface (`Mat_Mirror_WoodFrame.mat`).
+  - Exact player placement: `(27.10, 0.04, 21.04)`, `Euler(0, 180, 0)` facing mirror.
+  - Chest lid open/close animations (`chestLidAnimator`).
+  - Synchronized wall occlusion fading: mirror and frame fade synchronously when bedroom south wall is occluded.
 - [x] **UI Scaling & ESC Modal Priority**: 1920×1080 reference resolution and hierarchical modal close stack.
 - [x] **Repository Cleanup**: Dead assets removed, pipeline diagram and design docs preserved in `Docs/MVP_Design/`.
 
@@ -83,6 +88,11 @@ Development roadmap, milestone tracking, and feature goals for **Farm-Beware** b
   - Implemented `DayNightVolumeController.cs` on `_LIGHTING/Global Volume` with ACES Tonemapping, Bloom, Color Adjustments, Motion Blur, and Chromatic Aberration.
   - Hardened `MirrorCamera.cs` with `renderPostProcessing = false` on secondary camera pass to isolate mirror rendering and conserve VRAM.
   - Implemented responsive tactile combat juice: `DayNightVolumeController.Instance.TriggerCombatImpulse(duration, intensity)` for dynamic zero-GC chromatic aberration feedback during impacts and boss spawns.
+- [x] **Phase 6: Foliage, Near-Clipping & LOD Optimization**:
+  - Near clipping plane tuned to `0.08f` (avoiding `< 0.03f` depth buffer degradation in Deferred+).
+  - Smooth LOD crossfade (`LODFadeMode.CrossFade`) on trees to eliminate popping.
+  - Two-sided leaf shading (`_Cull = 0`) on alpha-tested foliage materials (`Mat_Tree_Leaf_Oak`, `Mat_Tree_Leaf_Pine`, `Mat_Bush_Leaf`).
+  - Camera proximity non-alloc sphere detection (`WallOcclusionManager`) for high-angle canopy clipping with zero GC.
 
 ---
 
@@ -98,6 +108,8 @@ Development roadmap, milestone tracking, and feature goals for **Farm-Beware** b
 ### Milestone 3: Night Brawl Combat Engine
 - [ ] **Primary Weapon System**:
   - 1 Core melee weapon (Sword / Combat Hoe) with light attack combo, heavy strike, and dash attack.
+- [x] **Front Gate 3-Point Spawn System**:
+  - Monster waves spawn outside compound entrance gate (`Z > 52m`) with horizontal scatter radius (`1.2m`) and NavMesh surface snapping.
 - [ ] **5-Day Wave Progression**:
   - **Day 1**: 1 Wave (Normal encounter).
   - **Day 2**: 2 Waves.
@@ -126,6 +138,7 @@ Development roadmap, milestone tracking, and feature goals for **Farm-Beware** b
 
 ### Milestone 5: Audio, Visual Polish, & Game Feel
 - [x] **Combat Impact Juice**: Responsive chromatic aberration impulse feedback via `DayNightVolumeController.Instance.TriggerCombatImpulse()` for heavy attacks and boss encounters.
+- [x] **Wall Occlusion Linked Additional Renderers**: Synchronized transparency fading for wall-mounted accessories (bedroom mirror, wood frame, lanterns).
 - [ ] **Cooking Effects**: Smoke/fire VFX on the stove, cooking audio effects, and UI "Dish Created!" feedback.
 - [ ] **Modular Kitchen Walls**: Split monolithic kitchen wall meshes into Layer 12 segments for fine-grained `WallOccluder` fading.
 - [ ] **3D Trophy Models**: Replace placeholder colored cube prefabs with custom 3D trophy models.
