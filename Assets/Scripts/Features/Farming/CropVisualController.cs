@@ -120,6 +120,33 @@ namespace FeaturesFarming
         {
             if (soilRenderer == null) return;
 
+            // Jika mesh tanah memiliki lebih dari 1 material (seperti model farming_plot dengan dirt_001, dirt_002, dirt_003),
+            // kita terapkan tinting warna melalui MaterialPropertyBlock agar tekstur aslinya tetap terjaga.
+            if (soilRenderer.sharedMaterials != null && soilRenderer.sharedMaterials.Length > 1)
+            {
+                Color tint = Color.white;
+                switch (state)
+                {
+                    case TileState.Untilled:
+                        tint = Color.white;
+                        break;
+                    case TileState.Tilled:
+                    case TileState.PlantedDry:
+                        tint = new Color(0.75f, 0.68f, 0.60f, 1f);
+                        break;
+                    case TileState.PlantedWatered:
+                    case TileState.ReadyToHarvest:
+                        tint = new Color(0.42f, 0.36f, 0.30f, 1f);
+                        break;
+                }
+
+                var mpb = new MaterialPropertyBlock();
+                soilRenderer.GetPropertyBlock(mpb);
+                mpb.SetColor("_BaseColor", tint);
+                soilRenderer.SetPropertyBlock(mpb);
+                return;
+            }
+
             Material targetMat = matUntilled;
             switch (state)
             {

@@ -57,11 +57,65 @@ namespace FeaturesFarming
             return cachedCamera;
         }
 
+        private static PlayerControl cachedPlayerControl;
+
+        /// <summary>
+        /// Mengembalikan true bila ada jendela modal/menu yang sedang terbuka (Inventori, Storage, Toko, Pause, dsb.),
+        /// sehingga indikator waktu tanam di layar otomatis disembunyikan agar tidak menutupi atau mengotori jendela UI.
+        /// </summary>
+        public static bool ShouldSuppressIndicators()
+        {
+            // 1. Inventori pemain atau storage chest/fridge/trophy/sink
+            if (InventoryManagerUI.Instance != null && InventoryManagerUI.Instance.IsAnyInventoryUIRelatedOpen())
+            {
+                return true;
+            }
+
+            // 2. State umum kunci input (digunakan saat modal Shop, Workbench, Cooking terbuka)
+            if (cachedPlayerControl == null)
+            {
+                var p = GameObject.FindWithTag("Player") ?? GameObject.Find("Player");
+                if (p != null) cachedPlayerControl = p.GetComponent<PlayerControl>();
+            }
+            if (cachedPlayerControl != null && cachedPlayerControl.isInputLocked)
+            {
+                return true;
+            }
+
+            // 3. Workbench UI Modal
+            if (FeaturesWorkbench.UI.WorkbenchUI.Instance != null && FeaturesWorkbench.UI.WorkbenchUI.Instance.IsOpen)
+            {
+                return true;
+            }
+
+            // 4. Wardrobe Mode
+            if (FeaturesWardrobe.WardrobeManager.IsInWardrobeMode)
+            {
+                return true;
+            }
+
+            // 5. Game pause (Pause menu)
+            if (Time.timeScale <= 0f)
+            {
+                return true;
+            }
+
+            return false;
+        }
+
         private void LateUpdate()
         {
             if (indicatorGO == null) return;
 
             if (!isGrowing)
+            {
+                if (indicatorGO.activeSelf)
+                    indicatorGO.SetActive(false);
+                return;
+            }
+
+            // Sembunyikan indikator jika pemain sedang membuka inventori / menu modal
+            if (ShouldSuppressIndicators())
             {
                 if (indicatorGO.activeSelf)
                     indicatorGO.SetActive(false);
@@ -255,17 +309,33 @@ namespace FeaturesFarming
                 var canvasGO = new GameObject("CropHUD_ScreenCanvas", typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
                 screenCanvas = canvasGO.GetComponent<Canvas>();
                 screenCanvas.renderMode = RenderMode.ScreenSpaceOverlay;
-                screenCanvas.sortingOrder = 15;
+                screenCanvas.sortingOrder = 0;
                 var scaler = canvasGO.GetComponent<CanvasScaler>();
                 scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
                 scaler.referenceResolution = new Vector2(1920, 1080);
             }
 
-            // Wadah khusus penampung indikator dengan Sub-Canvas terisolasi
-            // Pergerakan posisi indikator di layar HANYA me-rebuild sub-canvas ini,
-            // dan SAMA SEKALI tidak men-dirty atau me-rebuild kanvas HUD utama (UI_Canvas).
+            // Cari jika sudah ada container di scene
+            var existingContainer = GameObject.Find("CropCountdownContainer");
+            if (existingContainer != null)
+            {
+                existingContainer.transform.SetAsFirstSibling();
+                if (existingContainer.TryGetComponent<Canvas>(out var ec))
+                {
+                    ec.overrideSorting = false;
+                }
+                screenIndicatorContainer = existingContainer.transform;
+                return screenIndicatorContainer;
+            }
+
+            // Wadah khusus penampung indikator dengan Sub-Canvas terisolasi.
+            // Ditempatkan sebagai sibling pertama (paling belakang) di UI_Canvas agar selalu
+            // berada di belakang jendela modal/inventori, dan overrideSorting = false agar patuh
+            // pada hierarki kanvas HUD utama.
             var containerGO = new GameObject("CropCountdownContainer", typeof(RectTransform), typeof(Canvas));
             containerGO.transform.SetParent(screenCanvas.transform, false);
+            containerGO.transform.SetAsFirstSibling();
+
             var crt = containerGO.GetComponent<RectTransform>();
             crt.anchorMin = Vector2.zero;
             crt.anchorMax = Vector2.one;
@@ -273,8 +343,7 @@ namespace FeaturesFarming
             crt.anchoredPosition = Vector2.zero;
 
             var subCanvas = containerGO.GetComponent<Canvas>();
-            subCanvas.overrideSorting = true;
-            subCanvas.sortingOrder = 16;
+            subCanvas.overrideSorting = false;
 
             screenIndicatorContainer = containerGO.transform;
             return screenIndicatorContainer;

@@ -9,6 +9,10 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 7943383929519774232}
+  - component: {fileID: 7633924109266413158}
+  - component: {fileID: 7900694567976045493}
+  - component: {fileID: 8336120364041879304}
+  - component: {fileID: 2723858694877085602}
   m_Layer: 0
   m_Name: CraftingWorkbench
   m_TagString: Untagged
@@ -36,6 +40,65 @@ Transform:
   - {fileID: 1201227612103280496}
   m_Father: {fileID: 956812175249067268}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!65 &7633924109266413158
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 695383545474132217}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 1.8, y: 0.8, z: 0.75}
+  m_Center: {x: 0, y: 0.4, z: 0}
+--- !u!114 &7900694567976045493
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 695383545474132217}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ece06dd238bd35446a7735224afd633f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FeaturesInteraction.WorldLabel
+  displayName: Crafting Workbench (Weapon Upgrade)
+--- !u!114 &8336120364041879304
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 695383545474132217}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f5c46b36a1557054c99cedf6b80a0734, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FeaturesInteraction.Highlightable
+  highlightMaterial: {fileID: 2100000, guid: be784b17b7fb42547a1ec9b4e3f88c21, type: 2}
+--- !u!114 &2723858694877085602
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 695383545474132217}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 761f22a0b375f934083e5d5dd0307b14, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FeaturesWorkbench.WorkbenchInteractable
 --- !u!1 &1028591020637462929
 GameObject:
   m_ObjectHideFlags: 0
@@ -1482,6 +1545,7 @@ GameObject:
   m_Component:
   - component: {fileID: 96854416361981843}
   - component: {fileID: 6353293398810959727}
+  - component: {fileID: 3295624602161574067}
   m_Layer: 0
   m_Name: ShelterLantern
   m_TagString: Untagged
@@ -1513,11 +1577,11 @@ Light:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 7378167591640734311}
-  m_Enabled: 1
+  m_Enabled: 0
   serializedVersion: 12
   m_Type: 2
   m_Color: {r: 1, g: 0.82, b: 0.55, a: 1}
-  m_Intensity: 18
+  m_Intensity: 0
   m_Range: 5.5
   m_SpotAngle: 30
   m_InnerSpotAngle: 21.80208
@@ -1571,6 +1635,30 @@ Light:
   m_LightUnit: 1
   m_LuxAtDistance: 1
   m_EnableSpotReflector: 1
+--- !u!114 &3295624602161574067
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7378167591640734311}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9c586384796dd8d4188843533659e9bf, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FeaturesTime.Atmosphere.ShelterLanternController
+  lanternLight: {fileID: 6353293398810959727}
+  glassRenderer: {fileID: 390864052853549899}
+  nightIntensity: 18
+  dayIntensity: 0
+  lightRange: 5.5
+  lightColor: {r: 1, g: 0.82, b: 0.55, a: 1}
+  nightEmissionColor: {r: 2.5, g: 2.2, b: 1.75, a: 2.5}
+  dayEmissionColor: {r: 0, g: 0, b: 0, a: 1}
+  transitionDuration: 2
+  enableFlicker: 1
+  flickerAmount: 0.04
+  flickerSpeed: 3.5
 --- !u!1 &9165034344919719203
 GameObject:
   m_ObjectHideFlags: 0
