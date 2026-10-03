@@ -157,7 +157,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::FeaturesCombat.EnemyBase
   enemyType: 1
-  enemyData: {fileID: 0}
+  enemyData: {fileID: 11400000, guid: 83177a7d40c8fad478dca0d49745ae4c, type: 2}
   displayName: Cyclops Tuber Maw
   isBoss: 1
   maxHealth: 600
@@ -166,7 +166,7 @@ MonoBehaviour:
   moveSpeed: 3
   contactDamage: 30
   attackRate: 0.4
-  attackRange: 2
+  attackRange: 3.6
   aggroRange: 12
   knockbackResistance: 0.35
   dropMaterial: {fileID: 11400000, guid: aadb6cfba39a5794387c1f0a6f1c53de, type: 2}

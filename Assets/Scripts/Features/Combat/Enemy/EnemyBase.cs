@@ -233,7 +233,7 @@ namespace FeaturesCombat
                     moveSpeed = 3f;
                     contactDamage = 30;
                     attackRate = 0.4f;
-                    attackRange = 2.0f;
+                    attackRange = 3.6f;
                     aggroRange = 12f;
                     knockbackResistance = 0.35f;
                     isBoss = true;
@@ -340,8 +340,14 @@ namespace FeaturesCombat
                 ? NightBrawlManager.GetNearestOutdoorPosition(playerTarget.position, 2.5f) 
                 : playerTarget.position;
 
-            float distToTarget = Vector3.Distance(transform.position, effectiveTargetPos);
-            float distToPlayer = Vector3.Distance(transform.position, playerTarget.position);
+            // Hitung jarak planar / horizontal (Delta XZ) agar musuh raksasa berskala besar tidak terdistorsi perbedaan tinggi pivot (Delta Y)
+            Vector3 diffTarget = effectiveTargetPos - transform.position;
+            diffTarget.y = 0f;
+            float distToTarget = diffTarget.magnitude;
+
+            Vector3 diffPlayer = playerTarget.position - transform.position;
+            diffPlayer.y = 0f;
+            float distToPlayer = diffPlayer.magnitude;
 
             // Pada mode malam (Night Brawl), monster selalu agresif langsung mengejar dan memburu pemain tanpa batas jarak aggro
             bool isNightActive = (TimeManager.Instance != null && TimeManager.Instance.currentPhase == TimeManager.DayPhase.Night) ||
@@ -605,17 +611,21 @@ namespace FeaturesCombat
                 telegraphDecal.SetActive(false);
             }
 
-            // 2. Active Strike Phase: Cek apakah pemain masih berada di dalam area serang
+            // 2. Active Strike Phase: Cek apakah pemain masih berada di dalam area serang (planar horizontal XZ)
             if (playerTarget != null && !NightBrawlManager.IsInsideHouse(playerTarget.position))
             {
-                float currentDist = Vector3.Distance(transform.position, playerTarget.position);
-                Vector3 toPlayer = (playerTarget.position - transform.position).normalized;
+                Vector3 toPlayer = playerTarget.position - transform.position;
                 toPlayer.y = 0f;
-                float dot = Vector3.Dot(transform.forward, toPlayer);
+                float currentDist = toPlayer.magnitude;
+                Vector3 forwardFlat = transform.forward;
+                forwardFlat.y = 0f;
+                forwardFlat.Normalize();
+                float dot = (currentDist > 0.01f) ? Vector3.Dot(forwardFlat, toPlayer.normalized) : 1f;
 
-                if (currentDist <= attackRange + 0.5f && dot >= 0.2f)
+                // Pemain terkena serangan jika berada di dalam jangkauan melee dan berada di depan atau menempel dekat monster
+                if (currentDist <= attackRange + 0.8f && (dot >= 0.10f || currentDist <= 2.2f))
                 {
-                    IDamageable playerDamageable = playerTarget.GetComponent<IDamageable>();
+                    IDamageable playerDamageable = playerTarget.GetComponent<IDamageable>() ?? playerTarget.GetComponentInParent<IDamageable>();
                     if (playerDamageable != null && !playerDamageable.IsDead)
                     {
                         playerDamageable.TakeDamage(contactDamage, playerTarget.position + Vector3.up * 1f, transform.forward);
@@ -859,16 +869,22 @@ namespace FeaturesCombat
                 yield return null;
             }
 
-            // Tembakkan laser ke garis lurus depan
-            Vector3 shootDir = transform.forward;
-            RaycastHit hit;
-            if (Physics.Raycast(transform.position + Vector3.up * 1.5f, shootDir, out hit, 15f))
+            // Tembakkan laser membidik ke arah dada/tengah tubuh pemain
+            Vector3 eyeOrigin = transform.position + Vector3.up * 0.5f;
+            Vector3 targetChest = (playerTarget != null) ? playerTarget.position + Vector3.up * 1.0f : (eyeOrigin + transform.forward * 10f);
+            Vector3 shootDir = (targetChest - eyeOrigin).normalized;
+
+            RaycastHit[] hits = Physics.RaycastAll(eyeOrigin, shootDir, 20f, ~0, QueryTriggerInteraction.Ignore);
+            System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
+            foreach (var hit in hits)
             {
+                if (hit.collider.gameObject == gameObject || hit.collider.transform.IsChildOf(transform)) continue;
                 var target = hit.collider.GetComponent<IDamageable>() ?? hit.collider.GetComponentInParent<IDamageable>();
                 if (target != null && hit.collider.CompareTag("Player") && !NightBrawlManager.IsInsideHouse(hit.point))
                 {
                     target.TakeDamage(25, hit.point, shootDir);
                 }
+                break;
             }
 
             yield return new WaitForSeconds(0.5f);
@@ -1009,6 +1025,15 @@ namespace FeaturesCombat
         public void TakeDamage(int damage, Vector3 hitPoint, Vector3 hitDirection)
         {
             if (IsDead) return;
+
+            // GodMode one-hit kill bypass
+            if (damage >= 9999)
+            {
+                currentHealth = 0;
+                OnHealthChanged?.Invoke(currentHealth, maxHealth);
+                Die();
+                return;
+            }
 
             // Reduksi damage berdasarkan armor
             int effectiveDmg = Mathf.Max(1, damage - Mathf.RoundToInt(armor * 0.25f));

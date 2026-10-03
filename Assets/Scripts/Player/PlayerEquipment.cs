@@ -466,7 +466,9 @@ public class PlayerEquipment : MonoBehaviour
             {
                 RecordTargetHit(target);
                 Vector3 hitPoint = c.ClosestPoint(sweepCenter);
-                target.TakeDamage(kickDamage, hitPoint, forwardDir);
+                bool isGodMode = (playerStats != null && playerStats.isGodMode);
+                int effectiveKickDmg = isGodMode ? 99999 : kickDamage;
+                target.TakeDamage(effectiveKickDmg, hitPoint, forwardDir);
 
                 Rigidbody targetRb = c.GetComponent<Rigidbody>() ?? c.GetComponentInParent<Rigidbody>();
                 if (targetRb != null && !targetRb.isKinematic)
@@ -479,7 +481,7 @@ public class PlayerEquipment : MonoBehaviour
                 {
                     PlayerUI.FloatingCombatTextManager.Instance.SpawnEnemyDamage(
                         hitPoint + Vector3.up * 0.8f,
-                        kickDamage,
+                        effectiveKickDmg,
                         isCrit: true,
                         isSkill: false);
                 }
@@ -720,7 +722,10 @@ public class PlayerEquipment : MonoBehaviour
                 Vector3 hitDir = is360 ? (c.transform.position - origin).normalized : forwardDir;
                 if (hitDir.sqrMagnitude < 0.01f) hitDir = forwardDir;
 
-                target.TakeDamage(damage, hitPoint, hitDir);
+                bool isGodMode = (playerStats != null && playerStats.isGodMode);
+                int effectiveDamage = isGodMode ? 99999 : damage;
+
+                target.TakeDamage(effectiveDamage, hitPoint, hitDir);
 
                 Rigidbody targetRb = c.GetComponent<Rigidbody>() ?? c.GetComponentInParent<Rigidbody>();
                 if (targetRb != null && !targetRb.isKinematic)
@@ -732,7 +737,7 @@ public class PlayerEquipment : MonoBehaviour
                 {
                     PlayerUI.FloatingCombatTextManager.Instance.SpawnEnemyDamage(
                         hitPoint + Vector3.up * 0.8f,
-                        damage,
+                        effectiveDamage,
                         isCrit: isFinisher || isHeavy,
                         isSkill: isExecutingSkill || isHeavy);
                 }

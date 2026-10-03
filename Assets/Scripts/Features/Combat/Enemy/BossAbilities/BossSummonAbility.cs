@@ -23,6 +23,8 @@ namespace FeaturesCombat
         [SerializeField] private float initialDelay = 4f;
         [SerializeField] private float channelDuration = 1.8f;
         [SerializeField] private bool makeUnstaggerableDuringSummon = true;
+        [Tooltip("If true, minions spawn through the front entrance gate instead of appearing randomly around the boss inside the compound.")]
+        [SerializeField] private bool summonFromFrontGate = true;
 
         private EnemyBase bossEnemy;
         private float lastSummonTime = 0f;
@@ -172,6 +174,11 @@ namespace FeaturesCombat
 
         private Vector3 CalculateValidSpawnPos(int index, int total)
         {
+            if (summonFromFrontGate && NightBrawlManager.Instance != null)
+            {
+                return NightBrawlManager.Instance.CalculateRandomSpawnPoint();
+            }
+
             float angle = (index * (360f / Mathf.Max(1, total))) * Mathf.Deg2Rad;
             float dist = UnityEngine.Random.Range(2.5f, 4.0f);
             Vector3 offset = new Vector3(Mathf.Cos(angle) * dist, 0f, Mathf.Sin(angle) * dist);

@@ -208,7 +208,16 @@ namespace FeaturesCombat.Projectiles
             var damageable = other.GetComponent<IDamageable>() ?? other.GetComponentInParent<IDamageable>();
             if (damageable != null && !damageable.IsDead)
             {
-                damageable.TakeDamage(damage, hitPoint, moveDirection);
+                int effectiveDamage = damage;
+                if (shooterOwner != null)
+                {
+                    var pc = shooterOwner.GetComponent<FarmBeware.Core.Runtime.IPlayerContext>() ?? shooterOwner.GetComponentInParent<FarmBeware.Core.Runtime.IPlayerContext>();
+                    if (pc != null && pc.IsGodMode)
+                    {
+                        effectiveDamage = 99999;
+                    }
+                }
+                damageable.TakeDamage(effectiveDamage, hitPoint, moveDirection);
             }
 
             Despawn();

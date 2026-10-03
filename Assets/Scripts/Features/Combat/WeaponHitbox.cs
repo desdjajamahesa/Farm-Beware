@@ -195,7 +195,7 @@ namespace FeaturesCombat
                 var pc = attacker.GetComponent<IPlayerContext>() ?? attacker.GetComponentInParent<IPlayerContext>();
                 if (pc != null && pc.IsGodMode)
                 {
-                    effectiveDamage = 9999;
+                    effectiveDamage = 99999;
                 }
             }
 

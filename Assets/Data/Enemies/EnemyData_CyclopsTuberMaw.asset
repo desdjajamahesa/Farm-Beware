@@ -21,7 +21,7 @@ MonoBehaviour:
   moveSpeed: 3
   contactDamage: 30
   attackRate: 0.4
-  attackRange: 2
+  attackRange: 3.6
   aggroRange: 12
   knockbackResistance: 0.35
   lootDrops:
