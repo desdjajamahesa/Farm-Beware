@@ -141,6 +141,17 @@ public class InventoryComponent : MonoBehaviour
     }
 
     /// <summary>
+    /// Returns the enforced maximum stack limit (tools/weapons = 1, stackables clamped to 1..20).
+    /// </summary>
+    public static int GetMaxStackLimit(ItemData item)
+    {
+        if (item == null) return 1;
+        if (item.type == ItemData.ItemType.Tool || item.category == ItemCategory.Tool || item.category == ItemCategory.Weapon)
+            return 1;
+        return Mathf.Clamp(item.maxStack, 1, 20);
+    }
+
+    /// <summary>
     /// Menambahkan item ke inventory.
     /// Bila hasHotbar bernilai true (mis. player), item akan dimasukkan ke slot inventori utama (indeks 4+) terlebih dahulu,
     /// dan hanya akan mengisi hotbar (indeks 0..3) jika slot utama sudah penuh.
@@ -156,6 +167,7 @@ public class InventoryComponent : MonoBehaviour
             return 0;
 
         int remaining = amount;
+        int maxStack = GetMaxStackLimit(item);
 
         if (hasHotbar && slots.Count > 4)
         {
@@ -165,7 +177,7 @@ public class InventoryComponent : MonoBehaviour
                 InventorySlot slot = slots[i];
                 if (!slot.IsEmpty && slot.item == item)
                 {
-                    int space = item.maxStack - slot.quantity;
+                    int space = maxStack - slot.quantity;
                     int toAdd = Mathf.Min(space, remaining);
                     if (toAdd > 0)
                     {
@@ -181,7 +193,7 @@ public class InventoryComponent : MonoBehaviour
                 InventorySlot slot = slots[i];
                 if (slot.IsEmpty)
                 {
-                    int toAdd = Mathf.Min(item.maxStack, remaining);
+                    int toAdd = Mathf.Min(maxStack, remaining);
                     slot.item = item;
                     slot.quantity = toAdd;
                     remaining -= toAdd;
@@ -195,7 +207,7 @@ public class InventoryComponent : MonoBehaviour
                 InventorySlot slot = slots[i];
                 if (!slot.IsEmpty && slot.item == item)
                 {
-                    int space = item.maxStack - slot.quantity;
+                    int space = maxStack - slot.quantity;
                     int toAdd = Mathf.Min(space, remaining);
                     if (toAdd > 0)
                     {
@@ -211,7 +223,7 @@ public class InventoryComponent : MonoBehaviour
                 InventorySlot slot = slots[i];
                 if (slot.IsEmpty)
                 {
-                    int toAdd = Mathf.Min(item.maxStack, remaining);
+                    int toAdd = Mathf.Min(maxStack, remaining);
                     slot.item = item;
                     slot.quantity = toAdd;
                     remaining -= toAdd;
@@ -227,7 +239,7 @@ public class InventoryComponent : MonoBehaviour
                 InventorySlot slot = slots[i];
                 if (!slot.IsEmpty && slot.item == item)
                 {
-                    int space = item.maxStack - slot.quantity;
+                    int space = maxStack - slot.quantity;
                     int toAdd = Mathf.Min(space, remaining);
                     if (toAdd > 0)
                     {
@@ -243,7 +255,7 @@ public class InventoryComponent : MonoBehaviour
                 InventorySlot slot = slots[i];
                 if (slot.IsEmpty)
                 {
-                    int toAdd = Mathf.Min(item.maxStack, remaining);
+                    int toAdd = Mathf.Min(maxStack, remaining);
                     slot.item = item;
                     slot.quantity = toAdd;
                     remaining -= toAdd;
@@ -273,6 +285,7 @@ public class InventoryComponent : MonoBehaviour
         if (!CanAcceptItem(item)) return false;
 
         int remaining = amount;
+        int maxStack = GetMaxStackLimit(item);
 
         // 1. Check existing non-full slots holding the same item
         for (int i = 0; i < slots.Count && remaining > 0; i++)
@@ -280,7 +293,7 @@ public class InventoryComponent : MonoBehaviour
             InventorySlot slot = slots[i];
             if (slot != null && !slot.IsEmpty && slot.item == item)
             {
-                int space = item.maxStack - slot.quantity;
+                int space = maxStack - slot.quantity;
                 if (space > 0)
                 {
                     remaining -= Mathf.Min(space, remaining);
@@ -294,7 +307,7 @@ public class InventoryComponent : MonoBehaviour
             InventorySlot slot = slots[i];
             if (slot == null || slot.IsEmpty)
             {
-                remaining -= Mathf.Min(item.maxStack, remaining);
+                remaining -= Mathf.Min(maxStack, remaining);
             }
         }
 
@@ -567,7 +580,8 @@ public class InventoryComponent : MonoBehaviour
         else if (targetSlot.item == sourceSlot.item)
         {
             // Penumpukan: isi ruang kosong target dengan item dari source.
-            int space = targetSlot.item.maxStack - targetSlot.quantity;
+            int maxStack = GetMaxStackLimit(targetSlot.item);
+            int space = maxStack - targetSlot.quantity;
             if (space > 0)
             {
                 int toMove = Mathf.Min(space, sourceSlot.quantity);

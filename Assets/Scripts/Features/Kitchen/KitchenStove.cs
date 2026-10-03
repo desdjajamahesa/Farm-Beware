@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using FeaturesInteraction;
 using FeaturesKitchen;
+using FeaturesInventory;
 
 /// <summary>
 /// Status state machine proses memasak di kompor.
@@ -74,6 +75,10 @@ public class KitchenStove : MonoBehaviour, IInteractable
     public ItemData PendingOutputItem => _pendingOutputItem;
     public int PendingOutputCount => _pendingOutputCount;
     public bool HasPendingOutput => _pendingOutputItem != null && _pendingOutputCount > 0;
+
+    [Header("Two-Phase Escrow Container")]
+    [SerializeField] private CookingEscrowContainer _escrowContainer = new CookingEscrowContainer();
+    private InventoryTransactionScope _transactionScope;
 
     private KitchenRecipe _activeRecipe;
     private InventoryComponent _activeInventory;
@@ -326,6 +331,8 @@ public class KitchenStove : MonoBehaviour, IInteractable
         _activeInventory = inventory;
         _consumedSnapshots.Clear();
         _consumedWater = 0f;
+        _escrowContainer.Clear();
+        _transactionScope = InventoryTransactionScope.Begin(inventory);
 
         // 1. Consume water atomically
         if (recipe.waterRequired > 0f)
@@ -336,9 +343,12 @@ public class KitchenStove : MonoBehaviour, IInteractable
                 Debug.LogWarning("[KitchenStove] Failed to consume water from PlayerWaterBottle! Aborting.");
                 _activeRecipe = null;
                 _activeInventory = null;
+                _transactionScope?.Dispose();
+                _transactionScope = null;
                 return false;
             }
             _consumedWater = recipe.waterRequired;
+            _escrowContainer.HoldWater(recipe.waterRequired);
         }
 
         // 2. Aggregate and consume raw ingredients
@@ -363,6 +373,8 @@ public class KitchenStove : MonoBehaviour, IInteractable
                 item = kvp.Key,
                 quantity = kvp.Value
             });
+            _escrowContainer.HoldIngredient(kvp.Key, kvp.Value);
+            _transactionScope.EscrowItem(kvp.Key, kvp.Value);
         }
 
         // 3. Audio & visual feedback
@@ -400,31 +412,25 @@ public class KitchenStove : MonoBehaviour, IInteractable
 
         if (refundIngredients)
         {
-            // Refund water
-            if (_consumedWater > 0f && PlayerWaterBottle.Instance != null)
+            // Refund water and ingredients via escrow container
+            _escrowContainer.ReleaseHold(targetInventory, (overflowItem, overflowCount) =>
             {
-                PlayerWaterBottle.Instance.RefillWater(_consumedWater);
-            }
+                _pendingOutputItem = overflowItem;
+                _pendingOutputCount += overflowCount;
+                OnPendingOutputChanged?.Invoke(_pendingOutputItem, _pendingOutputCount);
+                Debug.LogWarning($"[KitchenStove] Inventory full during rollback! {overflowCount}x {overflowItem.itemName} held on stove.");
+            });
+        }
+        else
+        {
+            _escrowContainer.Clear();
+        }
 
-            // Refund ingredients to player inventory
-            if (targetInventory != null)
-            {
-                foreach (var snap in _consumedSnapshots)
-                {
-                    if (snap.item != null && snap.quantity > 0)
-                    {
-                        int added = targetInventory.AddItemAmount(snap.item, snap.quantity);
-                        int leftover = snap.quantity - added;
-                        if (leftover > 0)
-                        {
-                            _pendingOutputItem = snap.item;
-                            _pendingOutputCount += leftover;
-                            OnPendingOutputChanged?.Invoke(_pendingOutputItem, _pendingOutputCount);
-                            Debug.LogWarning($"[KitchenStove] Inventory full during rollback! {leftover}x {snap.item.itemName} held on stove.");
-                        }
-                    }
-                }
-            }
+        if (_transactionScope != null)
+        {
+            _transactionScope.Commit();
+            _transactionScope.Dispose();
+            _transactionScope = null;
         }
 
         _consumedSnapshots.Clear();
@@ -453,7 +459,14 @@ public class KitchenStove : MonoBehaviour, IInteractable
 
         StopCookingFeedback(playCompleteSound: true);
 
-        // Clear active transaction snapshots
+        // Commit transaction scope and clear escrow
+        if (_transactionScope != null)
+        {
+            _transactionScope.Commit();
+            _transactionScope.Dispose();
+            _transactionScope = null;
+        }
+        _escrowContainer.Clear();
         _consumedSnapshots.Clear();
         _consumedWater = 0f;
 

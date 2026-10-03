@@ -54,7 +54,7 @@ public class StoveUIManager : MonoBehaviour, IModalWindow
 
     [Header("Panel Behavior")]
     [Tooltip("If true, closing the panel while cooking cancels the process and refunds ingredients. If false, stove continues cooking in background.")]
-    [SerializeField] private bool cancelCookingOnPanelClose = false;
+    [SerializeField] private bool cancelCookingOnPanelClose = true;
 
     [Header("Colors")]
     [SerializeField] private Color canCookColor = new Color(0.2f, 0.7f, 0.3f, 1f);
@@ -277,7 +277,7 @@ public class StoveUIManager : MonoBehaviour, IModalWindow
     /// <summary>Closes the stove panel.</summary>
     public void Close()
     {
-        if (cancelCookingOnPanelClose && currentStove != null && currentStove.CurrentState == CookingState.Cooking)
+        if (currentStove != null && currentStove.CurrentState == CookingState.Cooking)
         {
             currentStove.CancelCooking(refundIngredients: true);
         }

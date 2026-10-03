@@ -55,9 +55,16 @@ public class ItemData : ScriptableObject
 
     protected virtual void OnValidate()
     {
-        if (maxStack > 20)
-            maxStack = 20;
-        else if (maxStack < 1)
+        if (type == ItemType.Tool || category == ItemCategory.Tool || category == ItemCategory.Weapon)
+        {
             maxStack = 1;
+        }
+        else
+        {
+            if (maxStack > 20)
+                maxStack = 20;
+            else if (maxStack < 1)
+                maxStack = 1;
+        }
     }
 }
