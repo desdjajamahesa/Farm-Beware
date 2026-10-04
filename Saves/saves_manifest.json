@@ -1,0 +1,62 @@
+{
+    "manifestVersion": 1,
+    "slots": [
+        {
+            "saveId": "save_20261004_005013_682",
+            "displayName": "day2",
+            "fileName": "save_20261004_005013_682.json",
+            "timestamp": "2026-10-04 00:50:13",
+            "formattedDate": "04 Oct 2026, 00:50",
+            "dayNumber": 2,
+            "phaseName": "Day",
+            "gold": 0,
+            "currentHealth": 100,
+            "maxHealth": 100,
+            "locationName": "Bedroom",
+            "fileSizeBytes": 8152
+        },
+        {
+            "saveId": "save_20261004_004945_896",
+            "displayName": "day1 night w z",
+            "fileName": "save_20261004_004945_896.json",
+            "timestamp": "2026-10-04 00:49:45",
+            "formattedDate": "04 Oct 2026, 00:49",
+            "dayNumber": 1,
+            "phaseName": "Night",
+            "gold": 0,
+            "currentHealth": 100,
+            "maxHealth": 100,
+            "locationName": "Bedroom",
+            "fileSizeBytes": 8161
+        },
+        {
+            "saveId": "save_20261004_004820_690",
+            "displayName": "day1 night z",
+            "fileName": "save_20261004_004820_690.json",
+            "timestamp": "2026-10-04 00:48:20",
+            "formattedDate": "04 Oct 2026, 00:48",
+            "dayNumber": 1,
+            "phaseName": "Night",
+            "gold": 0,
+            "currentHealth": 100,
+            "maxHealth": 100,
+            "locationName": "Bedroom",
+            "fileSizeBytes": 8895
+        },
+        {
+            "saveId": "save_20261004_004809_638",
+            "displayName": "day1",
+            "fileName": "save_20261004_004809_638.json",
+            "timestamp": "2026-10-04 00:48:09",
+            "formattedDate": "04 Oct 2026, 00:48",
+            "dayNumber": 1,
+            "phaseName": "Day",
+            "gold": 0,
+            "currentHealth": 100,
+            "maxHealth": 100,
+            "locationName": "Bedroom",
+            "fileSizeBytes": 8059
+        }
+    ],
+    "lastPlayedSaveId": "save_20261004_004809_638"
+}

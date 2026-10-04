@@ -1,0 +1,22 @@
+{
+    "currentOutfitName": "Outfit_Set_C",
+    "topVariant": 0,
+    "bottomVariant": 1,
+    "shoesVariant": 0,
+    "hatVariant": 0,
+    "isHatEquipped": true,
+    "unlockedOutfitNames": [
+        "Outfit_Set_A",
+        "Outfit_Set_B",
+        "Outfit_Set_C",
+        "Outfit_Set_D",
+        "Outfit_Set_E",
+        "Outfit_Set_F",
+        "Outfit_Set_G",
+        "Outfit_Set_H",
+        "Outfit_Set_I",
+        "Outfit_Set_J",
+        "Outfit_Set_K",
+        "Outfit_Set_L"
+    ]
+}

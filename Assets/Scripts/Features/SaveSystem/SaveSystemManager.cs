@@ -41,7 +41,17 @@ namespace FeaturesSaveSystem
         public event Action<GameSaveData> OnSaveCompleted;
         public event Action<GameSaveData> OnLoadCompleted;
 
-        public static string SavesDirectory => Path.Combine(Application.persistentDataPath, "Saves");
+        public static string SavesDirectory
+        {
+            get
+            {
+#if UNITY_EDITOR || UNITY_STANDALONE
+                return Path.Combine(Directory.GetParent(Application.dataPath).FullName, "Saves");
+#else
+                return Path.Combine(Application.persistentDataPath, "Saves");
+#endif
+            }
+        }
         public static string ManifestFilePath => Path.Combine(SavesDirectory, "saves_manifest.json");
 
         private SaveManifest cachedManifest = new SaveManifest();
@@ -113,6 +123,29 @@ namespace FeaturesSaveSystem
             if (!Directory.Exists(SavesDirectory))
             {
                 Directory.CreateDirectory(SavesDirectory);
+            }
+
+            // Auto-migrate legacy saves from persistentDataPath if SavesDirectory is newly created or missing them
+            try
+            {
+                string legacyPath = Path.Combine(Application.persistentDataPath, "Saves");
+                if (Directory.Exists(legacyPath) && !string.Equals(Path.GetFullPath(legacyPath), Path.GetFullPath(SavesDirectory), StringComparison.OrdinalIgnoreCase))
+                {
+                    var legacyFiles = Directory.GetFiles(legacyPath, "*.json");
+                    foreach (var file in legacyFiles)
+                    {
+                        string destFile = Path.Combine(SavesDirectory, Path.GetFileName(file));
+                        if (!File.Exists(destFile))
+                        {
+                            File.Copy(file, destFile);
+                            Debug.Log($"[SaveSystemManager] Auto-migrated save file from legacy path: {Path.GetFileName(file)}");
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"[SaveSystemManager] Legacy saves migration warning: {ex.Message}");
             }
         }
 
@@ -225,7 +258,8 @@ namespace FeaturesSaveSystem
             foreach (var file in files)
             {
                 string fName = Path.GetFileName(file);
-                if (fName.Equals("saves_manifest.json", StringComparison.OrdinalIgnoreCase))
+                if (fName.Equals("saves_manifest.json", StringComparison.OrdinalIgnoreCase) ||
+                    fName.Equals("wardrobeSave.json", StringComparison.OrdinalIgnoreCase))
                     continue;
 
                 try

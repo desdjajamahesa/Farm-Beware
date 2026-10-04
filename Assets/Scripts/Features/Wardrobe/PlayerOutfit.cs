@@ -167,7 +167,17 @@ namespace FeaturesWardrobe
 
         #region Save/Load
 
-        private string SavePath => Path.Combine(Application.persistentDataPath, "wardrobeSave.json");
+        private string SavePath
+        {
+            get
+            {
+#if UNITY_EDITOR || UNITY_STANDALONE
+                return Path.Combine(Directory.GetParent(Application.dataPath).FullName, "Saves", "wardrobeSave.json");
+#else
+                return Path.Combine(Application.persistentDataPath, "wardrobeSave.json");
+#endif
+            }
+        }
 
         private const string OutfitResourcePath = "Player/model/";
 
@@ -186,12 +196,35 @@ namespace FeaturesWardrobe
             foreach (var o in unlockedOutfits)
                 if (o != null) data.unlockedOutfitNames.Add(o.name);
 
+            string dir = Path.GetDirectoryName(SavePath);
+            if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
+            {
+                Directory.CreateDirectory(dir);
+            }
+
             File.WriteAllText(SavePath, JsonUtility.ToJson(data, true));
         }
 
         public void LoadWardrobe()
         {
             EnsureDefaultOutfitsUnlocked();
+
+            // Auto-migrate if file exists in legacy persistentDataPath but not in SavePath
+            if (!File.Exists(SavePath))
+            {
+                string legacyPath = Path.Combine(Application.persistentDataPath, "wardrobeSave.json");
+                if (File.Exists(legacyPath))
+                {
+                    try
+                    {
+                        string dir = Path.GetDirectoryName(SavePath);
+                        if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
+                            Directory.CreateDirectory(dir);
+                        File.Copy(legacyPath, SavePath, true);
+                    }
+                    catch { }
+                }
+            }
 
             if (!File.Exists(SavePath))
             {
