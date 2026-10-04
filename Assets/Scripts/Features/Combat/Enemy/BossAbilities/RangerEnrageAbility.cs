@@ -37,6 +37,8 @@ namespace FeaturesCombat
 
         private void OnEnable()
         {
+            hasEnraged = false;
+            isBursting = false;
             EnsureInitialized();
         }
 

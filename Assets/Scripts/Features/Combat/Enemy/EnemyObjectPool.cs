@@ -140,7 +140,18 @@ namespace FeaturesCombat
             {
                 // Fallback runtime factory
                 obj = EnemyPrefabFactory.CreateEnemy(type, Vector3.zero);
-                obj.transform.SetParent(poolRoot);
+                obj.transform.SetParent(poolRoot, false);
+            }
+
+            obj.transform.localPosition = Vector3.zero;
+            obj.transform.localRotation = Quaternion.identity;
+            var rb = obj.GetComponent<Rigidbody>();
+            if (rb != null)
+            {
+                rb.position = poolRoot != null ? poolRoot.position : Vector3.zero;
+                rb.rotation = Quaternion.identity;
+                rb.linearVelocity = Vector3.zero;
+                rb.angularVelocity = Vector3.zero;
             }
 
             var enemy = obj.GetComponent<EnemyBase>();
@@ -188,9 +199,33 @@ namespace FeaturesCombat
 
             if (enemy != null)
             {
-                enemy.transform.SetParent(null); // Lepas dari root saat aktif
+                enemy.transform.SetParent(null, false); // Lepas dari root saat aktif
                 enemy.transform.position = position;
+                enemy.transform.rotation = Quaternion.identity;
+
+                var rb = enemy.GetComponent<Rigidbody>();
+                if (rb != null)
+                {
+                    rb.position = position;
+                    rb.rotation = Quaternion.identity;
+                    rb.linearVelocity = Vector3.zero;
+                    rb.angularVelocity = Vector3.zero;
+                }
+
+                Physics.SyncTransforms();
+
                 enemy.gameObject.SetActive(true);
+
+                if (rb != null)
+                {
+                    rb.position = position;
+                    rb.rotation = Quaternion.identity;
+                    rb.linearVelocity = Vector3.zero;
+                    rb.angularVelocity = Vector3.zero;
+                }
+
+                Physics.SyncTransforms();
+
                 enemy.ResetEnemyState();
             }
 
@@ -204,10 +239,25 @@ namespace FeaturesCombat
         {
             if (enemy == null) return;
 
+            var rb = enemy.GetComponent<Rigidbody>();
+            if (rb != null)
+            {
+                rb.linearVelocity = Vector3.zero;
+                rb.angularVelocity = Vector3.zero;
+            }
+
             enemy.gameObject.SetActive(false);
+
             if (poolRoot != null)
             {
-                enemy.transform.SetParent(poolRoot);
+                enemy.transform.SetParent(poolRoot, false);
+                enemy.transform.localPosition = Vector3.zero;
+                if (rb != null)
+                {
+                    rb.position = poolRoot.position;
+                    rb.rotation = Quaternion.identity;
+                }
+                Physics.SyncTransforms();
             }
 
             if (!pools.TryGetValue(enemy.enemyType, out var queue))

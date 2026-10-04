@@ -42,13 +42,23 @@ namespace FeaturesCombat
         {
             if (frontGateSpawnTransforms != null && index >= 0 && index < frontGateSpawnTransforms.Length && frontGateSpawnTransforms[index] != null)
             {
-                return frontGateSpawnTransforms[index].position;
+                Vector3 p = frontGateSpawnTransforms[index].position;
+                // Validasi agar spawn point tetap berada di koridor depan gerbang utama (X: [14, 28], Z: [50, 60])
+                if (p.x >= 14f && p.x <= 28f && p.z >= 50f && p.z <= 60f)
+                {
+                    return p;
+                }
             }
             if (frontGateSpawnPoints != null && index >= 0 && index < frontGateSpawnPoints.Length)
             {
                 return frontGateSpawnPoints[index];
             }
-            return new Vector3(21.0f, 0.08f, 54.0f);
+            return index switch
+            {
+                0 => new Vector3(16.5f, 0.08f, 53.0f),
+                1 => new Vector3(21.0f, 0.08f, 55.0f),
+                _ => new Vector3(25.5f, 0.08f, 53.0f)
+            };
         }
 
         [Header("Wave Progress")]
@@ -322,13 +332,24 @@ namespace FeaturesCombat
             int pointIndex = UnityEngine.Random.Range(0, 3);
             Vector3 basePoint = GetSpawnPoint(pointIndex);
 
+            // Double safety guard: pastikan basePoint berada di koridor depan gerbang
+            if (basePoint.x < 14f || basePoint.x > 28f || basePoint.z < 50f || basePoint.z > 60f)
+            {
+                basePoint = pointIndex switch
+                {
+                    0 => new Vector3(16.5f, 0.08f, 53.0f),
+                    1 => new Vector3(21.0f, 0.08f, 55.0f),
+                    _ => new Vector3(25.5f, 0.08f, 53.0f)
+                };
+            }
+
             // Slight scatter offset to prevent simultaneous spawns from clumping on the same exact coordinate
             Vector2 scatter = UnityEngine.Random.insideUnitCircle * spawnScatterRadius;
             Vector3 candidate = basePoint + new Vector3(scatter.x, 0f, scatter.y);
             candidate.y += 10f; // Elevate for ground raycast
 
             Vector3 finalPos = candidate;
-            if (Physics.Raycast(candidate, Vector3.down, out RaycastHit hit, 30f))
+            if (Physics.Raycast(candidate, Vector3.down, out RaycastHit hit, 30f, ~LayerMask.GetMask("Ignore Raycast"), QueryTriggerInteraction.Ignore))
             {
                 finalPos = hit.point + Vector3.up * 0.1f;
             }
@@ -337,11 +358,18 @@ namespace FeaturesCombat
                 finalPos.y = basePoint.y;
             }
 
-            // Snap precisely to nearest walkable NavMesh area
+            // Snap precisely to nearest walkable NavMesh area, but ensure sample stays in front gate approach
             if (NavMesh.SamplePosition(finalPos, out NavMeshHit navHit, 4f, NavMesh.AllAreas))
             {
-                return navHit.position;
+                if (navHit.position.z >= 49f && navHit.position.x >= 14f && navHit.position.x <= 28f)
+                {
+                    finalPos = navHit.position;
+                }
             }
+
+            // Strict clamp to front gate entrance corridor: monsters can NEVER spawn on western/backyard perimeters
+            finalPos.x = Mathf.Clamp(finalPos.x, 14f, 28f);
+            finalPos.z = Mathf.Clamp(finalPos.z, 50f, 58f);
 
             return finalPos;
         }
