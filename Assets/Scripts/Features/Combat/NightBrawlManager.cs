@@ -73,6 +73,7 @@ namespace FeaturesCombat
         private Coroutine intermissionCoroutine;
 
         public event System.Action<EnemyBase> OnEnemySpawned;
+        public event System.Action<EnemyBase> OnEnemyDied;
         public IReadOnlyList<EnemyBase> ActiveEnemies => activeEnemies;
         public int ActiveEnemiesCount => activeEnemies.Count;
         public bool IsNightBrawlActive => isWaveInProgress;
@@ -381,6 +382,7 @@ namespace FeaturesCombat
         private void HandleEnemyDied(EnemyBase enemy)
         {
             activeEnemies.Remove(enemy);
+            OnEnemyDied?.Invoke(enemy);
             waveEngine.RecordEnemyDefeated();
         }
 
