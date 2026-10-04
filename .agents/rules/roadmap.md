@@ -7,138 +7,109 @@ Development roadmap, milestone tracking, and feature goals for **Farm-Beware** b
 ## 1. Core MVP Game Loop
 
 ```
-                                  ┌────────────────────────┐
-                                  │       DAY PHASE        │
-                                  │ (Exploration & Prep)   │
-                                  └───────────┬────────────┘
-                                              │
-                    ┌─────────────────────────┴─────────────────────────┐
-                    ▼                                                   ▼
-         ┌─────────────────────┐                             ┌─────────────────────┐
-         │       FARMING       │                             │      COMMERCE       │
-         │ (Sweet Potato/Taro) │                             │ (Sell Crops → Gold) │
-         └──────────┬──────────┘                             └──────────┬──────────┘
-                    │                                                   │
-                    ▼                                                   ▼
-         ┌─────────────────────┐                             ┌─────────────────────┐
-         │       COOKING       │                             │      WORKBENCH      │
-         │ (Prepare Food Buffs)│                             │  (Upgrade Weapon)   │
-         └──────────┬──────────┘                             └──────────┬──────────┘
-                    │                                                   │
-                    └─────────────────────────┬─────────────────────────┘
-                                              │ Sleep on Bed
-                                              ▼
-                                  ┌────────────────────────┐
-                                  │      NIGHT PHASE       │
-                                  │      (Night Brawl)     │
-                                  └───────────┬────────────┘
-                                              │
-                                              ▼
-                                  ┌────────────────────────┐
-                                  │      COMBAT WAVES      │
-                                  │ (Survive Monster Pack) │
-                                  └───────────┬────────────┘
-                                              │
-                                              ▼
-                                  ┌────────────────────────┐
-                                  │     MONSTER DROPS      │
-                                  │ (Crafting Materials)   │
-                                  └────────────────────────┘
+            ┌────────────────────────┐
+            │       DAY PHASE        │
+            │ (Exploration & Prep)   │
+            └───────────┬────────────┘
+                        │
+       ┌────────────────┴────────────────┐
+       ▼                                 ▼
+┌──────────────┐                  ┌──────────────┐
+│   FARMING    │                  │   COMMERCE   │
+│ (Crops/Soil) │                  │ (Sell/Store) │
+└──────┬───────┘                  └──────┬───────┘
+       │                                 │
+       ▼                                 ▼
+┌──────────────┐                  ┌──────────────┐
+│   COOKING    │                  │  WORKBENCH   │
+│ (Food Buffs) │                  │  (Upgrades)  │
+└──────┬───────┘                  └──────┬───────┘
+       │                                 │
+       └────────────────┬────────────────┘
+                        │ Bed Sleep
+                        ▼
+            ┌────────────────────────┐
+            │      NIGHT PHASE       │
+            │  (Night Brawl Waves)   │
+            └───────────┬────────────┘
+                        │
+                        ▼
+            ┌────────────────────────┐
+            │     MONSTER DROPS      │
+            │  (Crafting Materials)  │
+            └────────────────────────┘
 ```
 
 ---
 
 ## 2. Project Milestones
 
-### Milestone 1: House, Kitchen, & Core Systems (COMPLETED ✅)
-- [x] **Centralized Camera Architecture**: `CameraManager` handling state machine transitions, positioning, and input lock.
-- [x] **KitchenStove Architectural Refactor**: Decoupled backend controller and state machine (`CookingState: Idle, Cooking, Completed, Cancelled`), event-driven broadcaster, safe inventory & water transaction snapshots with rollback upon cancellation/interruption, and `StoveUIManager` as pure view presenter.
-- [x] **Dynamic Washing Mechanic**: `KitchenSinkInteractable` with item-level dirty/clean data transformation.
-- [x] **Item Overhaul & Central Registry**: 33 active items in `ItemDatabase` (8 Food, 2 Crops, 2 Seeds, 4 Kitchen Materials, 4 Monster Drops, 1 Dummy Sword, 12 Trophies).
-- [x] **Wardrobe & Bedroom Mirror System**:
-  - `PlayerOutfit` with in-world `MirrorCamera` live preview (`RenderTexture`, portrait aspect `0.5`, horizontal flip `_BaseMap_ST: (-1, 1, 1, 0)`).
-  - Pure wood frame surface (`Mat_Mirror_WoodFrame.mat`).
-  - Exact player placement: `(27.10, 0.04, 21.04)`, `Euler(0, 180, 0)` facing mirror.
-  - Chest lid open/close animations (`chestLidAnimator`).
-  - Synchronized wall occlusion fading: mirror and frame fade synchronously when bedroom south wall is occluded.
-- [x] **UI Scaling & ESC Modal Priority**: 1920×1080 reference resolution and hierarchical modal close stack.
-- [x] **Repository Cleanup**: Dead assets removed, pipeline diagram and design docs preserved in `Docs/MVP_Design/`.
+### Milestone 1: House, Kitchen & Core Systems (COMPLETED ✅)
+- [x] **Camera Architecture**: `CameraManager` handling state transitions (`Gameplay`, `TrophyMode`, `WardrobeMode`) and input locking.
+- [x] **KitchenStove Refactor**: Decoupled state machine (`CookingState`), event-driven architecture, and atomic snapshot & rollback on cancel.
+- [x] **Dynamic Washing**: `KitchenSinkInteractable` with item-level clean variant transformation.
+- [x] **Item Database**: Central registry indexing 33 active items across all MVP categories.
+- [x] **Wardrobe & Mirror**: `PlayerOutfit`, `MirrorCamera` (RenderTexture portrait 0.5, depth -100, Base renderType), wood frame material, and synchronized wall occlusion.
+- [x] **UI Scaling & Modals**: 1920×1080 canvas scaling and ESC modal priority stack.
 
 ---
 
-### Milestone 1.5: Graphics & Lighting Pipeline Architecture (COMPLETED ✅)
-- [x] **Phase 1: Foundation (Deferred+ & GPU Resident Drawer)**:
-  - Switched exclusively to **Deferred+** cluster rendering path in `PC_Renderer.asset` via Unity 6 Render Graph API.
-  - Enabled **GPU Resident Drawer (BRG)** (`gpuResidentDrawerMode: InstancedDrawing`) and SRP Batcher.
-  - Implemented `URPGraphicsConfigurationValidator.cs` (`Tools > Farm-Beware > Rendering > URP & BRG Validator`) with automated Static Batching guard to protect CPU RAM and instanced drawing.
-- [x] **Phase 2: Day Lighting (Atmosphere & Soft Shadows)**:
-  - Orthographic soft shadows with Camera-Relative Culling enabled in URP Asset.
-  - Mathematical sun rotation and color temperature progression (5500K noon to 3200K golden dusk) via event-driven observer `DaySunLightingObserver.cs`.
-  - Comprehensive documentation in `Docs/APV_Sky_Occlusion_Baking_Guide.md` and test suite `DayLightingValidationHarness.cs`.
-- [x] **Phase 3: Night Lighting & Combat Readability**:
-  - Seamless night transition synced with legacy "N" shortcut in `TimeManager.cs`.
-  - Directional Light moonlight dimming (0.1–0.2 lux, cool blue tint `(0.72, 0.82, 0.96)`).
-  - Combat readability shader `MonsterFresnelLit.shader` with grazing-angle HDR rim emission and `UniversalForwardOnly` pass for Deferred+ compatibility.
-  - Stress testing harness `GPUResidentDrawerStressTest.cs` validating 100+ clustered deferred point lights without GPU stalls.
-- [x] **Phase 4: Interiors & Light Segregation**:
-  - Custom Bayer $4 \times 4$ screen-door transparency shader `DitheredBuildingLit.shader` (`RenderType = Opaque`, `ZWrite On`) preserving exterior shadow projection and depth buffer.
-  - Smooth trigger component `HouseInteriorTrigger.cs` interpolating `_DitherFade` via `MaterialPropertyBlock` (zero material duplication).
-  - Bitwise URP Light Layers isolation tool `LightLayerAssignmentUtility.cs` preventing exterior moonlight (Layer 0) and interior amber lamps (Layer 1) from leaking.
-- [x] **Phase 5: Post-Processing & Game Feel Integration**:
-  - Implemented `DayNightVolumeController.cs` on `_LIGHTING/Global Volume` with ACES Tonemapping, Bloom, Color Adjustments, Motion Blur, and Chromatic Aberration.
-  - Hardened `MirrorCamera.cs` with `renderPostProcessing = false` on secondary camera pass to isolate mirror rendering and conserve VRAM.
-  - Implemented responsive tactile combat juice: `DayNightVolumeController.Instance.TriggerCombatImpulse(duration, intensity)` for dynamic zero-GC chromatic aberration feedback during impacts and boss spawns.
-- [x] **Phase 6: Foliage, Near-Clipping & LOD Optimization**:
-  - Near clipping plane tuned to `0.08f` (avoiding `< 0.03f` depth buffer degradation in Deferred+).
-  - Smooth LOD crossfade (`LODFadeMode.CrossFade`) on trees to eliminate popping.
-  - Two-sided leaf shading (`_Cull = 0`) on alpha-tested foliage materials (`Mat_Tree_Leaf_Oak`, `Mat_Tree_Leaf_Pine`, `Mat_Bush_Leaf`).
-  - Camera proximity non-alloc sphere detection (`WallOcclusionManager`) for high-angle canopy clipping with zero GC.
+### Milestone 1.5: Graphics, Shaders & Lighting Pipeline (COMPLETED ✅)
+- [x] **Deferred+ Clustering & BRG**: Unity 6 Render Graph Deferred+ rendering with GPU Resident Drawer (`InstancedDrawing`) and Static Batching Guard.
+- [x] **Day/Night Lighting**: Soft shadows, mathematical sun rotation (5500K noon to 3200K dusk), and cool moonlight fill.
+- [x] **Shaders**: `MonsterFresnelLit.shader` (`UniversalForwardOnly`) for HDR rim readability, and `DitheredBuildingLit.shader` (Bayer 4x4, Opaque queue) for seamless interior entry.
+- [x] **Light Layers**: Bitwise isolation separating exterior sun (Layer 0) and interior lamps (Layer 1).
+- [x] **Post-Processing & Juice**: Global Volume with ACES Tonemapping, Bloom, Motion Blur, and zero-GC chromatic aberration combat impulses.
+- [x] **Foliage Optimization**: Near clip 0.08m, tree LOD crossfades, two-sided leaf materials (`_Cull = 0`), and camera proximity occlusion.
 
 ---
 
-### Milestone 2: Farming System (NEXT PRIORITY ⏳)
-- [ ] **Soil Grid & Tilling**: Tillable, waterable crop tiles with visual state feedback.
+### Milestone 2: Night Brawl Combat Engine & Combat UI (COMPLETED ✅)
+- [x] **Melee Combat Engine**:
+  - 3-Hit combo sequence with generous reset window (`ComboResetWindow = 1.5f`) and early cancel threshold.
+  - Attack buffering queue (`bufferedAttackTime <= 0.45f`) for seamless combo hits.
+  - Special attacks: Sprint Dash Attack, Charged Heavy Attack (> 0.35s), Front Kick (`F`), and Jump Skill Slam.
+- [x] **Dynamic Monster Spawners**:
+  - Spawns gathered dynamically from `MonsterSpawnPoints` children outside front gate (`Z >= 52m`).
+  - NavMesh surface raycasting and snapping.
+- [x] **5-Day Wave Progression**:
+  - Days 1–3: Escalating enemy hordes.
+  - Day 4: Boss intro (Cyclops Tuber Maw).
+  - Day 5: Grand climax with simultaneous dual bosses (Cyclops + The Ranger).
+- [x] **Dual-Tier Enemy Health Bar UI**:
+  - Floating overhead bars with zero-GC pooling, amber ghost damage lag, and height offsets.
+  - Top-center cinematic Boss HUD supporting single and dual-boss stacked layouts with defeat badge.
+- [x] **NavMesh Safe Boundaries**:
+  - Excluded Campfire, Natural Pond, and Farmland plots from walkable navigation mesh.
+- [x] **3D Trophy Redesign**:
+  - Modular cup and pedestal aesthetics with shelf snap positioning.
+
+---
+
+### Milestone 3: Persistence, Menus & Localization (COMPLETED ✅)
+- [x] **Multi-Slot Persistence**:
+  - `SaveLoadService`, `GameData`, and `MultiSlotSaveLoadManager` supporting 3 save slots and auto-save triggers.
+- [x] **Main Menu & Pause Menu**:
+  - Stylized fantasy menu with settings, slot selection, and audio controls.
+- [x] **English Localization**:
+  - 100% English translation across player stats UI, modal buttons, tooltips, and trophy logs.
+
+---
+
+### Milestone 4: Farming System (NEXT PRIORITY ⏳)
+- [ ] **Soil Grid & Tilling**:
+  - Interactive grid plots with tillable and waterable state feedback.
 - [ ] **Crop Growth Cycles**:
-  - **Sweet Potato**: Fast growth rate, 750–1000 Gold base harvest value.
-  - **Taro**: Medium growth rate, higher yield/combat utility.
-- [ ] **Harvest Loop**: Direct harvest delivery of `Crop_SweetPotato` and `Crop_Taro` to the player inventory for selling or cooking.
+  - **Sweet Potato**: Fast growth rate, gold revenue crop.
+  - **Taro**: Medium growth rate, sturdy combat ingredient.
+- [ ] **Harvest Loop**:
+  - Direct delivery of `Crop_SweetPotato` and `Crop_Taro` to inventory for cooking or selling.
 
 ---
 
-### Milestone 3: Night Brawl Combat Engine
-- [ ] **Primary Weapon System**:
-  - 1 Core melee weapon (Sword / Combat Hoe) with light attack combo, heavy strike, and dash attack.
-- [x] **Front Gate 3-Point Spawn System**:
-  - Monster waves spawn outside compound entrance gate (`Z > 52m`) with horizontal scatter radius (`1.2m`) and NavMesh surface snapping.
-- [ ] **5-Day Wave Progression**:
-  - **Day 1**: 1 Wave (Normal encounter).
-  - **Day 2**: 2 Waves.
-  - **Day 3**: 3 Waves.
-  - **Day 4**: 4 Waves (First Boss Introduction + 4 normal enemies).
-  - **Day 5**: 5 Waves (Climax: 2 Bosses simultaneously + 3 normal enemies).
-- [ ] **Enemy Evolution (2 Seeds → 4 Monster Forms)**:
-  - *Sweet Potato Evolution*: **Tuber Maw** (Normal) → **Cyclops Tuber Maw** (Boss).
-  - *Taro Evolution*: **Taro Brute** (Normal) → **Taro Colossus** (Boss).
-- [ ] **Monster Drops**:
-  - Tuber Maw → `Mutated Root` (Normal Material).
-  - Cyclops Tuber Maw → `Cyclops Eye` (Boss Material).
-  - Taro Brute → `Hardened Root` (Normal Material).
-  - Taro Colossus → `Colossus Core` (Boss Material).
-
----
-
-### Milestone 4: Workbench & Weapon Upgrades
-- [ ] **Workbench / Garage Interactable**: UI for weapon enhancement.
-- [ ] **Upgrade Cost Formula**: `Gold + Monster Materials → Weapon Upgrade`.
+### Milestone 5: Workbench & Weapon Upgrades
+- [ ] **Workbench Interactable**: UI for weapon progression and blacksmith enhancements.
+- [ ] **Upgrade Cost Formula**: `Gold + Monster Materials → Weapon Enhancement`.
 - [ ] **Branching Upgrade Paths**:
-  - **Sweet Potato Path**: Focuses on *Speed*, *Attack Speed*, and *Mobility/Dash*.
-  - **Taro Path**: Focuses on *Power*, *Knockback*, *Armor*, and defensive perks.
-
----
-
-### Milestone 5: Audio, Visual Polish, & Game Feel
-- [x] **Combat Impact Juice**: Responsive chromatic aberration impulse feedback via `DayNightVolumeController.Instance.TriggerCombatImpulse()` for heavy attacks and boss encounters.
-- [x] **Wall Occlusion Linked Additional Renderers**: Synchronized transparency fading for wall-mounted accessories (bedroom mirror, wood frame, lanterns).
-- [ ] **Cooking Effects**: Smoke/fire VFX on the stove, cooking audio effects, and UI "Dish Created!" feedback.
-- [ ] **Modular Kitchen Walls**: Split monolithic kitchen wall meshes into Layer 12 segments for fine-grained `WallOccluder` fading.
-- [ ] **3D Trophy Models**: Replace placeholder colored cube prefabs with custom 3D trophy models.
+  - **Sweet Potato Path**: Agility, attack speed, and sprint dash damage.
+  - **Taro Path**: Raw physical damage, armor, and knockback resistance.

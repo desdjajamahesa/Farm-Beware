@@ -7,8 +7,7 @@ Coding standards, recurring design patterns, and strict anti-patterns for the **
 ## 1. Recurring Architectural Patterns
 
 ### 1.1 Awake-Safe Singleton with Fallback Resolver
-Used across primary managers (`TimeManager`, `CameraManager`, `TrophySystemManager`) to ensure access never returns null due to out-of-order execution:
-
+Used across primary managers (`CameraManager`, `DayNightTimeManager`, `SaveLoadService`):
 ```csharp
 private static T _instance;
 public static T Instance
@@ -18,123 +17,45 @@ public static T Instance
         if (_instance == null)
         {
             T[] found = FindObjectsByType<T>(FindObjectsInactive.Include, FindObjectsSortMode.None);
-            if (found != null && found.Length > 0)
-                _instance = found[0];
+            if (found != null && found.Length > 0) _instance = found[0];
         }
         return _instance;
     }
-    private set { _instance = value; }
+    private set => _instance = value;
 }
 ```
 
 ### 1.2 Central Camera Delegation Pattern
-Feature managers are **strictly forbidden** from directly enabling, disabling, or transforming cameras. All transitions must delegate through `CameraManager`:
-
+Feature managers are strictly forbidden from directly enabling, disabling, or transforming cameras. All transitions delegate through `CameraManager`:
 ```csharp
-// Enter an interactive feature mode
-CameraManager.Instance.SetMode(CameraManager.CameraMode.WardrobeMode, wardrobeRootTransform);
-
-// Exit back to standard gameplay
-CameraManager.Instance.SetMode(CameraManager.CameraMode.Gameplay);
+CameraManager.Instance.SetMode(CameraMode.WardrobeMode, wardrobeRootTransform);
+CameraManager.Instance.SetMode(CameraMode.Gameplay);
 ```
 
-`CameraManager` handles:
-- Transition validation.
-- Camera activation/deactivation.
-- Positioning relative to context roots.
-- Input locking (`PlayerControl.isInputLocked`).
-- Cursor lock and visibility states (`Cursor.lockState`, `Cursor.visible`).
-
 ### 1.3 Gameplay Camera Mode Guard
-Camera controllers must include a guard condition at the start of their update loop to prevent conflicting with interactive modes:
-
+Camera controllers must include a guard condition at the start of their update loop:
 ```csharp
 void LateUpdate()
 {
-    if (CameraManager.Instance != null && 
-        CameraManager.Instance.CurrentMode != CameraManager.CameraMode.Gameplay)
-    {
+    if (CameraManager.Instance != null && CameraManager.Instance.CurrentMode != CameraMode.Gameplay)
         return;
-    }
-
     // Follow, orbit, and zoom execution
 }
 ```
 
 ### 1.4 Event-Driven UI (Stateless Renderers)
 Backend components own state and emit events. UI scripts listen to events and re-render without maintaining duplicate state:
-
 ```csharp
-private void OnEnable()
-{
-    if (targetInventory != null)
-        targetInventory.OnInventoryChanged += RefreshUI;
-}
-
-private void OnDisable()
-{
-    if (targetInventory != null)
-        targetInventory.OnInventoryChanged -= RefreshUI;
-}
+private void OnEnable() => targetInventory.OnInventoryChanged += RefreshUI;
+private void OnDisable() => targetInventory.OnInventoryChanged -= RefreshUI;
 ```
 
-### 1.5 Virtual Recipe Pattern (Item-Level Transformation)
-To prevent recipe asset explosion for simple transformations, transformation data is embedded directly in the source item data:
+### 1.5 Decoupled Backend Controller & View/Presenter
+Never mix state management, countdown routines, or inventory mutations inside UI managers:
+- **Backend Controller (`KitchenStove`)**: Owns state machine (`CookingState`), runs timers, executes transactions, and broadcasts C# events (`OnCookingStateChanged`, `OnCookingProgress`).
+- **View / Presenter (`StoveUIManager`)**: Subscribes to events, updates UI, forwards user actions, and unsubscribes cleanly on close.
 
-```csharp
-// In FoodItemData or MaterialItemData
-public bool isDirty;
-public ItemData cleanVariant;
-
-// In cleaning station (KitchenSinkInteractable)
-if (foodItem.isDirty && foodItem.cleanVariant != null)
-{
-    var virtualRecipe = ScriptableObject.CreateInstance<KitchenRecipe>();
-    virtualRecipe.SetProcess(foodItem, foodItem.cleanVariant, processTime: 2.0f);
-    StartProcessing(virtualRecipe);
-}
-```
-
-### 1.6 Dual-Inventory Pattern (Trophy Rack)
-Decouples logical storage from in-world 3D visual anchors:
-- **`CabinetInventory`**: Physical storage data list.
-- **`RackInventory`**: Visual source of truth where each slot corresponds to a 3D `SnapPoint`.
-- Drag-and-drop or raycast clicks transfer items between these inventories seamlessly.
-
-### 1.7 Item Stack Size Invariant (Max Stack = 20)
-All stackable items enforce a hard ceiling of 20 units per inventory slot:
-- **`ItemData.maxStack`**: Clamped to `[Range(1, 20)]`. Any value above 20 is strictly prohibited and automatically clamped in `OnValidate()`.
-- Stackable items (crops, food, ingredients, materials, seeds, monster drops): `maxStack = 20`.
-- Non-stackable equipment (weapons, tools, trophies): `maxStack = 1`.
-
-### 1.8 Event-Driven Lighting Observers
-Lighting transitions (sun rotation, color temperature, safe-zone lamps) must never poll or evaluate per-frame in `Update()`. They must listen directly to `TimeManager.Instance.OnPhaseChanged`:
-```csharp
-private void OnEnable()
-{
-    if (TimeManager.Instance != null)
-        TimeManager.Instance.OnPhaseChanged += HandlePhaseChanged;
-}
-private void OnDisable()
-{
-    if (TimeManager.Instance != null)
-        TimeManager.Instance.OnPhaseChanged -= HandlePhaseChanged;
-}
-```
-
-### 1.9 MaterialPropertyBlock for Dynamic Parameter Fading
-Never instantiate material copies via `renderer.material` for dynamic parameter updates (such as building dither fading or hit flashes). Always use `MaterialPropertyBlock` to preserve GPU Resident Drawer instancing and prevent RAM leaks:
-```csharp
-private static readonly int DitherFadeID = Shader.PropertyToID("_DitherFade");
-private MaterialPropertyBlock propertyBlock;
-
-// In Awake: propertyBlock = new MaterialPropertyBlock();
-targetRenderer.GetPropertyBlock(propertyBlock);
-propertyBlock.SetFloat(DitherFadeID, targetFade);
-targetRenderer.SetPropertyBlock(propertyBlock);
-```
-
-### 1.10 Safe Transaction & Rollback Pattern (Crafting / Production Stations)
+### 1.6 Safe Transaction & Rollback Pattern
 Production stations that consume resources over time must implement atomic snapshot and rollback safety:
 ```csharp
 // 1. Snapshot and consume immediately on start
@@ -144,122 +65,76 @@ foreach (var ing in recipe.ingredients)
     inventory.RemoveItem(ing.item, ing.quantity);
     _consumedSnapshots.Add(new ConsumedIngredientSnapshot { item = ing.item, quantity = ing.quantity });
 }
-
 // 2. Rollback immediately if cancelled or interrupted
 public void CancelCooking(bool refundIngredients = true)
 {
     if (CurrentState != CookingState.Cooking) return;
     if (_cookingCoroutine != null) StopCoroutine(_cookingCoroutine);
-
     if (refundIngredients && _activeInventory != null)
     {
-        foreach (var snap in _consumedSnapshots)
-            _activeInventory.AddItem(snap.item, snap.quantity);
+        foreach (var snap in _consumedSnapshots) _activeInventory.AddItem(snap.item, snap.quantity);
         if (_consumedWater > 0f && PlayerWaterBottle.Instance != null)
             PlayerWaterBottle.Instance.RefillWater(_consumedWater);
     }
     _consumedSnapshots.Clear();
-    SetState(CookingState.Cancelled);
     SetState(CookingState.Idle);
 }
-
-// 3. Finalize output and clear snapshot when timer finishes
-inventory.AddItem(recipe.output, recipe.outputCount);
-_consumedSnapshots.Clear();
 ```
 
-### 1.11 Decoupled Backend Controller & View/Presenter
-Never mix state management, countdown routines, or inventory mutations inside UI managers:
-- **Backend Controller (`KitchenStove`)**: Owns `CookingState`, runs `CookingTimerRoutine`, performs validations, and executes safe transactions. Broadcasts C# events (`OnCookingStateChanged`, `OnCookingProgress`, etc.).
-- **View / Presenter (`StoveUIManager`)**: Subscribes to backend events, updates UI elements (buttons, sliders, labels), forwards user clicks to the backend controller, and unsubscribes cleanly on close.
+### 1.7 Combat Input Buffering & Combo State Transition
+Melee attacks allow smooth input queues during active animations:
+- Cache input click (`hasBufferedAttack = true`, `bufferedAttackTime = Time.time`).
+- Inside animation coroutine, consume buffer when reaching combo branch window (`timer > minLock` or normalized time > 0.35).
+- Use generous combo reset window (`ComboResetWindow = 1.5f`) so players can naturally complete 3-hit sequences.
 
-### 1.12 Dynamic Post-Processing Juice Impulses
-Avoid static post-processing for combat feel. Cache Volume overrides and trigger zero-GC dynamic impulses:
+### 1.8 Zero-GC Object Pooling (Combat UI & Entities)
+Do not instantiate/destroy floating UI or monsters during runtime gameplay. Pre-allocate pool instances, reset state upon spawn, and return to pool on death/fadeout:
 ```csharp
-if (_volume != null && _volume.profile.TryGet(out _chromaticAberration))
-{
-    // Cached override reference
-}
-
-public void TriggerCombatImpulse(float duration, float maxIntensity)
-{
-    if (_chromaticAberration == null) return;
-    if (_impulseCoroutine != null) StopCoroutine(_impulseCoroutine);
-    _impulseCoroutine = StartCoroutine(CombatImpulseRoutine(duration, maxIntensity));
-}
+// Example: EnemyHealthBarManager prewarms 20 EnemyOverheadBarUI instances in Awake
 ```
 
-### 1.13 Linked Additional Renderers & Dynamic Texture Sync in Occlusion Fading
-Wall-mounted accessories (bedroom mirrors, wood frames, wall sconces, paintings) must fade synchronously with parent walls. When applying transparent materials, dynamic textures (`RenderTexture`) and UV transforms (`_BaseMap_ST`) must be explicitly synchronized:
+### 1.9 MaterialPropertyBlock for Dynamic Parameter Fading
+Never instantiate material copies via `renderer.material` for dynamic parameters (dither fading, hit flashes). Use `MaterialPropertyBlock` to preserve GPU Resident Drawer (BRG) instancing:
 ```csharp
-// In WallOccluder: synchronize dynamic texture & UV scale/offset to transparent material
-if (orig.HasProperty("_BaseMap") && trans.HasProperty("_BaseMap"))
-{
-    var tex = orig.GetTexture("_BaseMap");
-    if (tex != null && trans.GetTexture("_BaseMap") != tex)
-        trans.SetTexture("_BaseMap", tex);
-    trans.SetTextureScale("_BaseMap", orig.GetTextureScale("_BaseMap"));
-    trans.SetTextureOffset("_BaseMap", orig.GetTextureOffset("_BaseMap"));
-}
+targetRenderer.GetPropertyBlock(propertyBlock);
+propertyBlock.SetFloat(ShaderPropertyID, targetValue);
+targetRenderer.SetPropertyBlock(propertyBlock);
 ```
 
-### 1.14 Camera Proximity Geometry Detection (Zero-GC Non-Alloc)
-Detect foliage canopy or overhang geometry penetrating close to the camera without allocating heap memory:
-```csharp
-// Pre-allocated non-alloc buffer
-private readonly Collider[] cameraProximityBuffer = new Collider[16];
+### 1.10 Item Stack Size Invariant (Max Stack = 20)
+All stackable items enforce a strict maximum ceiling of 20 units per slot:
+- `ItemData.maxStack` is clamped to `[Range(1, 20)]`. Any value > 20 is clamped in `OnValidate()`.
+- Equipment, weapons, and trophies have `maxStack = 1`.
 
-int hitCount = Physics.OverlapSphereNonAlloc(
-    camPos, 
-    cameraProximityRadius, 
-    cameraProximityBuffer, 
-    occluderLayerMask.value, 
-    QueryTriggerInteraction.Collide
-);
-for (int i = 0; i < hitCount; i++)
-{
-    var occluder = cameraProximityBuffer[i].GetComponentInParent<WallOccluder>();
-    if (occluder != null) RegisterOccluder(occluder);
-}
-```
+### 1.11 Linked Additional Renderers & Dynamic Texture Sync
+Wall-mounted accessories (mirrors, frames, lanterns) must fade synchronously with parent walls. When applying transparent materials, dynamic textures (`RenderTexture`) and UV transforms (`_BaseMap_ST`) must be explicitly synchronized.
 
-### 1.15 Dedicated Off-Screen Secondary Camera Checklist
-Auxiliary cameras rendering to `RenderTexture` (e.g., wardrobe mirror) must follow this strict configuration:
-- `depth = -100`: Render prior to the main camera so buffers are ready for the primary frame pass.
-- `UniversalAdditionalCameraData.renderType = CameraRenderType.Base`.
-- `UniversalAdditionalCameraData.renderPostProcessing = false`: Zero post-processing recursion or VRAM duplication.
-- `AudioListener.enabled = false`: Avoid duplicate listener warnings.
-- `camera.enabled = false` by default: Activate strictly while interacting in the feature mode.
-- Idempotent `targetTexture` binding and explicit aspect ratio (e.g., `0.5f` for portrait mirror).
+### 1.12 Dedicated Secondary Camera Configuration
+Auxiliary cameras rendering to `RenderTexture` (e.g., wardrobe mirror) must follow:
+- `depth = -100` (renders before main camera passes).
+- `renderType = Base` and `renderPostProcessing = false` (zero recursive post-processing).
+- `AudioListener.enabled = false` (avoids duplicate listener warnings).
+- `camera.enabled = false` by default; activated strictly during active interaction.
 
 ---
 
 ## 2. Coding Standards & Conventions
 
 ### 2.1 Namespaces & Naming
-- Modular namespaces under `Features<ModuleName>`:
-  - `FeaturesCamera`, `FeaturesInteraction`, `FeaturesInventory`, `FeaturesKitchen`, `FeaturesTrophy`, `FeaturesWardrobe`.
-- Public Classes, Methods, Properties, Enums: **`PascalCase`**
+- Modular namespaces under `Features<ModuleName>`: `FeaturesCamera`, `FeaturesCombat`, `FeaturesInventory`, `FeaturesKitchen`, `FeaturesPersistence`, `FeaturesTime`, `FeaturesWardrobe`.
+- Classes, Methods, Properties, Enums: **`PascalCase`**
 - Private Fields: **`camelCase`** or **`_camelCase`**
 - Local Variables & Parameters: **`camelCase`**
 
 ### 2.2 TextMeshPro Exclusivity
 - ❌ Do not use legacy `UnityEngine.UI.Text`.
 - ✅ Always use `TMPro.TextMeshProUGUI`.
-- Set explicit vertical and horizontal alignment; truncate overflowing text with ellipsis where appropriate.
 
 ### 2.3 New Input System Standard
-- ❌ Avoid legacy `Input.GetKeyDown(KeyCode.Escape)`.
-- ✅ Use the New Input System API:
-  ```csharp
-  if (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame)
-  {
-      ClosePanel();
-  }
-  ```
+- ❌ Do not use legacy `Input.GetKeyDown()`.
+- ✅ Use `UnityEngine.InputSystem`: `Keyboard.current.escapeKey.wasPressedThisFrame`, `Mouse.current.leftButton`.
 
 ### 2.4 Defensive Dependency Resolution in `Awake()`
-Do not rely solely on Inspector assignments for components residing on the same GameObject:
 ```csharp
 private void Awake()
 {
@@ -268,24 +143,25 @@ private void Awake()
 }
 ```
 
+### 2.5 100% English Mandate
+All code identifiers, comments, Inspector attributes (`Header`, `Tooltip`), UI text, log messages, and ScriptableObject fields must be written exclusively in English.
+
 ---
 
 ## 3. Strict Anti-Patterns (PROHIBITED)
 
-1. ❌ **Direct Camera State Mutating**: Never call `camera.enabled` or change camera transforms outside `CameraManager.Instance.SetMode()`.
-2. ❌ **Manual Input Locking**: Never toggle `PlayerControl.isInputLocked` manually from feature scripts; `CameraManager` owns this state.
+1. ❌ **Direct Camera State Mutating**: Never call `camera.enabled` or alter camera transforms outside `CameraManager.Instance.SetMode()`.
+2. ❌ **Manual Input Locking**: Never toggle `PlayerControl.isInputLocked` manually; `CameraManager` owns this state.
 3. ❌ **UI Polling**: Never poll backend inventories or station timers inside UI `Update()` methods; rely on events.
 4. ❌ **Event Leaks**: Never subscribe to events without unsubscribing in `OnDisable()`.
-5. ❌ **Hardcoded Layer Indices**: Never hardcode integers for physics layers; use `LayerMask.NameToLayer("LayerName")` or `LayerMask.GetMask("LayerName")`.
-6. ❌ **Disabling Cameras via `SetActive(false)`**: Disable the `Camera` component instead (`camera.enabled = false`) to avoid AudioListener conflicts and hierarchy churn.
+5. ❌ **Hardcoded Layer Indices**: Never hardcode integers for physics layers; use `LayerMask.NameToLayer("LayerName")`.
+6. ❌ **Disabling Cameras via `SetActive(false)`**: Disable the `Camera` component instead (`camera.enabled = false`) to avoid AudioListener conflicts.
 7. ❌ **Blind Editor Automation Scripts**: Never create ad-hoc `Assets/Editor/*Setup*.cs` menu scripts that blindly alter scene hierarchy. Use targeted MCP commands.
-8. ❌ **Alpha Blended Building Materials**: Never use `Transparent` render queue (`ZWrite Off`) for buildings, roofs, or walls. Always use Bayer $4 \times 4$ Dithered Alpha Clipping (`RenderType = Opaque`, `ZWrite On`) to preserve depth buffer and physical shadow map projection.
-9. ❌ **`UniversalForward` in Deferred+ Pipelines**: Never tag custom opaque forward shaders with `Tags { "LightMode" = "UniversalForward" }` in Deferred+. Use `Tags { "LightMode" = "UniversalForwardOnly" }` so that geometry is rendered by the forward-only opaque pass rather than dropped by the GBuffer pass.
-10. ❌ **Static Batching in GPU Resident Drawer (BRG) Pipelines**: Never enable Unity Static Batching when using BRG (`gpuResidentDrawerMode: InstancedDrawing`). Static batching duplicates vertex data into CPU RAM and fractures instanced draw batches.
-11. ❌ **UI Managers Mutating Inventories or Running Logic Timers**: UI components must never invoke `inventory.RemoveItem()`, `inventory.AddItem()`, or execute backend countdown coroutines. All mutations and timers belong strictly to backend controllers/services.
-12. ❌ **Secondary Cameras Executing Post-Processing Passes**: Mirror or auxiliary off-screen render texture cameras must explicitly set `renderPostProcessing = false` on `UniversalAdditionalCameraData` to prevent redundant tonemapping/blur passes and eliminate VRAM bloat.
-13. ❌ **Sub-Millimeter Camera Near Clip Planes**: Never set `Camera.main.nearClipPlane < 0.03f` in Deferred+ rendering pipelines. Excessively small near-plane distances compress 24-bit depth buffer precision and cause severe Z-fighting across distant geometry. Use `0.08f` combined with proximity occlusion fading instead.
-14. ❌ **One-Sided Alpha-Tested Canopy Materials**: Never leave top-down foliage materials with `_Cull = 2` (Back). Overhead isometric angles expose underside leaf polygons; always set `_Cull = 0` (Two-Sided) to avoid black or invisible leaf artifacts.
-15. ❌ **Blind Material Swapping on Dynamic Texture Surfaces**: Never swap materials on objects with dynamic textures or customized UV tiling/offset without copying the active `RenderTexture` and `_BaseMap_ST` scale and offset to the replacement material.
-
-
+8. ❌ **Alpha Blended Building Materials**: Never use `Transparent` render queue (`ZWrite Off`) for buildings, roofs, or walls. Always use Bayer $4 \times 4$ Dithered Alpha Clipping (`RenderType = Opaque`, `ZWrite On`) to preserve depth prepass and physical shadow maps.
+9. ❌ **`UniversalForward` in Deferred+ Pipelines**: Never tag custom opaque forward shaders with `LightMode = UniversalForward` in Deferred+. Use `Tags { "LightMode" = "UniversalForwardOnly" }`.
+10. ❌ **Static Batching in GPU Resident Drawer (BRG) Pipelines**: Never enable Unity Static Batching when using BRG (`gpuResidentDrawerMode: InstancedDrawing`). Static batching duplicates vertex data into CPU RAM and fractures instanced batches.
+11. ❌ **UI Managers Mutating Inventories or Running Logic Timers**: UI components must never invoke inventory mutations or run backend countdown coroutines.
+12. ❌ **Secondary Cameras Executing Post-Processing**: Mirror or auxiliary render texture cameras must set `renderPostProcessing = false` on `UniversalAdditionalCameraData`.
+13. ❌ **Sub-Millimeter Camera Near Clip Planes**: Never set `Camera.main.nearClipPlane < 0.03f` in Deferred+. Use `0.08f` combined with proximity occlusion fading instead.
+14. ❌ **One-Sided Alpha-Tested Canopy Materials**: Never leave top-down foliage materials with `_Cull = 2` (Back). Always set `_Cull = 0` (Two-Sided) to avoid black or invisible leaf artifacts.
+15. ❌ **Blind Material Swapping on Dynamic Texture Surfaces**: Never swap materials on objects with dynamic textures without copying the active `RenderTexture` and `_BaseMap_ST` scale and offset.

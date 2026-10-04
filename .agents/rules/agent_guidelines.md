@@ -5,9 +5,10 @@ Primary operating guidelines, behavioral constraints, and Git workflow rules for
 ---
 
 ## 1. Identity & System Context
+
 - **Project**: Farm-Beware
 - **Engine**: Unity 6000.3.20f1 (Unity 6 / 2023 LTS)
-- **Render Pipeline**: Universal Render Pipeline (URP)
+- **Render Pipeline**: Universal Render Pipeline (URP Deferred+)
 - **Tooling**: Unity MCP (Model Context Protocol). The agent can and must inspect scene hierarchy, run in-memory Roslyn C# code (`execute_code`), and inspect console logs (`read_console`) autonomously.
 - **Audience**: Senior Engineer. Code must adhere to strict OOP principles, data-driven architecture, and zero-leak event lifecycles. Avoid explaining basic programming concepts.
 
@@ -15,17 +16,22 @@ Primary operating guidelines, behavioral constraints, and Git workflow rules for
 
 ## 2. Agent Operational Laws
 
-### 2.1 Token Discipline & Communication
-- Keep responses dense, technical, and structured without unnecessary conversational filler or apologies.
-- Reference code using standard markdown links: `path/File.cs:LINE`.
+### 2.1 Rule File Character Limit (Hard Constraint)
+- All markdown rule files under `.agents/rules/*.md` MUST strictly remain under **12,000 characters** (`MAX_CONTENT_LENGTH = 12,000`).
+- Any frontmatter description MUST stay under **250 characters** (`MAX_DESCRIPTION_LENGTH = 250`).
+- Keep rule content dense, technical, and free of redundant ASCII bloat to avoid exceeding the Antigravity IDE Custom Rule Editor character ceiling.
+
+### 2.2 Token Discipline & Communication
+- Keep responses dense, technical, and structured without conversational filler or apologies.
+- Reference code using standard markdown links: `[File.cs](file:///path/to/File.cs#L10)`.
 - Apply single-concern edits: avoid unrequested drive-by refactorings.
 
-### 2.2 No Editor Setup Scripts (Hard Rule)
-- ❌ **NEVER** write or execute temporary editor wiring scripts (`Assets/Editor/*Setup*.cs` or `[MenuItem("...")]`).
+### 2.3 No Editor Setup Scripts (Hard Rule)
+- ❌ **NEVER** write temporary editor wiring scripts (`Assets/Editor/*Setup*.cs` or `[MenuItem("...")]`).
 - These scripts mutate scenes blindly and introduce duplicate controllers or broken serialized references.
 - ✅ **Use Direct MCP Tools**: Inspect and modify scenes exclusively via MCP tools (`execute_code`, `manage_scene`, `manage_gameobject`, `manage_components`).
 
-### 2.3 Self-Healing Protocol (MCP-First)
+### 2.4 Self-Healing Protocol (MCP-First)
 - Never ask the user to paste console logs or describe the scene:
   1. Pull active console logs via `read_console` (filter: `error`).
   2. Identify the exact root cause and file line.
@@ -33,25 +39,18 @@ Primary operating guidelines, behavioral constraints, and Git workflow rules for
   4. Trigger domain compilation via `refresh_unity` (compile: `request`).
   5. Verify that console logs reach 0 errors.
 
-### 2.4 Pure Logic vs. Thin Adapter Separation
+### 2.5 Pure Logic vs. Thin Adapter Separation
 - Decouple pure computation from `MonoBehaviour`.
-- Grid math, buff formulas, inventory math, recipe evaluation, and sorting algorithms must reside in POCO C# classes with zero Unity lifecycle dependencies.
+- Grid math, buff formulas, inventory math, recipe evaluation, and combat logic reside in POCO C# classes with zero Unity lifecycle dependencies.
 - `MonoBehaviour` instances act strictly as **Thin Adapters**: handling input events, pumping updates, and routing engine API calls.
 
-### 2.5 File Hygiene & Cache Boundaries
-- ❌ **NEVER** search, index, or parse engine cache folders:
-  `Library/`, `Temp/`, `Obj/`, `Logs/`, `UserSettings/`, `Builds/`, `.vs/`.
+### 2.6 File Hygiene & Cache Boundaries
+- ❌ **NEVER** search, index, or parse engine cache folders: `Library/`, `Temp/`, `Obj/`, `Logs/`, `UserSettings/`, `Builds/`, `.vs/`.
 - ❌ Do not touch `.meta` files manually without GUID synchronization. Always use `AssetDatabase.MoveAsset` when relocating assets.
 
-### 2.6 Language Mandate (100% English Hard Rule)
+### 2.7 Language Mandate (100% English Hard Rule)
 - ❌ **STRICTLY PROHIBITED**: Writing any code identifiers, comments, logs, Inspector attributes (`Header`, `Tooltip`), user-facing UI labels, HUD prompts, interaction labels (`WorldLabel.displayName`), or ScriptableObject fields in Indonesian or any other non-English language.
-- ✅ **ALL English Everywhere**:
-  1. Code identifiers, class/method/variable names, and docstrings.
-  2. Inspector `[Header]`, `[Tooltip]`, `[SerializeField]` descriptions.
-  3. User-facing UI text, HUD prompts, interaction labels, and floating combat text.
-  4. Log messages (`Debug.Log`, `Debug.LogWarning`, `Debug.LogError`).
-  5. ScriptableObject data assets (item names, descriptions, recipe names, buff descriptions).
-  6. Documentation and operational rule files.
+- ✅ **ALL English Everywhere**: Code identifiers, Inspector attributes, UI text, logs, ScriptableObjects, and technical documentation.
 
 ---
 
@@ -62,7 +61,7 @@ The repository operates on a strict 3-Layer branch architecture:
 ### 3.1 Branch Layers
 1. **Layer 1 (Tech Lead)**: `main` (Production) & `staging` (Testing)
 2. **Layer 2 (Lead Dev)**: `development` / `dev` (Primary Integration)
-3. **Layer 3 (Programmer/Agent)**: `<programmer_name>` (e.g., `rafi-branch`). **Exclusive agent workspace.**
+3. **Layer 3 (Programmer/Agent)**: `<programmer_name>` (e.g., `Sprint-branch` / `rafi-branch`). **Exclusive agent workspace.**
 
 ### 3.2 Branching Constraints
 - Agents are **STRICTLY PROHIBITED** from creating new feature branches (`git checkout -b feature/...`).
