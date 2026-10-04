@@ -3233,7 +3233,7 @@ MonoBehaviour:
   attackStaminaCost: 15
   allowBareHandsAttack: 1
   attackAnimationSpeed: 1.6
-  comboResetWindow: 0.9
+  comboResetWindow: 1.5
   comboDamageMultipliers:
   - 1
   - 1.2

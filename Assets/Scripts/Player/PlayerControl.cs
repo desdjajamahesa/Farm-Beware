@@ -22,6 +22,10 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
     public float attackLockDuration = 1.1f;
     private bool isAttacking = false;
     private bool isSkillLeaping = false;
+    private bool isLightAttacking = false;
+    private bool hasBufferedAttack = false;
+    private float bufferedAttackTime = 0f;
+    private Coroutine attackCoroutine = null;
     private float idleFidgetTimer = 0f;
     public bool IsAttacking => isAttacking;
 
@@ -543,15 +547,15 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
 
     // --- LOGIKA AKSI ---
 
-    // Klik Kiri Mouse / Tombol F: Serangan Kombo Biasa (3-Hit Combo)
     // Klik Kiri Mouse / Tombol F: Serangan Kombo Biasa (3-Hit Combo) / Dash Attack saat berlari / Heavy Strike jika ditahan
     // Klik Kanan Mouse / Tombol R: Jurus Spesial (Leap Strike)
     private void HandleAttackInput()
     {
-        if (isInputLocked || isPlanting || isAttacking)
+        if (isInputLocked || isPlanting)
         {
             isChargingAttack = false;
             attackHoldDuration = 0f;
+            hasBufferedAttack = false;
             return;
         }
 
@@ -584,17 +588,20 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
         if (playerEquipment == null)
             playerEquipment = GetComponent<PlayerEquipment>() ?? gameObject.AddComponent<PlayerEquipment>();
 
-        if (qKey)
+        // Priority Special Actions (Kick, Leap, Taunt)
+        if (qKey && !isSkillLeaping)
         {
             isChargingAttack = false;
             attackHoldDuration = 0f;
+            hasBufferedAttack = false;
             if (playerEquipment != null && playerEquipment.TryPerformKick())
             {
+                if (attackCoroutine != null) { StopCoroutine(attackCoroutine); attackCoroutine = null; }
                 StartCoroutine(RoutineKick());
             }
             return;
         }
-        else if (tKey)
+        else if (tKey && !isAttacking)
         {
             if (animator != null && isGrounded)
             {
@@ -603,18 +610,71 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
             }
             return;
         }
-        else if (rightClick || rKey)
+        else if ((rightClick || rKey) && !isSkillLeaping)
         {
             isChargingAttack = false;
             attackHoldDuration = 0f;
+            hasBufferedAttack = false;
             if (playerEquipment != null && playerEquipment.TryPerformSkillAttack())
             {
+                if (attackCoroutine != null) { StopCoroutine(attackCoroutine); attackCoroutine = null; }
                 StartCoroutine(RoutineSkillAttack());
             }
             return;
         }
 
-        // --- Melee Attack Processing (Light Combo / Dash Attack / Charged Heavy) ---
+        // If performing heavy attack, kick, skill leap, or dash attack, block light attacks
+        if (isAttacking && !isLightAttacking)
+        {
+            isChargingAttack = false;
+            attackHoldDuration = 0f;
+            hasBufferedAttack = false;
+            return;
+        }
+
+        // --- COMBO ADVANCEMENT / BUFFERING DURING LIGHT ATTACK ---
+        if (isLightAttacking)
+        {
+            if (attackPressed)
+            {
+                if (playerEquipment != null && playerEquipment.TryPerformAttack())
+                {
+                    StartLightAttack();
+                    hasBufferedAttack = false;
+                }
+                else
+                {
+                    hasBufferedAttack = true;
+                    bufferedAttackTime = Time.time;
+                }
+            }
+            else if (hasBufferedAttack)
+            {
+                if (Time.time - bufferedAttackTime > 0.45f)
+                {
+                    hasBufferedAttack = false;
+                }
+                else if (playerEquipment != null && playerEquipment.TryPerformAttack())
+                {
+                    StartLightAttack();
+                    hasBufferedAttack = false;
+                }
+            }
+            return;
+        }
+
+        // Consume buffered attack right after returning to Idle
+        if (hasBufferedAttack)
+        {
+            hasBufferedAttack = false;
+            if (Time.time - bufferedAttackTime <= 0.45f && playerEquipment != null && playerEquipment.TryPerformAttack())
+            {
+                StartLightAttack();
+                return;
+            }
+        }
+
+        // --- Standard Melee Attack Processing (Light Combo / Dash Attack / Charged Heavy) ---
         if (attackPressed)
         {
             // If running/sprinting at high speed, trigger instantaneous Dash Attack!
@@ -625,6 +685,7 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
                     StartCoroutine(RoutineDashAttack());
                     isChargingAttack = false;
                     attackHoldDuration = 0f;
+                    hasBufferedAttack = false;
                     return;
                 }
             }
@@ -661,7 +722,7 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
                     // Released quickly -> Standard 3-Hit Combo Light Attack!
                     if (playerEquipment != null && playerEquipment.TryPerformAttack())
                     {
-                        StartCoroutine(RoutineAttack());
+                        StartLightAttack();
                     }
                 }
                 attackHoldDuration = 0f;
@@ -672,6 +733,8 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
     private IEnumerator RoutineDashAttack()
     {
         isAttacking = true;
+        isLightAttacking = false;
+        hasBufferedAttack = false;
         if (animator != null)
             animator.SetBool("IsAttacking", true);
 
@@ -695,6 +758,8 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
     private IEnumerator RoutineHeavyAttack()
     {
         isAttacking = true;
+        isLightAttacking = false;
+        hasBufferedAttack = false;
         if (animator != null)
             animator.SetBool("IsAttacking", true);
 
@@ -719,9 +784,20 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
             animator.SetBool("IsAttacking", false);
     }
 
+    private void StartLightAttack()
+    {
+        if (attackCoroutine != null)
+        {
+            StopCoroutine(attackCoroutine);
+            attackCoroutine = null;
+        }
+        attackCoroutine = StartCoroutine(RoutineAttack());
+    }
+
     private IEnumerator RoutineAttack()
     {
         isAttacking = true;
+        isLightAttacking = true;
         if (animator != null)
             animator.SetBool("IsAttacking", true);
 
@@ -730,12 +806,26 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
 
         float atkSpeed = (playerEquipment != null) ? Mathf.Max(0.5f, playerEquipment.AttackAnimationSpeed) : 1f;
         float maxLock = attackLockDuration / atkSpeed;
-        float minLock = 0.30f / atkSpeed;
+        float minLock = 0.20f / atkSpeed;
 
         float timer = 0f;
         while (timer < maxLock)
         {
             timer += Time.deltaTime;
+
+            if (hasBufferedAttack && playerEquipment != null)
+            {
+                if (Time.time - bufferedAttackTime > 0.45f)
+                {
+                    hasBufferedAttack = false;
+                }
+                else if (playerEquipment.TryPerformAttack())
+                {
+                    hasBufferedAttack = false;
+                    StartLightAttack();
+                    yield break;
+                }
+            }
 
             if (timer > minLock && animator != null)
             {
@@ -751,6 +841,8 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
         }
 
         isAttacking = false;
+        isLightAttacking = false;
+        attackCoroutine = null;
         if (animator != null)
             animator.SetBool("IsAttacking", false);
     }
@@ -758,6 +850,8 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
     private IEnumerator RoutineKick()
     {
         isAttacking = true;
+        isLightAttacking = false;
+        hasBufferedAttack = false;
         if (animator != null)
             animator.SetBool("IsAttacking", true);
 
@@ -784,6 +878,8 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
         }
 
         isAttacking = false;
+        isLightAttacking = false;
+        hasBufferedAttack = false;
         if (animator != null)
             animator.SetBool("IsAttacking", false);
     }
@@ -791,6 +887,8 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
     private IEnumerator RoutineSkillAttack()
     {
         isAttacking = true;
+        isLightAttacking = false;
+        hasBufferedAttack = false;
         isSkillLeaping = true;
         if (animator != null)
             animator.SetBool("IsAttacking", true);

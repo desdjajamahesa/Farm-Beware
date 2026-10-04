@@ -31,7 +31,16 @@ public class PlayerEquipment : MonoBehaviour
 
     [Header("Pengaturan Kombo Serangan (Mixamo)")]
     [Tooltip("Waktu maksimal (detik) antar klik untuk melanjutkan ke pukulan kombo berikutnya sebelum reset.")]
-    [SerializeField] private float comboResetWindow = 0.9f;
+    [SerializeField] private float comboResetWindow = 1.5f;
+    public float ComboResetWindow
+    {
+        get => comboResetWindow;
+        set
+        {
+            comboResetWindow = value;
+            if (combatStateMachine != null) combatStateMachine.ComboResetWindow = value;
+        }
+    }
 
     [Tooltip("Pengali damage untuk masing-masing pukulan kombo: Hit 1, Hit 2, Hit 3 (Finisher).")]
     [SerializeField] private float[] comboDamageMultipliers = new float[] { 1.0f, 1.2f, 1.5f };
@@ -185,7 +194,7 @@ public class PlayerEquipment : MonoBehaviour
         // Cegah spam klik jika animasi serang saat ini baru dimulai (izinkan combo window di tengah/akhir animasi)
         if (animator != null)
         {
-            var state = animator.GetCurrentAnimatorStateInfo(0);
+            var state = animator.IsInTransition(0) ? animator.GetNextAnimatorStateInfo(0) : animator.GetCurrentAnimatorStateInfo(0);
             if (IsAttackState(state) && state.normalizedTime < 0.35f)
             {
                 return false;
@@ -247,6 +256,7 @@ public class PlayerEquipment : MonoBehaviour
             atkSpdMultiplier *= attackAnimationSpeed;
 
             animator.speed = atkSpdMultiplier;
+            animator.ResetTrigger(attackTriggerName);
             animator.SetInteger("ComboIndex", currentComboIndex);
             animator.SetTrigger(attackTriggerName);
 

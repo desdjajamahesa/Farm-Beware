@@ -78,6 +78,16 @@ Konsolidasi dokumentasi teknis dari seluruh kontributor tim pengembang (`Rafi`, 
 - **Error Kompilasi CS1061 pada `NightBrawlManager` `[Rafi]`**:
   - Menambahkan deklarasi event publik `public event System.Action<EnemyBase> OnEnemyDied;` pada `NightBrawlManager` dan memanggilnya di dalam `HandleEnemyDied()`, menyelesaikan error kompilasi pada `BossHealthBarManager` dan `EnemyHealthBarManager`.
   - Mendaftarkan seluruh berkas `.meta` Unity yang dihasilkan ke Git tracking.
+- **Sistem Rangkaian 3-Hit Combo & Input Buffering ([`PlayerControl.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Player/PlayerControl.cs), [`PlayerEquipment.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Player/PlayerEquipment.cs), [`MeleeCombatStateMachine.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Combat/Melee/MeleeCombatStateMachine.cs)) `[Rafi]`**:
+  - Menyelesaikan masalah kombo tebasan 3 pukulan yang tidak pernah terpicu (selalu ter-reset menjadi pukulan pertama).
+  - **Penyebab**:
+    1. `PlayerControl.HandleAttackInput()` memotong klik saat `isAttacking == true`, menolak input pemain di sepanjang animasi (~1.05s).
+    2. `comboResetWindow` terkonfigurasi terlalu singkat (0.9s), sehingga `MeleeCombatStateMachine.Update()` mereset kombo kembali ke Idle sebelum durasi lock animasi selesai.
+    3. `TryPerformAttack()` membaca normalized time saat transisi belum selesai (`IsInTransition`), menyebabkan evaluasi timing kombo keliru.
+  - **Solusi**:
+    1. Memperpanjang batas waktu toleransi jeda pukulan kombo (`ComboResetWindow`) dari 0.9s menjadi 1.5s (baik di script maupun properti terserialisasi pada scene `StagingScene.unity`).
+    2. Mengimplementasikan antrean input buffering (`hasBufferedAttack`, batas 0.45s) pada `PlayerControl.RoutineAttack()` sehingga klik pemain selama ayunan pedang tersimpan dan langsung meluncurkan pukulan kombo berikutnya begitu jendela kombo terbuka (`normalizedTime >= 0.35f`).
+    3. Menambahkan sanitasi `animator.ResetTrigger(attackTriggerName)` sebelum memicu trigger baru untuk mencegah penumpukan trigger animasi.
 
 ---
 

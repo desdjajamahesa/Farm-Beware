@@ -15,7 +15,7 @@ namespace FeaturesCombat.Melee
         private float _currentChargeDuration = 0f;
 
         // Configurable Timing & Multipliers
-        public float ComboResetWindow { get; set; } = 0.9f;
+        public float ComboResetWindow { get; set; } = 1.5f;
         public float MinChargeForHeavy { get; set; } = 0.35f;
         public float MaxChargeDuration { get; set; } = 1.0f;
 
