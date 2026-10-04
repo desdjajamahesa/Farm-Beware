@@ -20,45 +20,92 @@ namespace FeaturesCombat
         [SerializeField] private Vector3 arenaCenter = new Vector3(21f, 0.5f, 36f);
 
         [Header("Front Gate Spawn Points")]
-        [Tooltip("Three spawn points located directly in front of the main entrance gate.")]
+        [Tooltip("Spawn points located at the front entrance gate area.")]
         [SerializeField] private Vector3[] frontGateSpawnPoints = new Vector3[3]
         {
-            new Vector3(16.5f, 0.08f, 53.0f), // Point 1: Left flank in front of gate
-            new Vector3(21.0f, 0.08f, 55.0f), // Point 2: Center direct approach in front of gate
-            new Vector3(25.5f, 0.08f, 53.0f)  // Point 3: Right flank in front of gate
+            new Vector3(37.4f, 0.08f, 64.2f), // Point 1: Left
+            new Vector3(21.9f, 0.08f, 64.6f), // Point 2: Center
+            new Vector3(9.6f, 0.08f, 64.5f)   // Point 3: Right
         };
 
-        [Tooltip("Optional transform anchors in the scene. If assigned, their positions will override frontGateSpawnPoints.")]
+        [Tooltip("Optional transform anchors in the scene. If assigned or found under MonsterSpawnPoints, their positions will override frontGateSpawnPoints.")]
         [SerializeField] private Transform[] frontGateSpawnTransforms;
 
         [Tooltip("Horizontal scatter radius around each spawn point to prevent overlapping spawns.")]
-        [SerializeField] private float spawnScatterRadius = 1.2f;
+        [SerializeField] private float spawnScatterRadius = 1.0f;
 
         public IReadOnlyList<Vector3> FrontGateSpawnPoints => frontGateSpawnPoints;
         public Transform[] FrontGateSpawnTransforms => frontGateSpawnTransforms;
         public float SpawnScatterRadius => spawnScatterRadius;
 
-        public Vector3 GetSpawnPoint(int index)
+        /// <summary>
+        /// Mengumpulkan seluruh titik spawn aktif dari MonsterSpawnPoints (dan children-nya) atau frontGateSpawnTransforms.
+        /// Menghormati 100% posisi yang ditentukan user di scene.
+        /// </summary>
+        public List<Vector3> GetAllActiveSpawnPoints()
         {
-            if (frontGateSpawnTransforms != null && index >= 0 && index < frontGateSpawnTransforms.Length && frontGateSpawnTransforms[index] != null)
+            var points = new List<Vector3>();
+
+            // 1. Cek dari GameObject MonsterSpawnPoints di hierarki scene
+            var mspObj = GameObject.Find("MonsterSpawnPoints");
+            if (mspObj != null)
             {
-                Vector3 p = frontGateSpawnTransforms[index].position;
-                // Validasi agar spawn point tetap berada di koridor depan gerbang utama (X: [14, 28], Z: [50, 60])
-                if (p.x >= 14f && p.x <= 28f && p.z >= 50f && p.z <= 60f)
+                if (mspObj.transform.childCount > 0)
                 {
-                    return p;
+                    for (int i = 0; i < mspObj.transform.childCount; i++)
+                    {
+                        var child = mspObj.transform.GetChild(i);
+                        if (child != null && child.gameObject.activeInHierarchy)
+                        {
+                            points.Add(child.position);
+                        }
+                    }
+                }
+                else
+                {
+                    points.Add(mspObj.transform.position);
                 }
             }
-            if (frontGateSpawnPoints != null && index >= 0 && index < frontGateSpawnPoints.Length)
+
+            // 2. Jika tidak ada / kosong, cek frontGateSpawnTransforms yang di-assign di inspector
+            if (points.Count == 0 && frontGateSpawnTransforms != null && frontGateSpawnTransforms.Length > 0)
             {
-                return frontGateSpawnPoints[index];
+                for (int i = 0; i < frontGateSpawnTransforms.Length; i++)
+                {
+                    if (frontGateSpawnTransforms[i] != null)
+                    {
+                        points.Add(frontGateSpawnTransforms[i].position);
+                    }
+                }
             }
-            return index switch
+
+            // 3. Fallback default jika masih kosong
+            if (points.Count == 0)
             {
-                0 => new Vector3(16.5f, 0.08f, 53.0f),
-                1 => new Vector3(21.0f, 0.08f, 55.0f),
-                _ => new Vector3(25.5f, 0.08f, 53.0f)
-            };
+                if (frontGateSpawnPoints != null && frontGateSpawnPoints.Length > 0)
+                {
+                    points.AddRange(frontGateSpawnPoints);
+                }
+                else
+                {
+                    points.Add(new Vector3(37.4f, 0.08f, 64.2f));
+                    points.Add(new Vector3(21.9f, 0.08f, 64.6f));
+                    points.Add(new Vector3(9.6f, 0.08f, 64.5f));
+                }
+            }
+
+            return points;
+        }
+
+        public Vector3 GetSpawnPoint(int index)
+        {
+            var points = GetAllActiveSpawnPoints();
+            if (points != null && points.Count > 0)
+            {
+                int safeIndex = Mathf.Clamp(index, 0, points.Count - 1);
+                return points[safeIndex];
+            }
+            return new Vector3(21.9f, 0.08f, 64.6f);
         }
 
         [Header("Wave Progress")]
@@ -329,26 +376,21 @@ namespace FeaturesCombat
         }
 
         /// <summary>
-        /// Generates a spawn position chosen from one of the 3 points located directly in front of the front gate.
-        /// Applies a slight horizontal scatter radius and snaps to the walkable NavMesh surface.
+        /// Menghasilkan posisi spawn acak dari salah satu spawn point yang ditentukan (MonsterSpawnPoints dan children-nya).
+        /// Menerapkan scatter radius ringan dan memastikan posisi berada di atas permukaan tanah (ground raycast & NavMesh).
         /// </summary>
         public Vector3 CalculateRandomSpawnPoint()
         {
-            int pointIndex = UnityEngine.Random.Range(0, 3);
-            Vector3 basePoint = GetSpawnPoint(pointIndex);
-
-            // Double safety guard: pastikan basePoint berada di koridor depan gerbang
-            if (basePoint.x < 14f || basePoint.x > 28f || basePoint.z < 50f || basePoint.z > 60f)
+            var points = GetAllActiveSpawnPoints();
+            if (points == null || points.Count == 0)
             {
-                basePoint = pointIndex switch
-                {
-                    0 => new Vector3(16.5f, 0.08f, 53.0f),
-                    1 => new Vector3(21.0f, 0.08f, 55.0f),
-                    _ => new Vector3(25.5f, 0.08f, 53.0f)
-                };
+                return new Vector3(21.9f, 0.08f, 64.6f);
             }
 
-            // Slight scatter offset to prevent simultaneous spawns from clumping on the same exact coordinate
+            int pointIndex = UnityEngine.Random.Range(0, points.Count);
+            Vector3 basePoint = points[pointIndex];
+
+            // Sedikit scatter offset agar monster yang spawn serempak tidak menumpuk di titik yang sama persis
             Vector2 scatter = UnityEngine.Random.insideUnitCircle * spawnScatterRadius;
             Vector3 candidate = basePoint + new Vector3(scatter.x, 0f, scatter.y);
             candidate.y += 10f; // Elevate for ground raycast
@@ -356,25 +398,26 @@ namespace FeaturesCombat
             Vector3 finalPos = candidate;
             if (Physics.Raycast(candidate, Vector3.down, out RaycastHit hit, 30f, ~LayerMask.GetMask("Ignore Raycast"), QueryTriggerInteraction.Ignore))
             {
-                finalPos = hit.point + Vector3.up * 0.1f;
+                finalPos = hit.point + Vector3.up * 0.05f;
             }
             else
             {
                 finalPos.y = basePoint.y;
             }
 
-            // Snap precisely to nearest walkable NavMesh area, but ensure sample stays in front gate approach
-            if (NavMesh.SamplePosition(finalPos, out NavMeshHit navHit, 4f, NavMesh.AllAreas))
+            // Snap ke NavMesh walkable terdekat di sekitar titik spawn
+            if (NavMesh.SamplePosition(finalPos, out NavMeshHit navHit, 3.5f, NavMesh.AllAreas))
             {
-                if (navHit.position.z >= 49f && navHit.position.x >= 14f && navHit.position.x <= 28f)
-                {
-                    finalPos = navHit.position;
-                }
+                finalPos = navHit.position;
             }
 
-            // Strict clamp to front gate entrance corridor: monsters can NEVER spawn on western/backyard perimeters
-            finalPos.x = Mathf.Clamp(finalPos.x, 14f, 28f);
-            finalPos.z = Mathf.Clamp(finalPos.z, 50f, 58f);
+            // Jaga agar scatter/navmesh tidak memindahkan monster lebih dari 2.5m dari titik spawn yang ditentukan user
+            float distFromBase = Vector2.Distance(new Vector2(finalPos.x, finalPos.z), new Vector2(basePoint.x, basePoint.z));
+            if (distFromBase > 2.5f)
+            {
+                finalPos.x = basePoint.x + scatter.x;
+                finalPos.z = basePoint.z + scatter.y;
+            }
 
             return finalPos;
         }
@@ -627,11 +670,14 @@ namespace FeaturesCombat
         private void OnDrawGizmosSelected()
         {
             Gizmos.color = new Color(1f, 0.35f, 0.1f, 0.85f);
-            for (int i = 0; i < 3; i++)
+            var points = GetAllActiveSpawnPoints();
+            if (points != null)
             {
-                Vector3 p = GetSpawnPoint(i);
-                Gizmos.DrawWireSphere(p, spawnScatterRadius);
-                Gizmos.DrawSphere(p, 0.35f);
+                for (int i = 0; i < points.Count; i++)
+                {
+                    Gizmos.DrawWireSphere(points[i], spawnScatterRadius);
+                    Gizmos.DrawSphere(points[i], 0.35f);
+                }
             }
         }
     }
