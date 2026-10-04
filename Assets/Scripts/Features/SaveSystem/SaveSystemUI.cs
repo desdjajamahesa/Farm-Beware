@@ -4,6 +4,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.InputSystem;
 using TMPro;
+using FarmBeware.Core.Runtime;
 
 namespace FeaturesSaveSystem
 {
@@ -234,9 +235,10 @@ namespace FeaturesSaveSystem
                 SaveSystemManager.PendingSaveIdToLoad = null;
                 Debug.Log("[SaveSystemUI] Starting fresh New Game from SaveSystemUI...");
                 Close();
-                if (FeaturesCommon.FadeManager.Instance != null)
+                var fade = ServiceLocator.Resolve<IFadeService>();
+                if (fade != null)
                 {
-                    FeaturesCommon.FadeManager.Instance.FadeIn(0.4f, () =>
+                    fade.FadeIn(0.4f, () =>
                     {
                         UnityEngine.SceneManagement.SceneManager.LoadScene("StagingScene");
                     });
@@ -481,9 +483,10 @@ namespace FeaturesSaveSystem
                 Debug.Log($"[SaveSystemUI] Main Menu loading selected save '{saveId}', transitioning to StagingScene...");
                 Close();
 
-                if (FeaturesCommon.FadeManager.Instance != null)
+                var fade = ServiceLocator.Resolve<IFadeService>();
+                if (fade != null)
                 {
-                    FeaturesCommon.FadeManager.Instance.FadeIn(0.4f, () =>
+                    fade.FadeIn(0.4f, () =>
                     {
                         UnityEngine.SceneManagement.SceneManager.LoadScene("StagingScene");
                     });

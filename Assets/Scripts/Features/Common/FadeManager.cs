@@ -37,6 +37,7 @@ namespace FeaturesCommon
         {
             if (Instance == this)
             {
+                FarmBeware.Core.Runtime.ServiceLocator.Unregister<FarmBeware.Core.Runtime.IFadeService>();
                 Instance = null;
             }
         }
@@ -118,15 +119,6 @@ namespace FeaturesCommon
         void FarmBeware.Core.Runtime.IFadeService.FadeOut(float duration, System.Action onComplete)
         {
             FadeOut(duration, onComplete);
-        }
-
-        private void OnDestroy()
-        {
-            if (Instance == this)
-            {
-                FarmBeware.Core.Runtime.ServiceLocator.Unregister<FarmBeware.Core.Runtime.IFadeService>();
-                Instance = null;
-            }
         }
     }
 }
