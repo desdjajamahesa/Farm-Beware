@@ -1,0 +1,297 @@
+{
+    "saveVersion": 1,
+    "metadata": {
+        "saveId": "save_20261004_104035_432",
+        "displayName": "Save_20261004_104035",
+        "fileName": "save_20261004_104035_432.json",
+        "timestamp": "2026-10-04 10:40:35",
+        "formattedDate": "04 Oct 2026, 10:40",
+        "dayNumber": 3,
+        "phaseName": "Day",
+        "gold": 2203,
+        "currentHealth": 100,
+        "maxHealth": 100,
+        "locationName": "Bedroom",
+        "fileSizeBytes": 0
+    },
+    "playerPosX": 31.45553207397461,
+    "playerPosY": 0.010000050067901612,
+    "playerPosZ": 24.29829978942871,
+    "playerRotY": 3.146416425704956,
+    "health": 100,
+    "stamina": 120.0,
+    "hunger": 100.0,
+    "thirst": 100.0,
+    "gold": 2203,
+    "sweetPotatoPrice": 820,
+    "taroPrice": 1788,
+    "cornPrice": 1409,
+    "dailyCropsHarvested": 0,
+    "dailyCropsSold": 0,
+    "dailyGoldEarnedTrading": 0,
+    "dailyMonstersSlain": 0,
+    "dailyGoldEarnedCombat": 0,
+    "waterBottleAmount": 100.0,
+    "currentDay": 3,
+    "currentPhase": 0,
+    "currentHour": 7.0,
+    "isNightEncounterCleared": false,
+    "selectedHotbarIndex": 0,
+    "inventorySlots": [
+        {
+            "slotIndex": 0,
+            "itemId": "tool_hoe",
+            "quantity": 1
+        },
+        {
+            "slotIndex": 4,
+            "itemId": "food_bottle_water",
+            "quantity": 1
+        },
+        {
+            "slotIndex": 5,
+            "itemId": "mat_mutated_root",
+            "quantity": 7
+        },
+        {
+            "slotIndex": 6,
+            "itemId": "mat_hardened_root",
+            "quantity": 4
+        }
+    ],
+    "containerInventories": [
+        {
+            "containerId": "Refrigerator",
+            "slots": [
+                {
+                    "slotIndex": 0,
+                    "itemId": "crop_sweet_potato",
+                    "quantity": 5
+                },
+                {
+                    "slotIndex": 1,
+                    "itemId": "crop_taro",
+                    "quantity": 5
+                },
+                {
+                    "slotIndex": 2,
+                    "itemId": "mat_coconut",
+                    "quantity": 5
+                }
+            ]
+        },
+        {
+            "containerId": "KitchenSink",
+            "slots": []
+        },
+        {
+            "containerId": "TrophyCabinet",
+            "slots": [
+                {
+                    "slotIndex": 0,
+                    "itemId": "trophycube",
+                    "quantity": 1
+                },
+                {
+                    "slotIndex": 1,
+                    "itemId": "trophycube_red",
+                    "quantity": 1
+                },
+                {
+                    "slotIndex": 2,
+                    "itemId": "trophycube_green",
+                    "quantity": 1
+                },
+                {
+                    "slotIndex": 3,
+                    "itemId": "trophycube_yellow",
+                    "quantity": 1
+                },
+                {
+                    "slotIndex": 4,
+                    "itemId": "trophycube_orange",
+                    "quantity": 1
+                },
+                {
+                    "slotIndex": 5,
+                    "itemId": "trophycube_purple",
+                    "quantity": 1
+                },
+                {
+                    "slotIndex": 6,
+                    "itemId": "trophycube_pink",
+                    "quantity": 1
+                },
+                {
+                    "slotIndex": 7,
+                    "itemId": "trophycube_cyan",
+                    "quantity": 1
+                },
+                {
+                    "slotIndex": 8,
+                    "itemId": "trophycube_white",
+                    "quantity": 1
+                },
+                {
+                    "slotIndex": 9,
+                    "itemId": "trophycube_black",
+                    "quantity": 1
+                },
+                {
+                    "slotIndex": 10,
+                    "itemId": "trophycube_brown",
+                    "quantity": 1
+                },
+                {
+                    "slotIndex": 11,
+                    "itemId": "trophycube_lime",
+                    "quantity": 1
+                }
+            ]
+        },
+        {
+            "containerId": "TrophyRack",
+            "slots": []
+        }
+    ],
+    "farmlandTiles": [
+        {
+            "tileName": "FarmlandPlot_12",
+            "tileState": 0,
+            "seedItemId": "",
+            "growthProgress": 0.0,
+            "currentTimer": 0.0,
+            "growthDuration": 30.0
+        },
+        {
+            "tileName": "FarmlandPlot_16",
+            "tileState": 0,
+            "seedItemId": "",
+            "growthProgress": 0.0,
+            "currentTimer": 0.0,
+            "growthDuration": 30.0
+        },
+        {
+            "tileName": "FarmlandPlot_10",
+            "tileState": 0,
+            "seedItemId": "",
+            "growthProgress": 0.0,
+            "currentTimer": 0.0,
+            "growthDuration": 30.0
+        },
+        {
+            "tileName": "FarmlandPlot_11",
+            "tileState": 0,
+            "seedItemId": "",
+            "growthProgress": 0.0,
+            "currentTimer": 0.0,
+            "growthDuration": 30.0
+        },
+        {
+            "tileName": "FarmlandPlot_7",
+            "tileState": 0,
+            "seedItemId": "",
+            "growthProgress": 0.0,
+            "currentTimer": 0.0,
+            "growthDuration": 30.0
+        },
+        {
+            "tileName": "FarmlandPlot_15",
+            "tileState": 0,
+            "seedItemId": "",
+            "growthProgress": 0.0,
+            "currentTimer": 0.0,
+            "growthDuration": 30.0
+        },
+        {
+            "tileName": "FarmlandPlot_3",
+            "tileState": 0,
+            "seedItemId": "",
+            "growthProgress": 0.0,
+            "currentTimer": 0.0,
+            "growthDuration": 30.0
+        },
+        {
+            "tileName": "FarmlandPlot_1",
+            "tileState": 0,
+            "seedItemId": "",
+            "growthProgress": 0.0,
+            "currentTimer": 0.0,
+            "growthDuration": 30.0
+        },
+        {
+            "tileName": "FarmlandPlot_2",
+            "tileState": 0,
+            "seedItemId": "",
+            "growthProgress": 0.0,
+            "currentTimer": 0.0,
+            "growthDuration": 30.0
+        },
+        {
+            "tileName": "FarmlandPlot_14",
+            "tileState": 0,
+            "seedItemId": "",
+            "growthProgress": 0.0,
+            "currentTimer": 0.0,
+            "growthDuration": 30.0
+        },
+        {
+            "tileName": "FarmlandPlot_13",
+            "tileState": 0,
+            "seedItemId": "",
+            "growthProgress": 0.0,
+            "currentTimer": 0.0,
+            "growthDuration": 30.0
+        },
+        {
+            "tileName": "FarmlandPlot_9",
+            "tileState": 0,
+            "seedItemId": "",
+            "growthProgress": 0.0,
+            "currentTimer": 0.0,
+            "growthDuration": 30.0
+        },
+        {
+            "tileName": "FarmlandPlot_5",
+            "tileState": 0,
+            "seedItemId": "",
+            "growthProgress": 0.0,
+            "currentTimer": 0.0,
+            "growthDuration": 30.0
+        },
+        {
+            "tileName": "FarmlandPlot_8",
+            "tileState": 0,
+            "seedItemId": "",
+            "growthProgress": 0.0,
+            "currentTimer": 0.0,
+            "growthDuration": 30.0
+        },
+        {
+            "tileName": "FarmlandPlot_4",
+            "tileState": 0,
+            "seedItemId": "",
+            "growthProgress": 0.0,
+            "currentTimer": 0.0,
+            "growthDuration": 30.0
+        },
+        {
+            "tileName": "FarmlandPlot_6",
+            "tileState": 0,
+            "seedItemId": "",
+            "growthProgress": 0.0,
+            "currentTimer": 0.0,
+            "growthDuration": 30.0
+        }
+    ],
+    "outfitName": "Outfit_Set_K",
+    "isHatEquipped": false,
+    "weaponLevel": 1,
+    "sweetPotatoPathUnlocked": false,
+    "taroPathUnlocked": false,
+    "cornPathUnlocked": false,
+    "nightCurrentWave": 2,
+    "nightTotalWaves": 2,
+    "isNightBrawlActive": false,
+    "activeEnemies": []
+}
