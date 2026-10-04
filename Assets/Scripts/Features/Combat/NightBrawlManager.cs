@@ -122,6 +122,8 @@ namespace FeaturesCombat
 
         private void Start()
         {
+            EnsureHealthBarManagers();
+
             if (TimeManager.Instance != null)
             {
                 currentDay = TimeManager.Instance.currentDay;
@@ -152,6 +154,8 @@ namespace FeaturesCombat
         public void StartNightBrawl()
         {
             if (isWaveInProgress) return;
+
+            EnsureHealthBarManagers();
 
             isWaveInProgress = true;
             waveEngine.StartNight(currentDay);
@@ -591,6 +595,29 @@ namespace FeaturesCombat
                     {
                         Destroy(enemy.gameObject);
                     }
+                }
+            }
+        }
+
+        private void EnsureHealthBarManagers()
+        {
+            if (FeaturesCombat.UI.EnemyHealthBarManager.Instance == null)
+            {
+                var canvas = FindFirstObjectByType<Canvas>();
+                if (canvas != null)
+                {
+                    var mgrObj = new GameObject("EnemyHealthBarManager", typeof(FeaturesCombat.UI.EnemyHealthBarManager));
+                    mgrObj.transform.SetParent(canvas.transform, false);
+                }
+            }
+
+            if (FeaturesCombat.UI.BossHealthBarManager.Instance == null)
+            {
+                var canvas = FindFirstObjectByType<Canvas>();
+                if (canvas != null)
+                {
+                    var bossMgrObj = new GameObject("BossHealthBarManager", typeof(FeaturesCombat.UI.BossHealthBarManager));
+                    bossMgrObj.transform.SetParent(canvas.transform, false);
                 }
             }
         }
