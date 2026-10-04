@@ -55,7 +55,7 @@ GameObject:
   - component: {fileID: 1057180451}
   - component: {fileID: 1057180452}
   m_Layer: 0
-  m_Name: Row_Botol Air
+  m_Name: Row_Water Bottle
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -178,7 +178,7 @@ MonoBehaviour:
     m_HorizontalOverflow: 0
     m_VerticalOverflow: 0
     m_LineSpacing: 1
-  m_Text: Botol Air
+  m_Text: Water Bottle
 --- !u!222 &1076789882
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -277,7 +277,7 @@ GameObject:
   - component: {fileID: 1136096345}
   - component: {fileID: 1136096346}
   m_Layer: 0
-  m_Name: Row_Senjata Dilengkapi
+  m_Name: Row_Equipped Weapon
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -682,7 +682,7 @@ MonoBehaviour:
     m_HorizontalOverflow: 0
     m_VerticalOverflow: 0
     m_LineSpacing: 1
-  m_Text: Tendangan (Spartan Kick)
+  m_Text: Kick (Spartan Kick)
 --- !u!222 &1319122750
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -766,7 +766,7 @@ GameObject:
   - component: {fileID: 1404474206}
   - component: {fileID: 1404474207}
   m_Layer: 0
-  m_Name: Row_Kecepatan Serang
+  m_Name: Row_Attack Speed
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -830,7 +830,7 @@ GameObject:
   - component: {fileID: 1473496221}
   - component: {fileID: 1473496222}
   m_Layer: 0
-  m_Name: Row_Kecepatan Gerak
+  m_Name: Row_Movement Speed
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -969,7 +969,7 @@ GameObject:
   - component: {fileID: 1559159882}
   - component: {fileID: 1559159883}
   m_Layer: 0
-  m_Name: Row_Tendangan (Spartan Kick)
+  m_Name: Row_Kick (Spartan Kick)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1033,7 +1033,7 @@ GameObject:
   - component: {fileID: 156235762}
   - component: {fileID: 156235763}
   m_Layer: 0
-  m_Name: Row_Level Senjata
+  m_Name: Row_Weapon Level
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1235,7 +1235,7 @@ MonoBehaviour:
     m_HorizontalOverflow: 0
     m_VerticalOverflow: 0
     m_LineSpacing: 1
-  m_Text: Jurus Spesial (Leap)
+  m_Text: Special Skill (Leap)
 --- !u!222 &1583978163
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -1334,7 +1334,7 @@ GameObject:
   - component: {fileID: 173308611}
   - component: {fileID: 173308612}
   m_Layer: 0
-  m_Name: Row_Lapar (Hunger)
+  m_Name: Row_Hunger
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1399,7 +1399,7 @@ GameObject:
   - component: {fileID: 174180062}
   - component: {fileID: 174180061}
   m_Layer: 0
-  m_Name: Section_STATUS & BUFF AKTIF
+  m_Name: Section_STATUS & ACTIVE BUFFS
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1457,7 +1457,7 @@ MonoBehaviour:
     m_HorizontalOverflow: 0
     m_VerticalOverflow: 0
     m_LineSpacing: 1
-  m_Text: STATUS & BUFF AKTIF
+  m_Text: STATUS & ACTIVE BUFFS
 --- !u!222 &174180062
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -1477,7 +1477,7 @@ GameObject:
   - component: {fileID: 1744512691}
   - component: {fileID: 1744512692}
   m_Layer: 0
-  m_Name: Row_Haus (Thirst)
+  m_Name: Row_Thirst
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1679,7 +1679,7 @@ MonoBehaviour:
     m_HorizontalOverflow: 0
     m_VerticalOverflow: 0
     m_LineSpacing: 1
-  m_Text: Kecepatan Gerak
+  m_Text: Movement Speed
 --- !u!222 &1764275433
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -1758,7 +1758,7 @@ MonoBehaviour:
     m_HorizontalOverflow: 0
     m_VerticalOverflow: 0
     m_LineSpacing: 1
-  m_Text: Kecepatan Lari
+  m_Text: Sprint Speed
 --- !u!222 &180785274
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -2153,7 +2153,7 @@ MonoBehaviour:
     m_HorizontalOverflow: 0
     m_VerticalOverflow: 0
     m_LineSpacing: 1
-  m_Text: Tangan Kosong
+  m_Text: Unarmed
 --- !u!222 &1949983787
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -2489,7 +2489,7 @@ GameObject:
   - component: {fileID: 343593116}
   - component: {fileID: 343593117}
   m_Layer: 0
-  m_Name: Row_Koin Emas
+  m_Name: Row_Gold
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -2553,7 +2553,7 @@ GameObject:
   - component: {fileID: 391601862}
   - component: {fileID: 391601863}
   m_Layer: 0
-  m_Name: Row_Jurus Spesial (Leap)
+  m_Name: Row_Special Skill (Leap)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -2676,7 +2676,7 @@ MonoBehaviour:
     m_HorizontalOverflow: 0
     m_VerticalOverflow: 0
     m_LineSpacing: 1
-  m_Text: Level Senjata
+  m_Text: Weapon Level
 --- !u!222 &394008437
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -2834,7 +2834,7 @@ MonoBehaviour:
     m_HorizontalOverflow: 0
     m_VerticalOverflow: 0
     m_LineSpacing: 1
-  m_Text: Tidak ada buff aktif
+  m_Text: No active buffs
 --- !u!222 &453807046
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -2913,7 +2913,7 @@ MonoBehaviour:
     m_HorizontalOverflow: 0
     m_VerticalOverflow: 0
     m_LineSpacing: 1
-  m_Text: Kecepatan Serang
+  m_Text: Attack Speed
 --- !u!222 &476083720
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -3141,7 +3141,7 @@ MonoBehaviour:
     m_HorizontalOverflow: 0
     m_VerticalOverflow: 0
     m_LineSpacing: 1
-  m_Text: Haus (Thirst)
+  m_Text: Thirst
 --- !u!222 &521573567
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -3220,7 +3220,7 @@ MonoBehaviour:
     m_HorizontalOverflow: 0
     m_VerticalOverflow: 0
     m_LineSpacing: 1
-  m_Text: Koin Emas
+  m_Text: Gold
 --- !u!222 &544461787
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -3299,7 +3299,7 @@ MonoBehaviour:
     m_HorizontalOverflow: 0
     m_VerticalOverflow: 0
     m_LineSpacing: 1
-  m_Text: Lapar (Hunger)
+  m_Text: Hunger
 --- !u!222 &567060790
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -3771,7 +3771,7 @@ MonoBehaviour:
     m_HorizontalOverflow: 0
     m_VerticalOverflow: 0
     m_LineSpacing: 1
-  m_Text: Senjata Dilengkapi
+  m_Text: Equipped Weapon
 --- !u!222 &881271360
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -3866,7 +3866,7 @@ GameObject:
   - component: {fileID: 882212837}
   - component: {fileID: 882212838}
   m_Layer: 0
-  m_Name: Row_Kecepatan Lari
+  m_Name: Row_Sprint Speed
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

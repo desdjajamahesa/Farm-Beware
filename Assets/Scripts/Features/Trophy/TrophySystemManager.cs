@@ -208,7 +208,7 @@ public class TrophySystemManager : MonoBehaviour, FarmBeware.Core.Runtime.ITroph
             Debug.LogError("[TrophySystemManager] ICameraService not found!");
         }
 
-        Debug.Log("Masuk First-Person Trophy Mode");
+        Debug.Log("Entered First-Person Trophy Mode");
     }
 
 
@@ -226,10 +226,10 @@ public class TrophySystemManager : MonoBehaviour, FarmBeware.Core.Runtime.ITroph
             camService.SetMode(CameraMode.Gameplay);
         }
 
-        // Tutup panel storage/inventori yang dibuka saat masuk mode trophy.
+        // Close storage/inventory panel opened when entering trophy mode
         if (InventoryManagerUI.Instance != null)
             InventoryManagerUI.Instance.CloseAllUI();
 
-        Debug.Log("Keluar dari Trophy Mode");
+        Debug.Log("Exited Trophy Mode");
     }
 }

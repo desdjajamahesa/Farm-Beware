@@ -151,8 +151,8 @@ namespace PlayerUI
 
         private void UpdateCombatStats()
         {
-            // Senjata aktif & Level
-            string weaponName = "Tangan Kosong";
+            // Active weapon & Level
+            string weaponName = "Unarmed";
             int level = 1;
             int baseDmg = 10;
 
@@ -160,12 +160,12 @@ namespace PlayerUI
             {
                 level = weaponUpgradeState.weaponLevel;
                 baseDmg = weaponUpgradeState.baseDamage;
-                weaponName = $"Cangkul (Lv {level})";
+                weaponName = $"Hoe (Lv {level})";
             }
 
             if (playerEquipment != null && !playerEquipment.IsHoldingWeapon)
             {
-                weaponName = "Tangan Kosong";
+                weaponName = "Unarmed";
             }
 
             if (txtWeaponName != null) txtWeaponName.text = weaponName;
@@ -219,11 +219,11 @@ namespace PlayerUI
                         buffList += $"• {b.data.buffName} ({Mathf.CeilToInt(b.remainingDuration)}s)\n";
                     }
                 }
-                txtActiveBuffs.text = string.IsNullOrEmpty(buffList) ? "Tidak ada buff aktif" : buffList.TrimEnd();
+                txtActiveBuffs.text = string.IsNullOrEmpty(buffList) ? "No active buffs" : buffList.TrimEnd();
             }
             else
             {
-                txtActiveBuffs.text = "Tidak ada buff aktif";
+                txtActiveBuffs.text = "No active buffs";
             }
         }
     }

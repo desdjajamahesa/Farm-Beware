@@ -50803,7 +50803,7 @@ MonoBehaviour:
     m_HorizontalOverflow: 1
     m_VerticalOverflow: 1
     m_LineSpacing: 1
-  m_Text: Simpan
+  m_Text: Save
 --- !u!222 &1135853822
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -79292,7 +79292,7 @@ MonoBehaviour:
     m_HorizontalOverflow: 1
     m_VerticalOverflow: 1
     m_LineSpacing: 1
-  m_Text: Batal
+  m_Text: Cancel
 --- !u!222 &1626858166
 CanvasRenderer:
   m_ObjectHideFlags: 0
