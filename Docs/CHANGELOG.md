@@ -1,4 +1,4 @@
-# Patch Notes (V0.2.0)
+# Patch Notes (V0.1.0)
 
 ### Added
 * **Save & Load System**: The bedroom desk can now be used to save and load game progress across multiple slots.
