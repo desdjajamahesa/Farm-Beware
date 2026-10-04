@@ -72,6 +72,18 @@ namespace FeaturesCombat
         public bool IsRootGuarded => isRootGuarded;
         private int originalArmor;
 
+        [Header("Low HP Retreat & Heal Mechanic")]
+        [Tooltip("Jarak aman mundur saat HP sekarat sebelum berhenti untuk memulihkan diri.")]
+        [SerializeField] private float retreatSafeDistance = 7.0f;
+        [Tooltip("Batas durasi maksimal mundur sebelum memaksakan heal (mencegah kabur tanpa henti).")]
+        [SerializeField] private float maxRetreatDuration = 1.8f;
+        [Tooltip("Cooldown antar eksekusi retreat & heal.")]
+        [SerializeField] private float retreatHealCooldown = 15f;
+        [Tooltip("Jumlah target current health yang dipulihkan saat heal (default: 50).")]
+        [SerializeField] private int retreatHealTargetHealth = 50;
+        private bool isRetreatingAndHealing = false;
+        private float lastRetreatHealTime = -99f;
+
         [Header("NavMesh & Obstacle Avoidance")]
         [SerializeField] private float repathInterval = 0.25f;
         [SerializeField] private float cornerReachThreshold = 0.8f;
@@ -138,6 +150,7 @@ namespace FeaturesCombat
         {
             if (telegraphDecal != null) telegraphDecal.SetActive(false);
             if (laserSightLine != null) laserSightLine.enabled = false;
+            isRetreatingAndHealing = false;
         }
 
         private void EnsureTelegraphElements()
@@ -371,6 +384,13 @@ namespace FeaturesCombat
             // Cek AI behaviour
             if (isAggroed)
             {
+                // Cek behaviour kabur sejenak & heal saat HP sekarat untuk TuberMaw
+                if (enemyType == EnemyType.TuberMaw && currentHealth <= Mathf.RoundToInt(maxHealth * 0.25f) && !isRetreatingAndHealing && Time.time >= lastRetreatHealTime + retreatHealCooldown)
+                {
+                    StartCoroutine(RoutineRetreatAndHeal());
+                    return;
+                }
+
                 LookAtTarget(effectiveTargetPos);
 
                 // Cek eksekusi skill khusus jika cooldown siap (hanya jika pemain tidak berada aman di dalam rumah)
@@ -420,59 +440,50 @@ namespace FeaturesCombat
         {
             if (rb == null) return;
 
-            // Jika HP sangat sekarat dan tipe TuberMaw, jalankan Tunnel Rush (lari menjauh)
-            bool isLowHp = currentHealth <= maxHealth * 0.25f;
             Vector3 desiredDir;
 
-            if (isLowHp && enemyType == EnemyType.TuberMaw)
+            // 1. Hitung jalur NavMesh cerdas secara periodik (repath interval)
+            if (Time.time >= nextRepathTime)
             {
-                desiredDir = (transform.position - targetPos).normalized;
+                nextRepathTime = Time.time + repathInterval;
+                hasValidNavPath = NavMesh.CalculatePath(transform.position, targetPos, NavMesh.AllAreas, navMeshPath);
+                currentPathIndex = 1; // Indeks 0 adalah posisi awal monster saat ini
             }
-            else
+
+            // 2. Telusuri waypoint sudut (corners) jika jalur valid
+            if (hasValidNavPath && navMeshPath != null && navMeshPath.corners.Length > 1)
             {
-                // 1. Hitung jalur NavMesh cerdas secara periodik (repath interval)
-                if (Time.time >= nextRepathTime)
+                while (currentPathIndex < navMeshPath.corners.Length - 1)
                 {
-                    nextRepathTime = Time.time + repathInterval;
-                    hasValidNavPath = NavMesh.CalculatePath(transform.position, targetPos, NavMesh.AllAreas, navMeshPath);
-                    currentPathIndex = 1; // Indeks 0 adalah posisi awal monster saat ini
-                }
-
-                // 2. Telusuri waypoint sudut (corners) jika jalur valid
-                if (hasValidNavPath && navMeshPath != null && navMeshPath.corners.Length > 1)
-                {
-                    while (currentPathIndex < navMeshPath.corners.Length - 1)
+                    Vector3 toCorner = navMeshPath.corners[currentPathIndex] - transform.position;
+                    toCorner.y = 0f;
+                    if (toCorner.sqrMagnitude <= cornerReachThreshold * cornerReachThreshold)
                     {
-                        Vector3 toCorner = navMeshPath.corners[currentPathIndex] - transform.position;
-                        toCorner.y = 0f;
-                        if (toCorner.sqrMagnitude <= cornerReachThreshold * cornerReachThreshold)
-                        {
-                            currentPathIndex++;
-                        }
-                        else
-                        {
-                            break;
-                        }
-                    }
-
-                    int targetIndex = Mathf.Min(currentPathIndex, navMeshPath.corners.Length - 1);
-                    Vector3 nextCorner = navMeshPath.corners[targetIndex];
-                    desiredDir = (nextCorner - transform.position);
-                    desiredDir.y = 0f;
-                    if (desiredDir.sqrMagnitude > 0.01f)
-                    {
-                        desiredDir.Normalize();
+                        currentPathIndex++;
                     }
                     else
                     {
-                        desiredDir = (targetPos - transform.position).normalized;
+                        break;
                     }
+                }
+
+                int targetIndex = Mathf.Min(currentPathIndex, navMeshPath.corners.Length - 1);
+                Vector3 nextCorner = navMeshPath.corners[targetIndex];
+                desiredDir = (nextCorner - transform.position);
+                desiredDir.y = 0f;
+                if (desiredDir.sqrMagnitude > 0.01f)
+                {
+                    desiredDir.Normalize();
                 }
                 else
                 {
-                    // Fallback: arah langsung jika NavMesh belum terpasang atau sedang recalculate
                     desiredDir = (targetPos - transform.position).normalized;
                 }
+            }
+            else
+            {
+                // Fallback: arah langsung jika NavMesh belum terpasang atau sedang recalculate
+                desiredDir = (targetPos - transform.position).normalized;
             }
 
             desiredDir.y = 0f;
@@ -827,6 +838,118 @@ namespace FeaturesCombat
             }
         }
 
+        // --- LOW HP RETREAT & HEAL ROUTINE ---
+
+        private IEnumerator RoutineRetreatAndHeal()
+        {
+            isRetreatingAndHealing = true;
+            isPerformingSkill = true;
+            lastRetreatHealTime = Time.time;
+
+            float retreatTimer = 0f;
+
+            // 1. Sedikit menjauh dari pemain (lari mundur teratur sampai jarak aman ~7m atau maksimal 1.8s)
+            while (retreatTimer < maxRetreatDuration && !IsDead)
+            {
+                retreatTimer += Time.deltaTime;
+
+                if (playerTarget == null)
+                {
+                    FindPlayerTarget();
+                }
+
+                if (playerTarget != null)
+                {
+                    Vector3 awayFromPlayer = transform.position - playerTarget.position;
+                    awayFromPlayer.y = 0f;
+                    float dist = awayFromPlayer.magnitude;
+
+                    // Jika sudah sedikit menjauh dan berada di jarak aman, hentikan lari mundur dan mulai proses pemulihan
+                    if (dist >= retreatSafeDistance)
+                    {
+                        break;
+                    }
+
+                    Vector3 fleeDir = awayFromPlayer.normalized;
+                    if (fleeDir.sqrMagnitude < 0.001f)
+                    {
+                        fleeDir = -transform.forward;
+                    }
+
+                    // Terapkan Dynamic Obstacle Avoidance agar tidak menabrak rintangan atau terjebak di sudut
+                    Vector3 moveDir = ApplyObstacleAvoidance(fleeDir);
+
+                    // Cegah mundur menembus ke dalam rumah modular
+                    if (NightBrawlManager.IsInsideHouse(transform.position + moveDir * 0.5f))
+                    {
+                        Vector3 safeOutdoor = NightBrawlManager.GetNearestOutdoorPosition(transform.position, 1.5f);
+                        moveDir = (safeOutdoor - transform.position).normalized;
+                    }
+
+                    if (rb != null)
+                    {
+                        rb.linearVelocity = new Vector3(moveDir.x * (moveSpeed * 1.35f), rb.linearVelocity.y, moveDir.z * (moveSpeed * 1.35f));
+                    }
+
+                    if (moveDir.sqrMagnitude > 0.01f)
+                    {
+                        transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(moveDir), Time.deltaTime * 12f);
+                    }
+                }
+
+                yield return null;
+            }
+
+            if (IsDead)
+            {
+                isRetreatingAndHealing = false;
+                isPerformingSkill = false;
+                yield break;
+            }
+
+            // Hentikan gerak mundur
+            if (rb != null)
+            {
+                rb.linearVelocity = new Vector3(0f, rb.linearVelocity.y, 0f);
+            }
+
+            // 2. Heal diri sendiri sampai 50 current health
+            if (FloatingCombatTextManager.Instance != null)
+            {
+                int healRecovered = Mathf.Max(0, retreatHealTargetHealth - currentHealth);
+                FloatingCombatTextManager.Instance.SpawnText(
+                    transform.position + Vector3.up * 1.5f,
+                    $"💚 +{healRecovered} HP (Recovered)",
+                    new Color(0.2f, 1f, 0.4f)
+                );
+            }
+
+            // Visual flash warna hijau pemulihan
+            if (meshRenderer != null)
+            {
+                SetRendererColor(new Color(0.25f, 1f, 0.45f));
+            }
+
+            yield return new WaitForSeconds(0.7f);
+
+            if (meshRenderer != null)
+            {
+                SetRendererColor(originalColor);
+            }
+
+            if (!IsDead)
+            {
+                currentHealth = Mathf.Min(maxHealth, retreatHealTargetHealth);
+                OnHealthChanged?.Invoke(currentHealth, maxHealth);
+            }
+
+            yield return new WaitForSeconds(0.2f);
+
+            // 3. Selesai heal, langsung kembali agresif mengejar dan menyerang player lagi
+            isRetreatingAndHealing = false;
+            isPerformingSkill = false;
+        }
+
         // --- SKILL ROUTINES ---
 
         private IEnumerator RoutineBurrowStrike()
@@ -1144,6 +1267,8 @@ namespace FeaturesCombat
             armor = originalArmor;
             skillCooldownTimer = 0f;
             lastAttackTime = 0f;
+            isRetreatingAndHealing = false;
+            lastRetreatHealTime = -99f;
             currentPathIndex = 1;
             hasValidNavPath = false;
             nextRepathTime = 0f;
