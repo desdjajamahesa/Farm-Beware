@@ -173,6 +173,13 @@ namespace FeaturesCombat
                     yield return null;
                 }
                 transform.position = finalGroundPos;
+                var colossusRb = GetComponent<Rigidbody>();
+                if (colossusRb != null)
+                {
+                    colossusRb.position = finalGroundPos;
+                    colossusRb.linearVelocity = Vector3.zero;
+                }
+                Physics.SyncTransforms();
 
                 // AoE Slam Shockwave Damage & Knockback
                 if (FloatingCombatTextManager.Instance != null)
@@ -270,6 +277,23 @@ namespace FeaturesCombat
             }
 
             trackingDecal.SetActive(false);
+        }
+
+        private void OnDisable()
+        {
+            if (isExecuting)
+            {
+                if (bossEnemy != null)
+                {
+                    bossEnemy.IsPerformingSkill = false;
+                    bossEnemy.IsUnstaggerable = false;
+                }
+                isExecuting = false;
+            }
+            if (trackingDecal != null)
+            {
+                trackingDecal.SetActive(false);
+            }
         }
 
         private void OnDestroy()

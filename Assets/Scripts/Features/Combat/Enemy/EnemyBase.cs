@@ -121,6 +121,19 @@ namespace FeaturesCombat
             EnsureTelegraphElements();
         }
 
+        private void OnEnable()
+        {
+            if (rb == null) rb = GetComponent<Rigidbody>();
+            if (rb != null)
+            {
+                rb.position = transform.position;
+                rb.rotation = transform.rotation;
+                rb.linearVelocity = Vector3.zero;
+                rb.angularVelocity = Vector3.zero;
+            }
+            Physics.SyncTransforms();
+        }
+
         private void OnDisable()
         {
             if (telegraphDecal != null) telegraphDecal.SetActive(false);
@@ -846,6 +859,13 @@ namespace FeaturesCombat
             transform.localScale = startScale;
             isBurrowed = false;
 
+            if (rb != null)
+            {
+                rb.position = transform.position;
+                rb.linearVelocity = Vector3.zero;
+            }
+            Physics.SyncTransforms();
+
             if (playerTarget != null && !NightBrawlManager.IsInsideHouse(playerTarget.position) && Vector3.Distance(transform.position, playerTarget.position) <= 2.2f)
             {
                 var target = playerTarget.GetComponent<IDamageable>();
@@ -929,6 +949,12 @@ namespace FeaturesCombat
                 slamTarget = NightBrawlManager.GetNearestOutdoorPosition(slamTarget, 2.5f);
             }
             transform.position = slamTarget;
+            if (rb != null)
+            {
+                rb.position = slamTarget;
+                rb.linearVelocity = Vector3.zero;
+            }
+            Physics.SyncTransforms();
 
             if (playerTarget != null && !NightBrawlManager.IsInsideHouse(playerTarget.position) && Vector3.Distance(transform.position, playerTarget.position) <= 4f)
             {
@@ -1070,6 +1096,12 @@ namespace FeaturesCombat
         {
             currentHealth = 0;
 
+            if (rb != null)
+            {
+                rb.linearVelocity = Vector3.zero;
+                rb.angularVelocity = Vector3.zero;
+            }
+
             // Process Loot Drops (Task 4.1 Refactor: Delegated to modular handler)
             EnemyLootDropHandler.ProcessDeathDrops(this);
 
@@ -1112,13 +1144,25 @@ namespace FeaturesCombat
             armor = originalArmor;
             skillCooldownTimer = 0f;
             lastAttackTime = 0f;
+            currentPathIndex = 1;
+            hasValidNavPath = false;
+            nextRepathTime = 0f;
+            smoothedAvoidanceDir = transform.forward;
+            if (navMeshPath != null)
+            {
+                navMeshPath.ClearCorners();
+            }
+            StopAllCoroutines();
             OnHealthChanged?.Invoke(currentHealth, maxHealth);
 
             if (rb != null)
             {
+                rb.position = transform.position;
+                rb.rotation = transform.rotation;
                 rb.linearVelocity = Vector3.zero;
                 rb.angularVelocity = Vector3.zero;
             }
+            Physics.SyncTransforms();
 
             if (meshRenderer != null)
             {
