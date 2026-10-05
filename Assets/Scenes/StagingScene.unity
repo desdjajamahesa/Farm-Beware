@@ -3080,6 +3080,12 @@ MonoBehaviour:
   attackTurnSpeed: 18
   leapForwardImpulse: 6.5
   leapUpwardImpulse: 2.5
+  dodgeSpeed: 10
+  dodgeDuration: 0.35
+  dodgeIFrameDuration: 0.3
+  parryWindow: 0.35
+  dodgeStaminaCost: 15
+  parryStaminaCost: 10
   stepUpHeight: 0.35
   stepUpSpeed: 15
   acceleration: 35
