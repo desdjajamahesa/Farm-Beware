@@ -237,10 +237,19 @@ namespace FeaturesCombat.Melee
         /// </summary>
         public void ResetToIdle()
         {
+            _comboIndex = 0;
             _currentState = MeleeCombatState.Idle;
             _currentChargeDuration = 0f;
             _evaluator.ResetToIdle();
             OnStateChanged?.Invoke(_currentState);
+        }
+
+        /// <summary>
+        /// Explicitly interrupts the active combat action sequence and combo progression.
+        /// </summary>
+        public void InterruptCombatSequence()
+        {
+            ResetToIdle();
         }
 
         /// <summary>

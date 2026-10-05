@@ -1,21 +1,28 @@
 namespace FeaturesCombat.Core.PureLogic
 {
     /// <summary>
-    /// Pure C# POCO Defense Evaluator governing invulnerability frames (i-Frames) during Dodge Roll
-    /// and Precision Deflect (Parry) timing windows without MonoBehaviour overhead.
+    /// Pure C# POCO Defense Evaluator governing invulnerability frames (i-Frames) during Dodge Roll,
+    /// Precision Deflect (Parry) timing windows, and whiff recovery lockout without MonoBehaviour overhead.
     /// </summary>
     public class DefenseEvaluator
     {
         public const float DEFAULT_PARRY_WINDOW = 0.35f; // 350ms generous precision deflect window
         public const float DEFAULT_DODGE_IFRAME_DURATION = 0.30f; // 300ms invulnerability frames (18 frames at 60 Hz)
+        public const float DEFAULT_WHIFF_DURATION = 0.35f; // 350ms recovery lockout upon unintercepted parry
 
         private float _parryTimer = 0f;
         private float _dodgeIFrameTimer = 0f;
+        private float _whiffTimer = 0f;
+
         private float _baseParryWindow = DEFAULT_PARRY_WINDOW;
         private float _baseDodgeDuration = DEFAULT_DODGE_IFRAME_DURATION;
+        private float _baseWhiffDuration = DEFAULT_WHIFF_DURATION;
 
         public bool IsParryActive => _parryTimer > 0f;
         public bool IsDodgeInvulnerable => _dodgeIFrameTimer > 0f;
+        public bool IsInWhiffLockout => _whiffTimer > 0f;
+        public bool CanInitiateParry => _parryTimer <= 0f && _whiffTimer <= 0f;
+        public float RemainingWhiffTime => _whiffTimer;
 
         public float ParryWindow
         {
@@ -29,20 +36,33 @@ namespace FeaturesCombat.Core.PureLogic
             set => _baseDodgeDuration = value > 0f ? value : DEFAULT_DODGE_IFRAME_DURATION;
         }
 
+        public float WhiffDuration
+        {
+            get => _baseWhiffDuration;
+            set => _baseWhiffDuration = value > 0f ? value : DEFAULT_WHIFF_DURATION;
+        }
+
         public DefenseEvaluator(
             float parryWindow = DEFAULT_PARRY_WINDOW,
-            float dodgeIFrameDuration = DEFAULT_DODGE_IFRAME_DURATION)
+            float dodgeIFrameDuration = DEFAULT_DODGE_IFRAME_DURATION,
+            float whiffDuration = DEFAULT_WHIFF_DURATION)
         {
             _baseParryWindow = parryWindow;
             _baseDodgeDuration = dodgeIFrameDuration;
+            _baseWhiffDuration = whiffDuration;
         }
 
         /// <summary>
         /// Initiates a precision parry window with optional bonus extension from food buffs or upgrades.
+        /// Returns false if in whiff lockout or parry is already active.
         /// </summary>
-        public void TriggerParry(float bonusWindowSeconds = 0f)
+        public bool TriggerParry(float bonusWindowSeconds = 0f)
         {
+            if (!CanInitiateParry) return false;
+
             _parryTimer = _baseParryWindow + (bonusWindowSeconds > 0f ? bonusWindowSeconds : 0f);
+            _whiffTimer = 0f;
+            return true;
         }
 
         /// <summary>
@@ -73,6 +93,7 @@ namespace FeaturesCombat.Core.PureLogic
                 {
                     parrySuccessful = true;
                     _parryTimer = 0f; // Consume parry window on success
+                    _whiffTimer = 0f; // Successful deflect cancels any whiff penalty
                     return true;      // 100% damage negated
                 }
             }
@@ -88,14 +109,24 @@ namespace FeaturesCombat.Core.PureLogic
         }
 
         /// <summary>
-        /// Advances defensive timers.
+        /// Advances defensive timers and transitions expired parries into whiff recovery lockout.
         /// </summary>
         public void Tick(float deltaTime)
         {
             if (_parryTimer > 0f)
             {
                 _parryTimer -= deltaTime;
-                if (_parryTimer < 0f) _parryTimer = 0f;
+                if (_parryTimer <= 0f)
+                {
+                    _parryTimer = 0f;
+                    // Natural expiration without deflecting an attack triggers whiff recovery lockout
+                    _whiffTimer = _baseWhiffDuration;
+                }
+            }
+            else if (_whiffTimer > 0f)
+            {
+                _whiffTimer -= deltaTime;
+                if (_whiffTimer < 0f) _whiffTimer = 0f;
             }
 
             if (_dodgeIFrameTimer > 0f)
@@ -109,6 +140,7 @@ namespace FeaturesCombat.Core.PureLogic
         {
             _parryTimer = 0f;
             _dodgeIFrameTimer = 0f;
+            _whiffTimer = 0f;
         }
     }
 }

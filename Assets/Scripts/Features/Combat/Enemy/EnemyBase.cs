@@ -88,12 +88,8 @@ namespace FeaturesCombat
             }
             else
             {
-                poiseTracker.Initialize(maxP, regenR, regenD);
-            }
-
-            if (enemyData != null)
-            {
-                poiseTracker.IsSuperArmorActive = enemyData.hasSuperArmor;
+                bool hasSA = (enemyData != null) && enemyData.hasSuperArmor;
+                poiseTracker.Initialize(maxP, regenR, regenD, hasSA);
             }
         }
 
@@ -180,6 +176,18 @@ namespace FeaturesCombat
             if (telegraphDecal != null) telegraphDecal.SetActive(false);
             if (laserSightLine != null) laserSightLine.enabled = false;
             isRetreatingAndHealing = false;
+
+            // Audit Hardening: Release from HitstopCoordinator to prevent dangling slot references in object pools
+            FeaturesCombat.Adapters.HitstopCoordinator.Instance?.Unregister(gameObject, false);
+
+            // Audit Hardening: Release all tokens held by this entity across melee and ranged pools
+            NightBrawlManager.Instance?.TokenDispatcher?.ReleaseAllForEntity(gameObject.GetInstanceID());
+
+            // Audit Hardening: Deactivate airborne hazard state if disabled/pooled mid-air
+            if (airborneHazard != null)
+            {
+                airborneHazard.DeactivateHazard();
+            }
         }
 
         private void EnsureTelegraphElements()
@@ -615,7 +623,8 @@ namespace FeaturesCombat
             bool isRanged = (enemyType == EnemyType.CornMusketeer || enemyType == EnemyType.TheRanger);
             if (NightBrawlManager.Instance != null && NightBrawlManager.Instance.TokenDispatcher != null)
             {
-                if (!NightBrawlManager.Instance.TokenDispatcher.TryAcquireToken(gameObject.GetInstanceID(), isRanged, Time.time, 2.8f))
+                var priority = isBoss ? FeaturesCombat.Core.PureLogic.AttackTokenPriority.Boss : FeaturesCombat.Core.PureLogic.AttackTokenPriority.Minion;
+                if (!NightBrawlManager.Instance.TokenDispatcher.TryAcquireToken(gameObject.GetInstanceID(), isRanged, Time.time, 2.8f, priority))
                 {
                     return; // Denied, wait for token
                 }

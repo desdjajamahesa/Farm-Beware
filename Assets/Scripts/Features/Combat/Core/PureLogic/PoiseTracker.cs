@@ -25,12 +25,14 @@ namespace FeaturesCombat.Core.PureLogic
         private StaggerTier _currentStagger = StaggerTier.None;
         private float _staggerTimer = 0f;
         private bool _isSuperArmorActive = false;
+        private bool _hasInnateSuperArmor = false;
 
         public float MaxPoise => _maxPoise;
         public float CurrentPoise => _currentPoise;
         public StaggerTier CurrentStagger => _currentStagger;
         public float StaggerTimer => _staggerTimer;
         public bool IsStaggered => _currentStagger != StaggerTier.None;
+        public bool HasInnateSuperArmor => _hasInnateSuperArmor;
 
         public bool IsSuperArmorActive
         {
@@ -38,12 +40,12 @@ namespace FeaturesCombat.Core.PureLogic
             set => _isSuperArmorActive = value;
         }
 
-        public PoiseTracker(float maxPoise = 100f, float regenRate = 20f, float regenDelay = 3.0f)
+        public PoiseTracker(float maxPoise = 100f, float regenRate = 20f, float regenDelay = 3.0f, bool hasInnateSuperArmor = false)
         {
-            Initialize(maxPoise, regenRate, regenDelay);
+            Initialize(maxPoise, regenRate, regenDelay, hasInnateSuperArmor);
         }
 
-        public void Initialize(float maxPoise, float regenRate, float regenDelay)
+        public void Initialize(float maxPoise, float regenRate, float regenDelay, bool hasInnateSuperArmor = false)
         {
             _maxPoise = maxPoise > 0f ? maxPoise : 100f;
             _currentPoise = _maxPoise;
@@ -52,11 +54,13 @@ namespace FeaturesCombat.Core.PureLogic
             _currentStagger = StaggerTier.None;
             _staggerTimer = 0f;
             _timeSinceLastPoiseDamage = 0f;
-            _isSuperArmorActive = false;
+            _hasInnateSuperArmor = hasInnateSuperArmor;
+            _isSuperArmorActive = hasInnateSuperArmor;
         }
 
         /// <summary>
         /// Applies poise damage and evaluates whether a stagger tier threshold was breached.
+        /// Enforces Tier-Upgrade-Only rule: weaker hits will never cut short a Knockdown or HeavyStagger.
         /// </summary>
         public StaggerTier ApplyPoiseDamage(float poiseDamage, float attackImpulse, out bool poiseBroken)
         {
@@ -90,20 +94,33 @@ namespace FeaturesCombat.Core.PureLogic
                 _currentPoise = 0f;
                 poiseBroken = true;
 
+                StaggerTier incomingTier;
+                float incomingDuration;
                 if (attackImpulse >= 2.0f)
                 {
-                    _currentStagger = StaggerTier.Knockdown;
-                    _staggerTimer = 1.20f;
+                    incomingTier = StaggerTier.Knockdown;
+                    incomingDuration = 1.20f;
                 }
                 else if (attackImpulse >= 1.2f)
                 {
-                    _currentStagger = StaggerTier.HeavyStagger;
-                    _staggerTimer = 0.65f;
+                    incomingTier = StaggerTier.HeavyStagger;
+                    incomingDuration = 0.65f;
                 }
                 else
                 {
-                    _currentStagger = StaggerTier.MicroStagger;
-                    _staggerTimer = 0.18f;
+                    incomingTier = StaggerTier.MicroStagger;
+                    incomingDuration = 0.18f;
+                }
+
+                // Tier-upgrade only rule: a weaker hit must NEVER downgrade or cut short a Knockdown or HeavyStagger
+                if (_currentStagger == StaggerTier.None || incomingTier > _currentStagger)
+                {
+                    _currentStagger = incomingTier;
+                    _staggerTimer = incomingDuration;
+                }
+                else if (incomingTier == _currentStagger && incomingDuration > _staggerTimer)
+                {
+                    _staggerTimer = incomingDuration;
                 }
 
                 return _currentStagger;
@@ -114,6 +131,7 @@ namespace FeaturesCombat.Core.PureLogic
 
         /// <summary>
         /// Updates stagger recovery and linear poise regeneration.
+        /// Automatically restores innate super armor once full recovery completes.
         /// </summary>
         public void Tick(float deltaTime)
         {
@@ -125,6 +143,7 @@ namespace FeaturesCombat.Core.PureLogic
                     _staggerTimer = 0f;
                     _currentStagger = StaggerTier.None;
                     _currentPoise = _maxPoise; // Replenish full poise upon stagger recovery
+                    _isSuperArmorActive = _hasInnateSuperArmor; // Restore innate super armor!
                 }
                 return;
             }
@@ -136,6 +155,10 @@ namespace FeaturesCombat.Core.PureLogic
                 if (_currentPoise > _maxPoise)
                 {
                     _currentPoise = _maxPoise;
+                    if (!_isSuperArmorActive && _hasInnateSuperArmor)
+                    {
+                        _isSuperArmorActive = true;
+                    }
                 }
             }
         }
@@ -146,6 +169,7 @@ namespace FeaturesCombat.Core.PureLogic
             _currentStagger = StaggerTier.None;
             _staggerTimer = 0f;
             _timeSinceLastPoiseDamage = 0f;
+            _isSuperArmorActive = _hasInnateSuperArmor;
         }
     }
 }

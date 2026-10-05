@@ -157,6 +157,16 @@ namespace FeaturesCombat.Core.PureLogic
         public void ResetToIdle()
         {
             _currentAction = CombatActionID.Idle;
+            _lastActionTimestamp = -999f;
+        }
+
+        /// <summary>
+        /// Explicitly interrupts the active combat action sequence, clearing state to Idle
+        /// and resetting combo timestamps when interrupted by external gameplay events (Dodge, Stun, Knockdown).
+        /// </summary>
+        public void InterruptCombatSequence()
+        {
+            ResetToIdle();
         }
 
         public void Update(float currentTime)

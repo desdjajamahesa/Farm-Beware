@@ -227,9 +227,13 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
 
         // 2. Membaca Input Pergerakan (Deadzone check agar micro-drift tidak menormalkan sudut acak)
         Vector2 moveInput = inputActions.Player.Move.ReadValue<Vector2>();
-        if (moveInput.sqrMagnitude > 0.01f)
+        float inputMag = moveInput.magnitude;
+        if (inputMag > 0.05f)
         {
-            inputVector = new Vector3(moveInput.x, 0f, moveInput.y).normalized;
+            // Preserve analog stick sensitivity (clamped to 1.0) instead of blanket normalization
+            Vector2 dir = moveInput / inputMag;
+            float clampedMag = Mathf.Clamp01(inputMag);
+            inputVector = new Vector3(dir.x, 0f, dir.y) * clampedMag;
         }
         else
         {
@@ -1125,10 +1129,14 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
 
     /// <summary>
     /// Translates raw 2D input (X = horizontal, Z = vertical) into isometric camera-relative world direction.
+    /// Preserves analog stick magnitude instead of blanket normalization.
     /// </summary>
     public static Vector3 GetCameraRelativeDirection(Vector3 rawInput)
     {
-        if (rawInput.sqrMagnitude < 0.001f) return Vector3.zero;
+        float inputMag = Mathf.Clamp01(rawInput.magnitude);
+        if (inputMag < 0.001f) return Vector3.zero;
+
+        Vector3 rawDir = rawInput / inputMag;
 
         if (Camera.main != null)
         {
@@ -1140,12 +1148,16 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
             camRight.y = 0f;
             camRight.Normalize();
 
-            Vector3 worldDir = camFwd * rawInput.z + camRight * rawInput.x;
-            return worldDir.sqrMagnitude > 0.001f ? worldDir.normalized : Vector3.zero;
+            Vector3 worldDir = camFwd * rawDir.z + camRight * rawDir.x;
+            if (worldDir.sqrMagnitude > 0.001f)
+            {
+                return worldDir.normalized * inputMag;
+            }
+            return Vector3.zero;
         }
 
         // Standard 45-degree isometric projection fallback
-        return (Quaternion.Euler(0f, 45f, 0f) * rawInput).normalized;
+        return (Quaternion.Euler(0f, 45f, 0f) * rawDir).normalized * inputMag;
     }
 
     private void HandleDefensiveInput()
@@ -1192,6 +1204,7 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
                     isAttacking = false;
                     isLightAttacking = false;
                     isChargingAttack = false;
+                    playerEquipment?.CombatStateMachine?.InterruptCombatSequence();
                     if (animator != null) animator.SetBool("IsAttacking", false);
                 }
                 else
@@ -1300,6 +1313,7 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
                     isAttacking = false;
                     isLightAttacking = false;
                     isChargingAttack = false;
+                    playerEquipment?.CombatStateMachine?.InterruptCombatSequence();
                     if (animator != null) animator.SetBool("IsAttacking", false);
                 }
                 else
@@ -1313,7 +1327,20 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
             }
         }
 
-        if (playerStats != null && !playerStats.UseStamina(parryStaminaCost))
+        // Reject parry if already parrying or currently in whiff lockout
+        if (playerStats != null && !playerStats.DefenseEvaluator.CanInitiateParry)
+        {
+            return;
+        }
+
+        float effectiveStaminaCost = parryStaminaCost;
+        if (playerStats != null && playerStats.currentStamina < 20f)
+        {
+            // Low stamina penalty: costs 1.5x to prevent low-stamina parry cheese
+            effectiveStaminaCost *= 1.5f;
+        }
+
+        if (playerStats != null && !playerStats.UseStamina(effectiveStaminaCost))
         {
             return;
         }

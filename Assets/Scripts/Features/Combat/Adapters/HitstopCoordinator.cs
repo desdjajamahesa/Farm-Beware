@@ -130,35 +130,44 @@ namespace FeaturesCombat.Adapters
             }
         }
 
-        private void RestoreSlot(int index)
+        private void RestoreSlot(int index, bool restoreComponents = true)
         {
             ref HitstopEntry entry = ref _registry[index];
 
-            // Restore Animator
-            if (entry.TargetAnimator != null)
+            if (restoreComponents)
             {
-                entry.TargetAnimator.speed = entry.OriginalAnimatorSpeed > 0.01f ? entry.OriginalAnimatorSpeed : 1.0f;
+                // Restore Animator only if active
+                if (entry.TargetAnimator != null && entry.TargetAnimator.gameObject.activeInHierarchy)
+                {
+                    entry.TargetAnimator.speed = entry.OriginalAnimatorSpeed > 0.01f ? entry.OriginalAnimatorSpeed : 1.0f;
+                }
+
+                // Restore Rigidbody damping
+                if (entry.TargetRigidbody != null)
+                {
+                    entry.TargetRigidbody.linearDamping = entry.OriginalLinearDamping;
+                }
+
+                // Safe Warp & Restore NavMeshAgent
+                if (entry.TargetAgent != null && entry.TargetAgent.isOnNavMesh)
+                {
+                    Vector3 currentPos = entry.TargetAgent.transform.position;
+                    if (NavMesh.SamplePosition(currentPos, out NavMeshHit hit, 0.85f, NavMesh.AllAreas))
+                    {
+                        entry.TargetAgent.Warp(hit.position);
+                    }
+                    entry.TargetAgent.updatePosition = true;
+                    entry.TargetAgent.isStopped = entry.OriginalAgentStoppedState;
+                }
             }
 
-            // Restore Rigidbody damping
-            if (entry.TargetRigidbody != null)
-            {
-                entry.TargetRigidbody.linearDamping = entry.OriginalLinearDamping;
-            }
-
-            // Restore NavMeshAgent
-            if (entry.TargetAgent != null && entry.TargetAgent.isOnNavMesh)
-            {
-                entry.TargetAgent.Warp(entry.TargetAgent.transform.position);
-                entry.TargetAgent.updatePosition = true;
-                entry.TargetAgent.isStopped = entry.OriginalAgentStoppedState;
-            }
-
+            // Zero out slot references to prevent dangling pointers in object pool
             entry.InUse = false;
             entry.InstanceId = 0;
             entry.TargetAnimator = null;
             entry.TargetAgent = null;
             entry.TargetRigidbody = null;
+            entry.RemainingTime = 0f;
 
             _activeCount--;
             if (_activeCount < 0) _activeCount = 0;
@@ -166,8 +175,10 @@ namespace FeaturesCombat.Adapters
 
         /// <summary>
         /// Explicitly unregisters an entity if it dies or is returned to an object pool.
+        /// If restoreState is true, original component values are applied; otherwise references are silently wiped.
+        /// Zero-GC allocation guaranteed.
         /// </summary>
-        public void Unregister(GameObject target)
+        public void Unregister(GameObject target, bool restoreState = false)
         {
             if (target == null || _activeCount == 0) return;
             int targetId = target.GetInstanceID();
@@ -176,7 +187,7 @@ namespace FeaturesCombat.Adapters
             {
                 if (_registry[i].InUse && _registry[i].InstanceId == targetId)
                 {
-                    RestoreSlot(i);
+                    RestoreSlot(i, restoreState);
                     break;
                 }
             }
