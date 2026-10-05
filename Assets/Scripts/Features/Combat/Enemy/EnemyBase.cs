@@ -31,6 +31,7 @@ namespace FeaturesCombat
             {
                 enemyType = enemyData.enemyType;
                 InitializeStatsByType();
+                InitializePoise();
             }
         }
 
@@ -69,8 +70,32 @@ namespace FeaturesCombat
         private bool isPerformingSkill = false;
         private bool isBurrowed = false;
         private bool isRootGuarded = false;
-        public bool IsRootGuarded => isRootGuarded;
         private int originalArmor;
+
+        private FeaturesCombat.Core.PureLogic.PoiseTracker poiseTracker;
+        public FeaturesCombat.Core.PureLogic.PoiseTracker PoiseTracker => poiseTracker;
+        private FeaturesCombat.Adapters.HitFeedbackRenderer hitFeedback;
+        private FeaturesCombat.Core.Physics.AirborneHazardEntity airborneHazard;
+
+        public void InitializePoise()
+        {
+            float maxP = enemyData != null ? enemyData.maxPoise : 100f;
+            float regenR = enemyData != null ? enemyData.poiseRegenRate : 25f;
+            float regenD = enemyData != null ? enemyData.poiseRegenDelay : 2.5f;
+            if (poiseTracker == null)
+            {
+                poiseTracker = new FeaturesCombat.Core.PureLogic.PoiseTracker(maxP, regenR, regenD);
+            }
+            else
+            {
+                poiseTracker.Initialize(maxP, regenR, regenD);
+            }
+
+            if (enemyData != null)
+            {
+                poiseTracker.IsSuperArmorActive = enemyData.hasSuperArmor;
+            }
+        }
 
         [Header("Low HP Retreat & Heal Mechanic")]
         [Tooltip("Jarak aman mundur saat HP sekarat sebelum berhenti untuk memulihkan diri.")]
@@ -121,7 +146,11 @@ namespace FeaturesCombat
 
             originalArmor = armor;
             InitializeStatsByType();
+            InitializePoise();
             currentHealth = maxHealth;
+
+            hitFeedback = GetComponent<FeaturesCombat.Adapters.HitFeedbackRenderer>() ?? gameObject.AddComponent<FeaturesCombat.Adapters.HitFeedbackRenderer>();
+            airborneHazard = GetComponent<FeaturesCombat.Core.Physics.AirborneHazardEntity>() ?? gameObject.AddComponent<FeaturesCombat.Core.Physics.AirborneHazardEntity>();
 
             navMeshPath = new NavMeshPath();
             nextRepathTime = 0f;
@@ -340,6 +369,12 @@ namespace FeaturesCombat
         private void Update()
         {
             if (IsDead || isPerformingSkill) return;
+
+            if (poiseTracker != null)
+            {
+                poiseTracker.Tick(Time.deltaTime);
+                if (poiseTracker.IsStaggered) return;
+            }
 
             // 1. Batas Anti-Penetrasi Safe Zone: Cegah monster masuk/terselip ke dalam interior rumah modular
             if (NightBrawlManager.IsInsideHouse(transform.position))
@@ -576,6 +611,16 @@ namespace FeaturesCombat
             if (Time.time - lastAttackTime < (1f / Mathf.Max(0.1f, attackRate))) return;
             if (isPerformingSkill) return;
 
+            // Attack token check: prevent uncoordinated horde dogpiling
+            bool isRanged = (enemyType == EnemyType.CornMusketeer || enemyType == EnemyType.TheRanger);
+            if (NightBrawlManager.Instance != null && NightBrawlManager.Instance.TokenDispatcher != null)
+            {
+                if (!NightBrawlManager.Instance.TokenDispatcher.TryAcquireToken(gameObject.GetInstanceID(), isRanged, Time.time, 2.8f))
+                {
+                    return; // Denied, wait for token
+                }
+            }
+
             lastAttackTime = Time.time;
 
             if (enemyType == EnemyType.CornMusketeer)
@@ -671,6 +716,7 @@ namespace FeaturesCombat
             // 3. Recovery Phase (0.18s)
             yield return new WaitForSeconds(0.18f);
             isPerformingSkill = false;
+            NightBrawlManager.Instance?.TokenDispatcher?.ReleaseToken(gameObject.GetInstanceID(), false);
         }
 
         /// <summary>
@@ -787,6 +833,7 @@ namespace FeaturesCombat
             // 3. Recovery (0.2s)
             yield return new WaitForSeconds(0.2f);
             isPerformingSkill = false;
+            NightBrawlManager.Instance?.TokenDispatcher?.ReleaseToken(gameObject.GetInstanceID(), true);
         }
 
         private float GetSkillCooldown()
@@ -1189,11 +1236,40 @@ namespace FeaturesCombat
             currentHealth -= effectiveDmg;
             OnHealthChanged?.Invoke(currentHealth, maxHealth);
 
-            // Flash visual
-            StartCoroutine(RoutineHitFlash());
+            // Flash visual (Zero-GC via MaterialPropertyBlock)
+            if (hitFeedback != null) hitFeedback.TriggerFlash();
 
-            // Terapkan knockback (diabaikan jika sedang dalam status un-staggerable)
-            if (rb != null && knockbackResistance < 1f && !IsUnstaggerable)
+            // Terapkan knockback & stagger berjenjang (diabaikan jika un-staggerable)
+            if (poiseTracker != null)
+            {
+                float poiseDmg = Mathf.Max(10f, damage * 0.75f);
+                float impulse = Mathf.Max(1.0f, hitDirection.magnitude);
+                var staggerTier = poiseTracker.ApplyPoiseDamage(poiseDmg, impulse, out bool poiseBroken);
+
+                if (rb != null && !IsUnstaggerable)
+                {
+                    if (staggerTier == FeaturesCombat.Core.PureLogic.StaggerTier.Knockdown)
+                    {
+                        if (airborneHazard != null)
+                        {
+                            airborneHazard.LaunchAsHazard(hitDirection * 12f + Vector3.up * 4f);
+                        }
+                        else
+                        {
+                            rb.AddForce(hitDirection * 10f + Vector3.up * 3f, ForceMode.Impulse);
+                        }
+                    }
+                    else if (staggerTier == FeaturesCombat.Core.PureLogic.StaggerTier.HeavyStagger)
+                    {
+                        rb.AddForce(hitDirection * 6f, ForceMode.Impulse);
+                    }
+                    else if (staggerTier == FeaturesCombat.Core.PureLogic.StaggerTier.MicroStagger)
+                    {
+                        rb.AddForce(hitDirection * 2.5f, ForceMode.Impulse);
+                    }
+                }
+            }
+            else if (rb != null && knockbackResistance < 1f && !IsUnstaggerable)
             {
                 float actualKb = 6f * (1f - knockbackResistance);
                 rb.AddForce(hitDirection * actualKb, ForceMode.Impulse);
@@ -1205,15 +1281,7 @@ namespace FeaturesCombat
             }
         }
 
-        private IEnumerator RoutineHitFlash()
-        {
-            if (meshRenderer != null)
-            {
-                SetRendererColor(Color.white);
-                yield return new WaitForSeconds(0.08f);
-                SetRendererColor(originalColor);
-            }
-        }
+
 
         private void Die()
         {
@@ -1224,6 +1292,10 @@ namespace FeaturesCombat
                 rb.linearVelocity = Vector3.zero;
                 rb.angularVelocity = Vector3.zero;
             }
+
+            FeaturesCombat.Adapters.HitstopCoordinator.Instance?.Unregister(gameObject);
+            if (airborneHazard != null) airborneHazard.DeactivateHazard();
+            NightBrawlManager.Instance?.TokenDispatcher?.ReleaseAllForEntity(gameObject.GetInstanceID());
 
             // Process Loot Drops (Task 4.1 Refactor: Delegated to modular handler)
             EnemyLootDropHandler.ProcessDeathDrops(this);

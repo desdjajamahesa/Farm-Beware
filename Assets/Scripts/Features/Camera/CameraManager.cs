@@ -62,6 +62,15 @@ namespace FeaturesCamera
         private CameraMode _currentMode = CameraMode.Gameplay;
         public CameraMode CurrentMode => _currentMode;
 
+        public Vector3 CurrentShakeOffset { get; private set; } = Vector3.zero;
+        public Quaternion CurrentShakeRotation { get; private set; } = Quaternion.identity;
+
+        public void SetShakeOffset(Vector3 positionOffset, Quaternion rotationOffset)
+        {
+            CurrentShakeOffset = positionOffset;
+            CurrentShakeRotation = rotationOffset;
+        }
+
         public event System.Action<CameraMode> OnCameraModeChanged;
 
         private void Awake()

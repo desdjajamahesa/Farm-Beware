@@ -191,17 +191,17 @@ public class PlayerEquipment : MonoBehaviour
         if (animator == null) animator = GetComponentInChildren<Animator>();
         if (isExecutingSkill) return false;
 
-        // Cegah spam klik jika animasi serang saat ini baru dimulai (izinkan combo window di tengah/akhir animasi)
+        float normTime = 1.0f;
         if (animator != null)
         {
             var state = animator.IsInTransition(0) ? animator.GetNextAnimatorStateInfo(0) : animator.GetCurrentAnimatorStateInfo(0);
-            if (IsAttackState(state) && state.normalizedTime < 0.35f)
+            if (IsAttackState(state))
             {
-                return false;
+                normTime = state.normalizedTime;
             }
         }
 
-        if (!combatStateMachine.TryTriggerLight(Time.time, out var nextState, out int comboStep))
+        if (!combatStateMachine.TryTriggerLight(Time.time, normTime, out var nextState, out int comboStep))
         {
             return false;
         }
@@ -281,14 +281,19 @@ public class PlayerEquipment : MonoBehaviour
                 knockback = 3.5f;
             }
 
+            var statMods = playerStats != null ? playerStats.GetCombatStatModifiers() : FeaturesCombat.Core.PureLogic.CombatStatModifiers.Default;
             float comboMul = combatStateMachine.GetCurrentDamageMultiplier();
-            float dmgMultiplier = (buffManager != null ? buffManager.GetAttackDamageMultiplier() : 1f) * comboMul;
+            float dmgMultiplier = (buffManager != null ? buffManager.GetAttackDamageMultiplier() : 1f) * comboMul * statMods.DamageMultiplier;
+            if (currentComboIndex == 2)
+            {
+                dmgMultiplier *= statMods.FinisherDamageMultiplier;
+            }
             int finalDamage = Mathf.RoundToInt(baseDmg * dmgMultiplier);
 
             // Combo ke-3 (Finisher) adalah putaran 360 derajat
             bool is360 = (currentComboIndex == 2);
             float activeRange = is360 ? attackHitRange * 1.15f : attackHitRange;
-            float finalKnockback = knockback * combatStateMachine.GetCurrentKnockbackMultiplier();
+            float finalKnockback = knockback * combatStateMachine.GetCurrentKnockbackMultiplier() * statMods.KnockbackMultiplier;
 
             if (currentSwingCoroutine != null)
             {

@@ -106,6 +106,35 @@ public class PlayerBuffManager : MonoBehaviour
         }
     }
 
+    public bool HasBuff(string name)
+    {
+        if (string.IsNullOrEmpty(name)) return false;
+        for (int i = 0; i < activeBuffs.Count; i++)
+        {
+            if (activeBuffs[i].data != null && 
+                string.Equals(activeBuffs[i].data.buffName, name, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public bool HasBuffKeyword(string keyword)
+    {
+        if (string.IsNullOrEmpty(keyword)) return false;
+        for (int i = 0; i < activeBuffs.Count; i++)
+        {
+            if (activeBuffs[i].data != null && 
+                !string.IsNullOrEmpty(activeBuffs[i].data.buffName) &&
+                activeBuffs[i].data.buffName.IndexOf(keyword, StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public float GetTotalModifier(BuffType type)
     {
         float total = 0f;

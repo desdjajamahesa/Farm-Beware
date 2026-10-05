@@ -33,6 +33,19 @@ namespace FeaturesCombat.Data
         [Min(1.0f)] public float aggroRange = 8.0f;
         [Range(0f, 1f)] public float knockbackResistance = 0.2f;
 
+        [Header("Poise & Crowd Control Attributes")]
+        [Tooltip("Maximum poise health before triggering crowd control stagger.")]
+        [Min(1f)] public float maxPoise = 100f;
+
+        [Tooltip("Rate of linear poise point recovery per second.")]
+        [Min(0f)] public float poiseRegenRate = 25f;
+
+        [Tooltip("Delay in seconds after receiving damage before poise starts regenerating.")]
+        [Min(0f)] public float poiseRegenDelay = 2.5f;
+
+        [Tooltip("Initial super armor state upon spawn.")]
+        public bool hasSuperArmor = false;
+
         [Header("Loot Drop Configuration")]
         [Tooltip("Modular loot table defining potential material and trophy drops.")]
         public List<LootDropEntry> lootDrops = new List<LootDropEntry>();

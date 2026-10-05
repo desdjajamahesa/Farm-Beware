@@ -12,6 +12,7 @@ Shader "FarmBeware/Monster/MonsterFresnelLit"
         _FresnelIntensity ("Fresnel Intensity", Range(0.0, 5.0)) = 2.0
 
         [HDR] _EmissionColor ("Base Emission Color", Color) = (0.0, 0.0, 0.0, 1.0)
+        _HitFlashAmount ("Hit Flash Amount", Range(0.0, 1.0)) = 0.0
     }
 
     SubShader
@@ -37,6 +38,7 @@ Shader "FarmBeware/Monster/MonsterFresnelLit"
             float _FresnelIntensity;
             float _Smoothness;
             float _Metallic;
+            float _HitFlashAmount;
         CBUFFER_END
 
         TEXTURE2D(_BaseMap);
@@ -150,6 +152,7 @@ Shader "FarmBeware/Monster/MonsterFresnelLit"
                 float3 fresnelEmission = CalculateFresnelEmission(normalWS, viewDirWS);
 
                 float3 finalColor = directLight + ambient + fresnelEmission;
+                finalColor = lerp(finalColor, float3(1.0, 1.0, 1.0), _HitFlashAmount);
                 return float4(finalColor, 1.0);
             }
             ENDHLSL

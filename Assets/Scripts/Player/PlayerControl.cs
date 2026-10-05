@@ -45,6 +45,18 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
     [Tooltip("Dorongan momentum ke atas saat melompat menerjang.")]
     public float leapUpwardImpulse = 2.5f;
 
+    [Header("Pengaturan Menghindar & Tangkisan (Dodge & Deflect)")]
+    [Tooltip("Kecepatan meluncur saat melakukan dodge roll.")]
+    public float dodgeSpeed = 10f;
+    [Tooltip("Durasi gerakan dodge roll (detik).")]
+    public float dodgeDuration = 0.35f;
+    [Tooltip("Konsumsi stamina saat dodge roll.")]
+    public float dodgeStaminaCost = 15f;
+    [Tooltip("Konsumsi stamina saat melakukan precision parry.")]
+    public float parryStaminaCost = 10f;
+    private bool isDodging = false;
+    public bool IsDodging => isDodging;
+
     [Header("Pengaturan Tangga (Step-Up)")]
     [Tooltip("Tinggi maksimum anak tangga yang bisa dinaiki otomatis (meter).")]
     [Range(0.05f, 0.6f)]
@@ -210,6 +222,7 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
         {
             HandleInventoryInput();
             HandleHotbarInput();
+            HandleDefensiveInput();
             HandleAttackInput();
 
             if (Keyboard.current != null && Keyboard.current.eKey.wasPressedThisFrame)
@@ -349,6 +362,12 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
         {
             if (rb != null)
                 rb.linearVelocity = new Vector3(0f, rb.linearVelocity.y, 0f);
+            return;
+        }
+
+        // Saat dodge roll aktif, biarkan RoutineDodgeRoll mengatur laju kinematic/linear
+        if (isDodging)
+        {
             return;
         }
 
@@ -1090,6 +1109,104 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
             // Reset kecepatan Y agar lompatan konsisten, lalu dorong ke atas
             rb.linearVelocity = new Vector3(rb.linearVelocity.x, 0f, rb.linearVelocity.z);
             rb.AddForce(Vector3.up * jumpForce, ForceMode.Impulse);
+        }
+    }
+
+    private void HandleDefensiveInput()
+    {
+        if (isInputLocked || isPlanting || isDodging) return;
+
+        Keyboard kb = Keyboard.current;
+        if (kb == null) return;
+
+        // 1. Dodge Roll: Left Alt, C key
+        bool dodgeTriggered = kb.leftAltKey.wasPressedThisFrame || kb.cKey.wasPressedThisFrame;
+        if (dodgeTriggered)
+        {
+            PerformDodgeRoll();
+            return;
+        }
+
+        // 2. Precision Deflect / Parry: V key or Left Ctrl key
+        bool parryTriggered = kb.vKey.wasPressedThisFrame || kb.leftCtrlKey.wasPressedThisFrame;
+        if (parryTriggered)
+        {
+            PerformParry();
+            return;
+        }
+    }
+
+    public void PerformDodgeRoll()
+    {
+        if (isDodging || isPlanting || isAttacking || isInputLocked) return;
+
+        if (playerStats != null && !playerStats.UseStamina(dodgeStaminaCost))
+        {
+            return;
+        }
+
+        StartCoroutine(RoutineDodgeRoll());
+    }
+
+    private IEnumerator RoutineDodgeRoll()
+    {
+        isDodging = true;
+
+        Vector3 rollDir = inputVector.sqrMagnitude > 0.01f ? inputVector.normalized : transform.forward;
+        transform.forward = rollDir;
+
+        // Trigger i-Frames on DefenseEvaluator
+        var mods = playerStats != null ? playerStats.GetCombatStatModifiers() : FeaturesCombat.Core.PureLogic.CombatStatModifiers.Default;
+        playerStats?.DefenseEvaluator.TriggerDodge(mods.ExtraDodgeDuration);
+
+        if (animator != null)
+        {
+            animator.SetBool("Sliding", true);
+        }
+
+        float elapsed = 0f;
+        while (elapsed < dodgeDuration)
+        {
+            elapsed += Time.deltaTime;
+            if (rb != null)
+            {
+                rb.linearVelocity = new Vector3(rollDir.x * dodgeSpeed, rb.linearVelocity.y, rollDir.z * dodgeSpeed);
+            }
+            yield return null;
+        }
+
+        if (animator != null)
+        {
+            animator.SetBool("Sliding", false);
+        }
+
+        isDodging = false;
+    }
+
+    public void PerformParry()
+    {
+        if (isDodging || isPlanting || isAttacking || isInputLocked) return;
+
+        if (playerStats != null && !playerStats.UseStamina(parryStaminaCost))
+        {
+            return;
+        }
+
+        var mods = playerStats != null ? playerStats.GetCombatStatModifiers() : FeaturesCombat.Core.PureLogic.CombatStatModifiers.Default;
+        playerStats?.DefenseEvaluator.TriggerParry(mods.ExtraParryWindow);
+
+        if (animator != null)
+        {
+            animator.ResetTrigger("Attack");
+            animator.SetTrigger("Attack");
+        }
+
+        if (PlayerUI.FloatingCombatTextManager.Instance != null)
+        {
+            PlayerUI.FloatingCombatTextManager.Instance.SpawnText(
+                transform.position + Vector3.up * 1.5f,
+                "GUARD",
+                new Color(0.8f, 0.8f, 1f));
         }
     }
 

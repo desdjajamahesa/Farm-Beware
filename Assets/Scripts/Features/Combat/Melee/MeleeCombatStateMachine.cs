@@ -1,9 +1,11 @@
 using System;
+using FeaturesCombat.Core.PureLogic;
 
 namespace FeaturesCombat.Melee
 {
     /// <summary>
-    /// Pure C# POCO Finite State Machine governing player melee combos, heavy charges, and dash attacks.
+    /// Pure C# POCO Finite State Machine governing player melee combos, heavy charges, dash attacks,
+    /// dynamic branching heavy finishers (L -> H vs L -> L -> H), and melee kicks.
     /// Operates without MonoBehaviour dependencies or GC allocations.
     /// </summary>
     public class MeleeCombatStateMachine
@@ -14,22 +16,35 @@ namespace FeaturesCombat.Melee
         private float _chargeStartTime = 0f;
         private float _currentChargeDuration = 0f;
 
+        private readonly CombatStateEvaluator _evaluator;
+
         // Configurable Timing & Multipliers
-        public float ComboResetWindow { get; set; } = 1.5f;
+        public float ComboResetWindow
+        {
+            get => _evaluator.ComboResetWindow;
+            set => _evaluator.ComboResetWindow = value;
+        }
+
         public float MinChargeForHeavy { get; set; } = 0.35f;
         public float MaxChargeDuration { get; set; } = 1.0f;
 
         public float Light1DamageMultiplier { get; set; } = 1.0f;
         public float Light2DamageMultiplier { get; set; } = 1.2f;
         public float Light3DamageMultiplier { get; set; } = 1.6f;
+        public float HeavyFinisher1DamageMultiplier { get; set; } = 1.9f;
+        public float HeavyFinisher2DamageMultiplier { get; set; } = 2.4f;
         public float DashAttackDamageMultiplier { get; set; } = 1.4f;
+        public float FrontKickDamageMultiplier { get; set; } = 0.8f;
         public float MinHeavyDamageMultiplier { get; set; } = 1.8f;
         public float MaxHeavyDamageMultiplier { get; set; } = 3.0f;
 
         public float Light1KnockbackMultiplier { get; set; } = 1.0f;
         public float Light2KnockbackMultiplier { get; set; } = 1.15f;
         public float Light3KnockbackMultiplier { get; set; } = 1.6f;
+        public float HeavyFinisher1KnockbackMultiplier { get; set; } = 2.2f;
+        public float HeavyFinisher2KnockbackMultiplier { get; set; } = 2.8f;
         public float DashAttackKnockbackMultiplier { get; set; } = 1.5f;
+        public float FrontKickKnockbackMultiplier { get; set; } = 3.0f;
         public float MinHeavyKnockbackMultiplier { get; set; } = 1.8f;
         public float MaxHeavyKnockbackMultiplier { get; set; } = 2.8f;
 
@@ -62,14 +77,14 @@ namespace FeaturesCombat.Melee
 
         public MeleeCombatStateMachine()
         {
+            _evaluator = new CombatStateEvaluator(1.5f);
             ResetToIdle();
         }
 
         /// <summary>
-        /// Attempts to advance or trigger a light combo attack.
-        /// Cycles: Idle -> Light1 -> Light2 -> Light3_Finisher -> Light1.
+        /// Attempts to advance or trigger a light combo attack evaluated with dynamic cancellation.
         /// </summary>
-        public bool TryTriggerLight(float currentTime, out MeleeCombatState newState, out int comboStep)
+        public bool TryTriggerLight(float currentTime, float normalizedAnimTime, out MeleeCombatState newState, out int comboStep)
         {
             if (_currentState == MeleeCombatState.HeavyCharging)
             {
@@ -78,29 +93,69 @@ namespace FeaturesCombat.Melee
                 return false;
             }
 
-            float timeSinceLast = currentTime - _lastAttackTime;
-            if (timeSinceLast > ComboResetWindow || _comboIndex >= 2 || _currentState == MeleeCombatState.Idle)
+            if (_evaluator.TryEvaluateNextAction(CombatCommand.LightAttack, normalizedAnimTime, currentTime, out CombatActionID nextAction))
             {
-                _comboIndex = 0;
-                _currentState = MeleeCombatState.Light1;
-            }
-            else if (_comboIndex == 0)
-            {
-                _comboIndex = 1;
-                _currentState = MeleeCombatState.Light2;
-            }
-            else
-            {
-                _comboIndex = 2;
-                _currentState = MeleeCombatState.Light3_Finisher;
+                _currentState = MapActionToState(nextAction);
+                _comboIndex = MapStateToComboIndex(_currentState);
+                _lastAttackTime = currentTime;
+
+                newState = _currentState;
+                comboStep = _comboIndex;
+                OnStateChanged?.Invoke(_currentState);
+                return true;
             }
 
-            _lastAttackTime = currentTime;
             newState = _currentState;
             comboStep = _comboIndex;
+            return false;
+        }
 
-            OnStateChanged?.Invoke(_currentState);
-            return true;
+        /// <summary>
+        /// Backwards-compatible overload treating animation progress as completed (normalizedTime = 1.0f).
+        /// </summary>
+        public bool TryTriggerLight(float currentTime, out MeleeCombatState newState, out int comboStep)
+        {
+            return TryTriggerLight(currentTime, 1.0f, out newState, out comboStep);
+        }
+
+        /// <summary>
+        /// Attempts to trigger a heavy finisher branching off of a light attack sequence (L -> H or L -> L -> H).
+        /// </summary>
+        public bool TryTriggerHeavyFinisher(float currentTime, float normalizedAnimTime, out MeleeCombatState newState)
+        {
+            if (_evaluator.TryEvaluateNextAction(CombatCommand.HeavyAttack, normalizedAnimTime, currentTime, out CombatActionID nextAction))
+            {
+                _currentState = MapActionToState(nextAction);
+                _comboIndex = MapStateToComboIndex(_currentState);
+                _lastAttackTime = currentTime;
+
+                newState = _currentState;
+                OnStateChanged?.Invoke(_currentState);
+                return true;
+            }
+
+            newState = _currentState;
+            return false;
+        }
+
+        /// <summary>
+        /// Attempts to trigger a front kick crowd control attack.
+        /// </summary>
+        public bool TryTriggerFrontKick(float currentTime, float normalizedAnimTime, out MeleeCombatState newState)
+        {
+            if (_evaluator.TryEvaluateNextAction(CombatCommand.FrontKick, normalizedAnimTime, currentTime, out CombatActionID nextAction))
+            {
+                _currentState = MapActionToState(nextAction);
+                _comboIndex = 0;
+                _lastAttackTime = currentTime;
+
+                newState = _currentState;
+                OnStateChanged?.Invoke(_currentState);
+                return true;
+            }
+
+            newState = _currentState;
+            return false;
         }
 
         /// <summary>
@@ -114,6 +169,7 @@ namespace FeaturesCombat.Melee
             _currentState = MeleeCombatState.HeavyCharging;
             _chargeStartTime = currentTime;
             _currentChargeDuration = 0f;
+            _evaluator.ForceSetAction(CombatActionID.ChargedThrust, currentTime);
 
             OnStateChanged?.Invoke(_currentState);
             return true;
@@ -145,7 +201,6 @@ namespace FeaturesCombat.Melee
 
             if (_currentChargeDuration < MinChargeForHeavy)
             {
-                // Charge didn't meet minimum threshold
                 ResetToIdle();
                 return false;
             }
@@ -154,6 +209,7 @@ namespace FeaturesCombat.Melee
             _currentState = MeleeCombatState.HeavyRelease;
             _lastAttackTime = currentTime;
             _comboIndex = 0;
+            _evaluator.ForceSetAction(CombatActionID.ChargedThrust, currentTime);
 
             OnStateChanged?.Invoke(_currentState);
             return true;
@@ -170,6 +226,7 @@ namespace FeaturesCombat.Melee
             _currentState = MeleeCombatState.DashAttack;
             _comboIndex = 0;
             _lastAttackTime = currentTime;
+            _evaluator.ForceSetAction(CombatActionID.DashSweep, currentTime);
 
             OnStateChanged?.Invoke(_currentState);
             return true;
@@ -182,6 +239,7 @@ namespace FeaturesCombat.Melee
         {
             _currentState = MeleeCombatState.Idle;
             _currentChargeDuration = 0f;
+            _evaluator.ResetToIdle();
             OnStateChanged?.Invoke(_currentState);
         }
 
@@ -192,7 +250,8 @@ namespace FeaturesCombat.Melee
         {
             if (_currentState != MeleeCombatState.HeavyCharging && _currentState != MeleeCombatState.Idle)
             {
-                if (currentTime - _lastAttackTime > ComboResetWindow)
+                _evaluator.Update(currentTime);
+                if (_evaluator.CurrentAction == CombatActionID.Idle)
                 {
                     _comboIndex = 0;
                     _currentState = MeleeCombatState.Idle;
@@ -213,8 +272,14 @@ namespace FeaturesCombat.Melee
                     return Light2DamageMultiplier;
                 case MeleeCombatState.Light3_Finisher:
                     return Light3DamageMultiplier;
+                case MeleeCombatState.HeavyFinisher1:
+                    return HeavyFinisher1DamageMultiplier;
+                case MeleeCombatState.HeavyFinisher2:
+                    return HeavyFinisher2DamageMultiplier;
                 case MeleeCombatState.DashAttack:
                     return DashAttackDamageMultiplier;
+                case MeleeCombatState.FrontKick:
+                    return FrontKickDamageMultiplier;
                 case MeleeCombatState.HeavyRelease:
                     return MinHeavyDamageMultiplier + (MaxHeavyDamageMultiplier - MinHeavyDamageMultiplier) * ChargeRatio;
                 default:
@@ -235,12 +300,47 @@ namespace FeaturesCombat.Melee
                     return Light2KnockbackMultiplier;
                 case MeleeCombatState.Light3_Finisher:
                     return Light3KnockbackMultiplier;
+                case MeleeCombatState.HeavyFinisher1:
+                    return HeavyFinisher1KnockbackMultiplier;
+                case MeleeCombatState.HeavyFinisher2:
+                    return HeavyFinisher2KnockbackMultiplier;
                 case MeleeCombatState.DashAttack:
                     return DashAttackKnockbackMultiplier;
+                case MeleeCombatState.FrontKick:
+                    return FrontKickKnockbackMultiplier;
                 case MeleeCombatState.HeavyRelease:
                     return MinHeavyKnockbackMultiplier + (MaxHeavyKnockbackMultiplier - MinHeavyKnockbackMultiplier) * ChargeRatio;
                 default:
                     return 1.0f;
+            }
+        }
+
+        private static MeleeCombatState MapActionToState(CombatActionID actionId)
+        {
+            switch (actionId)
+            {
+                case CombatActionID.Light1: return MeleeCombatState.Light1;
+                case CombatActionID.Light2: return MeleeCombatState.Light2;
+                case CombatActionID.Light3: return MeleeCombatState.Light3_Finisher;
+                case CombatActionID.HeavyFinisher1: return MeleeCombatState.HeavyFinisher1;
+                case CombatActionID.HeavyFinisher2: return MeleeCombatState.HeavyFinisher2;
+                case CombatActionID.ChargedThrust: return MeleeCombatState.HeavyRelease;
+                case CombatActionID.DashSweep: return MeleeCombatState.DashAttack;
+                case CombatActionID.FrontKick: return MeleeCombatState.FrontKick;
+                default: return MeleeCombatState.Idle;
+            }
+        }
+
+        private static int MapStateToComboIndex(MeleeCombatState state)
+        {
+            switch (state)
+            {
+                case MeleeCombatState.Light1: return 0;
+                case MeleeCombatState.Light2: return 1;
+                case MeleeCombatState.Light3_Finisher: return 2;
+                case MeleeCombatState.HeavyFinisher1: return 1;
+                case MeleeCombatState.HeavyFinisher2: return 2;
+                default: return 0;
             }
         }
     }

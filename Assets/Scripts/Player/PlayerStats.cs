@@ -52,6 +52,8 @@ public class PlayerStats : MonoBehaviour, FeaturesCombat.IDamageable, IPlayerDam
     public bool IsStarving => currentHunger <= 0.01f;
     public bool IsDehydrated => currentThirst <= 0.01f;
 
+    public FeaturesCombat.Core.PureLogic.DefenseEvaluator DefenseEvaluator { get; } = new FeaturesCombat.Core.PureLogic.DefenseEvaluator();
+
     [Header("Visual Feedback Saat Terkena Hit")]
     [Tooltip("Warna kedipan merah saat karakter pemain terkena hit monster.")]
     [SerializeField] private Color hurtFlashColor = new Color(1f, 0.22f, 0.22f, 1f);
@@ -117,6 +119,8 @@ public class PlayerStats : MonoBehaviour, FeaturesCombat.IDamageable, IPlayerDam
 
     void Update()
     {
+        DefenseEvaluator.Tick(Time.deltaTime);
+
         // Regenerasi stamina otomatis setelah delay (hanya jika tidak kelaparan/kehausan parah)
         if (Time.time >= lastStaminaUseTime + staminaRegenDelay && currentStamina < maxStamina)
         {
@@ -238,9 +242,63 @@ public class PlayerStats : MonoBehaviour, FeaturesCombat.IDamageable, IPlayerDam
             OnHealed?.Invoke(actualHealed);
     }
 
+    public FeaturesCombat.Core.PureLogic.CombatStatModifiers GetCombatStatModifiers()
+    {
+        var buffMgr = GetComponent<PlayerBuffManager>();
+        bool hasAgility = buffMgr != null && (buffMgr.HasBuffKeyword("Agility") || buffMgr.HasBuffKeyword("Surge"));
+        bool hasIronRoot = buffMgr != null && (buffMgr.HasBuffKeyword("Iron Root") || buffMgr.HasBuffKeyword("Stance"));
+        bool hasBerserker = buffMgr != null && (buffMgr.HasBuffKeyword("Berserker") || buffMgr.HasBuffKeyword("Smite"));
+        bool hasReflective = buffMgr != null && (buffMgr.HasBuffKeyword("Reflective") || buffMgr.HasBuffKeyword("Shell") || buffMgr.HasBuffKeyword("Deflect"));
+
+        var weaponUpgrade = FeaturesWorkbench.PlayerWeaponUpgradeState.Instance;
+        bool sweetPotato = weaponUpgrade != null && weaponUpgrade.sweetPotatoPathUnlocked;
+        bool taro = weaponUpgrade != null && weaponUpgrade.taroPathUnlocked;
+
+        return FeaturesCombat.Core.PureLogic.CombatStatModifiers.Evaluate(
+            hasAgility, hasIronRoot, hasBerserker, hasReflective, sweetPotato, taro);
+    }
+
     public void TakeDamage(int amount)
     {
         if (isGodMode || amount <= 0) return;
+
+        var mods = GetCombatStatModifiers();
+
+        // 0. Defense Evaluator: Check precision parry and dodge roll i-frames
+        if (DefenseEvaluator != null && DefenseEvaluator.EvaluateIncomingDamage(amount, false, out bool parried, out bool dodged))
+        {
+            if (parried)
+            {
+                if (PlayerUI.FloatingCombatTextManager.Instance != null)
+                {
+                    PlayerUI.FloatingCombatTextManager.Instance.SpawnText(
+                        transform.position + Vector3.up * 2f,
+                        "PARRY!",
+                        new Color(1f, 0.85f, 0.1f));
+                }
+                FeaturesCombat.Adapters.TraumaCameraShake.Instance?.AddTrauma(0.35f);
+                FeaturesCombat.Adapters.HitstopCoordinator.Instance?.RegisterHitstop(gameObject, 0.12f);
+                return;
+            }
+
+            if (dodged)
+            {
+                if (PlayerUI.FloatingCombatTextManager.Instance != null)
+                {
+                    PlayerUI.FloatingCombatTextManager.Instance.SpawnText(
+                        transform.position + Vector3.up * 1.8f,
+                        "DODGE!",
+                        new Color(0.4f, 0.9f, 1f));
+                }
+                return;
+            }
+        }
+
+        // Apply Stat Modifier damage mitigation ratio (e.g. Iron Root Stance 25%, Taro Path 10%)
+        if (mods.DamageMitigationRatio > 0f)
+        {
+            amount = Mathf.Max(1, Mathf.RoundToInt(amount * (1f - mods.DamageMitigationRatio)));
+        }
 
         var weaponUpgrade = FeaturesWorkbench.PlayerWeaponUpgradeState.Instance;
         if (weaponUpgrade != null && weaponUpgrade.taroPathUnlocked)
@@ -256,14 +314,15 @@ public class PlayerStats : MonoBehaviour, FeaturesCombat.IDamageable, IPlayerDam
         // 1. Visual flash merah pada tubuh karakter pemain (agar jelas bahwa pemain yang terkena luka)
         TriggerHurtFlash();
 
-        // 2. Shudder getaran kamera halus saat pemain menerima damage
+        // 2. Camera trauma shake saat pemain menerima damage
+        FeaturesCombat.Adapters.TraumaCameraShake.Instance?.AddTrauma(0.20f);
         if (FeaturesCamera.IsometricCameraController.Instance != null)
         {
             FeaturesCamera.IsometricCameraController.Instance.TriggerShake(0.14f, 0.20f);
         }
 
-        // 3. Reaksi tubuh terhuyung mundur jika menerima luka berat (>= 20 HP) dan sedang tidak menyerang
-        if (amount >= 20)
+        // 3. Reaksi tubuh terhuyung mundur jika menerima luka berat (>= 20 HP), sedang tidak menyerang, dan tidak punya Super Armor
+        if (amount >= 20 && !mods.HasPassiveSuperArmor)
         {
             var pc = GetComponent<PlayerControl>();
             if (pc != null && !pc.IsAttacking && playerAnimator != null)

@@ -182,8 +182,17 @@ namespace FeaturesCamera
 
             // Smooth follow + Shake offset
             Vector3 smoothedPos = Vector3.Lerp(transform.position, targetPosition, Time.deltaTime * smoothSpeed);
-            transform.position = smoothedPos + shakeOffset;
-            transform.rotation = Quaternion.Slerp(transform.rotation, rotation, Time.deltaTime * smoothSpeed);
+
+            Vector3 managerShakePos = Vector3.zero;
+            Quaternion managerShakeRot = Quaternion.identity;
+            if (CameraManager.Instance != null)
+            {
+                managerShakePos = CameraManager.Instance.CurrentShakeOffset;
+                managerShakeRot = CameraManager.Instance.CurrentShakeRotation;
+            }
+
+            transform.position = smoothedPos + shakeOffset + managerShakePos;
+            transform.rotation = Quaternion.Slerp(transform.rotation, rotation * managerShakeRot, Time.deltaTime * smoothSpeed);
         }
 
         /// <summary>

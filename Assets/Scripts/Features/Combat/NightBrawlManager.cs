@@ -16,6 +16,8 @@ namespace FeaturesCombat
     {
         public static NightBrawlManager Instance { get; private set; }
 
+        public FeaturesCombat.Core.PureLogic.AttackTokenDispatcher TokenDispatcher { get; private set; } = new FeaturesCombat.Core.PureLogic.AttackTokenDispatcher();
+
         [Header("Arena Center & Spawn Bounds")]
         [SerializeField] private Vector3 arenaCenter = new Vector3(21f, 0.5f, 36f);
 

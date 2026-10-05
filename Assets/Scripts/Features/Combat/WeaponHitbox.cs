@@ -218,6 +218,18 @@ namespace FeaturesCombat
                     isCrit: false,
                     isSkill: false);
             }
+
+            // Zero-GC hitstop freeze on hit entity
+            if (FeaturesCombat.Adapters.HitstopCoordinator.Instance != null)
+            {
+                FeaturesCombat.Adapters.HitstopCoordinator.Instance.RegisterHitstop(targetObj, 0.08f, 0.0f);
+            }
+
+            // Trauma Camera Shake
+            if (FeaturesCombat.Adapters.TraumaCameraShake.Instance != null)
+            {
+                FeaturesCombat.Adapters.TraumaCameraShake.Instance.AddTrauma(0.18f);
+            }
         }
     }
 }
