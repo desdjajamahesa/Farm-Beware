@@ -50,11 +50,16 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
     public float dodgeSpeed = 10f;
     [Tooltip("Durasi gerakan dodge roll (detik).")]
     public float dodgeDuration = 0.35f;
+    [Tooltip("Durasi frame kekebalan (i-frames) selama dodge roll (detik).")]
+    public float dodgeIFrameDuration = 0.30f;
+    [Tooltip("Durasi window tangkisan parry (detik). Standar 0.35s = 350ms agar timing terasa pas dan adil.")]
+    public float parryWindow = 0.35f;
     [Tooltip("Konsumsi stamina saat dodge roll.")]
     public float dodgeStaminaCost = 15f;
     [Tooltip("Konsumsi stamina saat melakukan precision parry.")]
     public float parryStaminaCost = 10f;
     private bool isDodging = false;
+    private Vector3 dodgeRollDirection = Vector3.forward;
     public bool IsDodging => isDodging;
 
     [Header("Pengaturan Tangga (Step-Up)")]
@@ -217,20 +222,6 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
             return;
         }
 
-        // Input aksi lain diblokir saat sedang mengeksekusi serangan
-        if (!isAttacking)
-        {
-            HandleInventoryInput();
-            HandleHotbarInput();
-            HandleDefensiveInput();
-            HandleAttackInput();
-
-            if (Keyboard.current != null && Keyboard.current.eKey.wasPressedThisFrame)
-            {
-                TriggerInteract();
-            }
-        }
-
         // 1. Cek apakah karakter menginjak tanah
         CheckGrounded();
 
@@ -243,6 +234,22 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
         else
         {
             inputVector = Vector3.zero;
+        }
+
+        // 3. Aksi Defensif (Dodge Roll & Parry) - bisa dieksekusi saat bergerak, idle, atau cancel serangan
+        HandleDefensiveInput();
+
+        // Input aksi lain diblokir saat sedang mengeksekusi serangan
+        if (!isAttacking)
+        {
+            HandleInventoryInput();
+            HandleHotbarInput();
+            HandleAttackInput();
+
+            if (Keyboard.current != null && Keyboard.current.eKey.wasPressedThisFrame)
+            {
+                TriggerInteract();
+            }
         }
 
         // 3. Cek apakah pemain menahan tombol Shift untuk Lari (Sprint)
@@ -365,9 +372,13 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
             return;
         }
 
-        // Saat dodge roll aktif, biarkan RoutineDodgeRoll mengatur laju kinematic/linear
+        // Saat dodge roll aktif, dorong rigidbody ke arah dodgeRollDirection secara konsisten
         if (isDodging)
         {
+            if (rb != null)
+            {
+                rb.linearVelocity = new Vector3(dodgeRollDirection.x * dodgeSpeed, rb.linearVelocity.y, dodgeRollDirection.z * dodgeSpeed);
+            }
             return;
         }
 
@@ -390,7 +401,7 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
 
         if (inputVector.magnitude >= 0.1f)
         {
-            Vector3 moveDirection = Quaternion.Euler(0, 45f, 0) * inputVector;
+            Vector3 moveDirection = GetCameraRelativeDirection(inputVector);
             float speedMultiplier = buffManager != null ? buffManager.GetSpeedMultiplier() : 1f;
             var weaponUpgrade = FeaturesWorkbench.PlayerWeaponUpgradeState.Instance;
             if (weaponUpgrade != null && weaponUpgrade.sweetPotatoPathUnlocked)
@@ -1112,6 +1123,31 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
         }
     }
 
+    /// <summary>
+    /// Translates raw 2D input (X = horizontal, Z = vertical) into isometric camera-relative world direction.
+    /// </summary>
+    public static Vector3 GetCameraRelativeDirection(Vector3 rawInput)
+    {
+        if (rawInput.sqrMagnitude < 0.001f) return Vector3.zero;
+
+        if (Camera.main != null)
+        {
+            Vector3 camFwd = Camera.main.transform.forward;
+            camFwd.y = 0f;
+            camFwd.Normalize();
+
+            Vector3 camRight = Camera.main.transform.right;
+            camRight.y = 0f;
+            camRight.Normalize();
+
+            Vector3 worldDir = camFwd * rawInput.z + camRight * rawInput.x;
+            return worldDir.sqrMagnitude > 0.001f ? worldDir.normalized : Vector3.zero;
+        }
+
+        // Standard 45-degree isometric projection fallback
+        return (Quaternion.Euler(0f, 45f, 0f) * rawInput).normalized;
+    }
+
     private void HandleDefensiveInput()
     {
         if (isInputLocked || isPlanting || isDodging) return;
@@ -1138,26 +1174,91 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
 
     public void PerformDodgeRoll()
     {
-        if (isDodging || isPlanting || isAttacking || isInputLocked) return;
+        if (isDodging || isPlanting || isInputLocked) return;
+
+        // Allow dodge-canceling if attacking and reached cancelable window (normalizedTime >= 0.25f)
+        if (isAttacking)
+        {
+            if (animator != null)
+            {
+                var state = animator.GetCurrentAnimatorStateInfo(0);
+                if (state.normalizedTime >= 0.25f)
+                {
+                    if (attackCoroutine != null)
+                    {
+                        StopCoroutine(attackCoroutine);
+                        attackCoroutine = null;
+                    }
+                    isAttacking = false;
+                    isLightAttacking = false;
+                    isChargingAttack = false;
+                    if (animator != null) animator.SetBool("IsAttacking", false);
+                }
+                else
+                {
+                    return;
+                }
+            }
+            else
+            {
+                return;
+            }
+        }
 
         if (playerStats != null && !playerStats.UseStamina(dodgeStaminaCost))
         {
             return;
         }
 
-        StartCoroutine(RoutineDodgeRoll());
+        // Read live movement input
+        Vector2 move = inputActions != null ? inputActions.Player.Move.ReadValue<Vector2>() : Vector2.zero;
+        Vector3 rawMove = move.sqrMagnitude > 0.01f ? new Vector3(move.x, 0f, move.y).normalized : inputVector;
+
+        // Resolve true camera-relative direction in world space
+        Vector3 rollDir;
+        if (rawMove.sqrMagnitude > 0.01f)
+        {
+            rollDir = GetCameraRelativeDirection(rawMove);
+        }
+        else
+        {
+            rollDir = transform.forward;
+        }
+
+        rollDir.y = 0f;
+        if (rollDir.sqrMagnitude < 0.001f)
+        {
+            rollDir = transform.forward;
+        }
+        else
+        {
+            rollDir.Normalize();
+        }
+
+        StartCoroutine(RoutineDodgeRoll(rollDir));
     }
 
-    private IEnumerator RoutineDodgeRoll()
+    private IEnumerator RoutineDodgeRoll(Vector3 rollDir)
     {
         isDodging = true;
+        dodgeRollDirection = rollDir;
 
-        Vector3 rollDir = inputVector.sqrMagnitude > 0.01f ? inputVector.normalized : transform.forward;
-        transform.forward = rollDir;
+        // Instantly align character rotation with roll direction
+        Quaternion targetRot = Quaternion.LookRotation(rollDir, Vector3.up);
+        transform.rotation = targetRot;
+        if (rb != null)
+        {
+            rb.rotation = targetRot;
+            rb.linearVelocity = new Vector3(rollDir.x * dodgeSpeed, rb.linearVelocity.y, rollDir.z * dodgeSpeed);
+        }
 
         // Trigger i-Frames on DefenseEvaluator
         var mods = playerStats != null ? playerStats.GetCombatStatModifiers() : FeaturesCombat.Core.PureLogic.CombatStatModifiers.Default;
-        playerStats?.DefenseEvaluator.TriggerDodge(mods.ExtraDodgeDuration);
+        if (playerStats != null)
+        {
+            playerStats.DefenseEvaluator.DodgeIFrameDuration = dodgeIFrameDuration;
+            playerStats.DefenseEvaluator.TriggerDodge(mods.ExtraDodgeDuration);
+        }
 
         if (animator != null)
         {
@@ -1168,10 +1269,6 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
         while (elapsed < dodgeDuration)
         {
             elapsed += Time.deltaTime;
-            if (rb != null)
-            {
-                rb.linearVelocity = new Vector3(rollDir.x * dodgeSpeed, rb.linearVelocity.y, rollDir.z * dodgeSpeed);
-            }
             yield return null;
         }
 
@@ -1185,7 +1282,36 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
 
     public void PerformParry()
     {
-        if (isDodging || isPlanting || isAttacking || isInputLocked) return;
+        if (isDodging || isPlanting || isInputLocked) return;
+
+        // Allow parry-canceling if attacking and reached cancelable window
+        if (isAttacking)
+        {
+            if (animator != null)
+            {
+                var state = animator.GetCurrentAnimatorStateInfo(0);
+                if (state.normalizedTime >= 0.20f)
+                {
+                    if (attackCoroutine != null)
+                    {
+                        StopCoroutine(attackCoroutine);
+                        attackCoroutine = null;
+                    }
+                    isAttacking = false;
+                    isLightAttacking = false;
+                    isChargingAttack = false;
+                    if (animator != null) animator.SetBool("IsAttacking", false);
+                }
+                else
+                {
+                    return;
+                }
+            }
+            else
+            {
+                return;
+            }
+        }
 
         if (playerStats != null && !playerStats.UseStamina(parryStaminaCost))
         {
@@ -1193,7 +1319,11 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
         }
 
         var mods = playerStats != null ? playerStats.GetCombatStatModifiers() : FeaturesCombat.Core.PureLogic.CombatStatModifiers.Default;
-        playerStats?.DefenseEvaluator.TriggerParry(mods.ExtraParryWindow);
+        if (playerStats != null)
+        {
+            playerStats.DefenseEvaluator.ParryWindow = parryWindow;
+            playerStats.DefenseEvaluator.TriggerParry(mods.ExtraParryWindow);
+        }
 
         if (animator != null)
         {

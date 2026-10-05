@@ -6,8 +6,8 @@ namespace FeaturesCombat.Core.PureLogic
     /// </summary>
     public class DefenseEvaluator
     {
-        public const float DEFAULT_PARRY_WINDOW = 0.12f; // 120ms precision window
-        public const float DEFAULT_DODGE_IFRAME_DURATION = 0.20f; // 12 frames at 60 Hz
+        public const float DEFAULT_PARRY_WINDOW = 0.35f; // 350ms generous precision deflect window
+        public const float DEFAULT_DODGE_IFRAME_DURATION = 0.30f; // 300ms invulnerability frames (18 frames at 60 Hz)
 
         private float _parryTimer = 0f;
         private float _dodgeIFrameTimer = 0f;
