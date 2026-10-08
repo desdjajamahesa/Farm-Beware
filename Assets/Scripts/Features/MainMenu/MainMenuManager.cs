@@ -79,6 +79,12 @@ public class MainMenuManager : MonoBehaviour
             loadingOverlay.SetActive(true);
         }
 
+        if (FeaturesCommon.CloudTransitionManager.Instance != null)
+        {
+            FeaturesCommon.CloudTransitionManager.Instance.TransitionToScene(stagingSceneName);
+            return;
+        }
+
         if (loadAsynchronously)
         {
             StartCoroutine(LoadSceneAsyncRoutine(stagingSceneName));

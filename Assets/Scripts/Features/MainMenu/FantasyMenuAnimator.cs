@@ -59,8 +59,8 @@ public class FantasyMenuAnimator : MonoBehaviour
     [SerializeField] private float swaySpeed = 1.3f;
 
     [Header("Game Enter Transition")]
-    [Tooltip("Total duration of the enter-game portal rush animation.")]
-    [SerializeField] private float enterTransitionDuration = 1.2f;
+    [Tooltip("Total duration of the enter-game transition matching Load transition timing.")]
+    [SerializeField] private float enterTransitionDuration = 0.40f;
     [Tooltip("Rapid rotation boost applied to the vortex portal when entering game.")]
     [SerializeField] private float vortexSpinBoost = 240f;
     [Tooltip("Scale zoom factor for the background when diving into the portal.")]
@@ -376,10 +376,27 @@ public class FantasyMenuAnimator : MonoBehaviour
         var exitCG = exitButtonRect != null ? (exitButtonRect.GetComponent<CanvasGroup>() ?? exitButtonRect.gameObject.AddComponent<CanvasGroup>()) : null;
         var titleCG = titleRect != null ? (titleRect.GetComponent<CanvasGroup>() ?? titleRect.gameObject.AddComponent<CanvasGroup>()) : null;
 
-        // Fade in screen dark transition
-        if (FadeManager.Instance != null)
+        // Cloud transition: clouds roll in and cover screen, then reveal when game starts
+        var cloudTransition = FeaturesCommon.CloudTransitionManager.EnsureInstance();
+        if (cloudTransition != null)
         {
-            FadeManager.Instance.FadeIn(enterTransitionDuration * 0.95f);
+            cloudTransition.TransitionToScene(targetSceneName, onCovered: () =>
+            {
+                onComplete?.Invoke();
+            });
+            yield break;
+        }
+        else if (FadeManager.Instance != null)
+        {
+            FadeManager.Instance.FadeIn(enterTransitionDuration, () =>
+            {
+                onComplete?.Invoke();
+                if (!string.IsNullOrEmpty(targetSceneName))
+                {
+                    SceneManager.LoadScene(targetSceneName);
+                }
+            });
+            yield break;
         }
 
         float elapsed = 0f;
