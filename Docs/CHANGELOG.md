@@ -1,4 +1,6 @@
-# Patch Notes (V0.1.1) - 2026-10-09
+# Patch Notes
+
+## 2026-10-09
 
 ### Added
 * **Dedicated Farm Plant Waterer**: Introduced a dedicated watering can tool (`tool_plant_waterer`) holding 100L of irrigation water, featuring a custom rustic metal model and icon.
@@ -26,7 +28,7 @@
 
 ---
 
-# Patch Notes (V0.1.0)
+## 2026-10-04
 
 ### Added
 * **Save & Load System**: The bedroom desk can now be used to save and load game progress across multiple slots.
