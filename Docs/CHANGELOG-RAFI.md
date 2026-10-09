@@ -2,6 +2,46 @@
 
 Semua perubahan penting pada proyek ini oleh Rafi akan dicatat di halaman ini.
 
+## - 2026-10-09
+
+### Ditambahkan (Added)
+- **Pemisahan Sistem Air Mandiri (Separation of Water Bottle vs Plant Waterer)**:
+  - **Bottle of Water (`food_bottle_water` | [`PlayerWaterBottle.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Kitchen/PlayerWaterBottle.cs))**:
+    - Diformulasikan khusus untuk kebutuhan minum pemain dengan kapasitas **4 Charges (tegukan)**.
+    - Setiap tegukan memulihkan +25 Thirst/Hydration.
+    - **HANYA DAPAT DIISI ULANG DI KITCHEN SINK SAJA** via [`SinkManager.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Kitchen/SinkManager.cs).
+  - **Plant Waterer (`tool_plant_waterer` | [`PlantWaterer.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Farming/PlantWaterer.cs) & [`Tool_PlantWaterer.asset`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Data/Items/Equipment/Tool_PlantWaterer.asset))**:
+    - Komponen & aset perkakas kebun baru berkapasitas **100/100 L** (10L per siraman petak).
+    - Terdaftar sebagai singleton service serta di katalog `ItemDatabase.asset` dan `ItemRegistrySO.asset`.
+    - **HANYA DAPAT DIISI ULANG DI GARDEN WELL SAJA**.
+  - **Garden Well Interactable ([`WaterWellInteractable.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Farming/WaterWellInteractable.cs))**:
+    - Komponen interaksi baru pada `WaterWell` di kebun (`IInteractable` dengan label `[ E ] Refill Plant Waterer`).
+    - Memvalidasi kepemilikan alat `Plant Waterer` di inventori/hotbar dan mengisinya hingga 100L. Menolak pengisian botol minum.
+  - **Validasi Pertanian Ketat ([`FarmlandTile.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Farming/FarmlandTile.cs) & [`PlayerFarmInteraction.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Farming/Adapters/PlayerFarmInteraction.cs))**:
+    - Menyiram tanaman kini **wajib memegang Plant Waterer di hotbar aktif**.
+    - Memberikan feedback melayang jika pemain mencoba menyiram tanpa alat atau saat air di dalam Plant Waterer habis.
+  - **UI Character Sheet Dual-Water Display ([`PlayerStatsDisplayUI.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Player/UI/PlayerStatsDisplayUI.cs))**:
+    - Menampilkan informasi terpisah: `{cur}/{max} Sips | {cur}/{max}L Farm`.
+  - **Persistensi Save & Load Terpisah ([`GameSaveData.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Data/GameSaveData.cs) & [`SaveSystemManager.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/SaveSystem/SaveSystemManager.cs))**:
+    - Menyimpan `waterBottleAmount` (0-4 charges) dan `plantWatererAmount` (0-100L) dengan migrasi otomatis untuk save lama.
+
+- **Toggle Inventory dengan Tombol TAB (Buka & Tutup) ([`InventoryManagerUI.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Inventory/UI/InventoryManagerUI.cs))**:
+  - Menyatukan listener tombol TAB dan I pada method `Update()` dengan guard `frameInventoryOpened` untuk mencegah double-toggle pada frame yang sama.
+  - Pemain kini dapat membuka tas dengan TAB dan menutupnya kembali secara instan dengan menekan tombol TAB.
+
+- **Menu Kematian Pemain & Checkpoint Pagi Hari ([`DeathScreenUI.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Player/UI/DeathScreenUI.cs) & [`PlayerRespawnController.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Player/PlayerRespawnController.cs))**:
+  - Menu layar kematian modular dengan opsi Checkpoint (kembali ke waktu pagi hari sebelum malam terpicu dengan status vital pagi utuh), Load Game, atau Main Menu.
+
+### Diperbaiki (Fixed)
+- **Pembersihan Bar Darah Monster saat Load Game ([`EnemyHealthBarManager.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Combat/UI/EnemyHealthBarManager.cs) & [`BossHealthBarManager.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Combat/UI/BossHealthBarManager.cs))**:
+  - Mengekspos method `ReleaseAllBars()` dan `ClearAllBosses()` menjadi `public` serta memanggilnya saat `SaveSystemManager.LoadSave()` dan `NightBrawlManager.RestoreNightBrawlState()`.
+  - Menambahkan hook `OnDestroy()` pada [`EnemyBase.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Combat/Enemy/EnemyBase.cs) untuk melepas bar darah secara otomatis saat objek musuh di-destroy.
+- **Audit & Perbaikan Spawning Night Brawl ([`NightBrawlManager.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Combat/NightBrawlManager.cs))**:
+  - Mengoreksi evaluasi `isEncounterDone`: kondisi `(!isBrawlActive && !hasSavedEnemies)` tidak lagi salah menandai malam sebagai selesai saat memuat permainan di fase malam.
+  - Me-reset `isWaveInProgress = false` saat memuat sesi malam agar pemanggilan wave dan suspense delay tidak terblokir.
+- **Console Assertion & Scene Teardown Leaks ([`SaveSystemUI.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/SaveSystem/SaveSystemUI.cs) & [`DeathScreenUI.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Player/UI/DeathScreenUI.cs))**:
+  - Menambahkan guard `HasInstance => instance != null` dan lifecycle `isApplicationQuitting` untuk mencegah pembuatan GameObject baru saat scene dibongkar, menyelesaikan error `go.IsActive()` dan `SaveSystemUI scene cleanup leak`.
+
 ## - 2026-10-04
 
 ### Ditambahkan (Added)
