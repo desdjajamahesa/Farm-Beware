@@ -1,3 +1,31 @@
+# Patch Notes (V0.1.1) - 2026-10-09
+
+### Added
+* **Dedicated Farm Plant Waterer**: Introduced a dedicated watering can tool (`tool_plant_waterer`) holding 100L of irrigation water, featuring a custom rustic metal model and icon.
+* **Separated Drinking Water Bottle**: Drinking water is now handled independently via the `Bottle of Water` item (4 sips, +25 hydration per sip), exclusively refillable at the Kitchen Sink.
+* **Interactive Garden Water Well**: The farm well now features glowing highlight detection when approaching and refills the Plant Waterer to 100L upon interaction with contextual floating text alerts.
+* **Player Defeat & Death Screen Menu**: Reaching 0 HP presents a dedicated You Collapsed screen offering **Checkpoint** (awaken in bed at 06:00 morning with restored vitals), **Load Game** (open multi-slot saves), or **Main Menu**.
+* **Daily Report Modal Integration**: Morning economy summary now participates in unified modal window stack navigation.
+* **Dual Water HUD Readout**: Character sheet now displays independent trackers for hydration sips (`{cur}/{max} Sips`) and farm irrigation litres (`{cur}/{max}L Farm`).
+
+### Changed
+* **Farmland Watering Tool Requirement**: Tilled soil plots now strictly require holding the Plant Waterer in the active hotbar slot to water crops.
+* **Inventory TAB Toggle**: Pressing `TAB` now seamlessly toggles the character inventory both open and closed with single-frame debounce protection.
+* **Stair & Slope Sprint Smoothness**: Added a grounding grace buffer (~0.1s decay) in player physics locomotion, eliminating stutter and sprint toggling when running down slopes or stairs.
+* **Non-Dismissible Death Screen**: ESC key cannot dismiss the death screen, ensuring deliberate choice between Checkpoint, Load, or Main Menu.
+* **Wardrobe UI Modernization**: Renamed hat option to English ("Toggle Hat"), migrated labels to TextMeshProUGUI, and optimized button click handlers for zero garbage collection.
+* **Settings Controller Upgrade**: Modernized menu controllers to Unity 6 `FindFirstObjectByType` APIs.
+
+### Fixed
+* **Night Brawl Defeat Cleanup**: Aborted night brawl waves and purged all remaining nighttime monsters upon player collapse, ensuring zero leftover enemies persist into the 06:00 daytime cycle.
+* **Persistent Monster Health Bars on Load Game**: Fixed an issue where floating monster and boss health bars remained on screen after loading a saved game.
+* **Night Wave Spawning Hangs**: Fixed a bug where loading a game during the night phase stalled enemy wave spawning due to incorrect encounter-cleared flags.
+* **Offscreen Indicator Memory Leaks**: Refactored enemy offscreen indicator pulsing to use entity instance IDs, guaranteeing destroyed or pooled monsters never leak in memory collections.
+* **Scene Teardown Assertions**: Resolved console assertion failures (`go.IsActive()`) and object creation leaks when switching scenes or quitting.
+* **Bed Respawn Ground Clipping**: Sanitized respawn elevation and routed positioning through teleportation physics sync to prevent character clipping into the floor.
+
+---
+
 # Patch Notes (V0.1.0)
 
 ### Added
