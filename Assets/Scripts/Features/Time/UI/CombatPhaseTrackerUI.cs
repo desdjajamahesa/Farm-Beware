@@ -125,6 +125,7 @@ namespace FeaturesTime.UI
 
         private int lastDisplayHour = -1;
         private int lastDisplayMinute = -1;
+        private bool lastDisplayFastForward = false;
 
         private void Update()
         {
@@ -132,10 +133,12 @@ namespace FeaturesTime.UI
             {
                 int h = DayNightTimeManager.Instance.CurrentHourInt;
                 int m = DayNightTimeManager.Instance.CurrentMinuteInt;
-                if (h != lastDisplayHour || m != lastDisplayMinute)
+                bool ff = DayNightTimeManager.Instance.IsFastForwardActive;
+                if (h != lastDisplayHour || m != lastDisplayMinute || ff != lastDisplayFastForward)
                 {
                     lastDisplayHour = h;
                     lastDisplayMinute = m;
+                    lastDisplayFastForward = ff;
                     UpdateClockText(h, m);
                 }
             }
@@ -145,7 +148,10 @@ namespace FeaturesTime.UI
         {
             if (clockText != null)
             {
-                clockText.text = $"{hour:D2}:{minute:D2}";
+                string ffTag = (DayNightTimeManager.Instance != null && DayNightTimeManager.Instance.IsFastForwardActive)
+                    ? $" <size=70%><color=#38BDF8>▶▶ {DayNightTimeManager.Instance.FastForwardMultiplier:0.#}x</color></size>"
+                    : "";
+                clockText.text = $"{hour:D2}:{minute:D2}{ffTag}";
             }
         }
 

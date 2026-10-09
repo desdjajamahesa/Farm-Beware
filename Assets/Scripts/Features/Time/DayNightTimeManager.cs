@@ -1,6 +1,6 @@
 using System;
-using UnityEngine;
 using FeaturesRendering.Lighting;
+using UnityEngine;
 
 namespace FeaturesTime
 {
@@ -103,6 +103,11 @@ namespace FeaturesTime
         [Tooltip("Jika true, menyinkronkan event fase dengan TimeManager legacy di project.")]
         [SerializeField] private bool syncWithLegacyTimeManager = true;
 
+        [Header("5. Fast-Forward Debug Settings (Shortcut Key: '0')")]
+        [Tooltip("Pengali kecepatan waktu saat mode cepat aktif (default 8x).")]
+        [SerializeField] private float fastForwardMultiplier = 8.0f;
+        [SerializeField] private bool isFastForwardActive = false;
+
         /// <summary>
         /// Flag indicating if legacy time manager synchronization is enabled.
         /// </summary>
@@ -112,6 +117,16 @@ namespace FeaturesTime
         /// Jam awal siang hari (Day start hour, default 6.0f / 06:00).
         /// </summary>
         public float DayStartHour => dayStartHour;
+
+        /// <summary>
+        /// Status apakah mode percepatan waktu (4x fast-forward) sedang aktif.
+        /// </summary>
+        public bool IsFastForwardActive => isFastForwardActive;
+
+        /// <summary>
+        /// Pengali percepatan waktu.
+        /// </summary>
+        public float FastForwardMultiplier => fastForwardMultiplier;
 
         #endregion
 
@@ -289,6 +304,7 @@ namespace FeaturesTime
         {
             if (phase == TimeManager.DayPhase.Night)
             {
+                isFastForwardActive = false;
                 SetTime(nightStartHour);
             }
             else if (phase == TimeManager.DayPhase.Day)
@@ -314,6 +330,16 @@ namespace FeaturesTime
             if (Time.timeScale <= 0f || FarmBeware.Core.Runtime.UIModalHelper.IsSaveUIOpen)
                 return;
 
+            // Shortcut keybind '0' (Alpha 0 & Numpad 0) untuk toggle kecepatan waktu 4x pada fase siang
+            if (UnityEngine.InputSystem.Keyboard.current != null)
+            {
+                var kb = UnityEngine.InputSystem.Keyboard.current;
+                if (kb.digit0Key.wasPressedThisFrame || kb.numpad0Key.wasPressedThisFrame)
+                {
+                    ToggleFastForward();
+                }
+            }
+
             if (!useContinuousTime || isPaused)
                 return;
 
@@ -321,8 +347,9 @@ namespace FeaturesTime
 
             if (isDay)
             {
-                // Advance real daytime timer
-                daytimeElapsedSeconds += Time.deltaTime;
+                // Advance real daytime timer (dikalikan pengali fast-forward jika aktif)
+                float timeStep = Time.deltaTime * (isFastForwardActive ? fastForwardMultiplier : 1.0f);
+                daytimeElapsedSeconds += timeStep;
                 float targetHour = EvaluateDaytimeHour(daytimeElapsedSeconds, daytimeDurationRealSeconds);
                 ApplyHourInternal(targetHour);
 
@@ -339,6 +366,28 @@ namespace FeaturesTime
                     TriggerAutoSleep();
                 }
             }
+        }
+
+        /// <summary>
+        /// Menyalakan / mematikan mode percepatan waktu (4x Fast-Forward) pada siang hari.
+        /// </summary>
+        public void ToggleFastForward()
+        {
+            isFastForwardActive = !isFastForwardActive;
+
+            string msg = isFastForwardActive
+                ? $"⏩ Time Speed: {fastForwardMultiplier:0.#}x (Fast-Forward)"
+                : "▶️ Time Speed: 1x (Normal)";
+            Color col = isFastForwardActive ? new Color(0.2f, 0.85f, 1f) : new Color(0.85f, 0.85f, 0.85f);
+
+            var floatingText = FarmBeware.Core.Runtime.ServiceLocator.Resolve<FarmBeware.Core.Runtime.IFloatingTextService>();
+            var player = FarmBeware.Core.Runtime.ServiceLocator.Resolve<FarmBeware.Core.Runtime.IPlayerContext>();
+            if (floatingText != null && player != null && player.Transform != null)
+            {
+                floatingText.SpawnText(player.Transform.position + Vector3.up * 1.5f, msg, col);
+            }
+
+            Debug.Log($"[DayNightTimeManager] {msg}");
         }
 
         private void TriggerDuskWarning()
@@ -362,6 +411,7 @@ namespace FeaturesTime
 
         private void TriggerAutoSleep()
         {
+            isFastForwardActive = false;
             autoSleepTriggered = true;
             OnAutoSleepTriggered?.Invoke();
 
