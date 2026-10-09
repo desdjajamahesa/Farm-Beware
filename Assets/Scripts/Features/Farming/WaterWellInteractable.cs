@@ -10,6 +10,7 @@ namespace FeaturesFarming
     /// Can ONLY refill the Plant Waterer tool (100L).
     /// Does NOT refill the player's drinking water bottle (which is refillable only at Kitchen Sink).
     /// </summary>
+    [RequireComponent(typeof(Highlightable))]
     public class WaterWellInteractable : MonoBehaviour, IInteractable, IObstructionExempt
     {
         [Header("Interaction Prompt")]
@@ -26,6 +27,15 @@ namespace FeaturesFarming
             {
                 if (t != null && t.name.Equals("WaterWell", System.StringComparison.OrdinalIgnoreCase))
                 {
+                    if (t.GetComponent<Highlightable>() == null)
+                    {
+                        var h = t.gameObject.AddComponent<Highlightable>();
+#if UNITY_EDITOR
+                        var mat = UnityEditor.AssetDatabase.LoadAssetAtPath<Material>("Assets/Art/Materials/Kitchen/Mat_Highlight.mat");
+                        if (mat != null) h.SetHighlightMaterial(mat);
+#endif
+                    }
+
                     if (t.GetComponent<WaterWellInteractable>() == null)
                     {
                         t.gameObject.AddComponent<WaterWellInteractable>();

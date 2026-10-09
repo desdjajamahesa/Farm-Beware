@@ -302,6 +302,7 @@ GameObject:
   - component: {fileID: 6114843564634600145}
   - component: {fileID: 2996324265637089619}
   - component: {fileID: 5655155035135620300}
+  - component: {fileID: 6898501563080789288}
   m_Layer: 0
   m_Name: WaterWell
   m_TagString: Untagged
@@ -364,6 +365,19 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: FarmBeware.Features.Farming::FeaturesFarming.WaterWellInteractable
   promptLabel: Refill Plant Waterer
+--- !u!114 &6898501563080789288
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 283667575739273946}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f5c46b36a1557054c99cedf6b80a0734, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: FarmBeware.Features.Interaction::FeaturesInteraction.Highlightable
+  highlightMaterial: {fileID: 2100000, guid: be784b17b7fb42547a1ec9b4e3f88c21, type: 2}
 --- !u!1 &507307664487067054
 GameObject:
   m_ObjectHideFlags: 0

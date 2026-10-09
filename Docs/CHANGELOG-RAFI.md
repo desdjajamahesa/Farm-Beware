@@ -16,8 +16,8 @@ Semua perubahan penting pada proyek ini oleh Rafi akan dicatat di halaman ini.
     - **HANYA DAPAT DIISI ULANG DI GARDEN WELL SAJA**.
     - **Ikon Baru Dedikasi ([`Icon_Tool_PlantWaterer.png`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Art/Textures/Icons/Equipment/Icon_Tool_PlantWaterer.png))**: Menggunakan visual kaleng penyiram tanaman metal rustic beresolusi tinggi dengan transparansi penuh, menggantikan ikon botol air minum sebelumnya.
   - **Garden Well Interactable ([`WaterWellInteractable.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Farming/WaterWellInteractable.cs))**:
-    - Komponen interaksi baru pada `WaterWell` di kebun (`IInteractable` dengan label `[ E ] Refill Plant Waterer`).
-    - Menyematkan `BoxCollider` dan `WaterWellInteractable` pada objek scene `WaterWell` dan prefab `WaterWell.prefab`, serta inisialisasi runtime otomatis (`[RuntimeInitializeOnLoadMethod]`).
+    - Menyematkan `BoxCollider`, `Highlightable` (dengan `Mat_Highlight.mat`), dan `WaterWellInteractable` pada objek scene `WaterWell` dan prefab `WaterWell.prefab`, serta inisialisasi runtime otomatis (`[RuntimeInitializeOnLoadMethod]`).
+    - Objek sumur kini otomatis berpendar/highlight saat pemain berada di dekatnya dan siap berinteraksi.
     - Memvalidasi kepemilikan alat `Plant Waterer` di inventori/hotbar dan mengisinya hingga 100L. Menolak pengisian botol minum dengan feedback floating text.
   - **Validasi Pertanian Ketat ([`FarmlandTile.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Farming/FarmlandTile.cs) & [`PlayerFarmInteraction.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Farming/Adapters/PlayerFarmInteraction.cs))**:
     - Menyiram tanaman kini **wajib memegang Plant Waterer di hotbar aktif**.
