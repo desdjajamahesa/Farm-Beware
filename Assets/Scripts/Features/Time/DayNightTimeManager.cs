@@ -206,9 +206,21 @@ namespace FeaturesTime
             Instance = this;
             FarmBeware.Core.Runtime.ServiceLocator.Register<FarmBeware.Core.Runtime.ITimeService>(this);
 
-            currentHour = initialHour;
+            // Enforce daytime continuous progression & day boundaries
+            useContinuousTime = true;
+            dayStartHour = 6.0f;
+            nightStartHour = 18.0f;
+            duskStartHour = 15.75f;
+            duskWarningHour = 15.75f;
+
+            if (currentHour < 6.0f || (currentHour >= 6.99f && currentHour <= 7.25f))
+            {
+                currentHour = dayStartHour;
+            }
+
             currentDay = initialDay;
             isPaused = !autoStart;
+            daytimeElapsedSeconds = EvaluateElapsedSecondsFromHour(currentHour, daytimeDurationRealSeconds);
             currentPhase = EvaluatePhase(currentHour);
         }
 
@@ -218,14 +230,28 @@ namespace FeaturesTime
             {
                 currentDay = TimeManager.Instance.currentDay;
                 if (TimeManager.Instance.currentPhase == TimeManager.DayPhase.Night)
-                    currentHour = nightStartHour;
+                {
+                    SetTime(nightStartHour);
+                }
                 else
-                    currentHour = dayStartHour;
+                {
+                    // If currentHour is uninitialized or legacy 7.0f-7.25f, align to dayStartHour (06:00)
+                    if (currentHour < 6.0f || (currentHour >= 6.99f && currentHour <= 7.25f))
+                    {
+                        SetTime(dayStartHour);
+                    }
+                    else
+                    {
+                        SetTime(currentHour);
+                    }
+                }
+            }
+            else
+            {
+                SetTime(currentHour);
             }
 
-            currentPhase = EvaluatePhase(currentHour);
-
-            // Emit inisialisasi awal ke semua listener yang telah mendaftar di Awake
+            // Emit initial values to all registered listeners
             int hourInt = CurrentHourInt;
             int minuteInt = CurrentMinuteInt;
 

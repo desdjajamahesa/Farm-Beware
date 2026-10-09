@@ -14629,20 +14629,26 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e8533a883e6a0a04a9a4b4165c5fc7e0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::FeaturesTime.DayNightTimeManager
-  realSecondsPerInGameDay: 720
-  useContinuousTime: 0
-  initialHour: 7
+  daytimeDurationRealSeconds: 960
+  realSecondsPerInGameDay: 1920
+  useContinuousTime: 1
+  initialHour: 6
   initialDay: 1
   autoStart: 1
   dawnStartHour: 5
-  dayStartHour: 7
-  duskStartHour: 17
-  nightStartHour: 19.5
+  dayStartHour: 6
+  duskStartHour: 15.75
+  nightStartHour: 18
+  duskWarningHour: 15.75
+  autoSleepAtNightfall: 1
   syncWithLegacyTimeManager: 1
-  currentHour: 7
+  currentHour: 6
   currentDay: 1
   currentPhase: 1
   isPaused: 0
+  daytimeElapsedSeconds: 0
+  duskWarningTriggered: 0
+  autoSleepTriggered: 0
 --- !u!114 &351680746
 MonoBehaviour:
   m_ObjectHideFlags: 0

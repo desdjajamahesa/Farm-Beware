@@ -10,6 +10,12 @@ Semua perubahan penting pada proyek ini oleh M-Roihan (Roi) dari `branch-roi-1` 
   - Sistem *Auto-Sleep* pada jam 18:00 in-game (16:00 menit real) untuk transisi otomatis ke fase malam (*Night Brawl*).
   - Tampilan jam digital format `HH:mm` (mis. `06:00`, `15:45`) pada [`CombatPhaseTrackerUI.cs`](file:///f:/unity/Farm-Beware/Assets/Scripts/Features/Time/UI/CombatPhaseTrackerUI.cs) di pojok kanan atas HUD.
 
+### Diperbaiki (Fixed)
+- **Perbaikan Jam Digital Diam (07:08) & Aktivasi Waktu Kontinu**:
+  - Mengatasi nilai ter-serialize lama `useContinuousTime: 0` pada [`StagingScene.unity`](file:///f:/unity/Farm-Beware/Assets/Scenes/StagingScene.unity) yang menyebabkan loop `Update()` di [`DayNightTimeManager.cs`](file:///f:/unity/Farm-Beware/Assets/Scripts/Features/Time/DayNightTimeManager.cs) langsung return dan waktu terhenti.
+  - Memperbarui inisialisasi `Awake()` dan `Start()` untuk meng-enforce `useContinuousTime = true`, `dayStartHour = 6.0f`, dan memigrasi jam pagi legacy `07:08` (`7.14f`) dari save file lama agar kembali ke awal pagi `06:00`.
+  - Menambahkan loop sinkronisasi `Update()` pada [`CombatPhaseTrackerUI.cs`](file:///f:/unity/Farm-Beware/Assets/Scripts/Features/Time/UI/CombatPhaseTrackerUI.cs) sehingga jarum jam digital selalu ter-refresh secara real-time.
+
 ## - 2026-10-08
 
 ### Diubah (Changed)

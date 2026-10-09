@@ -123,6 +123,24 @@ namespace FeaturesTime.UI
             UpdateClockText(hour, minute);
         }
 
+        private int lastDisplayHour = -1;
+        private int lastDisplayMinute = -1;
+
+        private void Update()
+        {
+            if (DayNightTimeManager.Instance != null && clockText != null)
+            {
+                int h = DayNightTimeManager.Instance.CurrentHourInt;
+                int m = DayNightTimeManager.Instance.CurrentMinuteInt;
+                if (h != lastDisplayHour || m != lastDisplayMinute)
+                {
+                    lastDisplayHour = h;
+                    lastDisplayMinute = m;
+                    UpdateClockText(h, m);
+                }
+            }
+        }
+
         public void UpdateClockText(int hour, int minute)
         {
             if (clockText != null)

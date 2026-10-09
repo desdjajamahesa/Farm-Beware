@@ -659,7 +659,7 @@ namespace FeaturesSaveSystem
             }
             else
             {
-                data.currentHour = data.currentPhase == 1 ? 19.5f : 7.0f;
+                data.currentHour = data.currentPhase == 1 ? 18.0f : 6.0f;
             }
 
             // 5. Farmland Crops
@@ -877,7 +877,11 @@ namespace FeaturesSaveSystem
 
             if (FeaturesTime.DayNightTimeManager.Instance != null)
             {
-                float targetHour = data.currentHour > 0f ? data.currentHour : (data.currentPhase == 1 ? 19.5f : 7.0f);
+                float targetHour = data.currentHour > 0f ? data.currentHour : (data.currentPhase == 1 ? 18.0f : 6.0f);
+                if (data.currentPhase == 0 && targetHour >= 6.99f && targetHour <= 7.25f)
+                {
+                    targetHour = 6.0f;
+                }
                 FeaturesTime.DayNightTimeManager.Instance.SetDayAndTime(data.currentDay, targetHour);
             }
 
