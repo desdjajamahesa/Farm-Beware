@@ -877,19 +877,29 @@ public class MainMenuController : MonoBehaviour
 
         bool willLoadScene = loadSceneOnStart && !string.IsNullOrEmpty(targetSceneName);
 
-        var fantasyAnimator = GetComponent<FantasyMenuAnimator>();
-        if (fantasyAnimator != null && willLoadScene)
+        if (willLoadScene)
         {
             hasStartedGame = true;
             menuActive = false;
-            currentState = MenuState.FadingOut;
-            stateTimer = 0f;
-            stateDuration = 999f;
-            fantasyAnimator.PlayEnterGameTransition(targetSceneName, () =>
+            currentState = MenuState.Hidden;
+            SetMenuVisualsActive(false);
+
+            var cloudTransition = FeaturesCommon.CloudTransitionManager.EnsureInstance();
+            if (cloudTransition != null)
             {
-                currentState = MenuState.Hidden;
-                SetMenuVisualsActive(false);
-            });
+                cloudTransition.TransitionToScene(targetSceneName);
+                return;
+            }
+
+            var fade = FarmBeware.Core.Runtime.ServiceLocator.Resolve<FarmBeware.Core.Runtime.IFadeService>() ?? (FarmBeware.Core.Runtime.IFadeService)FadeManager.Instance;
+            if (fade != null)
+            {
+                fade.FadeIn(0.4f, () => SceneManager.LoadScene(targetSceneName));
+            }
+            else
+            {
+                SceneManager.LoadScene(targetSceneName);
+            }
             return;
         }
 
@@ -897,14 +907,11 @@ public class MainMenuController : MonoBehaviour
         menuActive = false;
         currentState = MenuState.FadingOut;
         stateTimer = 0f;
-        stateDuration = willLoadScene ? 0.4f : 0.2f;
+        stateDuration = 0.2f;
 
-        if (FadeManager.Instance != null)
+        if (FadeManager.Instance != null && FadeManager.Instance.IsFading)
         {
-            if (willLoadScene)
-                FadeManager.Instance.FadeIn(0.4f);
-            else if (FadeManager.Instance.IsFading)
-                FadeManager.Instance.FadeOut(0.2f);
+            FadeManager.Instance.FadeOut(0.2f);
         }
     }
 
