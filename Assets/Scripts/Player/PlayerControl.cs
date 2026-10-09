@@ -99,6 +99,7 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
     private Vector3 contactWallNormal = Vector3.zero;
     private bool isTouchingWall = false;
     private float lastWallContactTime = -10f;
+    private float sprintDuration = 0f;
 
     // Kunci input global: saat true, pemain tidak bisa bergerak, membuka
     // inventori, melompat, dash, atau berinteraksi (dipakai mode Trophy, dst).
@@ -263,10 +264,22 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
         // Karakter hanya berlari jika bergerak, menekan shift, dan memiliki stamina
         isRunning = isMoving && wantsToRun && (playerStats == null || !playerStats.IsExhausted);
 
-        // 4. Konsumsi Stamina HANYA saat Berlari (Sprint)
-        if (isRunning && playerStats != null)
+        // 4. Konsumsi Stamina HANYA saat Berlari (Sprint) dan benar-benar bergerak secara fisik
+        if (isRunning)
         {
-            playerStats.UseStamina(playerStats.staminaDrainRate * Time.deltaTime);
+            sprintDuration += Time.deltaTime;
+            bool hasPhysicalMovement = rb != null && Vector3.ProjectOnPlane(rb.linearVelocity, Vector3.up).sqrMagnitude > 0.04f;
+
+            // Sprint grace period ~0.15s agar respon awal dari posisi diam tetap responsif;
+            // setelah 0.15s, butuh pergerakan fisik nyata agar stamina tidak terkuras saat menabrak dinding/kolider.
+            if ((sprintDuration <= 0.15f || hasPhysicalMovement) && playerStats != null)
+            {
+                playerStats.UseStamina(playerStats.staminaDrainRate * Time.deltaTime);
+            }
+        }
+        else
+        {
+            sprintDuration = 0f;
         }
 
         // 5. Sinkronisasi Animator secara natural
@@ -1548,6 +1561,11 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
             }
         }
     }
+
+    /// <summary>
+    /// Helper eksplisit untuk mengaktifkan / menonaktifkan input kontrol pemain.
+    /// </summary>
+    public void SetInputActive(bool active) => SetControlLock(!active);
 
     #endregion
 

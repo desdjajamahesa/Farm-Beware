@@ -19,14 +19,19 @@ namespace FeaturesSaveSystem
     /// </summary>
     public class SaveSystemUI : MonoBehaviour, FarmBeware.Core.Runtime.IModalWindow
     {
+        public static bool HasInstance => instance != null;
+        private static bool isApplicationQuitting = false;
+
         public static SaveSystemUI Instance
         {
             get
             {
+                if (isApplicationQuitting) return null;
+
                 if (instance == null)
                 {
                     instance = FindFirstObjectByType<SaveSystemUI>(FindObjectsInactive.Include);
-                    if (instance == null)
+                    if (instance == null && !isApplicationQuitting)
                     {
                         var go = new GameObject("SaveSystemUI");
                         instance = go.AddComponent<SaveSystemUI>();
@@ -37,6 +42,11 @@ namespace FeaturesSaveSystem
             private set => instance = value;
         }
         private static SaveSystemUI instance;
+
+        /// <summary>
+        /// Event yang dipancarkan saat SaveSystemUI ditutup.
+        /// </summary>
+        public event Action OnSaveUIClosed;
 
         [Header("UI Root")]
         [SerializeField] private GameObject modalPanel;
@@ -101,6 +111,19 @@ namespace FeaturesSaveSystem
                 Time.timeScale = 1f;
                 isOpen = false;
                 FarmBeware.Core.Runtime.UIModalHelper.IsSaveUIOpen = false;
+            }
+        }
+
+        private void OnApplicationQuit()
+        {
+            isApplicationQuitting = true;
+        }
+
+        private void OnDestroy()
+        {
+            if (instance == this)
+            {
+                instance = null;
             }
         }
 
@@ -220,6 +243,8 @@ namespace FeaturesSaveSystem
             // Prevent ESC from triggering the Pause Menu simultaneously
             FarmBeware.Core.Runtime.UIModalHelper.LastFrameUIPanelClosed = Time.frameCount;
             FarmBeware.Core.Runtime.ModalStackManager.Instance?.PopSpecific(this);
+
+            OnSaveUIClosed?.Invoke();
         }
 
         void FarmBeware.Core.Runtime.IModalWindow.OpenModal() => Open();
@@ -602,7 +627,9 @@ namespace FeaturesSaveSystem
 
         private void EnsureUIHierarchy()
         {
+            if (isApplicationQuitting) return;
             if (modalPanel != null) return;
+            if (!gameObject.scene.isLoaded) return;
 
             var canvas = GameObject.Find("UI_Canvas");
             if (canvas == null)

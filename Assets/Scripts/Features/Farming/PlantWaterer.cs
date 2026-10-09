@@ -2,27 +2,28 @@ using System;
 using UnityEngine;
 using FarmBeware.Core.Runtime;
 
-namespace FeaturesKitchen
+namespace FeaturesFarming
 {
     /// <summary>
-    /// Manages the player's refillable 100L water bottle system as specified in the MVP design guidelines.
-    /// Tracks current water volume (0-100L) used for drinking, cooking recipes, and irrigating farmland tiles.
+    /// Manages the player's dedicated agricultural Plant Waterer (Watering Can) system.
+    /// Tracks current water volume (0-100L) used strictly for irrigating farmland crops.
+    /// Can ONLY be refilled at the garden well.
     /// </summary>
-    public class PlayerWaterBottle : MonoBehaviour, IWaterService
+    public class PlantWaterer : MonoBehaviour
     {
-        public static PlayerWaterBottle Instance
+        public static PlantWaterer Instance
         {
             get
             {
                 if (_instance == null)
                 {
-                    _instance = FindFirstObjectByType<PlayerWaterBottle>(FindObjectsInactive.Include);
+                    _instance = FindFirstObjectByType<PlantWaterer>(FindObjectsInactive.Include);
                     if (_instance == null)
                     {
                         var player = GameObject.FindWithTag("Player");
                         if (player != null)
                         {
-                            _instance = player.AddComponent<PlayerWaterBottle>();
+                            _instance = player.AddComponent<PlantWaterer>();
                         }
                     }
                 }
@@ -30,11 +31,11 @@ namespace FeaturesKitchen
             }
             private set => _instance = value;
         }
-        private static PlayerWaterBottle _instance;
+        private static PlantWaterer _instance;
 
-        [Header("Water Bottle Capacity (Max 4 sips/charges)")]
-        [SerializeField] private float maxWater = 4f;
-        [SerializeField] private float currentWater = 4f;
+        [Header("Plant Waterer Capacity (100L)")]
+        [SerializeField] private float maxWater = 100f;
+        [SerializeField] private float currentWater = 100f;
 
         public float MaxWater => maxWater;
         public float CurrentWater => currentWater;
@@ -49,16 +50,16 @@ namespace FeaturesKitchen
                 return;
             }
             _instance = this;
-            ServiceLocator.Register<IWaterService>(this);
+            ServiceLocator.Register<PlantWaterer>(this);
         }
 
         private void Start()
         {
-            EnsureBottleInInventory();
+            EnsureWatererInInventory();
             OnWaterChanged?.Invoke(currentWater, maxWater);
         }
 
-        private void EnsureBottleInInventory()
+        private void EnsureWatererInInventory()
         {
             var inv = GetComponent<InventoryComponent>() ?? ServiceLocator.Resolve<IPlayerContext>()?.GetPlayerComponent<InventoryComponent>();
             if (inv != null)
@@ -66,17 +67,17 @@ namespace FeaturesKitchen
                 var db = Resources.Load<ItemDatabase>("Database/ItemDatabase");
                 if (db != null)
                 {
-                    var bottleItem = db.GetItem("food_bottle_water");
-                    if (bottleItem != null && inv.CountItem(bottleItem) == 0)
+                    var watererItem = db.GetItem("tool_plant_waterer");
+                    if (watererItem != null && inv.CountItem(watererItem) == 0)
                     {
-                        inv.AddItem(bottleItem, 1);
+                        inv.AddItem(watererItem, 1);
                     }
                 }
             }
         }
 
         /// <summary>
-        /// Checks whether the bottle has at least the specified amount of water.
+        /// Checks whether the plant waterer has at least the specified amount of water.
         /// </summary>
         public bool HasWater(float amount)
         {
@@ -84,7 +85,7 @@ namespace FeaturesKitchen
         }
 
         /// <summary>
-        /// Consumes water from the bottle. Returns true if successful, false if insufficient water.
+        /// Consumes water from the plant waterer. Returns true if successful, false if insufficient water.
         /// </summary>
         public bool ConsumeWater(float amount)
         {
@@ -101,7 +102,7 @@ namespace FeaturesKitchen
         }
 
         /// <summary>
-        /// Refills water into the bottle. If amount <= 0, refills to full capacity (100L).
+        /// Refills water into the plant waterer. If amount <= 0, refills to full capacity (100L).
         /// </summary>
         public void RefillWater(float amount = -1f)
         {
@@ -118,35 +119,6 @@ namespace FeaturesKitchen
         }
 
         /// <summary>
-        /// Sips water from the bottle to restore player hydration.
-        /// </summary>
-        public bool DrinkSip(float amount = 1f)
-        {
-            if (currentWater < 1f)
-            {
-                return false;
-            }
-
-            float chargesToConsume = amount > 4f ? 1f : Mathf.Min(amount, currentWater);
-            currentWater = Mathf.Max(0f, currentWater - chargesToConsume);
-            OnWaterChanged?.Invoke(currentWater, maxWater);
-
-            float thirstRestored = 25f * chargesToConsume;
-
-            var player = ServiceLocator.Resolve<IPlayerContext>();
-            if (player != null)
-            {
-                player.Transform.SendMessage("Drink", thirstRestored, SendMessageOptions.DontRequireReceiver);
-            }
-            else
-            {
-                SendMessage("Drink", thirstRestored, SendMessageOptions.DontRequireReceiver);
-            }
-
-            return true;
-        }
-
-        /// <summary>
         /// Sets current water directly (used by Save/Load system).
         /// </summary>
         public void SetWater(float amount)
@@ -155,16 +127,11 @@ namespace FeaturesKitchen
             OnWaterChanged?.Invoke(currentWater, maxWater);
         }
 
-        void IWaterService.DrinkSip(float amount)
-        {
-            DrinkSip(amount);
-        }
-
         private void OnDestroy()
         {
             if (_instance == this)
             {
-                ServiceLocator.Unregister<IWaterService>();
+                ServiceLocator.Unregister<PlantWaterer>();
                 _instance = null;
             }
         }

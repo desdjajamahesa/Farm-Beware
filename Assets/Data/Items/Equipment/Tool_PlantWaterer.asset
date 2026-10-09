@@ -1,0 +1,32 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c908330538660af40ad2893ecae8f656, type: 3}
+  m_Name: Tool_PlantWaterer
+  m_EditorClassIdentifier: Assembly-CSharp::ToolItemData
+  itemId: tool_plant_waterer
+  itemName: Plant Waterer
+  category: 6
+  rarity: 0
+  itemIcon: {fileID: 21300000, guid: cb2427143d1792e479f6b1af89519d50, type: 3}
+  description: A sturdy watering can for irrigating farmland crops. 100L capacity.
+    Refillable only at the garden water well.
+  maxStack: 1
+  type: 2
+  buyPrice: 300
+  sellPrice: 150
+  isDirty: 0
+  cleanVariant: {fileID: 0}
+  equipPrefab: {fileID: 0}
+  isWeapon: 0
+  isHoe: 0
+  baseDamage: 5
+  knockbackForce: 2

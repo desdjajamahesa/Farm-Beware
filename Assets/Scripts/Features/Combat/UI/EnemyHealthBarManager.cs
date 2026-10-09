@@ -240,13 +240,16 @@ namespace FeaturesCombat.UI
             }
         }
 
-        private void ReleaseAllBars()
+        public void ReleaseAllBars()
         {
             foreach (var kvp in activeBars)
             {
-                kvp.Value.Unbind();
-                kvp.Value.gameObject.SetActive(false);
-                pool.Enqueue(kvp.Value);
+                if (kvp.Value != null)
+                {
+                    kvp.Value.Unbind();
+                    kvp.Value.gameObject.SetActive(false);
+                    pool.Enqueue(kvp.Value);
+                }
             }
             activeBars.Clear();
         }

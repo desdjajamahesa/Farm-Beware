@@ -94,6 +94,11 @@ namespace PlayerUI
             {
                 PlayerWaterBottle.Instance.OnWaterChanged += HandleWaterChanged;
             }
+
+            if (FeaturesFarming.PlantWaterer.Instance != null)
+            {
+                FeaturesFarming.PlantWaterer.Instance.OnWaterChanged += HandleWaterChanged;
+            }
         }
 
         private void UnsubscribeEvents()
@@ -114,6 +119,11 @@ namespace PlayerUI
             if (PlayerWaterBottle.Instance != null)
             {
                 PlayerWaterBottle.Instance.OnWaterChanged -= HandleWaterChanged;
+            }
+
+            if (FeaturesFarming.PlantWaterer.Instance != null)
+            {
+                FeaturesFarming.PlantWaterer.Instance.OnWaterChanged -= HandleWaterChanged;
             }
         }
 
@@ -199,9 +209,13 @@ namespace PlayerUI
                 txtGold.text = $"{PlayerWallet.Instance.CurrentGold} G";
             }
 
-            if (PlayerWaterBottle.Instance != null && txtWaterBottle != null)
+            if (txtWaterBottle != null)
             {
-                txtWaterBottle.text = $"{Mathf.CeilToInt(PlayerWaterBottle.Instance.CurrentWater)} / {Mathf.CeilToInt(PlayerWaterBottle.Instance.MaxWater)} L";
+                int bottleCur = PlayerWaterBottle.Instance != null ? Mathf.CeilToInt(PlayerWaterBottle.Instance.CurrentWater) : 0;
+                int bottleMax = PlayerWaterBottle.Instance != null ? Mathf.CeilToInt(PlayerWaterBottle.Instance.MaxWater) : 4;
+                int plantCur = FeaturesFarming.PlantWaterer.Instance != null ? Mathf.CeilToInt(FeaturesFarming.PlantWaterer.Instance.CurrentWater) : 0;
+                int plantMax = FeaturesFarming.PlantWaterer.Instance != null ? Mathf.CeilToInt(FeaturesFarming.PlantWaterer.Instance.MaxWater) : 100;
+                txtWaterBottle.text = $"{bottleCur}/{bottleMax} Sips | {plantCur}/{plantMax}L Farm";
             }
         }
 

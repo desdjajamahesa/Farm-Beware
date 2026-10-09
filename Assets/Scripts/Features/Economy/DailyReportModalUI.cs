@@ -132,8 +132,8 @@ namespace FeaturesEconomy
             if (modalPanel != null)
                 modalPanel.SetActive(false);
 
-            Cursor.visible = false;
-            Cursor.lockState = CursorLockMode.Locked;
+            Cursor.visible = true;
+            Cursor.lockState = CursorLockMode.None;
 
             var pc = ServiceLocator.Resolve<IPlayerContext>();
             if (pc != null)

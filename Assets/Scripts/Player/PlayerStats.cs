@@ -8,6 +8,7 @@ public class PlayerStats : MonoBehaviour, FeaturesCombat.IDamageable, IPlayerDam
     public event Action<int, int> OnHealthChanged;
     public event Action<int> OnDamageTaken;
     public event Action<int> OnHealed;
+    public event Action OnPlayerDied;
     public event Action<float, float> OnStaminaChanged;
     public event Action<float, float> OnHungerChanged;
     public event Action<float, float> OnThirstChanged;
@@ -76,9 +77,15 @@ public class PlayerStats : MonoBehaviour, FeaturesCombat.IDamageable, IPlayerDam
         playerAnimator = GetComponentInChildren<Animator>();
 
         ServiceLocator.Register<IPlayerDamageNotifier>(this);
+
+        if (GetComponent<PlayerRespawnController>() == null)
+        {
+            gameObject.AddComponent<PlayerRespawnController>();
+        }
     }
 
     private bool isStatsRestored = false;
+    private bool isDeadHandled = false;
 
     void Start()
     {
@@ -236,6 +243,7 @@ public class PlayerStats : MonoBehaviour, FeaturesCombat.IDamageable, IPlayerDam
         if (amount <= 0) return;
         int prev = currentHealth;
         currentHealth = Mathf.Clamp(currentHealth + amount, 0, maxHealth);
+        if (currentHealth > 0) isDeadHandled = false;
         int actualHealed = currentHealth - prev;
         OnHealthChanged?.Invoke(currentHealth, maxHealth);
         if (actualHealed > 0)
@@ -310,6 +318,12 @@ public class PlayerStats : MonoBehaviour, FeaturesCombat.IDamageable, IPlayerDam
         currentHealth = Mathf.Clamp(currentHealth - amount, 0, maxHealth);
         OnHealthChanged?.Invoke(currentHealth, maxHealth);
         OnDamageTaken?.Invoke(amount);
+
+        if (currentHealth <= 0 && !isDeadHandled)
+        {
+            isDeadHandled = true;
+            OnPlayerDied?.Invoke();
+        }
 
         // 1. Visual flash merah pada tubuh karakter pemain (agar jelas bahwa pemain yang terkena luka)
         TriggerHurtFlash();
@@ -430,6 +444,7 @@ public class PlayerStats : MonoBehaviour, FeaturesCombat.IDamageable, IPlayerDam
     {
         isStatsRestored = true;
         currentHealth = Mathf.Clamp(hp, 1, maxHealth);
+        if (currentHealth > 0) isDeadHandled = false;
         currentStamina = Mathf.Clamp(stamina, 0f, maxStamina);
         currentHunger = Mathf.Clamp(hunger, 0f, maxHunger);
         currentThirst = Mathf.Clamp(thirst, 0f, maxThirst);

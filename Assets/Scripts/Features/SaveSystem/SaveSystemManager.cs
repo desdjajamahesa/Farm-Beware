@@ -630,10 +630,14 @@ namespace FeaturesSaveSystem
                 data.gold = PlayerWallet.Instance.CurrentGold;
             }
 
-            // 3. Water Bottle
+            // 3. Water Bottle & Plant Waterer
             if (PlayerWaterBottle.Instance != null)
             {
                 data.waterBottleAmount = PlayerWaterBottle.Instance.CurrentWater;
+            }
+            if (FeaturesFarming.PlantWaterer.Instance != null)
+            {
+                data.plantWatererAmount = FeaturesFarming.PlantWaterer.Instance.CurrentWater;
             }
 
             // 4. Time System (24h continuous clock & phase)
@@ -825,10 +829,16 @@ namespace FeaturesSaveSystem
                 PlayerWallet.Instance.SetGold(data.gold);
             }
 
-            // 5. Water Bottle
+            // 5. Water Bottle & Plant Waterer
             if (PlayerWaterBottle.Instance != null)
             {
-                PlayerWaterBottle.Instance.SetWater(data.waterBottleAmount);
+                float bottleAmt = data.waterBottleAmount > 4f ? 4f : (data.waterBottleAmount > 0f ? data.waterBottleAmount : 4f);
+                PlayerWaterBottle.Instance.SetWater(bottleAmt);
+            }
+            if (FeaturesFarming.PlantWaterer.Instance != null)
+            {
+                float plantAmt = data.plantWatererAmount > 0f ? data.plantWatererAmount : 100f;
+                FeaturesFarming.PlantWaterer.Instance.SetWater(plantAmt);
             }
 
             // 6. Weapon Upgrades
@@ -901,6 +911,9 @@ namespace FeaturesSaveSystem
             }
 
             // 11. Combat & Night Brawl
+            FeaturesCombat.UI.EnemyHealthBarManager.Instance?.ReleaseAllBars();
+            FeaturesCombat.UI.BossHealthBarManager.Instance?.ClearAllBosses();
+
             if (FeaturesCombat.NightBrawlManager.Instance != null)
             {
                 FeaturesCombat.NightBrawlManager.Instance.RestoreNightBrawlState(

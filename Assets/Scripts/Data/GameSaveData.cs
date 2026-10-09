@@ -67,8 +67,9 @@ namespace FeaturesSaveSystem
         public int dailyMonstersSlain;
         public int dailyGoldEarnedCombat;
 
-        // Water Bottle
+        // Water Bottle & Plant Waterer
         public float waterBottleAmount;
+        public float plantWatererAmount;
 
         // Time System
         public int currentDay;

@@ -259,8 +259,8 @@ public class KitchenSinkInteractable : KitchenStation, IInteractable
         if (panelSink != null)
             panelSink.SetActive(false);
 
-        Cursor.visible = false;
-        Cursor.lockState = CursorLockMode.Locked;
+        Cursor.visible = true;
+        Cursor.lockState = CursorLockMode.None;
 
         var player = ServiceLocator.Resolve<IPlayerContext>();
         if (player != null)

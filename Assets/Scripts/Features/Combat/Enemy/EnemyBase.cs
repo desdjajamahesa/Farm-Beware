@@ -1403,5 +1403,17 @@ namespace FeaturesCombat
             mpb.SetColor("_Color", color); // Fallback for standard shaders
             meshRenderer.SetPropertyBlock(mpb);
         }
+
+        private void OnDestroy()
+        {
+            if (FeaturesCombat.UI.EnemyHealthBarManager.Instance != null)
+            {
+                FeaturesCombat.UI.EnemyHealthBarManager.Instance.HandleEnemyDied(this);
+            }
+            if (isBoss && FeaturesCombat.UI.BossHealthBarManager.Instance != null)
+            {
+                FeaturesCombat.UI.BossHealthBarManager.Instance.HandleEnemyDied(this);
+            }
+        }
     }
 }

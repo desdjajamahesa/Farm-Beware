@@ -89,6 +89,7 @@ public class InventoryManagerUI : MonoBehaviour, IModalWindow
     // Modus khusus: interact Kabinet -> kiri = Inventory Kabinet, kanan = Inventory Rak.
     private bool isTrophyCabinetMode;
     private InventoryComponent cabinetInventory; // kiri saat modus trophy (untuk unsubscribe)
+    private int frameInventoryOpened = -1;
 
     void Awake()
     {
@@ -230,6 +231,18 @@ public class InventoryManagerUI : MonoBehaviour, IModalWindow
                 CloseAllUI();
             }
         }
+
+        // TAB / I key closes player inventory if open
+        if (Keyboard.current != null && (Keyboard.current.tabKey.wasPressedThisFrame || Keyboard.current.iKey.wasPressedThisFrame))
+        {
+            if (Time.frameCount != frameInventoryOpened && (isPlayerOpen || IsAnyInventoryUIRelatedOpen()))
+            {
+                if (!UIModalHelper.IsSaveUIOpen)
+                {
+                    TogglePlayerInventory();
+                }
+            }
+        }
     }
 
     void OnDestroy()
@@ -285,9 +298,14 @@ public class InventoryManagerUI : MonoBehaviour, IModalWindow
 
         isPlayerOpen = !isPlayerOpen;
         if (isPlayerOpen)
+        {
+            frameInventoryOpened = Time.frameCount;
             ModalStackManager.Instance?.Push(this);
+        }
         else
+        {
             ModalStackManager.Instance?.PopSpecific(this);
+        }
 
         if (playerPanel != null)
         {

@@ -252,12 +252,15 @@ namespace FeaturesCombat.UI
             fadeCoroutine = null;
         }
 
-        private void ClearAllBosses()
+        public void ClearAllBosses()
         {
             foreach (var kvp in activeBosses)
             {
-                kvp.Value.Unbind();
-                kvp.Value.gameObject.SetActive(false);
+                if (kvp.Value != null)
+                {
+                    kvp.Value.Unbind();
+                    kvp.Value.gameObject.SetActive(false);
+                }
             }
             activeBosses.Clear();
 

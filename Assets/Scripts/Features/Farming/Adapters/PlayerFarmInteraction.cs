@@ -3,6 +3,7 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using FeaturesFarming.Core;
 using FeaturesFarming.Data;
+using FeaturesFarming;
 using FeaturesInteraction;
 using FarmBeware.Core.Runtime;
 
@@ -105,6 +106,12 @@ namespace FeaturesFarming.Adapters
             if (playerCamera == null)
             {
                 playerCamera = Camera.main;
+            }
+
+            var well = GameObject.Find("WaterWell");
+            if (well != null && well.GetComponent<WaterWellInteractable>() == null)
+            {
+                well.AddComponent<WaterWellInteractable>();
             }
         }
 
@@ -272,20 +279,26 @@ namespace FeaturesFarming.Adapters
                     return ExecutePlant(coord, activeSlot.item, worldPos);
                 }
 
-                // If holding water or active slot is not seed, attempt watering
-                if (IsHoldingWaterBottle() || !tile.IsWatered)
+                // If holding plant waterer, attempt watering
+                if (IsHoldingPlantWaterer())
                 {
                     return ExecuteWater(coord, worldPos);
                 }
 
-                ShowFeedbackText(worldPos, "Select seed or water bottle in hotbar!", new Color(1f, 0.7f, 0.3f));
+                ShowFeedbackText(worldPos, "Select seed or plant waterer in hotbar!", new Color(1f, 0.7f, 0.3f));
                 return false;
             }
 
             // 4. WATER CROP (PlantedDry)
             if (tile.State == SoilState.PlantedDry)
             {
-                return ExecuteWater(coord, worldPos);
+                if (IsHoldingPlantWaterer())
+                {
+                    return ExecuteWater(coord, worldPos);
+                }
+
+                ShowFeedbackText(worldPos, "Requires Plant Waterer in hotbar to water crop!", new Color(1f, 0.6f, 0.2f));
+                return false;
             }
 
             // 5. Already watered crop info
@@ -336,29 +349,35 @@ namespace FeaturesFarming.Adapters
         {
             if (!ValidateDaytime(worldPos)) return false;
 
+            if (!IsHoldingPlantWaterer())
+            {
+                ShowFeedbackText(worldPos, "Requires Plant Waterer in hotbar!", new Color(1f, 0.6f, 0.2f));
+                return false;
+            }
+
             if (GridManager == null) return false;
             var grid = GridManager.Grid;
             if (grid == null) return false;
 
-            var bottle = ServiceLocator.Resolve<IWaterService>();
-            if (bottle == null || !bottle.HasWater(waterAmountPerIrrigation))
+            var waterer = PlantWaterer.Instance;
+            if (waterer == null || !waterer.HasWater(waterAmountPerIrrigation))
             {
-                Debug.LogWarning("[PlayerFarmInteraction] Insufficient water in bottle! Refill at kitchen sink.");
-                ShowFeedbackText(worldPos, $"Need {waterAmountPerIrrigation:F0}L Water! Refill at Sink.", new Color(1f, 0.5f, 0.2f));
+                Debug.LogWarning("[PlayerFarmInteraction] Insufficient water in plant waterer! Refill at Garden Well.");
+                ShowFeedbackText(worldPos, $"Need {waterAmountPerIrrigation:F0}L Water! Refill at Garden Well.", new Color(1f, 0.5f, 0.2f));
                 return false;
             }
 
-            if (bottle.ConsumeWater(waterAmountPerIrrigation))
+            if (waterer.ConsumeWater(waterAmountPerIrrigation))
             {
                 if (grid.TryWater(coord))
                 {
-                    ShowFeedbackText(worldPos, $"💧 Watered (-{waterAmountPerIrrigation:F0}L Water)", new Color(0.35f, 0.75f, 1f));
+                    ShowFeedbackText(worldPos, $"💧 Watered (-{waterAmountPerIrrigation:F0}L Water | {Mathf.FloorToInt(waterer.CurrentWater)}/100L)", new Color(0.35f, 0.75f, 1f));
                     return true;
                 }
                 else
                 {
                     // Refund water if tile could not accept watering
-                    bottle.RefillWater(waterAmountPerIrrigation);
+                    waterer.RefillWater(waterAmountPerIrrigation);
                 }
             }
 
@@ -546,14 +565,14 @@ namespace FeaturesFarming.Adapters
             return id.Contains("hoe") || name.Contains("hoe") || name.Contains("cangkul");
         }
 
-        private bool IsHoldingWaterBottle()
+        private bool IsHoldingPlantWaterer()
         {
             InventorySlot slot = GetActiveHotbarSlot();
             if (slot == null || slot.IsEmpty || slot.item == null) return false;
 
             string id = (slot.item.itemId ?? "").ToLower();
-            string name = (slot.item.itemName ?? "").ToLower();
-            return id.Contains("bottle") || name.Contains("bottle") || name.Contains("water");
+            string name = (slot.item.itemName ?? slot.item.name ?? "").ToLower();
+            return id == "tool_plant_waterer" || name.Contains("plant waterer") || name.Contains("waterer") || name.Contains("watering can");
         }
 
         private bool IsSeedItem(ItemData item)

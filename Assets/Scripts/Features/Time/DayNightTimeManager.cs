@@ -97,6 +97,11 @@ namespace FeaturesTime
         /// </summary>
         public bool SyncWithLegacyTimeManager => syncWithLegacyTimeManager;
 
+        /// <summary>
+        /// Jam awal siang hari (Day start hour, default 7.0f / 07:00).
+        /// </summary>
+        public float DayStartHour => dayStartHour;
+
         #endregion
 
         #region State Fields

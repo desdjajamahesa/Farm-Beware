@@ -170,11 +170,8 @@ public class StoveUIManager : MonoBehaviour, IModalWindow
             playerControl.IsInputLocked = false;
         }
 
-        if (Cursor.lockState != CursorLockMode.Locked)
-        {
-            Cursor.visible = false;
-            Cursor.lockState = CursorLockMode.Locked;
-        }
+        Cursor.visible = true;
+        Cursor.lockState = CursorLockMode.None;
     }
 
     private void OnDestroy()
@@ -296,8 +293,8 @@ public class StoveUIManager : MonoBehaviour, IModalWindow
         ClearDetail();
 
         // Restore cursor
-        Cursor.visible = false;
-        Cursor.lockState = CursorLockMode.Locked;
+        Cursor.visible = true;
+        Cursor.lockState = CursorLockMode.None;
 
         // Unlock player input
         var playerClose = ServiceLocator.Resolve<IPlayerContext>();

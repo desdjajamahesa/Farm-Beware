@@ -1,0 +1,40 @@
+﻿Severity,What happened? When? Why?,Tag,Test Execution,Bug Slayer(s),Reproductibility Steps,Reproductibilty Rate / 10,Status,Files & media,How do I fixed?,Created by,Found in CL,Fixed in CL
+Critical,BUG-001 — Game crashes after entering Main Menu,Performance,TE-1 - Attempt 1 - Game Launch (https://app.notion.com/p/TE-1-Attempt-1-Game-Launch-3df97560e11a80dc848ed87b87fb208f?pvs=21),"Rafi Saputra, bhaskoro prayoga","  1. Install Game
+  2. Open the game
+  3. Observe the launching",1,Not started,Bugs/BUG-001%20%E2%80%94%20Game%20crashes%20after%20entering%20Main%20Menu/image.png,,Fakhri Fawwaz Aydin,,
+Medium,BUG-002 — Enemy navigation distance increases when player moves toward the indicated enemy,"Navigation, UI",TE-10 - Attack until you defeat one normal enemy (https://app.notion.com/p/TE-10-Attack-until-you-defeat-one-normal-enemy-3f297560e11a8092802cf42256947f1c?pvs=21),"Rafi Saputra, bhaskoro prayoga","  1. Enter gameplay
+  2. Go to bed
+  3. Enter night phase
+  4. Combat with enemy
+  5. Observe the navigation distance",10,Not started,https://drive.google.com/file/d/115MwVZrUJax5YKjdZWUYn95Nf-AGLqwI/view?usp=drive_link,,Fakhri Fawwaz Aydin,,
+Medium,BUG-003 — Player HP remains alive when HP reachces 0,"Combat, Health / Damage, UI",TE-10 - Attack until you defeat one normal enemy (https://app.notion.com/p/TE-10-Attack-until-you-defeat-one-normal-enemy-3f297560e11a8092802cf42256947f1c?pvs=21),"bhaskoro prayoga, Rafi Saputra","  1. Enter Gameplay
+  2. Go to bed
+  3. Enter Night Phase
+  4. Combat with enemy
+  5. Observe the healtbar of player",10,Not started,https://drive.google.com/file/d/115MwVZrUJax5YKjdZWUYn95Nf-AGLqwI/view?usp=drive_link,,Fakhri Fawwaz Aydin,,
+Medium,BUG-004 — Mouse cursor disappears after closing merchant interface,"Cursor/Mouse, Input/Control, UI",TE-7 - Selling & buying (https://app.notion.com/p/TE-7-Selling-buying-3f297560e11a80aa9f2ee86d7ef42ddb?pvs=21),"bhaskoro prayoga, Rafi Saputra","  1. Enter gameplay
+  2. Interact with a merchant
+  3. verify the merchant interface opens and the mouse cursor is visible
+  4. Close the merchant interface
+  5. observe the mouse cursor",10,Not started,https://drive.google.com/file/d/1qhEinKaXgoPKhJAMkqE9iJXJ00z4rtZa/view?usp=drive_link,,Fakhri Fawwaz Aydin,,
+Medium,BUG-005 — Mouse cursor disappear after closing cooking stove interface,"Cursor/Mouse, Input/Control, UI",TE-8 - Completing Recipe (https://app.notion.com/p/TE-8-Completing-Recipe-3f297560e11a80a5a51df63c4e4d2839?pvs=21),"Rafi Saputra, bhaskoro prayoga","  1. Enter gameplay
+  2. Interact with a cooking stove
+  3. Verify the cooking stove interface mouse cursor is visible
+  4. Close the cooking stove interface
+  5. Observe the mouse cursor",10,Not started,https://drive.google.com/file/d/1Y65NSq5cZPZ1QZVpyQYvVTtJG0OCf19f/view?usp=drive_link,,Fakhri Fawwaz Aydin,,
+Low,BUG-006 — Changing clothes without consent save,"Input/Control, Interaction, Inventory, UI",TE-14 - Changing a Clothes (https://app.notion.com/p/TE-14-Changing-a-Clothes-3f397560e11a8017bd5cd9fdf0e0f185?pvs=21),"bhaskoro prayoga, Rafi Saputra","  1. Enter Gameplay
+  2. Interact with peti kamar
+  3. Check the clothes you’re wearing
+  4. change into the clothes provided / take off your hat
+  5. Click the ‘Cancel’ button
+  6. Take a look at the clothes you’re wearing",10,Not started,https://drive.google.com/file/d/1obCHIvJb_X3tVFzUBe3OkdXtOxGu4sQS/view?usp=sharing,,Fakhri Fawwaz Aydin,,
+Medium,BUG-007 — A bottle that suddenly appeared whilst I was watering the plants,"Gameplay, Input/Control, Inventory, UI",TE-5 - Plating to Harvesting (https://app.notion.com/p/TE-5-Plating-to-Harvesting-3f297560e11a80968feafdc2a4144618?pvs=21),"bhaskoro prayoga, Rafi Saputra","  1. Enter Gameplay
+  2. Take the seeds out of the storage box in front of bed room without take a bottle of water
+  3. Go to the garden
+  4. Hoed the soil
+  5. Plant any seeds
+  6. Water the plants
+  7. Open the inventory
+  8. And there is a bottle of water in the inventory",10,Not started,,,Fakhri Fawwaz Aydin,,
+Low,BUG-008 — Ran into a wall can drain your stamina,"Collision, Input/Control, Interaction, Physics",TE-4 - Moving Character (https://app.notion.com/p/TE-4-Moving-Character-3f297560e11a80d1bf84f0e6c1ba28ab?pvs=21),"bhaskoro prayoga, Rafi Saputra","  1. Enter Gameplay
+  2. Try running towards the wall",10,Not started,,,Fakhri Fawwaz Aydin,,

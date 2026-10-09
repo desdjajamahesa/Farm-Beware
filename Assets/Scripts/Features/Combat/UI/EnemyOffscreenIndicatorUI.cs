@@ -16,7 +16,10 @@ namespace FeaturesCombat.UI
         [SerializeField] private float edgeMargin = 55f;
         [SerializeField] private GameObject arrowPrefab;
 
-        private readonly List<EnemyIndicatorArrow> arrowPool = new List<EnemyIndicatorArrow>();
+        private readonly Dictionary<EnemyBase, EnemyIndicatorArrow> activeIndicators = new Dictionary<EnemyBase, EnemyIndicatorArrow>();
+        private readonly List<EnemyIndicatorArrow> freeArrows = new List<EnemyIndicatorArrow>();
+        private readonly List<EnemyBase> toRemoveList = new List<EnemyBase>();
+        private readonly HashSet<EnemyBase> currentOffscreenSet = new HashSet<EnemyBase>();
         private readonly HashSet<EnemyBase> pulsingEnemies = new HashSet<EnemyBase>();
         private Camera targetCamera;
         private Transform playerTransform;
@@ -36,10 +39,18 @@ namespace FeaturesCombat.UI
         {
             if (playerTransform == null)
             {
-                var playerObj = GameObject.FindWithTag("Player") ?? GameObject.Find("Player") ?? GameObject.Find("PlayerCapsule");
-                if (playerObj != null)
+                var playerContext = ServiceLocator.Resolve<IPlayerContext>();
+                if (playerContext != null && playerContext.Transform != null)
                 {
-                    playerTransform = playerObj.transform;
+                    playerTransform = playerContext.Transform;
+                }
+                else
+                {
+                    var playerObj = GameObject.FindWithTag("Player") ?? GameObject.Find("Player") ?? GameObject.Find("PlayerCapsule");
+                    if (playerObj != null)
+                    {
+                        playerTransform = playerObj.transform;
+                    }
                 }
             }
         }
@@ -92,8 +103,13 @@ namespace FeaturesCombat.UI
                 return;
             }
 
-            // Pastikan referensi karakter pemain tersedia
+            // Pastikan referensi karakter pemain tersedia secara ketat (tidak pernah fallback ke posisi kamera)
             EnsurePlayerReference();
+            if (playerTransform == null)
+            {
+                HideAllIndicators();
+                return;
+            }
 
             // Jika NightBrawlManager belum aktif atau sedang tidak ada pertarungan malam, sembunyikan semua
             if (NightBrawlManager.Instance == null || !NightBrawlManager.Instance.IsNightBrawlActive)
@@ -109,24 +125,21 @@ namespace FeaturesCombat.UI
                 return;
             }
 
-            int arrowIndex = 0;
+            currentOffscreenSet.Clear();
             Vector2 screenCenter = new Vector2(Screen.width * 0.5f, Screen.height * 0.5f);
             float halfWidth = (Screen.width * 0.5f) - edgeMargin;
             float halfHeight = (Screen.height * 0.5f) - edgeMargin;
-
-            Vector3 playerPos = playerTransform != null ? playerTransform.position : targetCamera.transform.position;
+            Vector3 playerPos = playerTransform.position;
 
             for (int i = 0; i < activeEnemies.Count; i++)
             {
                 var enemy = activeEnemies[i];
-                if (enemy == null || enemy.IsDead) continue;
+                if (enemy == null || enemy.IsDead || !enemy.gameObject.activeInHierarchy) continue;
 
                 Vector3 worldPos = enemy.transform.position + Vector3.up * 0.8f;
                 Vector3 screenPos = targetCamera.WorldToScreenPoint(worldPos);
 
-                // Koreksi jika target berada di belakang frustum kamera:
-                // HANYA berlaku untuk kamera perspektif. Pada kamera ortografis (parallel projection),
-                // screenPos.x dan y tidak pernah terbalik walau objek berada di belakang near clip plane.
+                // Koreksi jika target berada di belakang frustum kamera
                 bool isBehind = !targetCamera.orthographic && screenPos.z < 0;
                 if (isBehind)
                 {
@@ -137,17 +150,18 @@ namespace FeaturesCombat.UI
                 // Validasi kedalaman pandangan kamera
                 bool isWithinDepth = screenPos.z >= targetCamera.nearClipPlane && screenPos.z <= targetCamera.farClipPlane;
 
-                // Cek apakah monster sudah terlihat jelas di dalam layar
+                // Cek apakah monster sudah terlihat jelas di dalam batas layar
                 bool isOnScreen = isWithinDepth && !isBehind &&
                                   screenPos.x >= edgeMargin && screenPos.x <= Screen.width - edgeMargin &&
                                   screenPos.y >= edgeMargin && screenPos.y <= Screen.height - edgeMargin;
 
                 if (isOnScreen)
                 {
-                    // Target ada di dalam layar, tidak perlu panah off-screen
                     pulsingEnemies.Remove(enemy);
                     continue;
                 }
+
+                currentOffscreenSet.Add(enemy);
 
                 // Hitung arah dari pusat layar ke target
                 Vector2 fromCenter = new Vector2(screenPos.x, screenPos.y) - screenCenter;
@@ -156,7 +170,7 @@ namespace FeaturesCombat.UI
                     fromCenter = Vector2.up;
                 }
 
-                // Interseksi vektor dengan kotak batas layar (clamping to screen edges)
+                // Interseksi vektor dengan kotak batas layar
                 float scaleX = Mathf.Abs(fromCenter.x) > 0.0001f ? (halfWidth / Mathf.Abs(fromCenter.x)) : 9999f;
                 float scaleY = Mathf.Abs(fromCenter.y) > 0.0001f ? (halfHeight / Mathf.Abs(fromCenter.y)) : 9999f;
                 float scale = Mathf.Min(scaleX, scaleY);
@@ -164,7 +178,7 @@ namespace FeaturesCombat.UI
 
                 float angleDegrees = Mathf.Atan2(fromCenter.y, fromCenter.x) * Mathf.Rad2Deg;
 
-                // Hitung jarak real-time dari posisi karakter pemain (Flat XZ Distance), BUKAN dari kamera
+                // Hitung jarak real-time murni di bidang datar XZ antara pemain dan musuh
                 float distance = Vector2.Distance(
                     new Vector2(playerPos.x, playerPos.z),
                     new Vector2(worldPos.x, worldPos.z));
@@ -175,23 +189,45 @@ namespace FeaturesCombat.UI
 
                 bool shouldPulse = pulsingEnemies.Contains(enemy);
 
-                var arrow = GetOrCreateArrow(arrowIndex);
+                // Dapatkan atau buat indikator yang terpetakan khusus ke instans musuh ini
+                if (!activeIndicators.TryGetValue(enemy, out var arrow))
+                {
+                    arrow = GetOrCreateFreeArrow();
+                    activeIndicators[enemy] = arrow;
+                }
+
                 arrow.SetData(clampedEdgePos, angleDegrees, distance, isBoss, shouldPulse);
-                arrowIndex++;
             }
 
-            // Sembunyikan sisa pool yang tidak terpakai
-            for (int j = arrowIndex; j < arrowPool.Count; j++)
+            // Kembalikan panah dari musuh yang sudah tidak off-screen / sudah mati ke pool bebas
+            toRemoveList.Clear();
+            foreach (var kvp in activeIndicators)
             {
-                arrowPool[j].Hide();
+                if (!currentOffscreenSet.Contains(kvp.Key) || kvp.Key == null || kvp.Key.IsDead)
+                {
+                    toRemoveList.Add(kvp.Key);
+                    if (kvp.Value != null)
+                    {
+                        kvp.Value.Hide();
+                        freeArrows.Add(kvp.Value);
+                    }
+                }
+            }
+
+            for (int r = 0; r < toRemoveList.Count; r++)
+            {
+                activeIndicators.Remove(toRemoveList[r]);
             }
         }
 
-        private EnemyIndicatorArrow GetOrCreateArrow(int index)
+        private EnemyIndicatorArrow GetOrCreateFreeArrow()
         {
-            if (index < arrowPool.Count)
+            if (freeArrows.Count > 0)
             {
-                return arrowPool[index];
+                int lastIdx = freeArrows.Count - 1;
+                var pooled = freeArrows[lastIdx];
+                freeArrows.RemoveAt(lastIdx);
+                if (pooled != null) return pooled;
             }
 
             GameObject obj;
@@ -201,24 +237,34 @@ namespace FeaturesCombat.UI
             }
             else
             {
-                obj = new GameObject($"EnemyIndicator_{index}", typeof(RectTransform), typeof(CanvasGroup), typeof(EnemyIndicatorArrow));
+                int id = activeIndicators.Count + freeArrows.Count;
+                obj = new GameObject($"EnemyIndicator_{id}", typeof(RectTransform), typeof(CanvasGroup), typeof(EnemyIndicatorArrow));
                 obj.transform.SetParent(transform, false);
             }
 
-            var arrow = obj.GetComponent<EnemyIndicatorArrow>();
-            arrowPool.Add(arrow);
-            return arrow;
+            return obj.GetComponent<EnemyIndicatorArrow>();
         }
 
         private void HideAllIndicators()
         {
-            for (int i = 0; i < arrowPool.Count; i++)
+            foreach (var kvp in activeIndicators)
             {
-                if (arrowPool[i] != null)
+                if (kvp.Value != null)
                 {
-                    arrowPool[i].Hide();
+                    kvp.Value.Hide();
+                    freeArrows.Add(kvp.Value);
                 }
             }
+            activeIndicators.Clear();
+
+            for (int i = 0; i < freeArrows.Count; i++)
+            {
+                if (freeArrows[i] != null)
+                {
+                    freeArrows[i].Hide();
+                }
+            }
+            pulsingEnemies.Clear();
         }
     }
 }

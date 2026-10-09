@@ -30,6 +30,11 @@ namespace FeaturesWardrobe
         [SerializeField] private Button toggleHatButton;
 
         private List<ItemSlot> itemSlots = new List<ItemSlot>();
+        private OutfitData initialOutfit;
+        private bool initialHatEquipped = true;
+        private OutfitData previewOutfit;
+        private bool previewHatEquipped = true;
+        private bool isSaved = false;
 
         public System.Action OnWardrobeClosed;
 
@@ -81,7 +86,44 @@ namespace FeaturesWardrobe
 
         private void OnEnable()
         {
+            CaptureInitialState();
             WireActionButtons();
+        }
+
+        private void OnDisable()
+        {
+            if (!isSaved)
+            {
+                RevertToInitialState();
+            }
+        }
+
+        private void CaptureInitialState()
+        {
+            isSaved = false;
+            var po = PlayerOutfit.Instance;
+            if (po != null)
+            {
+                initialOutfit = po.CurrentOutfit;
+                initialHatEquipped = po.isHatEquipped;
+                previewOutfit = initialOutfit;
+                previewHatEquipped = initialHatEquipped;
+            }
+        }
+
+        private void RevertToInitialState()
+        {
+            var po = PlayerOutfit.Instance;
+            if (po != null)
+            {
+                po.currentOutfit = initialOutfit;
+                po.isHatEquipped = initialHatEquipped;
+                if (initialOutfit != null)
+                {
+                    po.ApplyOutfit(initialOutfit);
+                }
+                po.SetHatActive(initialHatEquipped);
+            }
         }
 
         private void InitializeReferences()
@@ -103,7 +145,16 @@ namespace FeaturesWardrobe
                     btn.onClick.RemoveAllListeners();
                     btn.onClick.AddListener(() =>
                     {
-                        if (PlayerOutfit.Instance != null) PlayerOutfit.Instance.SaveWardrobe();
+                        var po = PlayerOutfit.Instance;
+                        if (po != null)
+                        {
+                            po.currentOutfit = previewOutfit != null ? previewOutfit : initialOutfit;
+                            po.isHatEquipped = previewHatEquipped;
+                            po.ApplyOutfit(po.currentOutfit);
+                            po.SetHatActive(po.isHatEquipped);
+                            po.SaveWardrobe();
+                        }
+                        isSaved = true;
                         if (WardrobeManager.Instance != null) WardrobeManager.Instance.ExitWardrobeMode();
                     });
                     saveButton = btn;
@@ -118,6 +169,7 @@ namespace FeaturesWardrobe
                     btn.onClick.RemoveAllListeners();
                     btn.onClick.AddListener(() =>
                     {
+                        RevertToInitialState();
                         if (WardrobeManager.Instance != null) WardrobeManager.Instance.ExitWardrobeMode();
                     });
                     cancelButton = btn;
@@ -215,8 +267,9 @@ namespace FeaturesWardrobe
                         var po = PlayerOutfit.Instance;
                         if (po != null)
                         {
-                            po.EquipOutfit(capturedOutfit);
-                            po.SaveWardrobe();
+                            previewOutfit = capturedOutfit;
+                            po.ApplyOutfit(previewOutfit);
+                            po.SetHatActive(previewHatEquipped);
                         }
                     });
                 }
@@ -249,9 +302,10 @@ namespace FeaturesWardrobe
 
         private void OnToggleHatClicked()
         {
-            var playerOutfit = PlayerOutfit.Instance;
-            if (playerOutfit == null) return;
-            playerOutfit.ToggleHat();
+            var po = PlayerOutfit.Instance;
+            if (po == null) return;
+            previewHatEquipped = !previewHatEquipped;
+            po.SetHatActive(previewHatEquipped);
         }
 
         private void OnDestroy()

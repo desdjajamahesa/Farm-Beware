@@ -162,7 +162,6 @@ namespace FeaturesWardrobe
         {
             isHatEquipped = !isHatEquipped;
             SetHatActive(isHatEquipped);
-            SaveWardrobe();
         }
 
         #region Save/Load

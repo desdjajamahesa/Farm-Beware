@@ -249,7 +249,7 @@ public class SinkManager : MonoBehaviour
         var bottle = FeaturesKitchen.PlayerWaterBottle.Instance;
         if (bottle != null)
         {
-            bottle.RefillWater(100f);
+            bottle.RefillWater(4f);
             var floatText = ServiceLocator.Resolve<IFloatingTextService>();
             if (floatText != null)
             {
@@ -257,7 +257,7 @@ public class SinkManager : MonoBehaviour
                 Vector3 pos = player != null ? player.Transform.position + Vector3.up * 1.5f : transform.position;
                 floatText.SpawnText(
                     pos,
-                    "💧 Water Bottle Refilled (100/100 L)!",
+                    "💧 Water Bottle Refilled (4/4 Charges)!",
                     new Color(0.25f, 0.85f, 1f));
             }
             UpdateRefillButtonState();
@@ -271,8 +271,8 @@ public class SinkManager : MonoBehaviour
         if (bottle != null)
         {
             refillWaterButtonText.text = bottle.CurrentWater >= bottle.MaxWater
-                ? $"💧 Bottle Full ({Mathf.FloorToInt(bottle.CurrentWater)}/100L)"
-                : $"💧 Refill Bottle ({Mathf.FloorToInt(bottle.CurrentWater)}/100L)";
+                ? $"💧 Bottle Full ({Mathf.FloorToInt(bottle.CurrentWater)}/4 Charges)"
+                : $"💧 Refill Bottle ({Mathf.FloorToInt(bottle.CurrentWater)}/4 Charges)";
         }
     }
 

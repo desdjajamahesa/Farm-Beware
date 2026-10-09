@@ -367,7 +367,7 @@ public class MainMenuController : MonoBehaviour
         }
 
         // 7. Save System UI
-        if (FeaturesSaveSystem.SaveSystemUI.Instance != null && FeaturesSaveSystem.SaveSystemUI.Instance.IsOpen)
+        if (FeaturesSaveSystem.SaveSystemUI.HasInstance && FeaturesSaveSystem.SaveSystemUI.Instance.IsOpen)
         {
             FeaturesSaveSystem.SaveSystemUI.Instance.Close();
             closedAny = true;

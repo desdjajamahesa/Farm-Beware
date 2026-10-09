@@ -423,7 +423,7 @@ public class InventoryComponent : MonoBehaviour
                 if (bottle != null)
                 {
                     var textService = ServiceLocator.Resolve<IFloatingTextService>();
-                    if (bottle.CurrentWater <= 0.01f)
+                    if (bottle.CurrentWater < 1f)
                     {
                         if (textService != null)
                         {
@@ -435,12 +435,12 @@ public class InventoryComponent : MonoBehaviour
                         return;
                     }
 
-                    bottle.DrinkSip(25f);
+                    bottle.DrinkSip(1f);
                     if (textService != null)
                     {
                         textService.SpawnText(
                             transform.position + Vector3.up * 1.5f,
-                            $"💧 Gulp! (+25 Hydration | {Mathf.FloorToInt(bottle.CurrentWater)}/100L)",
+                            $"💧 Gulp! (+25 Hydration | {Mathf.FloorToInt(bottle.CurrentWater)}/4 Charges)",
                             new Color(0.2f, 0.85f, 1f));
                     }
                     return;

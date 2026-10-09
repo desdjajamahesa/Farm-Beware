@@ -202,8 +202,8 @@ namespace FeaturesEconomy
             if (playerCtx != null)
                 playerCtx.IsInputLocked = false;
 
-            Cursor.visible = false;
-            Cursor.lockState = CursorLockMode.Locked;
+            Cursor.visible = true;
+            Cursor.lockState = CursorLockMode.None;
 
             // Signal UIModalHelper that a UI panel just closed to avoid accidental pause menu trigger
             UIModalHelper.LastFrameUIPanelClosed = Time.frameCount;

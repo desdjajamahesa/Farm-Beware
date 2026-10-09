@@ -500,6 +500,10 @@ namespace FeaturesCombat
                 if (pi != null) Destroy(pi.gameObject);
             }
 
+            // Also clean up UI overhead health bars
+            UI.EnemyHealthBarManager.Instance?.ReleaseAllBars();
+            UI.BossHealthBarManager.Instance?.ClearAllBosses();
+
             currentDay = day;
             totalWaves = total > 0 ? total : Mathf.Clamp(currentDay, 1, 5);
             currentWave = wave;
@@ -507,8 +511,8 @@ namespace FeaturesCombat
             bool isDay = TimeManager.Instance != null && TimeManager.Instance.currentPhase == TimeManager.DayPhase.Day;
             bool hasSavedEnemies = (savedEnemies != null && savedEnemies.Count > 0);
 
-            // Check if night encounter is cleared: explicitly cleared, or night brawl inactive with no enemies, or final wave completed with no enemies
-            bool isEncounterDone = isCleared || (!isBrawlActive && !hasSavedEnemies) || (currentWave >= totalWaves && !hasSavedEnemies);
+            // Check if night encounter is cleared: explicitly cleared, or final wave completed with no enemies
+            bool isEncounterDone = isCleared || (currentWave >= totalWaves && !hasSavedEnemies && currentWave > 0);
 
             // Scenario 1: Night is cleared OR day phase
             if (isDay || isEncounterDone)
@@ -541,7 +545,9 @@ namespace FeaturesCombat
                 return;
             }
 
-            // Scenario 2: It is Night and active
+            // Scenario 2: It is Night and encounter is active/not cleared
+            isWaveInProgress = false; // Reset lock so wave spawning is never blocked
+
             if (TimeManager.Instance != null)
             {
                 TimeManager.Instance.isNightEncounterCleared = false;

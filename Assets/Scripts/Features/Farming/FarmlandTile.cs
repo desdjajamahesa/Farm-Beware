@@ -248,24 +248,34 @@ namespace FeaturesFarming
         private void TryWaterCrop(GameObject interactor)
         {
             const float waterRequired = 10f;
-            var bottle = ServiceLocator.Resolve<IWaterService>();
 
-            if (bottle != null && bottle.ConsumeWater(waterRequired))
+            if (!IsHoldingPlantWaterer(interactor))
+            {
+                ServiceLocator.Resolve<IFloatingTextService>()?.SpawnText(
+                    transform.position + Vector3.up * 1.2f,
+                    "Requires Plant Waterer in hotbar!",
+                    new Color(1f, 0.6f, 0.2f));
+                Debug.LogWarning("[FarmlandTile] Requires Plant Waterer in hotbar to water crop!");
+                return;
+            }
+
+            var waterer = PlantWaterer.Instance;
+            if (waterer != null && waterer.ConsumeWater(waterRequired))
             {
                 WaterCrop();
                 ServiceLocator.Resolve<IFloatingTextService>()?.SpawnText(
                     transform.position + Vector3.up * 1.2f,
-                    $"💧 Watered (-{waterRequired:F0}L Water)",
+                    $"💧 Watered (-{waterRequired:F0}L Water | {Mathf.FloorToInt(waterer.CurrentWater)}/100L)",
                     new Color(0.35f, 0.75f, 1f));
                 return;
             }
 
-            // Peringatan bila botol air kosong atau kurang dari 10L
+            // Peringatan bila Plant Waterer kosong atau kurang dari 10L
             ServiceLocator.Resolve<IFloatingTextService>()?.SpawnText(
                 transform.position + Vector3.up * 1.2f,
-                $"Need {waterRequired:F0}L Water! Refill at Kitchen Sink.",
+                $"Need {waterRequired:F0}L Water! Refill at Garden Well.",
                 new Color(1f, 0.5f, 0.2f));
-            Debug.LogWarning("[FarmlandTile] Cannot water crop: Player water bottle is empty or has less than 10L!");
+            Debug.LogWarning("[FarmlandTile] Cannot water crop: Plant Waterer is empty or has less than 10L! Refill at Garden Well.");
         }
 
         private void WaterCrop()
@@ -510,9 +520,12 @@ namespace FeaturesFarming
                     break;
 
                 case TileState.PlantedDry:
-                    var bottle = ServiceLocator.Resolve<IWaterService>();
-                    float currentLitre = bottle != null ? bottle.CurrentWater : 0f;
-                    worldLabel.displayName = $"Water {plantedSeed?.itemName ?? "Crop"} (10L | {Mathf.FloorToInt(currentLitre)}/100L)";
+                    bool holdingWaterer = IsHoldingPlantWaterer(interactor);
+                    float currentLitre = PlantWaterer.Instance != null ? PlantWaterer.Instance.CurrentWater : 0f;
+                    if (holdingWaterer)
+                        worldLabel.displayName = $"Water {plantedSeed?.itemName ?? "Crop"} (10L | {Mathf.FloorToInt(currentLitre)}/100L)";
+                    else
+                        worldLabel.displayName = $"Dry {plantedSeed?.itemName ?? "Crop"} (Hold Plant Waterer)";
                     break;
 
                 case TileState.PlantedWatered:
@@ -548,6 +561,33 @@ namespace FeaturesFarming
                     if (slot.item is ToolItemData tool && tool.isHoe)
                         return true;
                     if (slot.item.itemId == "tool_hoe" || slot.item.name.ToLower().Contains("hoe") || slot.item.name.ToLower().Contains("cangkul"))
+                        return true;
+                }
+            }
+            return false;
+        }
+
+        private bool IsHoldingPlantWaterer(GameObject interactor)
+        {
+            if (interactor == null)
+            {
+                var player = ServiceLocator.Resolve<IPlayerContext>();
+                if (player != null) interactor = player.Transform.gameObject;
+            }
+
+            if (interactor == null) return false;
+            var inv = interactor.GetComponent<InventoryComponent>();
+            if (inv == null) return false;
+
+            int idx = inv.selectedHotbarIndex;
+            if (idx >= 0 && idx < inv.slots.Count)
+            {
+                var slot = inv.slots[idx];
+                if (slot != null && !slot.IsEmpty && slot.item != null)
+                {
+                    string id = (slot.item.itemId ?? "").ToLower();
+                    string name = (slot.item.itemName ?? slot.item.name ?? "").ToLower();
+                    if (id == "tool_plant_waterer" || name.Contains("plant waterer") || name.Contains("waterer") || name.Contains("watering can"))
                         return true;
                 }
             }
