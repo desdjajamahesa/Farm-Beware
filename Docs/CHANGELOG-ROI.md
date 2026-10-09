@@ -2,6 +2,13 @@
 
 Semua perubahan penting pada proyek ini oleh M-Roihan (Roi) dari `branch-roi-1` dicatat di halaman ini.
 
+## - 2026-10-08
+
+### Diubah (Changed)
+- **Pembaruan Dependensi Paket & Sinkronisasi Editor**:
+  - Memperbarui dependensi [`com.coplaydev.unity-mcp`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Packages/packages-lock.json) ke versi `v10.3.0` pada `Packages/packages-lock.json` untuk stabilitas integrasi Unity MCP toolset.
+  - Sinkronisasi penuh cabang kerja `roi-branch` / `branch-roi-1` dengan cabang integrasi utama `Sprint-branch`.
+
 ## - 2026-10-01
 
 ### Ditambahkan (Added)

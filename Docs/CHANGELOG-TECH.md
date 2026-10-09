@@ -12,11 +12,64 @@ Konsolidasi dokumentasi teknis dari seluruh kontributor tim pengembang (`Rafi`, 
 ---
 
 ## Daftar Isi Kronologis
+- [2026-10-09](#--2026-10-09)
 - [2026-10-04](#--2026-10-04)
 - [2026-10-03](#--2026-10-03)
 - [2026-10-02](#--2026-10-02)
 - [2026-10-01](#--2026-10-01)
 - [2026-09-30](#--2026-09-30)
+
+---
+
+## - 2026-10-09
+
+### Ditambahkan & Diintegrasikan (Added & Integrated)
+
+#### 1. Separasi Sistem Air & Interaksi Pemulihan (Water Separation System) `[Rafi]`
+- **Dua Sumber & Jenis Air Terpisah**:
+  - **Drinking Water Bottle** (`ToolType.WaterBottle`): Khusus diminum oleh pemain untuk memulihkan stat dahaga (*Thirst*). Hanya dapat diisi ulang melalui *Kitchen Sink* di dalam rumah ([`KitchenSinkInteractable.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Environment/KitchenSinkInteractable.cs)).
+  - **Plant Waterer** (`ToolType.WateringCan`): Peralatan berkebun khusus kapasitas 100 Liter untuk menyiram petak sawah (*Farmland*). Hanya dapat diisi ulang di sumur pekarangan luar (*Garden Well*) ([`WaterWellInteractable.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Environment/WaterWellInteractable.cs)).
+- **Validasi & Proteksi Kesalahan Interaksi**:
+  - Mencegah botol minum diisi di sumur luar rumah dan sebaliknya, dengan umpan balik *floating combat text* berbahasa Inggris standar:
+    - `"⚠️ Drinking water bottle can only be refilled at Kitchen Sink!"`
+    - `"Requires Plant Waterer to refill farm water!"`
+    - `"💧 Plant Waterer is already full (100/100 L)!"`
+    - `"💧 Plant Waterer Refilled (100/100 L)!"`
+- **Aset Ikon Plant Waterer**: Penambahan ikon tekstur [`icon_plant_waterer.png`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Art/Sprites/icon_plant_waterer.png) dan integrasi ke ScriptableObject [`Tool_PlantWaterer.asset`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Data/Tools/Tool_PlantWaterer.asset).
+
+#### 2. Perombakan Menu Layar Kematian & Siklus Respawn (Death Screen & Respawn Pipeline) `[Rafi]`
+- **Sistem Layar Kematian Interaktif ([`DeathScreenUI.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Combat/UI/DeathScreenUI.cs))**:
+  - Menggantikan alur auto-respawn instan dengan modal interaktif beranimasi canvas fade yang menyediakan dua pilihan bagi pemain saat tumbang:
+    - **"Respawn at Homestead"**: Menjalankan sekuens respawn sinematik kembali ke pos pekarangan rumah.
+    - **"Quit to Main Menu"**: Kembali ke layar judul utama secara bersih.
+  - Implementasi kontrak modal terpadu [`IModalWindow`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Core/Contracts/IModalWindow.cs) dengan prioritas stack tertinggi (`ModalPriority.Critical`) terdaftar di [`ModalStackManager.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Core/UI/ModalStackManager.cs).
+- **Pengontrol Respawn Pemain ([`PlayerRespawnController.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Player/PlayerRespawnController.cs))**:
+  - Mengunci input kontroler dan physics pemain saat tumbang (`SetDead(true)`).
+  - Melakukan transisi layar gelap (*Fade-to-Black*), mereposisi transform karakter ke titik aman pekarangan tanpa tabrakan fisika, dan memulihkan stat kesehatan & stamina saat bangkit.
+
+#### 3. Sistem Transisi Layar Awan Sinematik (Organic Cloud Screen Transitions) `[Bhaskoro]`
+- **Manajer Transisi Awan ([`CloudTransitionManager.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Common/CloudTransitionManager.cs))**:
+  - Komponen singleton mandiri yang menangani perpindahan scene menggunakan formasi awan berlapis (*Organic Feathered Clouds*).
+  - Mengatur interpolasi posisi lapisan formasi awan kiri dan kanan secara horizontal dengan timing sinematik (`coverDuration = 0.40f`, `revealDuration = 0.40f`, `revealDelayAfterSceneLoad = 0.05f`).
+- **Prefab & Aset Visual**:
+  - Prefab overlay [`CloudTransitionCanvas.prefab`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Prefabs/CloudTransitionCanvas.prefab) dan koleksi 44 sprite awan beresolusi tinggi di `Assets/Art/Textures/Clouds/`.
+  - Integrasi dengan [`MainMenuController.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/MainMenu/MainMenuController.cs) dan [`FantasyMenuAnimator.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/MainMenu/FantasyMenuAnimator.cs).
+
+#### 4. Pembaruan Dependensi & Integrasi Tooling `[Roi]`
+- **Pembaruan Paket Unity MCP**:
+  - Memperbarui lock dependensi [`com.coplaydev.unity-mcp`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Packages/packages-lock.json) ke `v10.3.0` untuk stabilitas RPC bridge editor.
+  - Penyelarasan aset arsitektur pekarangan dan optimasi material GPU instancing.
+
+### Diperbaiki (Fixed)
+
+- **Audit & Remediasi Arsitektur Bug QA (BUG-001 s/d BUG-008) `[Rafi]`**:
+  - **BUG-001**: Mengatasi memory pressure dan stabilitas startup Main Menu terkait model Sentis/DirectML serta transisi async fade.
+  - **BUG-002**: Menghilangkan alokasi dan referensi objek Unity yang telah hancur pada `pulsingEnemies` di [`EnemyOffscreenIndicatorUI.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Combat/UI/EnemyOffscreenIndicatorUI.cs).
+  - **BUG-003**: Memperbaiki siklus hidup kematian pemain pada [`PlayerStats.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Player/PlayerStats.cs) dan [`PlayerControl.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Player/PlayerControl.cs), mencegah input leak dan animasi tersangkut.
+  - **BUG-004**: Memperbaiki desinkronisasi inventaris dan penanganan shortcut tombol `TAB` / `ESC` agar konsisten menutup modal teratas.
+  - **BUG-005**: Migrasi Text legacy ke TextMeshPro pada [`WardrobeUI.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Player/UI/WardrobeUI.cs) dan eliminasi anonymous lambda listener pada `Start()`/`OnEnable()`.
+  - **BUG-006 & BUG-007**: Lokalisasi teks UI mengambang ke bahasa Inggris baku serta sanitasi unsubscription event pada lifecycle `OnDestroy()`.
+  - **BUG-008**: Rekonsiliasi save slot manifest (`Saves/saves_manifest.json`) menjaga integritas save metadata terbaru pasca-merge.
 
 ---
 

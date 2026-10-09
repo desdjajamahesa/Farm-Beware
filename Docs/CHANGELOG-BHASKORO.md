@@ -84,3 +84,22 @@ Untuk mendukung persistensi Save/Load tanpa merusak logika gameplay di `Sprint-b
 - **File Scratch**:
   - Pembersihan 34 file gambar sementara di root repository (`crop_*.png`, `scratch_*.png`, `test_*.png`, `*.bak`).
 
+---
+
+## 5. Organic Cloud Screen Transitions (2026-10-08)
+
+Sistem transisi visual sinematik berbasis awan organik berbulu (*organic feathered clouds*) yang menutupi seluruh viewport layar saat berpindah dari Menu Utama ke dalam game.
+
+### Komponen & Aset:
+- [`CloudTransitionManager.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Common/CloudTransitionManager.cs):
+  - Komponen singleton mandiri dengan metode `TransitionToScene(string sceneName, Action onCovered)` dan `EnsureInstance()`.
+  - Mengatur interpolasi posisi lapisan formasi awan kiri dan kanan secara horizontal dengan timing sinematik (`coverDuration = 0.40f`, `revealDuration = 0.40f`, `revealDelayAfterSceneLoad = 0.05f`).
+- [`CloudTransitionCanvas.prefab`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Prefabs/CloudTransitionCanvas.prefab) & [`CloudTransitionCanvas.prefab`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Resources/Prefabs/CloudTransitionCanvas.prefab):
+  - Prefab canvas overlay dengan hierarki layer awan berlapis (*Bank Bottom/Top/Left/Right, Billow, Organic Large/Medium/Puff/Wisp*).
+- **Aset Tekstur Awan**:
+  - 44 aset sprite tekstur awan resolusi tinggi dengan transparansi alpha lembut di `Assets/Art/Textures/Clouds/` dan `Assets/Resources/Textures/Clouds/`.
+- **Integrasi Gameplay & Menu**:
+  - [`MainMenuController.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/MainMenu/MainMenuController.cs): Mengarahkan `StartGameRoutine` untuk memanggil `CloudTransitionManager.EnsureInstance().TransitionToScene(targetSceneName)`.
+  - [`FantasyMenuAnimator.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/MainMenu/FantasyMenuAnimator.cs): Menyelaraskan durasi `enterTransitionDuration = 0.40f` dengan animasi awan.
+  - [`MainMenuScene.unity`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scenes/MainMenuScene.unity): Menautkan hierarki transisi ke scene menu utama.
+
