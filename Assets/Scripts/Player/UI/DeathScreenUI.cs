@@ -14,7 +14,7 @@ using FeaturesSaveSystem;
 /// 2. Load Game: Membuka modal multi-slot Save & Load system untuk memuat file simpanan.
 /// 3. Main Menu: Keluar ke scene menu utama secara mulus.
 /// </summary>
-public class DeathScreenUI : MonoBehaviour
+public class DeathScreenUI : MonoBehaviour, IModalWindow
 {
     public static DeathScreenUI Instance
     {
@@ -50,10 +50,14 @@ public class DeathScreenUI : MonoBehaviour
     [SerializeField] private TextMeshProUGUI feedbackText;
 
     public bool IsOpen => isOpen;
+    public bool CanDismissWithEscape => false;
     private bool isOpen = false;
     private Coroutine fadeCoroutine;
     private bool isHandlingAction = false;
     private bool isBrowsingSaveUI = false;
+
+    public void OpenModal() => Open();
+    public void CloseModal() => Close();
 
     private void Awake()
     {
@@ -94,6 +98,10 @@ public class DeathScreenUI : MonoBehaviour
 
     private void OnDestroy()
     {
+        if (ModalStackManager.Instance != null)
+        {
+            ModalStackManager.Instance.PopSpecific(this);
+        }
         if (instance == this)
         {
             instance = null;
@@ -416,6 +424,11 @@ public class DeathScreenUI : MonoBehaviour
         }
 
         modalPanel.SetActive(true);
+        if (ModalStackManager.Instance != null)
+        {
+            ModalStackManager.Instance.Push(this);
+        }
+
         if (fadeCoroutine != null) StopCoroutine(fadeCoroutine);
         fadeCoroutine = StartCoroutine(RoutineFadeAlpha(1f, 0.25f));
 
@@ -431,6 +444,11 @@ public class DeathScreenUI : MonoBehaviour
     {
         if (!isOpen) return;
         isOpen = false;
+
+        if (ModalStackManager.Instance != null)
+        {
+            ModalStackManager.Instance.PopSpecific(this);
+        }
 
         if (modalPanel != null && gameObject.activeInHierarchy)
         {
@@ -452,6 +470,11 @@ public class DeathScreenUI : MonoBehaviour
     public void CloseInstant()
     {
         isOpen = false;
+        if (ModalStackManager.Instance != null)
+        {
+            ModalStackManager.Instance.PopSpecific(this);
+        }
+
         if (fadeCoroutine != null)
         {
             StopCoroutine(fadeCoroutine);

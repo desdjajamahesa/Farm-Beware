@@ -12,7 +12,7 @@ namespace FeaturesEconomy
     /// Displays Night Brawl results (monsters slain, combat gold) and Farm & Trade operations
     /// (crops harvested, crops sold, market revenue, wallet balance) before advancing to the new day.
     /// </summary>
-    public class DailyReportModalUI : MonoBehaviour, IDailyReportService
+    public class DailyReportModalUI : MonoBehaviour, IDailyReportService, IModalWindow
     {
         public static DailyReportModalUI Instance
         {
@@ -50,6 +50,9 @@ namespace FeaturesEconomy
         private bool isOpen = false;
         public bool IsOpen => isOpen;
 
+        public void OpenModal() => ShowReport(1, null);
+        public void CloseModal() => OnContinueClicked();
+
         private void Awake()
         {
             if (_instance != null && _instance != this)
@@ -65,6 +68,10 @@ namespace FeaturesEconomy
 
         private void OnDestroy()
         {
+            if (ModalStackManager.Instance != null)
+            {
+                ModalStackManager.Instance.PopSpecific(this);
+            }
             ServiceLocator.Unregister<IDailyReportService>();
             if (_instance == this) _instance = null;
         }
@@ -89,6 +96,11 @@ namespace FeaturesEconomy
             BuildUIHierarchy();
             onContinueCallback = onContinue;
             isOpen = true;
+
+            if (ModalStackManager.Instance != null)
+            {
+                ModalStackManager.Instance.Push(this);
+            }
 
             int monsters = DailyEconomyManager.Instance != null ? DailyEconomyManager.Instance.dailyMonstersSlain : 0;
             int combatGold = DailyEconomyManager.Instance != null ? DailyEconomyManager.Instance.dailyGoldEarnedCombat : 0;
@@ -129,6 +141,11 @@ namespace FeaturesEconomy
         private void OnContinueClicked()
         {
             isOpen = false;
+            if (ModalStackManager.Instance != null)
+            {
+                ModalStackManager.Instance.PopSpecific(this);
+            }
+
             if (modalPanel != null)
                 modalPanel.SetActive(false);
 

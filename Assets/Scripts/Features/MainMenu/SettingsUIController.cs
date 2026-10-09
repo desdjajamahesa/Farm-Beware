@@ -333,7 +333,7 @@ public class SettingsUIController : MonoBehaviour
     {
         // Try finding MainMenuController to perform clean animated close
         var mainMenu = GetComponentInParent<MainMenuController>();
-        if (mainMenu == null) mainMenu = FindObjectOfType<MainMenuController>();
+        if (mainMenu == null) mainMenu = UnityEngine.Object.FindFirstObjectByType<MainMenuController>(FindObjectsInactive.Exclude);
 
         if (mainMenu != null)
         {

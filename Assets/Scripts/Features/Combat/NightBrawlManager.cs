@@ -612,6 +612,15 @@ namespace FeaturesCombat
             }
         }
 
+        /// <summary>
+        /// Explicit abort routine terminating the active brawl, clearing all remaining enemies,
+        /// and resetting wave progress immediately upon player defeat.
+        /// </summary>
+        public void AbortBrawl()
+        {
+            EndNightBrawl(cleanupRemaining: true);
+        }
+
         public void EndNightBrawl(bool cleanupRemaining)
         {
             if (intermissionCoroutine != null)

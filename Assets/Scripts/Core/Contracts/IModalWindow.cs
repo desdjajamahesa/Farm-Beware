@@ -6,6 +6,7 @@ namespace FarmBeware.Core.Runtime
     public interface IModalWindow
     {
         bool IsOpen { get; }
+        bool CanDismissWithEscape => true;
         void OpenModal();
         void CloseModal();
     }

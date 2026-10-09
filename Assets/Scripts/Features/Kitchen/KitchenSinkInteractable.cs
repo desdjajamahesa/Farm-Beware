@@ -10,7 +10,7 @@ using FarmBeware.Core.Runtime;
 /// SinkManager reads from this via public accessors for UI display.
 /// </summary>
 [RequireComponent(typeof(InventoryComponent))]
-public class KitchenSinkInteractable : KitchenStation, IInteractable
+public class KitchenSinkInteractable : KitchenStation, IInteractable, IModalWindow
 {
     [Header("Kitchen Sink Settings")]
     [Tooltip("Default wash duration per item in seconds.")]
@@ -41,6 +41,10 @@ public class KitchenSinkInteractable : KitchenStation, IInteractable
     // ── Public Accessors (for SinkManager UI sync) ──
     public static KitchenSinkInteractable Instance { get; private set; }
     public bool IsPanelOpen => panelSink != null && panelSink.activeSelf;
+    public bool IsOpen => IsPanelOpen;
+    public void OpenModal() => Interact(null);
+    public void CloseModal() => ClosePanel();
+
     public InventorySlot InputSlot { get { if (inputSlot == null) inputSlot = new InventorySlot(); return inputSlot; } }
     public InventorySlot OutputSlot { get { if (outputSlot == null) outputSlot = new InventorySlot(); return outputSlot; } }
     public bool IsWashing => isWashing;
@@ -114,6 +118,11 @@ public class KitchenSinkInteractable : KitchenStation, IInteractable
 
         panelSink.SetActive(true);
 
+        if (ModalStackManager.Instance != null)
+        {
+            ModalStackManager.Instance.Push(this);
+        }
+
         Cursor.visible = true;
         Cursor.lockState = CursorLockMode.None;
 
@@ -129,16 +138,6 @@ public class KitchenSinkInteractable : KitchenStation, IInteractable
     protected override void Update()
     {
         base.Update();
-
-        // ESC to close
-        if (panelSink != null && panelSink.activeSelf &&
-            Keyboard.current != null &&
-            Keyboard.current.escapeKey.wasPressedThisFrame)
-        {
-            UIModalHelper.LastFrameUIPanelClosed = Time.frameCount;
-            ClosePanel();
-            return;
-        }
 
         // ── Washing Timer (runs always, even when panel is closed) ──
         if (!isWashing) return;
@@ -249,6 +248,11 @@ public class KitchenSinkInteractable : KitchenStation, IInteractable
 
     public void ClosePanel()
     {
+        if (ModalStackManager.Instance != null)
+        {
+            ModalStackManager.Instance.PopSpecific(this);
+        }
+
         if (panelSink != null)
         {
             var sinkMgr = panelSink.GetComponent<SinkManager>();
@@ -289,6 +293,11 @@ public class KitchenSinkInteractable : KitchenStation, IInteractable
 
     private void OnDestroy()
     {
+        if (ModalStackManager.Instance != null)
+        {
+            ModalStackManager.Instance.PopSpecific(this);
+        }
+
         if (Instance == this)
             Instance = null;
 

@@ -43,6 +43,23 @@ Semua perubahan penting pada proyek ini oleh Rafi akan dicatat di halaman ini.
   - Me-reset `isWaveInProgress = false` saat memuat sesi malam agar pemanggilan wave dan suspense delay tidak terblokir.
 - **Console Assertion & Scene Teardown Leaks ([`SaveSystemUI.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/SaveSystem/SaveSystemUI.cs) & [`DeathScreenUI.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Player/UI/DeathScreenUI.cs))**:
   - Menambahkan guard `HasInstance => instance != null` dan lifecycle `isApplicationQuitting` untuk mencegah pembuatan GameObject baru saat scene dibongkar, menyelesaikan error `go.IsActive()` dan `SaveSystemUI scene cleanup leak`.
+- **Architectural QA Remediation (BUG-001 through BUG-008)**:
+  - **Compliance & UI Localization**:
+    - Localized all floating text notifications in [`WaterWellInteractable.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Farming/WaterWellInteractable.cs) to exact standard English strings.
+    - Updated hat toggle button in [`WardrobeUI.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Wardrobe/UI/WardrobeUI.cs) to English ("Toggle Hat"), upgraded text rendering to `TMPro.TextMeshProUGUI`, and eliminated heap closures in `Start()`/`OnEnable()` by routing to explicit private click handlers (`OnSaveClicked()`, `OnCancelClicked()`).
+  - **Memory & Indicator Tracking**:
+    - Refactored `pulsingEnemies` in [`EnemyOffscreenIndicatorUI.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Combat/UI/EnemyOffscreenIndicatorUI.cs) from holding `EnemyBase` references to `HashSet<int>` using `enemy.GetInstanceID()`. Guaranteed immediate purging when indicators are returned to pool, become on-screen, or upon enemy despawn/death.
+    - Upgraded deprecated `FindObjectOfType<MainMenuController>()` in [`SettingsUIController.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/MainMenu/SettingsUIController.cs) to Unity 6 `UnityEngine.Object.FindFirstObjectByType<MainMenuController>(FindObjectsInactive.Exclude)`.
+  - **Modal & Cursor Unification**:
+    - Added `CanDismissWithEscape` contract to [`IModalWindow.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Core/Contracts/IModalWindow.cs) and updated [`ModalStackManager.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Core/UI/ModalStackManager.cs) to respect modal dismissal permissions on ESC key.
+    - Implemented `IModalWindow` on [`KitchenSinkInteractable.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Kitchen/KitchenSinkInteractable.cs) and [`DailyReportModalUI.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Economy/DailyReportModalUI.cs) with automatic registration into `ModalStackManager`.
+    - Enforced non-dismissible modal contract (`CanDismissWithEscape = false`) on [`DeathScreenUI.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Player/UI/DeathScreenUI.cs), requiring explicit selection between Checkpoint, Load Game, or Main Menu.
+  - **Physics Locomotion & Grounding**:
+    - Implemented `groundedGraceTimer` with ~0.1s decay and `isGroundedRecently` in [`PlayerControl.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Player/PlayerControl.cs) to eliminate sprint micro-stutter when navigating downward slopes or stair steps.
+    - Enforced stamina gating on sprinting (`hasStamina = playerStats == null || (!playerStats.IsExhausted && playerStats.currentStamina > 0.5f)`).
+  - **Player Defeat & Night Brawl Cleanup**:
+    - Integrated explicit `NightBrawlManager.Instance.AbortBrawl()` in [`PlayerRespawnController.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Player/PlayerRespawnController.cs) before time advances, ensuring all active night enemies and waves are purged cleanly before the morning cycle.
+    - Routed respawn positioning strictly through `playerControl.Teleport(respawnPos, respawnRot)` with fallback elevation sanitized to `y = 0.5f` to prevent ground clipping, followed by `Physics.SyncTransforms()`.
 
 ## - 2026-10-04
 

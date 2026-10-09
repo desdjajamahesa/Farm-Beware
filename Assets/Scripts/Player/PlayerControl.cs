@@ -92,6 +92,8 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
     private bool isJumping;
     private float groundBufferTimer;
     private const float GroundBufferDuration = 0.12f;
+    private float groundedGraceTimer = 0f;
+    private bool isGroundedRecently => isGrounded || groundedGraceTimer > 0f;
     private float attackHoldDuration = 0f;
     private bool isChargingAttack = false;
 
@@ -225,6 +227,14 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
 
         // 1. Cek apakah karakter menginjak tanah
         CheckGrounded();
+        if (isGrounded)
+        {
+            groundedGraceTimer = 0.1f;
+        }
+        else if (groundedGraceTimer > 0f)
+        {
+            groundedGraceTimer -= Time.deltaTime;
+        }
 
         // 2. Membaca Input Pergerakan (Deadzone check agar micro-drift tidak menormalkan sudut acak)
         Vector2 moveInput = inputActions.Player.Move.ReadValue<Vector2>();
@@ -261,8 +271,9 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
         bool isMoving = inputVector.magnitude >= 0.1f;
         bool wantsToRun = !isAttacking && Keyboard.current != null && (Keyboard.current.leftShiftKey.isPressed || Keyboard.current.rightShiftKey.isPressed);
 
-        // Karakter hanya berlari jika bergerak, menekan shift, dan memiliki stamina
-        isRunning = isMoving && wantsToRun && (playerStats == null || !playerStats.IsExhausted);
+        // Karakter hanya berlari jika bergerak, menekan shift, memiliki stamina, dan menginjak tanah (dengan grace buffer mencegah stutter di tanjakan/turunan)
+        bool hasStamina = playerStats == null || (!playerStats.IsExhausted && playerStats.currentStamina > 0.5f);
+        isRunning = isMoving && wantsToRun && hasStamina && isGroundedRecently;
 
         // 4. Konsumsi Stamina HANYA saat Berlari (Sprint) dan benar-benar bergerak secara fisik
         if (isRunning)

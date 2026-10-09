@@ -59,7 +59,12 @@ namespace FarmBeware.Core.Runtime
 
             if (escapePressed && HasActiveModal)
             {
-                Pop();
+                int lastIndex = _stack.Count - 1;
+                var top = _stack[lastIndex];
+                if (top != null && top.CanDismissWithEscape)
+                {
+                    Pop();
+                }
             }
         }
 

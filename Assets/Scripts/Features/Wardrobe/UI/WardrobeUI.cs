@@ -71,8 +71,10 @@ namespace FeaturesWardrobe
                         toggleHatBtnRect.anchoredPosition = cancelBtnRect.anchoredPosition + new Vector2(0, -60);
                         toggleHatBtnRect.sizeDelta = cancelBtnRect.sizeDelta;
                     }
+                    var tmp = toggleHatBtnGO.GetComponentInChildren<TMPro.TextMeshProUGUI>();
+                    if (tmp != null) tmp.text = "Toggle Hat";
                     var txt = toggleHatBtnGO.GetComponentInChildren<Text>();
-                    if (txt != null) txt.text = "Topi";
+                    if (txt != null) txt.text = "Toggle Hat";
                     var btn = toggleHatBtnGO.GetComponent<Button>();
                     if (btn != null)
                     {
@@ -137,54 +139,63 @@ namespace FeaturesWardrobe
         private void WireActionButtons()
         {
             var saveBtnTransform = transform.Find("SaveButton");
-            if (saveBtnTransform != null)
+            if (saveButton == null && saveBtnTransform != null)
             {
-                var btn = saveBtnTransform.GetComponent<Button>();
-                if (btn != null)
-                {
-                    btn.onClick.RemoveAllListeners();
-                    btn.onClick.AddListener(() =>
-                    {
-                        var po = PlayerOutfit.Instance;
-                        if (po != null)
-                        {
-                            po.currentOutfit = previewOutfit != null ? previewOutfit : initialOutfit;
-                            po.isHatEquipped = previewHatEquipped;
-                            po.ApplyOutfit(po.currentOutfit);
-                            po.SetHatActive(po.isHatEquipped);
-                            po.SaveWardrobe();
-                        }
-                        isSaved = true;
-                        if (WardrobeManager.Instance != null) WardrobeManager.Instance.ExitWardrobeMode();
-                    });
-                    saveButton = btn;
-                }
+                saveButton = saveBtnTransform.GetComponent<Button>();
             }
+            if (saveButton != null)
+            {
+                saveButton.onClick.RemoveAllListeners();
+                saveButton.onClick.AddListener(OnSaveClicked);
+            }
+
             var cancelBtnTransform = transform.Find("CancelButton");
-            if (cancelBtnTransform != null)
+            if (cancelButton == null && cancelBtnTransform != null)
             {
-                var btn = cancelBtnTransform.GetComponent<Button>();
-                if (btn != null)
-                {
-                    btn.onClick.RemoveAllListeners();
-                    btn.onClick.AddListener(() =>
-                    {
-                        RevertToInitialState();
-                        if (WardrobeManager.Instance != null) WardrobeManager.Instance.ExitWardrobeMode();
-                    });
-                    cancelButton = btn;
-                }
+                cancelButton = cancelBtnTransform.GetComponent<Button>();
             }
-            var toggleHatBtnTransform = transform.Find("ToggleHatButton");
-            if (toggleHatBtnTransform != null)
+            if (cancelButton != null)
             {
-                var btn = toggleHatBtnTransform.GetComponent<Button>();
-                if (btn != null)
-                {
-                    btn.onClick.RemoveAllListeners();
-                    btn.onClick.AddListener(OnToggleHatClicked);
-                    toggleHatButton = btn;
-                }
+                cancelButton.onClick.RemoveAllListeners();
+                cancelButton.onClick.AddListener(OnCancelClicked);
+            }
+
+            var toggleHatBtnTransform = transform.Find("ToggleHatButton");
+            if (toggleHatButton == null && toggleHatBtnTransform != null)
+            {
+                toggleHatButton = toggleHatBtnTransform.GetComponent<Button>();
+            }
+            if (toggleHatButton != null)
+            {
+                toggleHatButton.onClick.RemoveAllListeners();
+                toggleHatButton.onClick.AddListener(OnToggleHatClicked);
+            }
+        }
+
+        private void OnSaveClicked()
+        {
+            var po = PlayerOutfit.Instance;
+            if (po != null)
+            {
+                po.currentOutfit = previewOutfit != null ? previewOutfit : initialOutfit;
+                po.isHatEquipped = previewHatEquipped;
+                po.ApplyOutfit(po.currentOutfit);
+                po.SetHatActive(po.isHatEquipped);
+                po.SaveWardrobe();
+            }
+            isSaved = true;
+            if (WardrobeManager.Instance != null)
+            {
+                WardrobeManager.Instance.ExitWardrobeMode();
+            }
+        }
+
+        private void OnCancelClicked()
+        {
+            RevertToInitialState();
+            if (WardrobeManager.Instance != null)
+            {
+                WardrobeManager.Instance.ExitWardrobeMode();
             }
         }
 

@@ -20,7 +20,7 @@ namespace FeaturesCombat.UI
         private readonly List<EnemyIndicatorArrow> freeArrows = new List<EnemyIndicatorArrow>();
         private readonly List<EnemyBase> toRemoveList = new List<EnemyBase>();
         private readonly HashSet<EnemyBase> currentOffscreenSet = new HashSet<EnemyBase>();
-        private readonly HashSet<EnemyBase> pulsingEnemies = new HashSet<EnemyBase>();
+        private readonly HashSet<int> pulsingEnemies = new HashSet<int>();
         private Camera targetCamera;
         private Transform playerTransform;
 
@@ -77,7 +77,7 @@ namespace FeaturesCombat.UI
         {
             if (enemy != null)
             {
-                pulsingEnemies.Add(enemy);
+                pulsingEnemies.Add(enemy.GetInstanceID());
             }
         }
 
@@ -157,7 +157,7 @@ namespace FeaturesCombat.UI
 
                 if (isOnScreen)
                 {
-                    pulsingEnemies.Remove(enemy);
+                    pulsingEnemies.Remove(enemy.GetInstanceID());
                     continue;
                 }
 
@@ -187,7 +187,7 @@ namespace FeaturesCombat.UI
                                enemy.enemyType == EnemyType.TaroColossus ||
                                enemy.enemyType == EnemyType.TheRanger);
 
-                bool shouldPulse = pulsingEnemies.Contains(enemy);
+                bool shouldPulse = pulsingEnemies.Contains(enemy.GetInstanceID());
 
                 // Dapatkan atau buat indikator yang terpetakan khusus ke instans musuh ini
                 if (!activeIndicators.TryGetValue(enemy, out var arrow))
@@ -203,9 +203,13 @@ namespace FeaturesCombat.UI
             toRemoveList.Clear();
             foreach (var kvp in activeIndicators)
             {
-                if (!currentOffscreenSet.Contains(kvp.Key) || kvp.Key == null || kvp.Key.IsDead)
+                if (kvp.Key == null || kvp.Key.IsDead || !currentOffscreenSet.Contains(kvp.Key))
                 {
                     toRemoveList.Add(kvp.Key);
+                    if (kvp.Key != null)
+                    {
+                        pulsingEnemies.Remove(kvp.Key.GetInstanceID());
+                    }
                     if (kvp.Value != null)
                     {
                         kvp.Value.Hide();

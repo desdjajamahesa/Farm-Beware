@@ -109,7 +109,7 @@ namespace FeaturesFarming
                         {
                             textService?.SpawnText(
                                 textPos,
-                                "⚠️ Botol minum hanya bisa diisi di Wastafel Dapur!",
+                                "⚠️ Drinking water bottle can only be refilled at Kitchen Sink!",
                                 new Color(1f, 0.6f, 0.2f));
                             return;
                         }
@@ -131,7 +131,7 @@ namespace FeaturesFarming
             {
                 textService?.SpawnText(
                     textPos,
-                    "Butuh Plant Waterer untuk mengisi air kebun!",
+                    "Requires Plant Waterer to refill farm water!",
                     new Color(1f, 0.6f, 0.2f));
                 return;
             }
@@ -143,7 +143,7 @@ namespace FeaturesFarming
                 {
                     textService?.SpawnText(
                         textPos,
-                        "💧 Plant Waterer sudah penuh (100/100 L)!",
+                        "💧 Plant Waterer is already full (100/100 L)!",
                         new Color(0.3f, 0.85f, 1f));
                     return;
                 }
@@ -151,7 +151,7 @@ namespace FeaturesFarming
                 PlantWaterer.Instance.RefillWater(100f);
                 textService?.SpawnText(
                     textPos,
-                    "💧 Plant Waterer Terisi Penuh (100/100 L)!",
+                    "💧 Plant Waterer Refilled (100/100 L)!",
                     new Color(0.25f, 0.85f, 1f));
             }
         }

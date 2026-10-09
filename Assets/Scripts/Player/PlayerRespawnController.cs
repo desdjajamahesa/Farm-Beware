@@ -207,7 +207,7 @@ public class PlayerRespawnController : MonoBehaviour
         // 3. Hentikan pertarungan malam dan bersihkan seluruh sisa musuh yang masih aktif
         if (NightBrawlManager.Instance != null)
         {
-            NightBrawlManager.Instance.EndNightBrawl(cleanupRemaining: true);
+            NightBrawlManager.Instance.AbortBrawl();
         }
 
         // 4. Kembalikan waktu ke pagi hari pada hari yang sama (sebelum night terpicu)
@@ -231,31 +231,34 @@ public class PlayerRespawnController : MonoBehaviour
                 playerStats.maxThirst);
         }
 
-        // 6. Teleportasikan Rigidbody pemain ke kasur kamar tidur secara aman
-        Vector3 respawnPos = new Vector3(27.1f, 0.04f, 21.04f); // Fallback koordinat kamar
+        // 6. Teleportasikan karakter pemain ke kasur kamar tidur secara aman
+        Vector3 respawnPos = new Vector3(27.1f, 0.5f, 21.04f); // Fallback bedroom coordinates sanitized to y = 0.5f
         Quaternion respawnRot = Quaternion.identity;
 
         var bed = FindFirstObjectByType<FeaturesInteraction.BedInteractable>(FindObjectsInactive.Include);
         if (bed != null)
         {
-            respawnPos = bed.transform.position + bed.transform.forward * 0.9f + Vector3.up * 0.1f;
+            respawnPos = bed.transform.position + bed.transform.forward * 0.9f + Vector3.up * 0.5f;
             respawnRot = Quaternion.LookRotation(bed.transform.forward, Vector3.up);
         }
 
-        if (playerRb != null)
+        if (playerControl != null)
+        {
+            playerControl.Teleport(respawnPos, respawnRot);
+        }
+        else if (playerRb != null)
         {
             playerRb.linearVelocity = Vector3.zero;
             playerRb.angularVelocity = Vector3.zero;
             playerRb.position = respawnPos;
             playerRb.rotation = respawnRot;
-            Physics.SyncTransforms();
         }
         else
         {
             transform.position = respawnPos;
             transform.rotation = respawnRot;
-            Physics.SyncTransforms();
         }
+        Physics.SyncTransforms();
 
         // Jeda sejenak dalam keadaan gelap agar kamera dan fisika stabil
         yield return new WaitForSeconds(0.4f);
