@@ -4,6 +4,8 @@ Semua perubahan penting pada proyek ini oleh M-Roihan (Roi) dari `branch-roi-1` 
 ## - 2026-10-09
 
 ### Ditambahkan (Added)
+- **Integrasi Suite Skill Antigravity Ponytail (`.agents/skills/`)**:
+  - Memasang 6 modul skill Ponytail ([`ponytail`](file:///f:/unity/Farm-Beware/.agents/skills/ponytail/SKILL.md), [`ponytail-review`](file:///f:/unity/Farm-Beware/.agents/skills/ponytail-review/SKILL.md), [`ponytail-audit`](file:///f:/unity/Farm-Beware/.agents/skills/ponytail-audit/SKILL.md), [`ponytail-debt`](file:///f:/unity/Farm-Beware/.agents/skills/ponytail-debt/SKILL.md), [`ponytail-gain`](file:///f:/unity/Farm-Beware/.agents/skills/ponytail-gain/SKILL.md), [`ponytail-help`](file:///f:/unity/Farm-Beware/.agents/skills/ponytail-help/SKILL.md)) pada direktori [`.agents/skills/`](file:///f:/unity/Farm-Beware/.agents/skills) untuk evaluasi kode lean, deteksi technical debt, dan code review otomatis berbasis AI agent.
 - **Sinkronisasi Linimasa Waktu Siang (Day Phase Timeline)**:
   - Rekalibrasi kurva progresi waktu fase siang di [`DayNightTimeManager.cs`](file:///f:/unity/Farm-Beware/Assets/Scripts/Features/Time/DayNightTimeManager.cs) (16 menit real = 12 jam in-game, 06:00 hingga 18:00) yang memetakan jam in-game secara presisi dengan linimasa aktivitas.
   - Sistem Lonceng Senja (*Dusk Bell*) pada jam 15:45 in-game (13:30 menit real) dengan audio chime prosedural 4 harmoni lonceng desa (*Westminster chime*) pada [`DayNightAudioController.cs`](file:///f:/unity/Farm-Beware/Assets/Scripts/Features/Time/Atmosphere/DayNightAudioController.cs) dan floating text peringatan sisa 2.5 menit menuju malam.
