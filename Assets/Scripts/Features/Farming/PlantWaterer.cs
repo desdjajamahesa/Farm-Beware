@@ -59,19 +59,30 @@ namespace FeaturesFarming
             OnWaterChanged?.Invoke(currentWater, maxWater);
         }
 
-        private void EnsureWatererInInventory()
+        public void EnsureWatererInInventory()
         {
             var inv = GetComponent<InventoryComponent>() ?? ServiceLocator.Resolve<IPlayerContext>()?.GetPlayerComponent<InventoryComponent>();
             if (inv != null)
             {
+                ItemData watererItem = null;
                 var db = Resources.Load<ItemDatabase>("Database/ItemDatabase");
                 if (db != null)
                 {
-                    var watererItem = db.GetItem("tool_plant_waterer");
-                    if (watererItem != null && inv.CountItem(watererItem) == 0)
+                    watererItem = db.GetItem("tool_plant_waterer");
+                }
+
+                if (watererItem == null)
+                {
+                    var registry = Resources.Load<ItemRegistrySO>("ItemRegistrySO");
+                    if (registry != null)
                     {
-                        inv.AddItem(watererItem, 1);
+                        watererItem = registry.GetItem("tool_plant_waterer");
                     }
+                }
+
+                if (watererItem != null && inv.CountItem(watererItem) == 0)
+                {
+                    inv.AddItem(watererItem, 1);
                 }
             }
         }
@@ -124,6 +135,7 @@ namespace FeaturesFarming
         public void SetWater(float amount)
         {
             currentWater = Mathf.Clamp(amount, 0f, maxWater);
+            EnsureWatererInInventory();
             OnWaterChanged?.Invoke(currentWater, maxWater);
         }
 
