@@ -1,6 +1,7 @@
 using System;
 using UnityEngine;
 using FarmBeware.Core.Runtime;
+using FarmBeware.Data.Runtime;
 
 namespace FeaturesFarming
 {
