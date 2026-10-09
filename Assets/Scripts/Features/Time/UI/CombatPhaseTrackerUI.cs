@@ -14,6 +14,7 @@ namespace FeaturesTime.UI
         [Header("UI Text References (TMP)")]
         [SerializeField] private TextMeshProUGUI dayText;
         [SerializeField] private TextMeshProUGUI phaseText;
+        [SerializeField] private TextMeshProUGUI clockText;
         [SerializeField] private TextMeshProUGUI waveText;
         [SerializeField] private TextMeshProUGUI enemiesText;
         [SerializeField] private Image phaseBadgeBackground;
@@ -69,6 +70,15 @@ namespace FeaturesTime.UI
                 UpdateDayText(1);
                 UpdatePhaseDisplay(TimeManager.DayPhase.Day);
             }
+
+            if (DayNightTimeManager.Instance != null)
+            {
+                UpdateClockText(DayNightTimeManager.Instance.CurrentHourInt, DayNightTimeManager.Instance.CurrentMinuteInt);
+            }
+            else
+            {
+                UpdateClockText(6, 0);
+            }
         }
 
         private void OnEnable()
@@ -78,6 +88,12 @@ namespace FeaturesTime.UI
                 TimeManager.Instance.OnDayChanged += HandleDayChanged;
                 TimeManager.Instance.OnPhaseChanged += HandlePhaseChanged;
             }
+
+            if (DayNightTimeManager.Instance != null)
+            {
+                DayNightTimeManager.Instance.OnMinuteChanged += HandleMinuteChanged;
+                DayNightTimeManager.Instance.OnHourChanged += HandleHourChanged;
+            }
         }
 
         private void OnDisable()
@@ -86,6 +102,32 @@ namespace FeaturesTime.UI
             {
                 TimeManager.Instance.OnDayChanged -= HandleDayChanged;
                 TimeManager.Instance.OnPhaseChanged -= HandlePhaseChanged;
+            }
+
+            if (DayNightTimeManager.Instance != null)
+            {
+                DayNightTimeManager.Instance.OnMinuteChanged -= HandleMinuteChanged;
+                DayNightTimeManager.Instance.OnHourChanged -= HandleHourChanged;
+            }
+        }
+
+        private void HandleMinuteChanged(int minute)
+        {
+            int hour = DayNightTimeManager.Instance != null ? DayNightTimeManager.Instance.CurrentHourInt : 6;
+            UpdateClockText(hour, minute);
+        }
+
+        private void HandleHourChanged(int hour)
+        {
+            int minute = DayNightTimeManager.Instance != null ? DayNightTimeManager.Instance.CurrentMinuteInt : 0;
+            UpdateClockText(hour, minute);
+        }
+
+        public void UpdateClockText(int hour, int minute)
+        {
+            if (clockText != null)
+            {
+                clockText.text = $"{hour:D2}:{minute:D2}";
             }
         }
 
@@ -125,8 +167,13 @@ namespace FeaturesTime.UI
 
             if (phaseText != null)
             {
-                phaseText.text = isNight ? "NIGHT" : "DAY";
+                phaseText.text = isNight ? "🌙 NIGHT" : "☀️ DAY";
                 phaseText.color = isNight ? new Color(1f, 0.45f, 0.45f) : new Color(1f, 0.95f, 0.70f);
+            }
+
+            if (clockText != null)
+            {
+                clockText.color = isNight ? new Color(1f, 0.65f, 0.65f) : new Color(1f, 0.95f, 0.70f);
             }
 
             if (phaseBadgeBackground != null)
@@ -209,22 +256,45 @@ namespace FeaturesTime.UI
 
         private void EnsureUIReferences()
         {
-            if (dayText == null || phaseText == null)
+            if (dayText == null || phaseText == null || clockText == null)
             {
-                // Cari atau bangun teks di children
                 var tmps = GetComponentsInChildren<TextMeshProUGUI>(true);
-                if (tmps.Length >= 2)
+                foreach (var t in tmps)
                 {
-                    dayText = tmps[0];
-                    phaseText = tmps[1];
-                    if (tmps.Length >= 3) waveText = tmps[2];
-                    if (tmps.Length >= 4) enemiesText = tmps[3];
+                    if (t.gameObject.name.Equals("DayText", System.StringComparison.OrdinalIgnoreCase)) dayText = t;
+                    else if (t.gameObject.name.Equals("PhaseText", System.StringComparison.OrdinalIgnoreCase)) phaseText = t;
+                    else if (t.gameObject.name.Equals("ClockText", System.StringComparison.OrdinalIgnoreCase)) clockText = t;
+                    else if (t.gameObject.name.Equals("WaveText", System.StringComparison.OrdinalIgnoreCase)) waveText = t;
+                    else if (t.gameObject.name.Equals("EnemyText", System.StringComparison.OrdinalIgnoreCase)) enemiesText = t;
                 }
-                else
+
+                if (phaseText == null)
                 {
                     BuildProceduralTrackerUI();
                 }
+                else if (clockText == null)
+                {
+                    Transform parent = phaseBadgeBackground != null ? phaseBadgeBackground.transform : transform;
+                    CreateProceduralClockText(parent);
+                }
             }
+        }
+
+        private void CreateProceduralClockText(Transform parent)
+        {
+            GameObject clockObj = new GameObject("ClockText", typeof(RectTransform), typeof(TextMeshProUGUI));
+            clockObj.transform.SetParent(parent, false);
+            RectTransform clockRt = clockObj.GetComponent<RectTransform>();
+            clockRt.anchorMin = new Vector2(0.50f, 0.45f);
+            clockRt.anchorMax = new Vector2(0.94f, 0.92f);
+            clockRt.offsetMin = Vector2.zero;
+            clockRt.offsetMax = Vector2.zero;
+            clockText = clockObj.GetComponent<TextMeshProUGUI>();
+            clockText.fontSize = 15f;
+            clockText.fontStyle = FontStyles.Bold;
+            clockText.alignment = TextAlignmentOptions.Right;
+            clockText.color = new Color(1f, 0.95f, 0.70f);
+            clockText.text = "06:00";
         }
 
         private void BuildProceduralTrackerUI()
@@ -252,25 +322,28 @@ namespace FeaturesTime.UI
             dayObj.SetActive(false);
             dayText = dayObj.GetComponent<TextMeshProUGUI>();
 
-            // Phase Text (Utama)
+            // Phase Text (Kiri Atas)
             GameObject phaseObj = new GameObject("PhaseText", typeof(RectTransform), typeof(TextMeshProUGUI));
             phaseObj.transform.SetParent(badgeObj.transform, false);
             RectTransform phaseRt = phaseObj.GetComponent<RectTransform>();
-            phaseRt.anchorMin = new Vector2(0.05f, 0.45f);
-            phaseRt.anchorMax = new Vector2(0.95f, 0.92f);
+            phaseRt.anchorMin = new Vector2(0.06f, 0.45f);
+            phaseRt.anchorMax = new Vector2(0.50f, 0.92f);
             phaseRt.offsetMin = Vector2.zero;
             phaseRt.offsetMax = Vector2.zero;
             phaseText = phaseObj.GetComponent<TextMeshProUGUI>();
             phaseText.fontSize = 15f;
             phaseText.fontStyle = FontStyles.Bold;
-            phaseText.alignment = TextAlignmentOptions.Center;
+            phaseText.alignment = TextAlignmentOptions.Left;
             phaseText.text = "☀️ DAY";
+
+            // Clock Text (Kanan Atas: HH:mm)
+            CreateProceduralClockText(badgeObj.transform);
 
             // Wave & Enemies Row
             GameObject waveObj = new GameObject("WaveText", typeof(RectTransform), typeof(TextMeshProUGUI));
             waveObj.transform.SetParent(badgeObj.transform, false);
             RectTransform waveRt = waveObj.GetComponent<RectTransform>();
-            waveRt.anchorMin = new Vector2(0.05f, 0.05f);
+            waveRt.anchorMin = new Vector2(0.06f, 0.05f);
             waveRt.anchorMax = new Vector2(0.55f, 0.35f);
             waveRt.offsetMin = Vector2.zero;
             waveRt.offsetMax = Vector2.zero;
@@ -283,7 +356,7 @@ namespace FeaturesTime.UI
             enemyObj.transform.SetParent(badgeObj.transform, false);
             RectTransform enemyRt = enemyObj.GetComponent<RectTransform>();
             enemyRt.anchorMin = new Vector2(0.55f, 0.05f);
-            enemyRt.anchorMax = new Vector2(0.95f, 0.35f);
+            enemyRt.anchorMax = new Vector2(0.94f, 0.35f);
             enemyRt.offsetMin = Vector2.zero;
             enemyRt.offsetMax = Vector2.zero;
             enemiesText = enemyObj.GetComponent<TextMeshProUGUI>();

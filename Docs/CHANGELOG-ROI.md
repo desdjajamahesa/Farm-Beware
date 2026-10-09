@@ -1,6 +1,14 @@
 # Changelog (Roi)
 
 Semua perubahan penting pada proyek ini oleh M-Roihan (Roi) dari `branch-roi-1` dicatat di halaman ini.
+## - 2026-10-09
+
+### Ditambahkan (Added)
+- **Sinkronisasi Linimasa Waktu Siang (Day Phase Timeline)**:
+  - Rekalibrasi kurva progresi waktu fase siang di [`DayNightTimeManager.cs`](file:///f:/unity/Farm-Beware/Assets/Scripts/Features/Time/DayNightTimeManager.cs) (16 menit real = 12 jam in-game, 06:00 hingga 18:00) yang memetakan jam in-game secara presisi dengan linimasa aktivitas.
+  - Sistem Lonceng Senja (*Dusk Bell*) pada jam 15:45 in-game (13:30 menit real) dengan audio chime prosedural 4 harmoni lonceng desa (*Westminster chime*) pada [`DayNightAudioController.cs`](file:///f:/unity/Farm-Beware/Assets/Scripts/Features/Time/Atmosphere/DayNightAudioController.cs) dan floating text peringatan sisa 2.5 menit menuju malam.
+  - Sistem *Auto-Sleep* pada jam 18:00 in-game (16:00 menit real) untuk transisi otomatis ke fase malam (*Night Brawl*).
+  - Tampilan jam digital format `HH:mm` (mis. `06:00`, `15:45`) pada [`CombatPhaseTrackerUI.cs`](file:///f:/unity/Farm-Beware/Assets/Scripts/Features/Time/UI/CombatPhaseTrackerUI.cs) di pojok kanan atas HUD.
 
 ## - 2026-10-08
 

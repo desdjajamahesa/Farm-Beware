@@ -60,6 +60,21 @@ namespace FeaturesTime
         event Action<EnvironmentPhase> OnTimePhaseChanged;
 
         /// <summary>
+        /// Event dipancarkan saat lonceng senja (Dusk Bell) berbunyi (15:45 in-game / 13:30 real minutes).
+        /// </summary>
+        event Action OnDuskWarning;
+
+        /// <summary>
+        /// Event dipancarkan saat auto-sleep terpicu di penghujung siang (18:00 in-game / 16:00 real minutes).
+        /// </summary>
+        event Action OnAutoSleepTriggered;
+
+        /// <summary>
+        /// Sisa durasi nyata fase siang hari dalam detik (0 jika malam).
+        /// </summary>
+        float DaytimeRemainingSeconds { get; }
+
+        /// <summary>
         /// Event dipancarkan saat hari kalender berganti (Advance to Next Day).
         /// </summary>
         event Action<int> OnDayChanged;
