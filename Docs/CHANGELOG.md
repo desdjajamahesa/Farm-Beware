@@ -9,6 +9,7 @@
 * **Player Defeat & Death Screen Menu**: Reaching 0 HP presents a dedicated You Collapsed screen offering **Checkpoint** (awaken in bed at 06:00 morning with restored vitals), **Load Game** (open multi-slot saves), or **Main Menu**.
 * **Daily Report Modal Integration**: Morning economy summary now participates in unified modal window stack navigation.
 * **Dual Water HUD Readout**: Character sheet now displays independent trackers for hydration sips (`{cur}/{max} Sips`) and farm irrigation litres (`{cur}/{max}L Farm`).
+* **Organic Cloud Screen Transitions**: Added full-viewport organic cloud animation transitions when entering the game from the Main Menu, rolling in smoothly across the viewport before revealing gameplay.
 
 ### Changed
 * **Farmland Watering Tool Requirement**: Tilled soil plots now strictly require holding the Plant Waterer in the active hotbar slot to water crops.
