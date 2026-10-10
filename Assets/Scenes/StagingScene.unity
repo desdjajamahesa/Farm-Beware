@@ -3968,9 +3968,9 @@ Light:
   m_Type: 0
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_Intensity: 0
-  m_Range: 22
-  m_SpotAngle: 135
-  m_InnerSpotAngle: 85
+  m_Range: 6.5
+  m_SpotAngle: 75
+  m_InnerSpotAngle: 45
   m_CookieSize2D: {x: 0.5, y: 0.5}
   m_Shadows:
     m_Type: 2
@@ -7132,9 +7132,9 @@ Light:
   m_Type: 0
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_Intensity: 0
-  m_Range: 22
-  m_SpotAngle: 135
-  m_InnerSpotAngle: 85
+  m_Range: 6.5
+  m_SpotAngle: 75
+  m_InnerSpotAngle: 45
   m_CookieSize2D: {x: 0.5, y: 0.5}
   m_Shadows:
     m_Type: 2
@@ -17835,7 +17835,7 @@ Transform:
   m_GameObject: {fileID: 446349626}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 20.7, y: 1.96, z: 22.26}
+  m_LocalPosition: {x: 19.2, y: 2.1, z: 21}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -17853,7 +17853,7 @@ Light:
   m_Type: 2
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_Intensity: 0
-  m_Range: 20
+  m_Range: 5
   m_SpotAngle: 30
   m_InnerSpotAngle: 21.80208
   m_CookieSize2D: {x: 0.5, y: 0.5}
@@ -44420,9 +44420,9 @@ Light:
   m_Type: 0
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_Intensity: 0
-  m_Range: 22
-  m_SpotAngle: 135
-  m_InnerSpotAngle: 85
+  m_Range: 6.5
+  m_SpotAngle: 75
+  m_InnerSpotAngle: 45
   m_CookieSize2D: {x: 0.5, y: 0.5}
   m_Shadows:
     m_Type: 2
@@ -45435,7 +45435,7 @@ Transform:
   m_GameObject: {fileID: 1020543016}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 30.899, y: 1.955, z: 8.86}
+  m_LocalPosition: {x: 28.5, y: 2.1, z: 8.86}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -45453,7 +45453,7 @@ Light:
   m_Type: 2
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_Intensity: 0
-  m_Range: 20
+  m_Range: 5
   m_SpotAngle: 30
   m_InnerSpotAngle: 21.80208
   m_CookieSize2D: {x: 0.5, y: 0.5}
@@ -49360,7 +49360,7 @@ Transform:
   m_GameObject: {fileID: 1097657418}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 30.9, y: 1.96, z: 22.26}
+  m_LocalPosition: {x: 28.5, y: 2.1, z: 22.26}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -49378,7 +49378,7 @@ Light:
   m_Type: 2
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_Intensity: 0
-  m_Range: 20
+  m_Range: 5
   m_SpotAngle: 30
   m_InnerSpotAngle: 21.80208
   m_CookieSize2D: {x: 0.5, y: 0.5}
@@ -57090,9 +57090,9 @@ Light:
   m_Type: 0
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_Intensity: 0
-  m_Range: 22
-  m_SpotAngle: 135
-  m_InnerSpotAngle: 85
+  m_Range: 6.5
+  m_SpotAngle: 75
+  m_InnerSpotAngle: 45
   m_CookieSize2D: {x: 0.5, y: 0.5}
   m_Shadows:
     m_Type: 2
@@ -75832,8 +75832,8 @@ MonoBehaviour:
     fixtureRenderer: {fileID: 732686200}
     colorTemperatureKelvin: 6500
     lightColorFilter: {r: 1, g: 1, b: 1, a: 1}
-    nightDownlightIntensity: 4.5
-    nightFillIntensity: 1
+    nightDownlightIntensity: 2.5
+    nightFillIntensity: 0.5
     dayDownlightIntensity: 0
     dayFillIntensity: 0
     enableMicroFlicker: 0
@@ -75845,8 +75845,8 @@ MonoBehaviour:
     fixtureRenderer: {fileID: 521199685}
     colorTemperatureKelvin: 6500
     lightColorFilter: {r: 1, g: 1, b: 1, a: 1}
-    nightDownlightIntensity: 4.2
-    nightFillIntensity: 0.9
+    nightDownlightIntensity: 2.4
+    nightFillIntensity: 0.5
     dayDownlightIntensity: 0
     dayFillIntensity: 0
     enableMicroFlicker: 0
@@ -75858,8 +75858,8 @@ MonoBehaviour:
     fixtureRenderer: {fileID: 1884428433}
     colorTemperatureKelvin: 6500
     lightColorFilter: {r: 1, g: 1, b: 1, a: 1}
-    nightDownlightIntensity: 3.8
-    nightFillIntensity: 0.8
+    nightDownlightIntensity: 2.2
+    nightFillIntensity: 0.45
     dayDownlightIntensity: 0
     dayFillIntensity: 0
     enableMicroFlicker: 0
@@ -75871,8 +75871,8 @@ MonoBehaviour:
     fixtureRenderer: {fileID: 458619726}
     colorTemperatureKelvin: 6500
     lightColorFilter: {r: 1, g: 1, b: 1, a: 1}
-    nightDownlightIntensity: 4.5
-    nightFillIntensity: 1
+    nightDownlightIntensity: 2.5
+    nightFillIntensity: 0.5
     dayDownlightIntensity: 0
     dayFillIntensity: 0
     enableMicroFlicker: 0
@@ -75884,8 +75884,8 @@ MonoBehaviour:
     fixtureRenderer: {fileID: 1110811407}
     colorTemperatureKelvin: 6500
     lightColorFilter: {r: 1, g: 1, b: 1, a: 1}
-    nightDownlightIntensity: 3.8
-    nightFillIntensity: 0.8
+    nightDownlightIntensity: 2.2
+    nightFillIntensity: 0.45
     dayDownlightIntensity: 0
     dayFillIntensity: 0
     enableMicroFlicker: 0
@@ -75897,8 +75897,8 @@ MonoBehaviour:
     fixtureRenderer: {fileID: 781091054}
     colorTemperatureKelvin: 6500
     lightColorFilter: {r: 1, g: 1, b: 1, a: 1}
-    nightDownlightIntensity: 4
-    nightFillIntensity: 0.9
+    nightDownlightIntensity: 2.4
+    nightFillIntensity: 0.5
     dayDownlightIntensity: 0
     dayFillIntensity: 0
     enableMicroFlicker: 1
@@ -75910,8 +75910,8 @@ MonoBehaviour:
     fixtureRenderer: {fileID: 0}
     colorTemperatureKelvin: 6500
     lightColorFilter: {r: 1, g: 1, b: 1, a: 1}
-    nightDownlightIntensity: 4
-    nightFillIntensity: 0.9
+    nightDownlightIntensity: 2.4
+    nightFillIntensity: 0.5
     dayDownlightIntensity: 0
     dayFillIntensity: 0
     enableMicroFlicker: 0
@@ -82959,9 +82959,9 @@ Light:
   m_Type: 0
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_Intensity: 0
-  m_Range: 22
-  m_SpotAngle: 135
-  m_InnerSpotAngle: 85
+  m_Range: 6.5
+  m_SpotAngle: 75
+  m_InnerSpotAngle: 45
   m_CookieSize2D: {x: 0.5, y: 0.5}
   m_Shadows:
     m_Type: 2
@@ -84200,9 +84200,9 @@ Light:
   m_Type: 0
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_Intensity: 0
-  m_Range: 22
-  m_SpotAngle: 135
-  m_InnerSpotAngle: 85
+  m_Range: 6.5
+  m_SpotAngle: 75
+  m_InnerSpotAngle: 45
   m_CookieSize2D: {x: 0.5, y: 0.5}
   m_Shadows:
     m_Type: 2
@@ -90680,7 +90680,7 @@ Transform:
   m_GameObject: {fileID: 1859136449}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 19.5, y: 1.96, z: 8.86}
+  m_LocalPosition: {x: 17.5, y: 2.1, z: 8.86}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -90698,7 +90698,7 @@ Light:
   m_Type: 2
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_Intensity: 0
-  m_Range: 20
+  m_Range: 5
   m_SpotAngle: 30
   m_InnerSpotAngle: 21.80208
   m_CookieSize2D: {x: 0.5, y: 0.5}
@@ -90937,7 +90937,7 @@ Transform:
   m_GameObject: {fileID: 1860587559}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 30.9, y: 1.96, z: 17.2}
+  m_LocalPosition: {x: 22, y: 2.1, z: 16.5}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -90955,7 +90955,7 @@ Light:
   m_Type: 2
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_Intensity: 0
-  m_Range: 20
+  m_Range: 5
   m_SpotAngle: 30
   m_InnerSpotAngle: 21.80208
   m_CookieSize2D: {x: 0.5, y: 0.5}
@@ -101823,7 +101823,7 @@ Transform:
   m_GameObject: {fileID: 2065431978}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 16.5, y: 1.96, z: 22}
+  m_LocalPosition: {x: 14.5, y: 2.1, z: 22}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -101841,7 +101841,7 @@ Light:
   m_Type: 2
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_Intensity: 0
-  m_Range: 20
+  m_Range: 5
   m_SpotAngle: 30
   m_InnerSpotAngle: 21.80208
   m_CookieSize2D: {x: 0.5, y: 0.5}

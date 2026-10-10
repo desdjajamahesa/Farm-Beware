@@ -37,11 +37,11 @@ namespace FeaturesTime.Atmosphere
             public Color lightColorFilter = Color.white;
 
             [Header("Night Preset (Safe Zone Aktif - Kalibrasi Fisis Lembut)")]
-            [Tooltip("Intensitas Key Downlight saat malam (rentang 3.5 - 5.5 lux).")]
-            [Min(0f)] public float nightDownlightIntensity = 4.5f;
+            [Tooltip("Intensitas Key Downlight saat malam (rentang 2.0 - 2.8 lux).")]
+            [Min(0f)] public float nightDownlightIntensity = 2.5f;
 
-            [Tooltip("Intensitas Ambient Fill saat malam (rentang 0.8 - 1.5 lux).")]
-            [Min(0f)] public float nightFillIntensity = 1.0f;
+            [Tooltip("Intensitas Ambient Fill saat malam (rentang 0.35 - 0.6 lux).")]
+            [Min(0f)] public float nightFillIntensity = 0.5f;
 
             [Header("Day Preset")]
             [Min(0f)] public float dayDownlightIntensity = 0.0f;
@@ -365,8 +365,8 @@ namespace FeaturesTime.Atmosphere
             r.fixtureRenderer.GetPropertyBlock(propBlock);
 
             Color evaluatedColor = r.GetEvaluatedColor();
-            // HDR exposure calibrated for cozy ambient without blinding bloom
-            Color hdrEmission = evaluatedColor * (normalizedIntensity * 1.2f);
+            // HDR exposure calibrated to remain softly luminous without triggering bloom blowout (>0.85)
+            Color hdrEmission = evaluatedColor * (normalizedIntensity * 0.70f);
             propBlock.SetColor(EmissionColorID, hdrEmission);
             r.fixtureRenderer.SetPropertyBlock(propBlock);
         }
