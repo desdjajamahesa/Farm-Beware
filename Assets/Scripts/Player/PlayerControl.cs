@@ -694,14 +694,14 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
         // --- COMBO ADVANCEMENT / BUFFERING DURING LIGHT ATTACK ---
         if (isLightAttacking)
         {
-            if (attackPressed || attackHeld)
+            if (attackPressed)
             {
                 if (playerEquipment != null && playerEquipment.TryPerformAttack())
                 {
                     StartLightAttack();
                     hasBufferedAttack = false;
                 }
-                else if (attackPressed)
+                else
                 {
                     hasBufferedAttack = true;
                     bufferedAttackTime = Time.time;
@@ -734,10 +734,10 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
         }
 
         // --- Standard Melee Attack Processing (Light Combo / Dash Attack / Charged Heavy) ---
-        if (attackPressed || (attackHeld && !isChargingAttack && !isAttacking))
+        if (attackPressed)
         {
             // If running/sprinting at high speed, trigger instantaneous Dash Attack!
-            if (attackPressed && isRunning && inputVector.sqrMagnitude >= 0.01f)
+            if (isRunning && inputVector.sqrMagnitude >= 0.01f)
             {
                 if (playerEquipment != null && playerEquipment.TryPerformDashAttack())
                 {
@@ -751,10 +751,6 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
 
             isChargingAttack = true;
             attackHoldDuration = 0f;
-            if (playerEquipment != null)
-            {
-                playerEquipment.CombatStateMachine.StartHeavyCharge(Time.time);
-            }
         }
 
         if (isChargingAttack)
@@ -762,8 +758,9 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
             if (attackHeld)
             {
                 attackHoldDuration += Time.deltaTime;
-                if (playerEquipment != null)
+                if (attackHoldDuration >= 0.35f && playerEquipment != null)
                 {
+                    playerEquipment.CombatStateMachine.StartHeavyCharge(Time.time);
                     playerEquipment.CombatStateMachine.UpdateCharge(Time.deltaTime);
                 }
             }
@@ -783,10 +780,6 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
                 else
                 {
                     // Released quickly -> Standard 3-Hit Combo Light Attack!
-                    if (playerEquipment != null)
-                    {
-                        playerEquipment.CombatStateMachine.ResetToIdle();
-                    }
                     if (playerEquipment != null && playerEquipment.TryPerformAttack())
                     {
                         StartLightAttack();
