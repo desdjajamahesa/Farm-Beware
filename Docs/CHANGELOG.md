@@ -1,5 +1,20 @@
 # Patch Notes
 
+## 2026-10-10
+
+### Added
+* **Hades-Inspired Isometric Stylized Lighting & Silhouette Shader**: Created a specialized character shader (`HeroStylizedLit.shader`) providing warm golden rim lighting around the player's silhouette, ensuring visual clarity against dark nighttime fields, coupled with zero-GC hit/damage flashes via instanced property blocks.
+* **Dynamic Weapon Slash Trails & Combo Synchronization**: Added multi-tier ribbon trails for sword and hoe weapons with combo-synced timing delays matching humanoid swing animations, shifting from golden amber slashes on light attacks to wide fire arcs on combo finishers.
+* **Hades-Style Enemy Danger Ground Telegraphs**: Replaced procedural line renderers with glowing circular telegraph ground rings (`CombatTelegraphDecal.cs` & `CombatTelegraph.shader`) featuring dynamic 0-100% fill timers and hit-instant impact flashes without runtime material allocation.
+* **Zero-GC Pooled Projectile Engine**: Replaced runtime `CreatePrimitive` and `new Material` instantiation with a pre-warmed object pool (`CombatProjectilePool.cs`) for all enemy ranged attacks (Corn Musketeer, Colossus, Ranger), eliminating memory churn and GC pauses during combat encounters.
+* **Glowing Bullets & Clustered Light Guards**: Projectiles now feature glowing amber cores and smooth trailing ribbons. Projectile point lights strictly enforce shadowless rendering (`LightShadows.None`) to prevent GPU shadow map overhead in URP Deferred+ clustered lighting.
+
+### Changed
+* **Session Projectile Cleanup**: Night combat session resets now automatically recycle active projectiles back into the pool rather than destroying game objects.
+* **Indoor Safe-Zone Lighting**: Calibrated interior downlights and ambient fill lights to balanced 2900K color temperatures and refined night post-processing bloom thresholds.
+
+---
+
 ## 2026-10-09
 
 ### Added
