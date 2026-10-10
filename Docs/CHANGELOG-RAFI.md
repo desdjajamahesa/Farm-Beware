@@ -31,9 +31,15 @@ Semua perubahan penting pada proyek ini oleh Rafi akan dicatat di halaman ini.
     - Menetapkan threshold bloom ke **1.05**, intensitas **0.32**, dan scatter **0.65** pada volume global dan factory preset.
     - Geometri SDR standar (tanah, tanaman, pagar, batu, lantai) tidak mengalami silau/kabur, sementara elemen HDR $>1.05$ (trail tebasan, flash benturan, proyektil, rim musuh) berpendar filmik.
     - Verifikasi visual komparatif tertangkap pada `m6_farmland_day.png`, `m6_farmland_dusk.png`, `m6_farmland_night.png`, `m6_combat_readability_day.png`, dan `m6_combat_readability_night.png`.
-  - **M7 - Validasi Build & Uji Regresi**:
+  - **M7 - Validasi Build, Uji Regresi & Hardening Audit**:
     - Kompilasi build skrip Unity Player (`BuildPipeline.BuildPlayer` - `BuildScriptsOnly`) berhasil dengan 0 error kompilasi.
     - Konsol Unity bersih dengan 0 runtime exceptions dan 0 error.
+    - Resolusi temuan audit kualitas repo:
+      - Memperbaiki kebocoran delegate input lompat pada [`PlayerControl.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Player/PlayerControl.cs) dengan mengganti lambda anonim menjadi method group bernama (`OnJumpPerformed`).
+      - Menyematkan proteksi atomic write (`.tmp` + swap) dan penanganan error try-catch pada penyimpanan data lemari pakaian di [`PlayerOutfit.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Wardrobe/PlayerOutfit.cs).
+      - Menambahkan auto-recovery file `.tmp` pada pemulihan slot penyimpanan di [`SaveSystemManager.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/SaveSystem/SaveSystemManager.cs).
+      - Mendaftarkan pelepasan referensi `ServiceLocator.Unregister<IPlayerDamageNotifier>()` pada `OnDestroy()` di [`PlayerStats.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Player/PlayerStats.cs) untuk mencegah dangling pointer lintas scene reload.
+      - Membersihkan 5 field mati yang tidak terpakai pada [`PlayerEquipment.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Player/PlayerEquipment.cs).
     - Pohon kerja Git terisolasi murni pada `Rafi-branch` tanpa menyentuh `Sprint-branch`.
 
 ## - 2026-10-09

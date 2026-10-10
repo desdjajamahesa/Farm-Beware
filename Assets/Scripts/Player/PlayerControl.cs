@@ -174,7 +174,7 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
         inputActions.Player.Enable();
 
         // Mendaftarkan event: Saat tombol ditekan, panggil fungsi yang sesuai
-        inputActions.Player.Jump.performed += ctx => ExecuteJump();
+        inputActions.Player.Jump.performed += OnJumpPerformed;
         inputActions.Player.Interact.performed += OnInteractPressed;
     }
 
@@ -185,12 +185,13 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
             inputActions = new PlayerInputActions();
 
         // Mencabut pendaftaran event untuk mencegah memory leak
-        inputActions.Player.Jump.performed -= ctx => ExecuteJump();
+        inputActions.Player.Jump.performed -= OnJumpPerformed;
+        inputActions.Player.Interact.performed -= OnInteractPressed;
 
         inputActions.Player.Disable();
-
-        inputActions.Player.Interact.performed -= OnInteractPressed;
     }
+
+    private void OnJumpPerformed(UnityEngine.InputSystem.InputAction.CallbackContext ctx) => ExecuteJump();
 
     void Update()
     {

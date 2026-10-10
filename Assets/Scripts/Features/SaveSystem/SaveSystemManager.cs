@@ -494,6 +494,15 @@ namespace FeaturesSaveSystem
             string filePath = Path.Combine(SavesDirectory, meta.fileName);
             if (!File.Exists(filePath))
             {
+                string tmpPath = filePath + ".tmp";
+                if (File.Exists(tmpPath))
+                {
+                    try { File.Move(tmpPath, filePath); } catch { }
+                }
+            }
+
+            if (!File.Exists(filePath))
+            {
                 statusMessage = "Save file is missing on disk!";
                 ShowNotification("[Error] Save file missing on disk!", new Color(1f, 0.35f, 0.35f));
                 // Clean manifest

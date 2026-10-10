@@ -172,13 +172,6 @@ public class PlayerEquipment : MonoBehaviour
     private PlayerBuffManager buffManager;
     private Coroutine currentSwingCoroutine;
 
-    // Komponen visual indikator jangkauan serangan (lingkaran di bawah kaki karakter)
-    private GameObject rangeIndicatorObj;
-    private LineRenderer rangeLineRenderer;
-    private Material indicatorMaterial;
-    private Coroutine pulseCoroutine;
-    private bool isCurrentlyPulsing = false;
-
     public float AttackDamageMultiplier => buffManager != null ? buffManager.GetAttackDamageMultiplier() : 1f;
     public float AttackSpeedMultiplier => buffManager != null ? buffManager.GetAttackSpeedMultiplier() : 1f;
     public float AttackHitRange => attackHitRange;

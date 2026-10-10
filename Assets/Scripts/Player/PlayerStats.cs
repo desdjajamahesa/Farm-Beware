@@ -89,6 +89,11 @@ public class PlayerStats : MonoBehaviour, FeaturesCombat.IDamageable, IPlayerDam
         }
     }
 
+    private void OnDestroy()
+    {
+        ServiceLocator.Unregister<IPlayerDamageNotifier>();
+    }
+
     private bool isStatsRestored = false;
     private bool isDeadHandled = false;
 
