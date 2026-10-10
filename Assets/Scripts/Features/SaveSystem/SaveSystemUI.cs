@@ -367,7 +367,7 @@ namespace FeaturesSaveSystem
             }
 
             var mgr = SaveSystemManager.Instance;
-            var saves = mgr != null ? mgr.GetSaveList() : new List<SaveHeader>();
+            var saves = mgr != null ? mgr.GetSaveList() : new List<SaveMetadata>();
 
             if (saves == null || saves.Count == 0)
             {
