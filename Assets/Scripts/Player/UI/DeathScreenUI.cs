@@ -16,14 +16,26 @@ using FeaturesSaveSystem;
 /// </summary>
 public class DeathScreenUI : MonoBehaviour, IModalWindow
 {
+    public static bool HasInstance => instance != null;
+    private static bool isApplicationQuitting = false;
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    private static void ResetStaticState()
+    {
+        isApplicationQuitting = false;
+        instance = null;
+    }
+
     public static DeathScreenUI Instance
     {
         get
         {
+            if (isApplicationQuitting) return null;
+
             if (instance == null)
             {
                 instance = FindFirstObjectByType<DeathScreenUI>(FindObjectsInactive.Include);
-                if (instance == null)
+                if (instance == null && !isApplicationQuitting)
                 {
                     var go = new GameObject("DeathScreenUI");
                     instance = go.AddComponent<DeathScreenUI>();
@@ -116,9 +128,14 @@ public class DeathScreenUI : MonoBehaviour, IModalWindow
         }
     }
 
+    private void OnApplicationQuit()
+    {
+        isApplicationQuitting = true;
+    }
+
     private void OnDestroy()
     {
-        if (ModalStackManager.Instance != null)
+        if (ModalStackManager.HasInstance && ModalStackManager.Instance != null)
         {
             ModalStackManager.Instance.PopSpecific(this);
         }

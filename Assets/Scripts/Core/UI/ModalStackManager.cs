@@ -10,14 +10,26 @@ namespace FarmBeware.Core.Runtime
     /// </summary>
     public class ModalStackManager : MonoBehaviour, IModalStackService
     {
+        public static bool HasInstance => _instance != null;
+        private static bool _isApplicationQuitting = false;
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetStaticState()
+        {
+            _isApplicationQuitting = false;
+            _instance = null;
+        }
+
         public static ModalStackManager Instance
         {
             get
             {
+                if (_isApplicationQuitting) return null;
+
                 if (_instance == null)
                 {
                     _instance = FindFirstObjectByType<ModalStackManager>(FindObjectsInactive.Include);
-                    if (_instance == null)
+                    if (_instance == null && !_isApplicationQuitting)
                     {
                         var go = new GameObject("ModalStackManager");
                         _instance = go.AddComponent<ModalStackManager>();
@@ -153,6 +165,11 @@ namespace FarmBeware.Core.Runtime
             {
                 Pop();
             }
+        }
+
+        private void OnApplicationQuit()
+        {
+            _isApplicationQuitting = true;
         }
 
         private void OnDestroy()
