@@ -1,6 +1,30 @@
 # Changelog (Roi)
 
 Semua perubahan penting pada proyek ini oleh M-Roihan (Roi) dari `branch-roi-1` dicatat di halaman ini.
+## - 2026-10-10
+
+### Ditambahkan (Added)
+- **Integrasi Animasi Slide ('C') dan Parry ('V') pada Player**:
+  - Menghubungkan klip animasi dari `Assets/Art/Animations/Player/Mixamo/` ke [`AsepAnimator.controller`](file:///f:/unity/Farm-Beware/Assets/Resources/Player/AsepAnimator.controller):
+    - **Slide ('C')**: Menggunakan motion klip dari `crouch idle.fbx` pada state `Sliding`, bertransisi reaktif dari `AnyState` saat parameter `Sliding == true` dan kembali ke `Idle`/`Moving` saat `Sliding == false`.
+    - **Parry ('V')**: Menggunakan motion klip dari `standing block idle.fbx` pada state baru `Parry_Guard` dengan trigger parameter `Parry`. Memperbaiki method `PerformParry()` pada [`PlayerControl.cs`](file:///f:/unity/Farm-Beware/Assets/Scripts/Player/PlayerControl.cs) yang sebelumnya secara keliru memicu animasi serang (`Attack`).
+- **Tampilan Jam Digital Berkelipatan 15 Menit In-Game (`CombatPhaseTrackerUI.cs`)**:
+  - Menambahkan konfigurasi `clockMinuteStep = 15` pada [`CombatPhaseTrackerUI.cs`](file:///f:/unity/Farm-Beware/Assets/Scripts/Features/Time/UI/CombatPhaseTrackerUI.cs) sehingga jarum menit jam digital HUD bergerak setiap 15 menit in-game (`:00`, `:15`, `:30`, `:45`).
+  - Berdasarkan linimasa 16 menit (960 detik = 12 jam), 15 menit in-game berganti tepat setiap **20 detik di dunia nyata** (dan 2.5 detik saat fast-forward 8x). Ini memberikan estetika RPG santai (seperti *Stardew Valley* / *Animal Crossing*) sekaligus memangkas operasi redraw teks UI hingga 93%.
+- **Integrasi 18 Modul Resmi Unity Technologies Skills (`.agents/skills/`)**:
+  - Memasang 18 skill resmi dari Unity Technologies yang disaring khusus untuk kebutuhan game *Farm-Beware* (2D pixel perfect, 2D physics, tile palette/rule tiles, sprite atlas, sprite editor, audio mixers, optimize audio, UI uGUI/UITK, TextMeshPro, URP post-processing, URP render graph, NavMesh AI, Project Auditor, dan Localization).
+
+### Diperbaiki (Fixed)
+- **Pembersihan Guard Jam Pagi 07:00-07:15 pada Save/Load & Runtime**:
+  - Menghapus pengecekan hardcoded `targetHour >= 6.99f && targetHour <= 7.25f` pada [`DayNightTimeManager.cs`](file:///f:/unity/Farm-Beware/Assets/Scripts/Features/Time/DayNightTimeManager.cs) dan [`SaveSystemManager.cs`](file:///f:/unity/Farm-Beware/Assets/Scripts/Features/SaveSystem/SaveSystemManager.cs) sehingga pemain yang menyimpan game pada rentang pagi hari (07:00 - 07:15 in-game) tidak lagi ter-reset mundur ke 06:00.
+
+### Dihapus (Removed)
+- **Animasi & Logika Tendangan 'Q' dan Emote 'T' Player**:
+  - Menghapus input keybind 'Q' (tendangan knockback) dan 'T' (battlecry taunt emote) pada [`PlayerControl.cs`](file:///f:/unity/Farm-Beware/Assets/Scripts/Player/PlayerControl.cs) serta coroutine `RoutineKick()`.
+  - Menghapus konfigurasi tendangan (`kickStaminaCost`, `kickDamage`, dll.) dan method `TryPerformKick()` pada [`PlayerEquipment.cs`](file:///f:/unity/Farm-Beware/Assets/Scripts/Player/PlayerEquipment.cs).
+  - Menyembunyikan widget `txtKickDamage` pada [`PlayerStatsDisplayUI.cs`](file:///f:/unity/Farm-Beware/Assets/Scripts/Player/UI/PlayerStatsDisplayUI.cs).
+  - Menghapus state `Attack_Kick`, state `Taunt_Battlecry`, beserta parameter trigger `Kick` dan `Taunt` dari Animator Controller [`AsepAnimator.controller`](file:///f:/unity/Farm-Beware/Assets/Resources/Player/AsepAnimator.controller).
+
 ## - 2026-10-09
 
 ### Ditambahkan (Added)
