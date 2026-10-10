@@ -110,25 +110,50 @@ namespace FeaturesTime.Atmosphere
             }
         }
 
+        private bool isSubscribed = false;
+
         private void Start()
         {
-            TimeManager.DayPhase startingPhase = TimeManager.Instance != null
-                ? TimeManager.Instance.currentPhase
-                : TimeManager.DayPhase.Day;
+            EnsureSubscriptions();
 
-            ApplyInstant(startingPhase == TimeManager.DayPhase.Night);
+            bool isNight = false;
+            if (DayNightTimeManager.Instance != null)
+            {
+                isNight = DayNightTimeManager.Instance.CurrentPhase == EnvironmentPhase.Night;
+            }
+            else if (TimeManager.Instance != null)
+            {
+                isNight = TimeManager.Instance.currentPhase == TimeManager.DayPhase.Night;
+            }
+
+            ApplyInstant(isNight);
         }
 
         private void OnEnable()
         {
+            EnsureSubscriptions();
+        }
+
+        private void EnsureSubscriptions()
+        {
+            bool subscribedAny = false;
             if (TimeManager.Instance != null)
             {
+                TimeManager.Instance.OnPhaseChanged -= HandleTimeManagerPhaseChanged;
                 TimeManager.Instance.OnPhaseChanged += HandleTimeManagerPhaseChanged;
+                subscribedAny = true;
             }
 
             if (DayNightTimeManager.Instance != null)
             {
+                DayNightTimeManager.Instance.OnTimePhaseChanged -= HandleDayNightServicePhaseChanged;
                 DayNightTimeManager.Instance.OnTimePhaseChanged += HandleDayNightServicePhaseChanged;
+                subscribedAny = true;
+            }
+
+            if (subscribedAny)
+            {
+                isSubscribed = true;
             }
         }
 
@@ -143,6 +168,7 @@ namespace FeaturesTime.Atmosphere
             {
                 DayNightTimeManager.Instance.OnTimePhaseChanged -= HandleDayNightServicePhaseChanged;
             }
+            isSubscribed = false;
 
             StopAllActiveCoroutines();
         }

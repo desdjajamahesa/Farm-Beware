@@ -17,19 +17,21 @@ Decorative Color Band: $\colorbox{fffde7}{~~}
 
 #### Seed Economy
 
+Farm equipment: farmer set (starter gear + 1 Hoe + 6 plant plots)
+
 The farming economy is built around a simple resource loop:
 
 **Seed → Plant → Harvest → Sell → Gold**
 
 Or
 
-**Harvest → Cooking → Food Buff**
+**Harvest → Cooking → Food Buff 1:1**
 
 | Seed | Growth | Harvest Value | Monster | Seed Drop |
 | --- | --- | --- | --- | --- |
-| Sweet Potato | Fast (15min) | 750-1000 Gold (random) | Tuber Maw | 1-4 SP(60/20/10/10%) |
-| Taro | Medium(30min) | 1400-1800 Gold (random) | Taro Brute | 1-3 T (70/20/10%) |
-| Corn | Medium(30min) | 1400-1800 Gold (random) | Corn Musketeer | 1-3 C (70/20/10%) |
+| Sweet Potato | Fast (6min) | 750-1000 Gold (random) | Tuber Maw | 1-4 SP(60/20/10/10%) |
+| Taro | Medium(15min) | 1400-1800 Gold (random) | Taro Brute | 1-3 T (70/20/10%) |
+| Corn | Medium(15min) | 1400-1800 Gold (random) | Corn Musketeer | 1-3 C (70/20/10%) |
 
 Each crop have purpose:
 
@@ -190,27 +192,29 @@ Contoh konsep:
 
 → Heavy Hit / Knockback / Defensive Effect
 
-## Time Management
+## Time Management Day & Night
 
-Game hanya mempunyai dua state utama:
+### 1. Core parameter:
 
-### Day phase
+| Parameter | Value |
+| --- | --- |
+| Day phase length | **16 real minutes** (06:00 → 18:00 in-game, 1 real minute = 45 in-game minutes) |
+| Night phase | **Not fixed**, ends when all waves are cleared (3 → 15 minutes depending on the day) |
+| Crop growth | **Only counts during the Day phase** (night does not count) |
+| Switching to night | Player chooses to sleep, or **auto-sleep at 16:00** (dusk warning at minute 13:30) |
+| Sleeping early | Allowed, but the remaining daytime is lost. Crops keep their progress |
 
-Farm • Trade • Cooking • Upgrade • Preparation
+### 2. Timeline of One Day Phase (16 minutes) -ideal play
 
-Player menentukan kapan siap dengan menggunakan kasur.
-
-**Sleep → Start Nigzht Phase**
-
-### Night phase
-
-Brawl / Waves
-
-Setelah encounter selesai:
-
-**Return Home → Sleep → Next Day**
-
-Jadi kasur sebenarnya menjadi **kontrol progression MVP**.
+| Real minute | In-game time | Activity | Purpose |
+| --- | --- | --- | --- |
+| 0:00 – 1:00 | 06:00 – 06:45 | Plant seeds immediately | **Must** plant **before** minute **1:00** so **Sweet Potato** can ripen within the day |
+| 1:00 – 4:00 | 06:45 – 09:00 | Fetch water, cook, trade | Start cooking early since cooking takes time |
+| 4:00 – 11:00 | 09:00 – 14:00 | Weapon upgrades, preparation, waiting for crops | Strategic downtime |
+| 11:00 – 13:30 | 14:00 – 15:45 | Finalize food, check water | Prepare for night |
+| 13:30 | 15:45 | **Dusk bell (DING DONG DING DONG)** | Warning: 2.5 minutes left |
+| 15:00 – 15:45 | 17:15 – 17:50 | Harvest, sell, **replant a new crop** | Gold ready for the next day |
+| 16:00 | 18:00 | Auto-sleep | Night begins |
 
 ![Area Rumah Harvest Pipeline-2026-09-10-105210.png](MVP%20Version%20Guideline%20V0%201/Area_Rumah_Harvest_Pipeline-2026-09-10-105210.png)
 

@@ -222,7 +222,16 @@ public class MainMenuController : MonoBehaviour
 
     void Update()
     {
+        bool escPressed = false;
+#if ENABLE_INPUT_SYSTEM
         if (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame)
+            escPressed = true;
+#endif
+#if ENABLE_LEGACY_INPUT_MANAGER
+        if (Input.GetKeyDown(KeyCode.Escape))
+            escPressed = true;
+#endif
+        if (escPressed)
         {
             HandleEscapeKey();
         }
@@ -651,6 +660,7 @@ public class MainMenuController : MonoBehaviour
     {
         menuActive = true;
         gameObject.SetActive(true);
+        transform.SetAsLastSibling();
 
         Time.timeScale = isPause ? 0f : 1f;
 
@@ -723,6 +733,15 @@ public class MainMenuController : MonoBehaviour
 
         titleOriginalPos = titleText != null ? titleText.rectTransform.localPosition : Vector3.zero;
         titleOriginalScale = titleText != null ? titleText.rectTransform.localScale : Vector3.one;
+
+        if (isPause)
+        {
+            var pauseAnimator = GetComponent<PauseMenuAnimator>();
+            if (pauseAnimator != null)
+            {
+                pauseAnimator.TriggerPopIn();
+            }
+        }
     }
 
     private void SetMenuVisualsActive(bool active)
@@ -960,7 +979,7 @@ public class MainMenuController : MonoBehaviour
 
     public void OnLoadGameClicked()
     {
-        if (!menuActive) return;
+        if (currentState == MenuState.FadingOut) return;
         if (FeaturesSaveSystem.SaveSystemUI.Instance != null)
         {
             FeaturesSaveSystem.SaveSystemUI.Instance.Open();

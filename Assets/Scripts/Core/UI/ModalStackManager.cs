@@ -34,8 +34,34 @@ namespace FarmBeware.Core.Runtime
 
         private readonly List<IModalWindow> _stack = new List<IModalWindow>();
 
-        public int OpenModalCount => _stack.Count;
-        public bool HasActiveModal => _stack.Count > 0;
+        public int OpenModalCount
+        {
+            get
+            {
+                CleanDeadModals();
+                return _stack.Count;
+            }
+        }
+
+        public bool HasActiveModal
+        {
+            get
+            {
+                CleanDeadModals();
+                return _stack.Count > 0;
+            }
+        }
+
+        private void CleanDeadModals()
+        {
+            for (int i = _stack.Count - 1; i >= 0; i--)
+            {
+                if (_stack[i] == null || !_stack[i].IsOpen)
+                {
+                    _stack.RemoveAt(i);
+                }
+            }
+        }
 
         private void Awake()
         {
@@ -52,10 +78,18 @@ namespace FarmBeware.Core.Runtime
         {
             bool escapePressed = false;
 
+#if ENABLE_INPUT_SYSTEM
             if (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame)
             {
                 escapePressed = true;
             }
+#endif
+#if ENABLE_LEGACY_INPUT_MANAGER
+            if (Input.GetKeyDown(KeyCode.Escape))
+            {
+                escapePressed = true;
+            }
+#endif
 
             if (escapePressed && HasActiveModal)
             {

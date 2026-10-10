@@ -86,9 +86,50 @@ namespace FeaturesSaveSystem
                 Destroy(gameObject);
                 return;
             }
+            isApplicationQuitting = false;
             instance = this;
 
             EnsureUIHierarchy();
+            WireButtonListeners();
+        }
+
+        private void Start()
+        {
+            WireButtonListeners();
+        }
+
+        private void WireButtonListeners()
+        {
+            if (closeButton != null)
+            {
+                closeButton.onClick.RemoveListener(Close);
+                closeButton.onClick.AddListener(Close);
+            }
+            if (backdropCloseButton != null)
+            {
+                backdropCloseButton.onClick.RemoveListener(Close);
+                backdropCloseButton.onClick.AddListener(Close);
+            }
+            if (saveNewButton != null)
+            {
+                saveNewButton.onClick.RemoveListener(OnSaveNewClicked);
+                saveNewButton.onClick.AddListener(OnSaveNewClicked);
+            }
+            if (confirmCancelButton != null)
+            {
+                confirmCancelButton.onClick.RemoveListener(CloseConfirmDialog);
+                confirmCancelButton.onClick.AddListener(CloseConfirmDialog);
+            }
+            if (confirmActionButton != null)
+            {
+                confirmActionButton.onClick.RemoveListener(OnConfirmActionExecuted);
+                confirmActionButton.onClick.AddListener(OnConfirmActionExecuted);
+            }
+            if (saveNameInputField != null)
+            {
+                saveNameInputField.onValueChanged.RemoveListener(UpdateCharCount);
+                saveNameInputField.onValueChanged.AddListener(UpdateCharCount);
+            }
         }
 
         private void OnEnable()
@@ -148,6 +189,7 @@ namespace FeaturesSaveSystem
         public void Open()
         {
             EnsureUIHierarchy();
+            WireButtonListeners();
 
             Time.timeScale = 0f;
 
@@ -278,6 +320,11 @@ namespace FeaturesSaveSystem
             string rawName = saveNameInputField != null ? saveNameInputField.text : "";
             string sanitized = SaveSystemManager.SanitizeSaveName(rawName);
 
+            if (SaveSystemManager.Instance == null)
+            {
+                if (statusFeedbackText != null) statusFeedbackText.text = "<color=#F87171>✗ Save System Unavailable</color>";
+                return;
+            }
             bool success = SaveSystemManager.Instance.CreateNewSave(sanitized, out string msg);
 
             if (statusFeedbackText != null)
@@ -319,7 +366,8 @@ namespace FeaturesSaveSystem
                 Destroy(slotsContentContainer.GetChild(i).gameObject);
             }
 
-            var saves = SaveSystemManager.Instance.GetSaveList();
+            var mgr = SaveSystemManager.Instance;
+            var saves = mgr != null ? mgr.GetSaveList() : new List<SaveHeader>();
 
             if (saves == null || saves.Count == 0)
             {
@@ -526,6 +574,11 @@ namespace FeaturesSaveSystem
                 return;
             }
 
+            if (SaveSystemManager.Instance == null)
+            {
+                if (statusFeedbackText != null) statusFeedbackText.text = "<color=#F87171>✗ Save System Unavailable</color>";
+                return;
+            }
             bool success = SaveSystemManager.Instance.LoadSave(saveId, out string msg);
             if (statusFeedbackText != null)
             {

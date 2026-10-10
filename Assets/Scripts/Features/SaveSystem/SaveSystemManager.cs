@@ -31,6 +31,11 @@ namespace FeaturesSaveSystem
                 if (instance == null)
                 {
                     instance = FindFirstObjectByType<SaveSystemManager>(FindObjectsInactive.Include);
+                    if (instance == null && Application.isPlaying)
+                    {
+                        var go = new GameObject("SaveSystemManager");
+                        instance = go.AddComponent<SaveSystemManager>();
+                    }
                 }
                 return instance;
             }
@@ -114,7 +119,6 @@ namespace FeaturesSaveSystem
             if (instance == this)
             {
                 instance = null;
-                isQuitting = true;
             }
         }
 

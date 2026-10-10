@@ -457,7 +457,6 @@ namespace FeaturesTime
             if (Instance == this)
             {
                 Instance = null;
-                _isApplicationQuitting = true;
             }
         }
 

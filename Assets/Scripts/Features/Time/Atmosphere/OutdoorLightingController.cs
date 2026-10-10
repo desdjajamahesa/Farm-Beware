@@ -23,11 +23,19 @@ namespace FeaturesTime.Atmosphere
         private Coroutine transitionCoroutine;
         private Coroutine flickerCoroutine;
         private float currentNormalizedNight = 0f;
+        private bool isSubscribed = false;
 
         public List<OutdoorGardenLamp> OutdoorLamps => outdoorLamps;
 
         private void Start()
         {
+            if (outdoorLamps == null || outdoorLamps.Count == 0 || outdoorLamps.Contains(null))
+            {
+                FindAllLampsInScene();
+            }
+
+            EnsureSubscriptions();
+
             bool isNight = false;
             if (DayNightTimeManager.Instance != null)
             {
@@ -43,13 +51,30 @@ namespace FeaturesTime.Atmosphere
 
         private void OnEnable()
         {
+            EnsureSubscriptions();
+        }
+
+        private void EnsureSubscriptions()
+        {
+            if (isSubscribed) return;
+
+            bool subscribedAny = false;
             if (TimeManager.Instance != null)
             {
+                TimeManager.Instance.OnPhaseChanged -= HandlePhaseChanged;
                 TimeManager.Instance.OnPhaseChanged += HandlePhaseChanged;
+                subscribedAny = true;
             }
             if (DayNightTimeManager.Instance != null)
             {
+                DayNightTimeManager.Instance.OnTimePhaseChanged -= HandleEnvironmentPhaseChanged;
                 DayNightTimeManager.Instance.OnTimePhaseChanged += HandleEnvironmentPhaseChanged;
+                subscribedAny = true;
+            }
+
+            if (subscribedAny)
+            {
+                isSubscribed = true;
             }
         }
 
@@ -63,6 +88,7 @@ namespace FeaturesTime.Atmosphere
             {
                 DayNightTimeManager.Instance.OnTimePhaseChanged -= HandleEnvironmentPhaseChanged;
             }
+            isSubscribed = false;
 
             if (transitionCoroutine != null) StopCoroutine(transitionCoroutine);
             if (flickerCoroutine != null) StopCoroutine(flickerCoroutine);

@@ -12,6 +12,6 @@ Reproductibility Steps:   1. Enter Gameplay
   6. Take a look at the clothes you’re wearing
 Reproductibilty Rate / 10: 10
 Severity: Low
-Status: Not started
+Status: In progress
 Tag: Input/Control, Interaction, Inventory, UI
 Test Execution: TE-14 - Changing a Clothes (https://app.notion.com/p/TE-14-Changing-a-Clothes-3f397560e11a8017bd5cd9fdf0e0f185?pvs=21)

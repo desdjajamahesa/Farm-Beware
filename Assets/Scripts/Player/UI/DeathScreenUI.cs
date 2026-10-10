@@ -68,6 +68,26 @@ public class DeathScreenUI : MonoBehaviour, IModalWindow
         }
         instance = this;
         EnsureUIHierarchy();
+        WireButtons();
+    }
+
+    private void WireButtons()
+    {
+        if (checkpointButton != null)
+        {
+            checkpointButton.onClick.RemoveListener(OnCheckpointClicked);
+            checkpointButton.onClick.AddListener(OnCheckpointClicked);
+        }
+        if (loadGameButton != null)
+        {
+            loadGameButton.onClick.RemoveListener(OnLoadGameClicked);
+            loadGameButton.onClick.AddListener(OnLoadGameClicked);
+        }
+        if (mainMenuButton != null)
+        {
+            mainMenuButton.onClick.RemoveListener(OnMainMenuClicked);
+            mainMenuButton.onClick.AddListener(OnMainMenuClicked);
+        }
     }
 
     private void OnEnable()
@@ -421,6 +441,7 @@ public class DeathScreenUI : MonoBehaviour, IModalWindow
     {
         if (isOpen) return;
         EnsureUIHierarchy();
+        WireButtons();
         if (modalPanel == null) return;
 
         isOpen = true;
@@ -565,13 +586,7 @@ public class DeathScreenUI : MonoBehaviour, IModalWindow
 
         isBrowsingSaveUI = true;
 
-        // Hide Death Screen modal panel while viewing save slots
-        if (modalPanel != null)
-        {
-            modalPanel.SetActive(false);
-        }
-
-        // Buka modal SaveSystemUI (pemain dapat memilih slot simpanan untuk dimuat)
+        // Buka modal SaveSystemUI di atas Death Screen (pemain dapat memilih slot simpanan untuk dimuat)
         if (SaveSystemUI.Instance != null)
         {
             SaveSystemUI.Instance.OnSaveUIClosed -= HandleSaveUIClosed;
@@ -582,7 +597,6 @@ public class DeathScreenUI : MonoBehaviour, IModalWindow
         {
             Debug.LogWarning("[DeathScreenUI] SaveSystemUI.Instance is not available.");
             isBrowsingSaveUI = false;
-            if (modalPanel != null) modalPanel.SetActive(true);
         }
     }
 

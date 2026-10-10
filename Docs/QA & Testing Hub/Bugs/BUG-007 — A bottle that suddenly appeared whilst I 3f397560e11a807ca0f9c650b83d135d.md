@@ -3,6 +3,7 @@
 Bug Slayer(s): bhaskoro prayoga, Rafi Saputra
 Created by: Fakhri Fawwaz Aydin
 Created time: 8 Oktober 2026 12.50
+Files & media: https://drive.google.com/file/d/1w0AR7jImqmp8K3GiUwrm41Dr5uph-x1a/view?usp=sharing
 Reproductibility Steps:   1. Enter Gameplay
   2. Take the seeds out of the storage box in front of bed room without take a bottle of water
   3. Go to the garden
