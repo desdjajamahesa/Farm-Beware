@@ -228,7 +228,7 @@ namespace FeaturesTime
             duskStartHour = 15.75f;
             duskWarningHour = 15.75f;
 
-            if (currentHour < 6.0f || (currentHour >= 6.99f && currentHour <= 7.25f))
+            if (currentHour < 6.0f)
             {
                 currentHour = dayStartHour;
             }
@@ -250,8 +250,8 @@ namespace FeaturesTime
                 }
                 else
                 {
-                    // If currentHour is uninitialized or legacy 7.0f-7.25f, align to dayStartHour (06:00)
-                    if (currentHour < 6.0f || (currentHour >= 6.99f && currentHour <= 7.25f))
+                    // If currentHour is uninitialized, align to dayStartHour (06:00)
+                    if (currentHour < 6.0f)
                     {
                         SetTime(dayStartHour);
                     }

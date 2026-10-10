@@ -23,6 +23,11 @@ namespace FeaturesTime.UI
         [SerializeField] private Color dayBadgeColor = new Color(0.95f, 0.70f, 0.20f, 0.85f); // Amber / Sun
         [SerializeField] private Color nightBadgeColor = new Color(0.65f, 0.15f, 0.20f, 0.90f); // Blood / Crimson
 
+        [Header("Clock Display Settings")]
+        [Tooltip("Interval kelipatan menit in-game untuk tampilan jam digital (default 15 menit: :00, :15, :30, :45).")]
+        [Range(1, 60)]
+        [SerializeField] private int clockMinuteStep = 15;
+
         [Header("Wave Tracking State")]
         private int currentWave = 1;
         private int totalWaves = 1;
@@ -111,16 +116,28 @@ namespace FeaturesTime.UI
             }
         }
 
+        private int FormatSteppedMinute(int minute)
+        {
+            if (clockMinuteStep <= 1) return minute;
+            return (minute / clockMinuteStep) * clockMinuteStep;
+        }
+
         private void HandleMinuteChanged(int minute)
         {
             int hour = DayNightTimeManager.Instance != null ? DayNightTimeManager.Instance.CurrentHourInt : 6;
-            UpdateClockText(hour, minute);
+            int steppedMinute = FormatSteppedMinute(minute);
+            if (steppedMinute != lastDisplayMinute)
+            {
+                lastDisplayMinute = steppedMinute;
+                UpdateClockText(hour, steppedMinute);
+            }
         }
 
         private void HandleHourChanged(int hour)
         {
             int minute = DayNightTimeManager.Instance != null ? DayNightTimeManager.Instance.CurrentMinuteInt : 0;
-            UpdateClockText(hour, minute);
+            int steppedMinute = FormatSteppedMinute(minute);
+            UpdateClockText(hour, steppedMinute);
         }
 
         private int lastDisplayHour = -1;
@@ -132,7 +149,7 @@ namespace FeaturesTime.UI
             if (DayNightTimeManager.Instance != null && clockText != null)
             {
                 int h = DayNightTimeManager.Instance.CurrentHourInt;
-                int m = DayNightTimeManager.Instance.CurrentMinuteInt;
+                int m = FormatSteppedMinute(DayNightTimeManager.Instance.CurrentMinuteInt);
                 bool ff = DayNightTimeManager.Instance.IsFastForwardActive;
                 if (h != lastDisplayHour || m != lastDisplayMinute || ff != lastDisplayFastForward)
                 {
@@ -148,10 +165,11 @@ namespace FeaturesTime.UI
         {
             if (clockText != null)
             {
+                int displayMinute = FormatSteppedMinute(minute);
                 string ffTag = (DayNightTimeManager.Instance != null && DayNightTimeManager.Instance.IsFastForwardActive)
                     ? $" <size=70%><color=#38BDF8>▶▶ {DayNightTimeManager.Instance.FastForwardMultiplier:0.#}x</color></size>"
                     : "";
-                clockText.text = $"{hour:D2}:{minute:D2}{ffTag}";
+                clockText.text = $"{hour:D2}:{displayMinute:D2}{ffTag}";
             }
         }
 
