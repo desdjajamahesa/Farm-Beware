@@ -48,6 +48,22 @@ public class PlayerEquipment : MonoBehaviour
     [Tooltip("Biaya stamina per pukulan kombo: Hit 1, Hit 2, Hit 3.")]
     [SerializeField] private float[] comboStaminaCosts = new float[] { 10f, 10f, 15f };
 
+    [Header("Pengaturan Timing Ayunan & Trail Kombo")]
+    [Tooltip("Delay windup (detik) untuk ayunan Hit 1 (Horizontal Slash) pada base speed.")]
+    [SerializeField] private float combo1SwingDelay = 0.32f;
+    [Tooltip("Durasi aktif ayunan (detik) untuk Hit 1.")]
+    [SerializeField] private float combo1SwingDuration = 0.16f;
+
+    [Tooltip("Delay windup (detik) untuk ayunan Hit 2 (Downward Chop) pada base speed.")]
+    [SerializeField] private float combo2SwingDelay = 0.26f;
+    [Tooltip("Durasi aktif ayunan (detik) untuk Hit 2.")]
+    [SerializeField] private float combo2SwingDuration = 0.16f;
+
+    [Tooltip("Delay windup (detik) untuk putaran Hit 3 (360 Low Finisher) pada base speed.")]
+    [SerializeField] private float combo3SwingDelay = 0.10f;
+    [Tooltip("Durasi aktif putaran (detik) untuk Hit 3.")]
+    [SerializeField] private float combo3SwingDuration = 0.38f;
+
     [Header("Pengaturan Skill Tendangan (Spartan Kick)")]
     [Tooltip("Konsumsi stamina saat melancarkan tendangan (Kick).")]
     public float kickStaminaCost = 15f;
@@ -599,8 +615,30 @@ public class PlayerEquipment : MonoBehaviour
 
     private System.Collections.IEnumerator RoutineSwingHitbox(int damage, float knockback, float speedMultiplier, bool is360 = false, float rangeOverride = -1f, bool isFinisher = false, bool isHeavy = false, bool isDash = false)
     {
-        float delay = 0.12f / Mathf.Max(0.5f, speedMultiplier);
-        float duration = 0.28f / Mathf.Max(0.5f, speedMultiplier);
+        float speedRatio = speedMultiplier / Mathf.Max(0.1f, attackAnimationSpeed);
+        float delay;
+        float duration;
+
+        if (isDash)
+        {
+            delay = 0.08f / speedRatio;
+            duration = 0.18f / speedRatio;
+        }
+        else if (is360 || isFinisher || currentComboIndex == 2)
+        {
+            delay = combo3SwingDelay / speedRatio;
+            duration = combo3SwingDuration / speedRatio;
+        }
+        else if (currentComboIndex == 1)
+        {
+            delay = combo2SwingDelay / speedRatio;
+            duration = combo2SwingDuration / speedRatio;
+        }
+        else
+        {
+            delay = combo1SwingDelay / speedRatio;
+            duration = combo1SwingDuration / speedRatio;
+        }
 
         TriggerRangeIndicatorPulse(delay + duration + 0.1f);
 
@@ -673,18 +711,22 @@ public class PlayerEquipment : MonoBehaviour
     {
         isExecutingSkill = true;
 
-        // Leap jump delay before ground impact
-        float impactDelay = 1.14f / Mathf.Max(0.5f, speedMultiplier);
-        float impactDuration = 0.25f / Mathf.Max(0.5f, speedMultiplier);
+        float speedRatio = speedMultiplier / Mathf.Max(0.1f, attackAnimationSpeed);
+        float impactDelay = 1.14f / speedRatio;
+        float impactDuration = 0.25f / speedRatio;
+        float trailLead = 0.25f / speedRatio;
 
         TriggerRangeIndicatorPulse(impactDelay + impactDuration + 0.15f);
 
-        yield return new WaitForSeconds(impactDelay);
+        float waitBeforeTrail = Mathf.Max(0.01f, impactDelay - trailLead);
+        yield return new WaitForSeconds(waitBeforeTrail);
 
         if (currentWeaponTrail != null)
         {
             currentWeaponTrail.BeginTrail(2, isFinisher: true, isHeavy: true);
         }
+
+        yield return new WaitForSeconds(impactDelay - waitBeforeTrail);
 
         // Ground slam impact: 360 AoE zero-GC non-alloc sweep with heavy impulse
         PerformDirectMeleeSweep(damage, knockback, is360: true, rangeOverride: range, isHeavy: true);
