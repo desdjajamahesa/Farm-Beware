@@ -468,9 +468,4 @@ public class PlayerStats : MonoBehaviour, FeaturesCombat.IDamageable, IPlayerDam
         OnHungerChanged?.Invoke(currentHunger, maxHunger);
         OnThirstChanged?.Invoke(currentThirst, maxThirst);
     }
-
-    private void OnDestroy()
-    {
-        ServiceLocator.Unregister<IPlayerDamageNotifier>();
-    }
 }

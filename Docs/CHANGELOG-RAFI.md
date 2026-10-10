@@ -39,7 +39,6 @@ Semua perubahan penting pada proyek ini oleh Rafi akan dicatat di halaman ini.
       - Menyematkan proteksi atomic write (`.tmp` + swap) dan penanganan error try-catch pada penyimpanan data lemari pakaian di [`PlayerOutfit.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Wardrobe/PlayerOutfit.cs).
       - Menambahkan auto-recovery file `.tmp` pada pemulihan slot penyimpanan di [`SaveSystemManager.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/SaveSystem/SaveSystemManager.cs).
       - Mendaftarkan pelepasan referensi `ServiceLocator.Unregister<IPlayerDamageNotifier>()` pada `OnDestroy()` di [`PlayerStats.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Player/PlayerStats.cs) untuk mencegah dangling pointer lintas scene reload.
-      - Membersihkan 5 field mati yang tidak terpakai pada [`PlayerEquipment.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Player/PlayerEquipment.cs).
     - Pohon kerja Git terisolasi murni pada `Rafi-branch` tanpa menyentuh `Sprint-branch`.
 
 ## - 2026-10-09
