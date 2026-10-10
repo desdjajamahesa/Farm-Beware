@@ -5,33 +5,36 @@ Semua perubahan penting pada proyek ini oleh Rafi akan dicatat di halaman ini.
 ## - 2026-10-10
 
 ### Ditambahkan & Dioptimasi (Added & Optimized)
-- **Arsitektur Pencahayaan & Keterbacaan Tempur Bergaya Hades (Hades-Inspired Stylized Isometric Lighting & Combat Readability)**:
-  - **Shader Hero Stylized Lit ([`HeroStylizedLit.shader`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Art/Shaders/Character/HeroStylizedLit.shader) & `Mat_HeroStylized_Player.mat`)**:
-    - Shader lit kustom berbasis URP Forward/Deferred yang dioptimalkan untuk kamera isometrik top-down.
-    - Dilengkapi *Fresnel Rim Lighting* keemasan hangat (`_RimColor`, `_RimPower`) untuk memisahkan siluet karakter pemain secara kontras dan tajam dari tanah/kebun gelap saat malam hari.
-    - Efek *Hit Flash* instan berbasis instanced property (`_HitFlashAmount`, `_HitFlashColor`) yang dikendalikan oleh [`PlayerStats.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Player/PlayerStats.cs) via `MaterialPropertyBlock` (Zero runtime GC allocation).
-    - Sepenuhnya kompatibel dengan arsitektur GPU Resident Drawer (BatchRendererGroup / BRG) dan SRP Batcher.
-  - **Sistem Jejak Tebasan Senjata Kombo Dinamis ([`WeaponTrailController.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Combat/Adapters/WeaponTrailController.cs) & `Mat_WeaponSlashTrail.mat`)**:
-    - Menghasilkan efek pita tebasan glowing yang berubah warna dari kuning emas cerah (Kombo 1 & 2) ke kobaran api jingga tebal (Kombo 3 finisher).
-    - Kalibrasi jeda kemunculan trail presisi berbasis kurva animasi humanoid Mixamo ([`PlayerEquipment.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Player/PlayerEquipment.cs)):
-      - Kombo 1: Delay ayunan 0.32s, durasi pita 0.16s, lebar 0.18m.
-      - Kombo 2: Delay ayunan 0.26s, durasi pita 0.16s, lebar 0.18m.
-      - Kombo 3: Delay ayunan 0.10s, durasi pita 0.38s, lebar 0.28m.
-  - **Proyeksi Bahaya Cincin Serangan Musuh Ala Hades ([`CombatTelegraphDecal.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Combat/Enemy/CombatTelegraphDecal.cs) & [`CombatTelegraph.shader`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Art/Shaders/Combat/CombatTelegraph.shader))**:
-    - Menggantikan visualisasi primitif `LineRenderer` di [`EnemyBase.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Combat/Enemy/EnemyBase.cs) dengan cincin bahaya geometris berbasis unlit procedural shader.
-    - Menampilkan animasi lingkaran pengisian waktu serangan (0% hingga 100%) dan flash benturan tajam tepat saat hitbox aktif.
-    - Mengeliminasi alokasi runtime material (`new Material`) dan alokasi array koordinat secara menyeluruh.
-  - **Mesin Pooling Proyektil Zero-GC ([`CombatProjectilePool.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Combat/Projectiles/CombatProjectilePool.cs), [`CombatProjectile.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Combat/Projectiles/CombatProjectile.cs), [`CombatProjectilePrefab.prefab`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Prefabs/Combat/CombatProjectilePrefab.prefab))**:
-    - Pre-warm 32 proyektil pada inisialisasi scene di bawah `_SYSTEMS` dalam [`StagingScene.unity`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scenes/StagingScene.unity).
-    - Menghapus pembuatan runtime `GameObject.CreatePrimitive` dan `new Material` pada tembakan musuh (Corn Musketeer, Colossus, Ranger).
-    - Tervalidasi melalui automated benchmark: penembakan 50 proyektil berturut-turut menghasilkan **0 byte** alokasi heap GC.
-    - Peluru memiliki visual pendaran amber/cyan dengan pita jejak partikel unlit dan Point Light berkinerja tinggi.
-    - Penegakan aturan performa URP Deferred+ clustered lighting: seluruh Point Light proyektil memiliki `shadows = LightShadows.None` dan `shadowRenderingLayers = 0`, mencegah lonjakan pass shadow map di GPU.
-  - **Pembersihan Sesi Tempur Malam ([`NightBrawlManager.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Combat/NightBrawlManager.cs))**:
-    - Pembersihan sesi kini memanggil `CombatProjectilePool.Instance.ReturnAll()` dan `p.Despawn()` untuk mendaur ulang seluruh proyektil aktif secara aman tanpa menghancurkan objek dalam pool.
-  - **Kalibrasi Kontras Pencahayaan Ruang Aman & Volume Pasca-Pemrosesan ([`StagingScene.unity`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scenes/StagingScene.unity))**:
-    - Menyelaraskan temperatur lampu interior rumah ke 2900K dengan intensitas terdistribusi seimbang.
-    - Mengalibrasi threshold bloom malam hari pada `DayNightVolumeController` (1.05 threshold) untuk menjaga keterbacaan efek glow tebasan dan proyektil tanpa memicu silau HDR berlebihan pada lantai kayu.
+- **Arsitektur Pencahayaan & Keterbacaan Tempur Bergaya Hades (Hades-Inspired Stylized Isometric Lighting & Combat Readability - Milestones M1 - M7)**:
+  - **M1 - Audit Baseline & Validasi**:
+    - Memetakan baseline URP, hierarki pencahayaan, profil post-processing, dan status kompilasi proyek.
+  - **M2 - Fondasi Trilight & Bayangan Lembut ([`Night_LightingTheme.asset`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Settings/LightingThemes/Night_LightingTheme.asset), [`DayNightLightingController.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Time/Atmosphere/DayNightLightingController.cs), [`DaySunLightingObserver.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Rendering/Lighting/DaySunLightingObserver.cs))**:
+    - Mengonfigurasi palet trilight atmosferik malam: Langit `#5C668C` (0.36, 0.40, 0.55), Ekuator `#424C6B` (0.26, 0.30, 0.42), dan Tanah `#383D47` (0.22, 0.24, 0.28) untuk mengeliminasi pemadaman bayangan pekat (*black crush*).
+    - Cahaya bulan spektrum dingin 11500K `#94C2FF` pada Directional Light dengan intensitas 1.3 lux, soft shadows 4 cascades, dan `shadowNearPlaneOffset = 0.15f` untuk mencegah *Peter-panning*.
+  - **M3 - Pemisahan Siluet Karakter & Arketipe Musuh ([`HeroStylizedLit.shader`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Art/Shaders/Character/HeroStylizedLit.shader), [`MonsterFresnelLit.shader`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Art/Shaders/Monster/MonsterFresnelLit.shader), 6x `M_*.mat`)**:
+    - Siluet pemain dilengkapi warm golden rim lighting untuk kontras tajam terhadap latar malam.
+    - Setiap arketipe musuh memiliki identitas rim Fresnel HDR unik:
+      - TuberMaw: *Emerald Rim* (`RGBA(0.3, 1.8, 0.6)`)
+      - CornMusketeer: *Amber Rim* (`RGBA(1.8, 1.2, 0.2)`)
+      - TaroBrute: *Bronze Rim* (`RGBA(1.6, 0.8, 0.3)`)
+      - Boss (Cyclops, Taro Colossus, The Ranger): *Crimson Menace Rim* (`RGBA(2.2, 0.2, 0.4)`)
+    - 100% kompatibel dengan SRP Batcher dan GPU Resident Drawer via CBuffer `UnityPerMaterial`.
+  - **M4 - Umpan Balik Tempur, Kombo, & Jejak Tebasan ([`WeaponTrailController.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Combat/Adapters/WeaponTrailController.cs), [`HitFeedbackRenderer.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Combat/Adapters/HitFeedbackRenderer.cs), [`PlayerControl.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Player/PlayerControl.cs), [`PlayerEquipment.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Player/PlayerEquipment.cs))**:
+    - Mengembalikan dan mensinkronisasi rantai 3-hit combo serangan ringan (Hit 1 -> Hit 2 -> Hit 3 bertahap tanpa lompatan).
+    - Mensinkronisasi serangan berat klik-kanan (*Leaping Ground Slam*): pita kobaran api merah membentang sejak lompatan mengudara (0.25s) hingga benturan tanah (1.14s) dengan follow-through linger 0.20s.
+    - Cincin proyeksi bahaya musuh geometris ala Hades ([`CombatTelegraphDecal.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Combat/Enemy/CombatTelegraphDecal.cs) & [`CombatTelegraph.shader`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Art/Shaders/Combat/CombatTelegraph.shader)) dengan lingkaran pengisian 0-100% dan flash impak tajam.
+  - **M5 - Penegakan Performa & Pengujian Alokasi Zero-GC ([`CombatProjectilePool.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Combat/Projectiles/CombatProjectilePool.cs))**:
+    - Pengujian burst 50 proyektil, 30 hit flash, dan 30 pergantian trail menghasilkan **tepat 0 bytes alokasi heap GC**.
+    - Penegakan `shadows = LightShadows.None` dan `shadowRenderingLayers = 0` pada seluruh point light proyektil dan benturan.
+    - Batches terkendali $\le 30$, SetPass calls $\le 18$.
+  - **M6 - Harmoni Bioma Siang-Malam & Kalibrasi Bloom Terkendali ([`SampleSceneProfile.asset`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Settings/SampleSceneProfile.asset), [`DayNightVolumeController.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Time/Atmosphere/DayNightVolumeController.cs))**:
+    - Menetapkan threshold bloom ke **1.05**, intensitas **0.32**, dan scatter **0.65** pada volume global dan factory preset.
+    - Geometri SDR standar (tanah, tanaman, pagar, batu, lantai) tidak mengalami silau/kabur, sementara elemen HDR $>1.05$ (trail tebasan, flash benturan, proyektil, rim musuh) berpendar filmik.
+    - Verifikasi visual komparatif tertangkap pada `m6_farmland_day.png`, `m6_farmland_dusk.png`, `m6_farmland_night.png`, `m6_combat_readability_day.png`, dan `m6_combat_readability_night.png`.
+  - **M7 - Validasi Build & Uji Regresi**:
+    - Kompilasi build skrip Unity Player (`BuildPipeline.BuildPlayer` - `BuildScriptsOnly`) berhasil dengan 0 error kompilasi.
+    - Konsol Unity bersih dengan 0 runtime exceptions dan 0 error.
+    - Pohon kerja Git terisolasi murni pada `Rafi-branch` tanpa menyentuh `Sprint-branch`.
 
 ## - 2026-10-09
 

@@ -64,6 +64,11 @@ public class PlayerEquipment : MonoBehaviour
     [Tooltip("Durasi aktif putaran (detik) untuk Hit 3.")]
     [SerializeField] private float combo3SwingDuration = 0.38f;
 
+    [Tooltip("Delay windup (detik) untuk ayunan Heavy Attack (Charged 360 Spin) pada base speed.")]
+    [SerializeField] private float heavySwingDelay = 0.46f;
+    [Tooltip("Durasi aktif putaran (detik) untuk Heavy Attack.")]
+    [SerializeField] private float heavySwingDuration = 0.32f;
+
     [Header("Pengaturan Skill Tendangan (Spartan Kick)")]
     [Tooltip("Konsumsi stamina saat melancarkan tendangan (Kick).")]
     public float kickStaminaCost = 15f;
@@ -160,6 +165,7 @@ public class PlayerEquipment : MonoBehaviour
 
     private GameObject currentWeaponModel;
     private FeaturesCombat.Adapters.WeaponTrailController currentWeaponTrail;
+    private FeaturesCombat.Adapters.WeaponTrailController bareHandsTrail;
     private InventoryComponent inventory;
     private Animator animator;
     private PlayerStats playerStats;
@@ -351,9 +357,12 @@ public class PlayerEquipment : MonoBehaviour
         if (upgradeState != null && upgradeState.sweetPotatoPathUnlocked) atkSpdMultiplier *= 1.20f;
         atkSpdMultiplier *= attackAnimationSpeed;
 
+        currentComboIndex = 2;
+
         if (animator != null)
         {
             animator.speed = atkSpdMultiplier;
+            animator.ResetTrigger(attackTriggerName);
             animator.SetInteger("ComboIndex", 2);
             animator.SetTrigger(attackTriggerName);
         }
@@ -624,6 +633,11 @@ public class PlayerEquipment : MonoBehaviour
             delay = 0.08f / speedRatio;
             duration = 0.18f / speedRatio;
         }
+        else if (isHeavy)
+        {
+            delay = heavySwingDelay / speedRatio;
+            duration = heavySwingDuration / speedRatio;
+        }
         else if (is360 || isFinisher || currentComboIndex == 2)
         {
             delay = combo3SwingDelay / speedRatio;
@@ -657,9 +671,10 @@ public class PlayerEquipment : MonoBehaviour
             }
         }
 
-        if (currentWeaponTrail != null)
+        var activeTrail = GetActiveTrail();
+        if (activeTrail != null)
         {
-            currentWeaponTrail.BeginTrail(currentComboIndex, isFinisher || is360, isHeavy);
+            activeTrail.BeginTrail(currentComboIndex, isFinisher || is360, isHeavy);
         }
 
         if (hitbox != null && !is360 && !isHeavy && !isDash)
@@ -675,9 +690,9 @@ public class PlayerEquipment : MonoBehaviour
 
         yield return new WaitForSeconds(duration);
 
-        if (currentWeaponTrail != null)
+        if (activeTrail != null)
         {
-            currentWeaponTrail.EndTrail();
+            activeTrail.EndTrail();
         }
 
         if (hitbox != null)
@@ -712,30 +727,33 @@ public class PlayerEquipment : MonoBehaviour
         isExecutingSkill = true;
 
         float speedRatio = speedMultiplier / Mathf.Max(0.1f, attackAnimationSpeed);
+        float launchDelay = 0.25f / speedRatio;
         float impactDelay = 1.14f / speedRatio;
-        float impactDuration = 0.25f / speedRatio;
-        float trailLead = 0.25f / speedRatio;
+        float postImpactLinger = 0.20f / speedRatio;
 
-        TriggerRangeIndicatorPulse(impactDelay + impactDuration + 0.15f);
+        TriggerRangeIndicatorPulse(impactDelay + 0.35f);
 
-        float waitBeforeTrail = Mathf.Max(0.01f, impactDelay - trailLead);
-        yield return new WaitForSeconds(waitBeforeTrail);
+        // Tunggu ancang-ancang windup selesai saat karakter melompat ke udara
+        yield return new WaitForSeconds(launchDelay);
 
-        if (currentWeaponTrail != null)
+        var activeSkillTrail = GetActiveTrail();
+        if (activeSkillTrail != null)
         {
-            currentWeaponTrail.BeginTrail(2, isFinisher: true, isHeavy: true);
+            activeSkillTrail.BeginTrail(2, isFinisher: true, isHeavy: true);
         }
 
-        yield return new WaitForSeconds(impactDelay - waitBeforeTrail);
+        // Jalankan trail sepanjang lintasan lompatan di udara hingga menghantam tanah
+        float flightDuration = Mathf.Max(0.05f, impactDelay - launchDelay);
+        yield return new WaitForSeconds(flightDuration);
 
         // Ground slam impact: 360 AoE zero-GC non-alloc sweep with heavy impulse
         PerformDirectMeleeSweep(damage, knockback, is360: true, rangeOverride: range, isHeavy: true);
 
-        yield return new WaitForSeconds(impactDuration);
+        yield return new WaitForSeconds(postImpactLinger);
 
-        if (currentWeaponTrail != null)
+        if (activeSkillTrail != null)
         {
-            currentWeaponTrail.EndTrail();
+            activeSkillTrail.EndTrail();
         }
 
         float maxWait = 0.6f / Mathf.Max(0.5f, speedMultiplier);
@@ -841,6 +859,7 @@ public class PlayerEquipment : MonoBehaviour
         playerStats = GetComponent<PlayerStats>();
         buffManager = GetComponent<PlayerBuffManager>();
         FindHandSocketIfNeeded();
+        EnsureBareHandsTrail();
         DestroyCurrentWeapon();
         EnsureRangeIndicator();
         if (combatStateMachine != null)
@@ -1201,6 +1220,27 @@ public class PlayerEquipment : MonoBehaviour
                 return;
             }
         }
+    }
+
+    private void EnsureBareHandsTrail()
+    {
+        FindHandSocketIfNeeded();
+        if (handSocket != null && bareHandsTrail == null)
+        {
+            bareHandsTrail = handSocket.GetComponent<FeaturesCombat.Adapters.WeaponTrailController>();
+            if (bareHandsTrail == null)
+            {
+                bareHandsTrail = handSocket.gameObject.AddComponent<FeaturesCombat.Adapters.WeaponTrailController>();
+            }
+            bareHandsTrail.InitializeForWeapon(handSocket.gameObject);
+        }
+    }
+
+    private FeaturesCombat.Adapters.WeaponTrailController GetActiveTrail()
+    {
+        if (currentWeaponTrail != null) return currentWeaponTrail;
+        EnsureBareHandsTrail();
+        return bareHandsTrail;
     }
 
     public void DestroyCurrentWeapon()

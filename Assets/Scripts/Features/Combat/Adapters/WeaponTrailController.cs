@@ -175,13 +175,14 @@ namespace FeaturesCombat.Adapters
 
             EnsureStaticResources();
 
-            bool isFlery = isFinisher || isHeavy || comboIndex >= 2;
-            if (isFlery)
+            bool isFiery = isFinisher || isHeavy || comboIndex >= 2;
+            if (isFiery)
             {
                 trailRenderer.colorGradient = finisherGradientOverride != null
                     ? finisherGradientOverride
                     : _defaultCrimsonFlameGradient;
-                trailRenderer.widthMultiplier = baseWidth * 1.35f;
+                trailRenderer.widthMultiplier = isHeavy ? baseWidth * 1.55f : baseWidth * 1.35f;
+                trailRenderer.time = isHeavy ? trailTime * 1.45f : trailTime * 1.25f;
             }
             else
             {
@@ -189,6 +190,7 @@ namespace FeaturesCombat.Adapters
                     ? combo1And2GradientOverride
                     : _defaultGoldenAmberGradient;
                 trailRenderer.widthMultiplier = baseWidth;
+                trailRenderer.time = trailTime;
             }
 
             trailRenderer.Clear();
