@@ -29,19 +29,19 @@ namespace FeaturesTime.Atmosphere
             public Renderer fixtureRenderer;
 
             [Header("Color & Temperature")]
-            [Tooltip("Suhu Kelvin warna lampu (misal: 6500K putih netral, atau 2500K amber hangat).")]
+            [Tooltip("Suhu Kelvin warna lampu (misal: 6500K putih netral, atau 2900K amber hangat).")]
             [Range(1000f, 15000f)]
-            public float colorTemperatureKelvin = 6500f;
+            public float colorTemperatureKelvin = 2900f;
 
             [Tooltip("Warna filter pengali (default: putih).")]
             public Color lightColorFilter = Color.white;
 
             [Header("Night Preset (Safe Zone Aktif - Kalibrasi Fisis Lembut)")]
-            [Tooltip("Intensitas Key Downlight saat malam (rentang 2.0 - 2.8 lux).")]
-            [Min(0f)] public float nightDownlightIntensity = 2.5f;
+            [Tooltip("Intensitas Key Downlight saat malam (rentang 2.8 - 3.5 lux).")]
+            [Min(0f)] public float nightDownlightIntensity = 3.0f;
 
-            [Tooltip("Intensitas Ambient Fill saat malam (rentang 0.35 - 0.6 lux).")]
-            [Min(0f)] public float nightFillIntensity = 0.5f;
+            [Tooltip("Intensitas Ambient Fill saat malam (rentang 1.2 - 1.6 lux).")]
+            [Min(0f)] public float nightFillIntensity = 1.4f;
 
             [Header("Day Preset")]
             [Min(0f)] public float dayDownlightIntensity = 0.0f;
@@ -365,8 +365,8 @@ namespace FeaturesTime.Atmosphere
             r.fixtureRenderer.GetPropertyBlock(propBlock);
 
             Color evaluatedColor = r.GetEvaluatedColor();
-            // HDR exposure calibrated to remain softly luminous without triggering bloom blowout (>0.85)
-            Color hdrEmission = evaluatedColor * (normalizedIntensity * 0.70f);
+            // HDR exposure calibrated to 0.95: softly glowing fixture mesh without exceeding bloom threshold (1.05)
+            Color hdrEmission = evaluatedColor * (normalizedIntensity * 0.95f);
             propBlock.SetColor(EmissionColorID, hdrEmission);
             r.fixtureRenderer.SetPropertyBlock(propBlock);
         }
@@ -411,7 +411,7 @@ namespace FeaturesTime.Atmosphere
             });
         }
 
-        [ContextMenu("Enforce Physical Calibration (Range 22m, Spot 135, Layers)")]
+        [ContextMenu("Enforce Physical Calibration (Downlight 7m Spot 85, Fill 8m, Layers)")]
         public void EnforcePhysicalCalibration()
         {
             for (int i = 0; i < rooms.Count; i++)
@@ -420,9 +420,9 @@ namespace FeaturesTime.Atmosphere
                 if (r.downlight != null)
                 {
                     r.downlight.type = LightType.Spot;
-                    r.downlight.range = 22.0f;
-                    r.downlight.spotAngle = 135f;
-                    r.downlight.innerSpotAngle = 85f;
+                    r.downlight.range = 7.0f;
+                    r.downlight.spotAngle = 85f;
+                    r.downlight.innerSpotAngle = 55f;
                     r.downlight.shadows = LightShadows.Soft;
                     r.downlight.shadowStrength = 0.7f;
                     r.downlight.shadowNormalBias = 0.35f;
@@ -434,7 +434,7 @@ namespace FeaturesTime.Atmosphere
                 if (r.fillLight != null)
                 {
                     r.fillLight.type = LightType.Point;
-                    r.fillLight.range = 20.0f;
+                    r.fillLight.range = 8.0f;
                     r.fillLight.shadows = LightShadows.None;
                     r.fillLight.renderingLayerMask = 1 | 2; // Layer 1 (Default/Floor/Furniture) | Layer 2 (Interior)
                 }
