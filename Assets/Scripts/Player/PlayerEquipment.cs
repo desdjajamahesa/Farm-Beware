@@ -143,6 +143,7 @@ public class PlayerEquipment : MonoBehaviour
     [SerializeField] private bool showGizmos = true;
 
     private GameObject currentWeaponModel;
+    private FeaturesCombat.Adapters.WeaponTrailController currentWeaponTrail;
     private InventoryComponent inventory;
     private Animator animator;
     private PlayerStats playerStats;
@@ -618,6 +619,11 @@ public class PlayerEquipment : MonoBehaviour
             }
         }
 
+        if (currentWeaponTrail != null)
+        {
+            currentWeaponTrail.BeginTrail(currentComboIndex, isFinisher || is360, isHeavy);
+        }
+
         if (hitbox != null && !is360 && !isHeavy && !isDash)
         {
             hitbox.ConfigureHitRange(activeRange);
@@ -630,6 +636,11 @@ public class PlayerEquipment : MonoBehaviour
         }
 
         yield return new WaitForSeconds(duration);
+
+        if (currentWeaponTrail != null)
+        {
+            currentWeaponTrail.EndTrail();
+        }
 
         if (hitbox != null)
         {
@@ -670,10 +681,20 @@ public class PlayerEquipment : MonoBehaviour
 
         yield return new WaitForSeconds(impactDelay);
 
+        if (currentWeaponTrail != null)
+        {
+            currentWeaponTrail.BeginTrail(2, isFinisher: true, isHeavy: true);
+        }
+
         // Ground slam impact: 360 AoE zero-GC non-alloc sweep with heavy impulse
         PerformDirectMeleeSweep(damage, knockback, is360: true, rangeOverride: range, isHeavy: true);
 
         yield return new WaitForSeconds(impactDuration);
+
+        if (currentWeaponTrail != null)
+        {
+            currentWeaponTrail.EndTrail();
+        }
 
         float maxWait = 0.6f / Mathf.Max(0.5f, speedMultiplier);
         float elapsed = 0f;
@@ -1109,6 +1130,13 @@ public class PlayerEquipment : MonoBehaviour
         }
         rb.isKinematic = true;
         rb.useGravity = false;
+
+        currentWeaponTrail = currentWeaponModel.GetComponentInChildren<FeaturesCombat.Adapters.WeaponTrailController>();
+        if (currentWeaponTrail == null)
+        {
+            currentWeaponTrail = currentWeaponModel.AddComponent<FeaturesCombat.Adapters.WeaponTrailController>();
+            currentWeaponTrail.InitializeForWeapon(currentWeaponModel);
+        }
     }
 
     private void FindHandSocketIfNeeded()
@@ -1152,6 +1180,12 @@ public class PlayerEquipment : MonoBehaviour
                 DestroyImmediate(currentWeaponModel);
             }
             currentWeaponModel = null;
+        }
+
+        if (currentWeaponTrail != null)
+        {
+            currentWeaponTrail.EndTrail();
+            currentWeaponTrail = null;
         }
 
         // Safeguard mutlak: Pastikan SELURUH child di handSocket dibersihkan agar tidak ada
