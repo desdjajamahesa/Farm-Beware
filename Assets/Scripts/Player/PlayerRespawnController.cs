@@ -124,11 +124,7 @@ public class PlayerRespawnController : MonoBehaviour
     {
         if (isRespawning || isDefeated) return;
         isDefeated = true;
-        StartCoroutine(RoutineShowDeathScreen());
-    }
 
-    private IEnumerator RoutineShowDeathScreen()
-    {
         // 1. Kunci input pergerakan & aksi pemain
         if (playerControl != null)
         {
@@ -145,10 +141,7 @@ public class PlayerRespawnController : MonoBehaviour
                 new Color(1f, 0.25f, 0.25f));
         }
 
-        // Jeda dramatis sejenak agar pemain merasakan benturan sebelum modal muncul
-        yield return new WaitForSeconds(0.6f);
-
-        // Buka kursor dan tampilkan Death Screen Menu
+        // Buka kursor dan tampilkan Death Screen Menu secara instan tanpa delay
         Cursor.visible = true;
         Cursor.lockState = CursorLockMode.None;
 

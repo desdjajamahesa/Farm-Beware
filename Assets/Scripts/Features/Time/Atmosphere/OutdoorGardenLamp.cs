@@ -27,10 +27,10 @@ namespace FeaturesTime.Atmosphere
 
         [Header("Lighting Calibration")]
         [Tooltip("Intensitas Point Light saat malam hari (lux).")]
-        [SerializeField] [Min(0f)] private float nightPointIntensity = 25.0f;
+        [SerializeField] [Min(0f)] private float nightPointIntensity = 7.5f;
 
         [Tooltip("Intensitas Spot Downlight saat malam hari (lux). Proyeksi tanah terang.")]
-        [SerializeField] [Min(0f)] private float nightDownIntensity = 40.0f;
+        [SerializeField] [Min(0f)] private float nightDownIntensity = 14.0f;
 
         [Tooltip("Intensitas cahaya saat siang hari (0 lux / mati).")]
         [SerializeField] [Min(0f)] private float dayIntensity = 0.0f;
@@ -46,13 +46,13 @@ namespace FeaturesTime.Atmosphere
 
         [Header("Bulb Visuals (Day & Night)")]
         [Tooltip("Warna pendaran HDR bohlam saat malam hari (putih bersih / neutral white glow).")]
-        [SerializeField] [ColorUsage(true, true)] private Color nightBulbColor = new Color(2.5f, 2.5f, 2.5f, 1.0f);
+        [SerializeField] [ColorUsage(true, true)] private Color nightBulbColor = new Color(1.2f, 1.2f, 1.2f, 1.0f);
 
         [Tooltip("Warna kaca bohlam saat siang hari (frosted milky glass).")]
         [SerializeField] private Color dayBulbColor = new Color(0.96f, 0.93f, 0.85f, 1.0f);
 
         [Tooltip("Warna inti filamen pijar saat malam hari (putih pijar HDR).")]
-        [SerializeField] [ColorUsage(true, true)] private Color nightFilamentColor = new Color(6.0f, 6.0f, 6.0f, 1.0f);
+        [SerializeField] [ColorUsage(true, true)] private Color nightFilamentColor = new Color(2.0f, 2.0f, 2.0f, 1.0f);
 
         [Tooltip("Warna inti filamen saat siang hari (kawat tungsten gelap).")]
         [SerializeField] private Color dayFilamentColor = new Color(0.35f, 0.28f, 0.18f, 1.0f);
@@ -79,6 +79,10 @@ namespace FeaturesTime.Atmosphere
         public bool EnableFlicker => enableFlicker;
         public float FlickerAmount => flickerAmount;
         public float FlickerSpeed => flickerSpeed;
+        public float NightPointIntensity { get => nightPointIntensity; set => nightPointIntensity = value; }
+        public float NightDownIntensity { get => nightDownIntensity; set => nightDownIntensity = value; }
+        public Color NightBulbColor { get => nightBulbColor; set => nightBulbColor = value; }
+        public Color NightFilamentColor { get => nightFilamentColor; set => nightFilamentColor = value; }
 
         private void Awake()
         {

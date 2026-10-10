@@ -22,7 +22,7 @@ namespace FeaturesTime.Atmosphere
 
         [Header("Lighting Settings")]
         [Tooltip("Intensitas Point Light saat malam hari (lux).")]
-        [SerializeField] [Min(0f)] private float nightIntensity = 18.0f;
+        [SerializeField] [Min(0f)] private float nightIntensity = 5.5f;
 
         [Tooltip("Intensitas Point Light saat siang hari (0 = mati).")]
         [SerializeField] [Min(0f)] private float dayIntensity = 0.0f;
@@ -35,7 +35,7 @@ namespace FeaturesTime.Atmosphere
 
         [Header("Glass Emissive Visuals")]
         [Tooltip("Warna pendaran HDR pada kaca saat malam hari (putih bersih).")]
-        [SerializeField] [ColorUsage(true, true)] private Color nightEmissionColor = new Color(2.5f, 2.5f, 2.5f, 1.0f);
+        [SerializeField] [ColorUsage(true, true)] private Color nightEmissionColor = new Color(1.2f, 1.2f, 1.2f, 1.0f);
 
         [Tooltip("Warna pendaran pada kaca saat siang hari (hitam = tidak berpendar).")]
         [SerializeField] private Color dayEmissionColor = Color.black;
@@ -64,6 +64,8 @@ namespace FeaturesTime.Atmosphere
         public Light LanternLight => lanternLight;
         public Renderer GlassRenderer => glassRenderer;
         public bool IsNightActive => isNightActive;
+        public float NightIntensity { get => nightIntensity; set => nightIntensity = value; }
+        public Color NightEmissionColor { get => nightEmissionColor; set => nightEmissionColor = value; }
 
         private void Awake()
         {

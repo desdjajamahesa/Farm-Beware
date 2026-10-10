@@ -13328,9 +13328,6 @@ MonoBehaviour:
   yaw: 45
   distance: 20
   allowMouseOrbit: 1
-  zoomSpeed: 4
-  minSize: 4
-  maxSize: 12
   isOrthographic: 1
   orthographicSize: 6
 --- !u!1 &331717337
@@ -14642,6 +14639,8 @@ MonoBehaviour:
   duskWarningHour: 15.75
   autoSleepAtNightfall: 1
   syncWithLegacyTimeManager: 1
+  fastForwardMultiplier: 8
+  isFastForwardActive: 0
   currentHour: 6
   currentDay: 1
   currentPhase: 1
@@ -37167,6 +37166,26 @@ PrefabInstance:
       propertyPath: m_Name
       value: CraftingShelter
       objectReference: {fileID: 0}
+    - target: {fileID: 3295624602161574067, guid: a446a96317080a34c8c27501390ecdd6, type: 3}
+      propertyPath: nightIntensity
+      value: 5.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 3295624602161574067, guid: a446a96317080a34c8c27501390ecdd6, type: 3}
+      propertyPath: nightEmissionColor.a
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 3295624602161574067, guid: a446a96317080a34c8c27501390ecdd6, type: 3}
+      propertyPath: nightEmissionColor.b
+      value: 1.2
+      objectReference: {fileID: 0}
+    - target: {fileID: 3295624602161574067, guid: a446a96317080a34c8c27501390ecdd6, type: 3}
+      propertyPath: nightEmissionColor.g
+      value: 1.2
+      objectReference: {fileID: 0}
+    - target: {fileID: 3295624602161574067, guid: a446a96317080a34c8c27501390ecdd6, type: 3}
+      propertyPath: nightEmissionColor.r
+      value: 1.2
+      objectReference: {fileID: 0}
     - target: {fileID: 6353293398810959727, guid: a446a96317080a34c8c27501390ecdd6, type: 3}
       propertyPath: m_Enabled
       value: 0
@@ -42169,6 +42188,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::FeaturesTime.UI.CombatPhaseTrackerUI
   dayText: {fileID: 0}
   phaseText: {fileID: 0}
+  clockText: {fileID: 0}
   waveText: {fileID: 0}
   enemiesText: {fileID: 0}
   phaseBadgeBackground: {fileID: 0}
@@ -43235,6 +43255,38 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 300139784}
     m_Modifications:
+    - target: {fileID: 933079979467749288, guid: 18688e92c7c25594682ad54c868e1db9, type: 3}
+      propertyPath: nightBulbColor.b
+      value: 1.2
+      objectReference: {fileID: 0}
+    - target: {fileID: 933079979467749288, guid: 18688e92c7c25594682ad54c868e1db9, type: 3}
+      propertyPath: nightBulbColor.g
+      value: 1.2
+      objectReference: {fileID: 0}
+    - target: {fileID: 933079979467749288, guid: 18688e92c7c25594682ad54c868e1db9, type: 3}
+      propertyPath: nightBulbColor.r
+      value: 1.2
+      objectReference: {fileID: 0}
+    - target: {fileID: 933079979467749288, guid: 18688e92c7c25594682ad54c868e1db9, type: 3}
+      propertyPath: nightDownIntensity
+      value: 14
+      objectReference: {fileID: 0}
+    - target: {fileID: 933079979467749288, guid: 18688e92c7c25594682ad54c868e1db9, type: 3}
+      propertyPath: nightPointIntensity
+      value: 7.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 933079979467749288, guid: 18688e92c7c25594682ad54c868e1db9, type: 3}
+      propertyPath: nightFilamentColor.b
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 933079979467749288, guid: 18688e92c7c25594682ad54c868e1db9, type: 3}
+      propertyPath: nightFilamentColor.g
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 933079979467749288, guid: 18688e92c7c25594682ad54c868e1db9, type: 3}
+      propertyPath: nightFilamentColor.r
+      value: 2
+      objectReference: {fileID: 0}
     - target: {fileID: 1545397130709666845, guid: 18688e92c7c25594682ad54c868e1db9, type: 3}
       propertyPath: m_Name
       value: GardenLamp_MidPath
@@ -73188,6 +73240,38 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 300139784}
     m_Modifications:
+    - target: {fileID: 933079979467749288, guid: 18688e92c7c25594682ad54c868e1db9, type: 3}
+      propertyPath: nightBulbColor.b
+      value: 1.2
+      objectReference: {fileID: 0}
+    - target: {fileID: 933079979467749288, guid: 18688e92c7c25594682ad54c868e1db9, type: 3}
+      propertyPath: nightBulbColor.g
+      value: 1.2
+      objectReference: {fileID: 0}
+    - target: {fileID: 933079979467749288, guid: 18688e92c7c25594682ad54c868e1db9, type: 3}
+      propertyPath: nightBulbColor.r
+      value: 1.2
+      objectReference: {fileID: 0}
+    - target: {fileID: 933079979467749288, guid: 18688e92c7c25594682ad54c868e1db9, type: 3}
+      propertyPath: nightDownIntensity
+      value: 14
+      objectReference: {fileID: 0}
+    - target: {fileID: 933079979467749288, guid: 18688e92c7c25594682ad54c868e1db9, type: 3}
+      propertyPath: nightPointIntensity
+      value: 7.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 933079979467749288, guid: 18688e92c7c25594682ad54c868e1db9, type: 3}
+      propertyPath: nightFilamentColor.b
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 933079979467749288, guid: 18688e92c7c25594682ad54c868e1db9, type: 3}
+      propertyPath: nightFilamentColor.g
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 933079979467749288, guid: 18688e92c7c25594682ad54c868e1db9, type: 3}
+      propertyPath: nightFilamentColor.r
+      value: 2
+      objectReference: {fileID: 0}
     - target: {fileID: 1545397130709666845, guid: 18688e92c7c25594682ad54c868e1db9, type: 3}
       propertyPath: m_Name
       value: GardenLamp_MerchantTable
@@ -75748,8 +75832,8 @@ MonoBehaviour:
     fixtureRenderer: {fileID: 732686200}
     colorTemperatureKelvin: 6500
     lightColorFilter: {r: 1, g: 1, b: 1, a: 1}
-    nightDownlightIntensity: 18
-    nightFillIntensity: 4.5
+    nightDownlightIntensity: 4.5
+    nightFillIntensity: 1
     dayDownlightIntensity: 0
     dayFillIntensity: 0
     enableMicroFlicker: 0
@@ -75761,8 +75845,8 @@ MonoBehaviour:
     fixtureRenderer: {fileID: 521199685}
     colorTemperatureKelvin: 6500
     lightColorFilter: {r: 1, g: 1, b: 1, a: 1}
-    nightDownlightIntensity: 13.5
-    nightFillIntensity: 3
+    nightDownlightIntensity: 4.2
+    nightFillIntensity: 0.9
     dayDownlightIntensity: 0
     dayFillIntensity: 0
     enableMicroFlicker: 0
@@ -75774,8 +75858,8 @@ MonoBehaviour:
     fixtureRenderer: {fileID: 1884428433}
     colorTemperatureKelvin: 6500
     lightColorFilter: {r: 1, g: 1, b: 1, a: 1}
-    nightDownlightIntensity: 11.5
-    nightFillIntensity: 2.5
+    nightDownlightIntensity: 3.8
+    nightFillIntensity: 0.8
     dayDownlightIntensity: 0
     dayFillIntensity: 0
     enableMicroFlicker: 0
@@ -75787,8 +75871,8 @@ MonoBehaviour:
     fixtureRenderer: {fileID: 458619726}
     colorTemperatureKelvin: 6500
     lightColorFilter: {r: 1, g: 1, b: 1, a: 1}
-    nightDownlightIntensity: 14
-    nightFillIntensity: 3.2
+    nightDownlightIntensity: 4.5
+    nightFillIntensity: 1
     dayDownlightIntensity: 0
     dayFillIntensity: 0
     enableMicroFlicker: 0
@@ -75800,8 +75884,8 @@ MonoBehaviour:
     fixtureRenderer: {fileID: 1110811407}
     colorTemperatureKelvin: 6500
     lightColorFilter: {r: 1, g: 1, b: 1, a: 1}
-    nightDownlightIntensity: 12
-    nightFillIntensity: 2.6
+    nightDownlightIntensity: 3.8
+    nightFillIntensity: 0.8
     dayDownlightIntensity: 0
     dayFillIntensity: 0
     enableMicroFlicker: 0
@@ -75813,8 +75897,8 @@ MonoBehaviour:
     fixtureRenderer: {fileID: 781091054}
     colorTemperatureKelvin: 6500
     lightColorFilter: {r: 1, g: 1, b: 1, a: 1}
-    nightDownlightIntensity: 13
-    nightFillIntensity: 3
+    nightDownlightIntensity: 4
+    nightFillIntensity: 0.9
     dayDownlightIntensity: 0
     dayFillIntensity: 0
     enableMicroFlicker: 1
@@ -75826,8 +75910,8 @@ MonoBehaviour:
     fixtureRenderer: {fileID: 0}
     colorTemperatureKelvin: 6500
     lightColorFilter: {r: 1, g: 1, b: 1, a: 1}
-    nightDownlightIntensity: 12.5
-    nightFillIntensity: 2.7
+    nightDownlightIntensity: 4
+    nightFillIntensity: 0.9
     dayDownlightIntensity: 0
     dayFillIntensity: 0
     enableMicroFlicker: 0
@@ -75839,8 +75923,8 @@ MonoBehaviour:
     fixtureRenderer: {fileID: 0}
     colorTemperatureKelvin: 6500
     lightColorFilter: {r: 1, g: 1, b: 1, a: 1}
-    nightDownlightIntensity: 14
-    nightFillIntensity: 3.2
+    nightDownlightIntensity: 4.2
+    nightFillIntensity: 0.9
     dayDownlightIntensity: 0
     dayFillIntensity: 0
     enableMicroFlicker: 1
@@ -93270,6 +93354,38 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 300139784}
     m_Modifications:
+    - target: {fileID: 933079979467749288, guid: 18688e92c7c25594682ad54c868e1db9, type: 3}
+      propertyPath: nightBulbColor.b
+      value: 1.2
+      objectReference: {fileID: 0}
+    - target: {fileID: 933079979467749288, guid: 18688e92c7c25594682ad54c868e1db9, type: 3}
+      propertyPath: nightBulbColor.g
+      value: 1.2
+      objectReference: {fileID: 0}
+    - target: {fileID: 933079979467749288, guid: 18688e92c7c25594682ad54c868e1db9, type: 3}
+      propertyPath: nightBulbColor.r
+      value: 1.2
+      objectReference: {fileID: 0}
+    - target: {fileID: 933079979467749288, guid: 18688e92c7c25594682ad54c868e1db9, type: 3}
+      propertyPath: nightDownIntensity
+      value: 14
+      objectReference: {fileID: 0}
+    - target: {fileID: 933079979467749288, guid: 18688e92c7c25594682ad54c868e1db9, type: 3}
+      propertyPath: nightPointIntensity
+      value: 7.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 933079979467749288, guid: 18688e92c7c25594682ad54c868e1db9, type: 3}
+      propertyPath: nightFilamentColor.b
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 933079979467749288, guid: 18688e92c7c25594682ad54c868e1db9, type: 3}
+      propertyPath: nightFilamentColor.g
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 933079979467749288, guid: 18688e92c7c25594682ad54c868e1db9, type: 3}
+      propertyPath: nightFilamentColor.r
+      value: 2
+      objectReference: {fileID: 0}
     - target: {fileID: 1545397130709666845, guid: 18688e92c7c25594682ad54c868e1db9, type: 3}
       propertyPath: m_Name
       value: GardenLamp_PondPier
@@ -99378,9 +99494,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::FeaturesTime.Atmosphere.DayNightAudioController
   dayAmbienceClip: {fileID: 0}
   nightAmbienceClip: {fileID: 0}
+  duskBellClip: {fileID: 0}
   enableProceduralFallback: 0
   maxVolume: 0.5
   crossfadeDuration: 3
+  bellVolume: 0.85
 --- !u!114 &2027862385
 MonoBehaviour:
   m_ObjectHideFlags: 0

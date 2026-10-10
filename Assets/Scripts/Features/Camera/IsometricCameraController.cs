@@ -77,13 +77,23 @@ namespace FeaturesCamera
             shakeCoroutine = StartCoroutine(RoutineShake(duration, intensity));
         }
 
+        public void StopShake()
+        {
+            if (shakeCoroutine != null)
+            {
+                StopCoroutine(shakeCoroutine);
+                shakeCoroutine = null;
+            }
+            shakeOffset = Vector3.zero;
+        }
+
         private System.Collections.IEnumerator RoutineShake(float duration, float intensity)
         {
             float elapsed = 0f;
             while (elapsed < duration)
             {
-                elapsed += Time.deltaTime;
-                float damp = 1f - (elapsed / duration);
+                elapsed += Time.unscaledDeltaTime;
+                float damp = Mathf.Clamp01(1f - (elapsed / duration));
                 Vector2 r = Random.insideUnitCircle;
                 shakeOffset = new Vector3(r.x, r.y * 0.4f, r.x * 0.4f) * (intensity * damp);
                 yield return null;

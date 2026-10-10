@@ -466,6 +466,15 @@ public class DeathScreenUI : MonoBehaviour, IModalWindow
         Time.timeScale = 0f;
         Cursor.visible = true;
         Cursor.lockState = CursorLockMode.None;
+
+        if (FeaturesCamera.IsometricCameraController.Instance != null)
+        {
+            FeaturesCamera.IsometricCameraController.Instance.StopShake();
+        }
+        if (FeaturesCombat.Adapters.TraumaCameraShake.Instance != null)
+        {
+            FeaturesCombat.Adapters.TraumaCameraShake.Instance.ResetTrauma();
+        }
     }
 
     /// <summary>

@@ -268,7 +268,7 @@ public class PlayerStats : MonoBehaviour, FeaturesCombat.IDamageable, IPlayerDam
 
     public void TakeDamage(int amount)
     {
-        if (isGodMode || amount <= 0) return;
+        if (isGodMode || amount <= 0 || currentHealth <= 0 || isDeadHandled) return;
 
         var mods = GetCombatStatModifiers();
 

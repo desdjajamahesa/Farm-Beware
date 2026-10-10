@@ -877,8 +877,8 @@ public class MainMenuController : MonoBehaviour
 
         SetMenuVisualsActive(false);
 
-        Cursor.visible = false;
-        Cursor.lockState = CursorLockMode.Locked;
+        Cursor.visible = true;
+        Cursor.lockState = CursorLockMode.None;
 
         if (FadeManager.Instance != null && FadeManager.Instance.IsFading)
         {
