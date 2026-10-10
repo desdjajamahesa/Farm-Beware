@@ -10,14 +10,26 @@ namespace FarmBeware.Core.Runtime
     /// </summary>
     public class ModalStackManager : MonoBehaviour, IModalStackService
     {
+        public static bool HasInstance => _instance != null;
+        private static bool _isApplicationQuitting = false;
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetStaticState()
+        {
+            _isApplicationQuitting = false;
+            _instance = null;
+        }
+
         public static ModalStackManager Instance
         {
             get
             {
+                if (_isApplicationQuitting) return null;
+
                 if (_instance == null)
                 {
                     _instance = FindFirstObjectByType<ModalStackManager>(FindObjectsInactive.Include);
-                    if (_instance == null)
+                    if (_instance == null && !_isApplicationQuitting)
                     {
                         var go = new GameObject("ModalStackManager");
                         _instance = go.AddComponent<ModalStackManager>();
@@ -34,8 +46,34 @@ namespace FarmBeware.Core.Runtime
 
         private readonly List<IModalWindow> _stack = new List<IModalWindow>();
 
-        public int OpenModalCount => _stack.Count;
-        public bool HasActiveModal => _stack.Count > 0;
+        public int OpenModalCount
+        {
+            get
+            {
+                CleanDeadModals();
+                return _stack.Count;
+            }
+        }
+
+        public bool HasActiveModal
+        {
+            get
+            {
+                CleanDeadModals();
+                return _stack.Count > 0;
+            }
+        }
+
+        private void CleanDeadModals()
+        {
+            for (int i = _stack.Count - 1; i >= 0; i--)
+            {
+                if (_stack[i] == null || !_stack[i].IsOpen)
+                {
+                    _stack.RemoveAt(i);
+                }
+            }
+        }
 
         private void Awake()
         {
@@ -52,10 +90,18 @@ namespace FarmBeware.Core.Runtime
         {
             bool escapePressed = false;
 
+#if ENABLE_INPUT_SYSTEM
             if (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame)
             {
                 escapePressed = true;
             }
+#endif
+#if ENABLE_LEGACY_INPUT_MANAGER
+            if (Input.GetKeyDown(KeyCode.Escape))
+            {
+                escapePressed = true;
+            }
+#endif
 
             if (escapePressed && HasActiveModal)
             {
@@ -78,8 +124,6 @@ namespace FarmBeware.Core.Runtime
             // Remove existing occurrence if already present
             _stack.Remove(modal);
             _stack.Add(modal);
-
-            UIModalHelper.IsSaveUIOpen = true;
         }
 
         /// <summary>
@@ -99,11 +143,6 @@ namespace FarmBeware.Core.Runtime
             {
                 top.CloseModal();
             }
-
-            if (_stack.Count == 0)
-            {
-                UIModalHelper.IsSaveUIOpen = false;
-            }
         }
 
         /// <summary>
@@ -115,11 +154,6 @@ namespace FarmBeware.Core.Runtime
 
             _stack.Remove(modal);
             UIModalHelper.LastFrameUIPanelClosed = Time.frameCount;
-
-            if (_stack.Count == 0)
-            {
-                UIModalHelper.IsSaveUIOpen = false;
-            }
         }
 
         /// <summary>
@@ -131,6 +165,11 @@ namespace FarmBeware.Core.Runtime
             {
                 Pop();
             }
+        }
+
+        private void OnApplicationQuit()
+        {
+            _isApplicationQuitting = true;
         }
 
         private void OnDestroy()

@@ -22,7 +22,7 @@ namespace FeaturesTime.Atmosphere
 
         [Header("Lighting Settings")]
         [Tooltip("Intensitas Point Light saat malam hari (lux).")]
-        [SerializeField] [Min(0f)] private float nightIntensity = 18.0f;
+        [SerializeField] [Min(0f)] private float nightIntensity = 5.5f;
 
         [Tooltip("Intensitas Point Light saat siang hari (0 = mati).")]
         [SerializeField] [Min(0f)] private float dayIntensity = 0.0f;
@@ -30,12 +30,12 @@ namespace FeaturesTime.Atmosphere
         [Tooltip("Jangkauan Point Light lentera.")]
         [SerializeField] [Range(1f, 20f)] private float lightRange = 5.5f;
 
-        [Tooltip("Warna cahaya lentera (hangat amber).")]
-        [SerializeField] private Color lightColor = new Color(1.0f, 0.82f, 0.55f, 1.0f);
+        [Tooltip("Warna cahaya lentera (default: putih bersih / neutral white).")]
+        [SerializeField] private Color lightColor = Color.white;
 
         [Header("Glass Emissive Visuals")]
-        [Tooltip("Warna pendaran HDR pada kaca saat malam hari.")]
-        [SerializeField] [ColorUsage(true, true)] private Color nightEmissionColor = new Color(2.5f, 2.2f, 1.75f, 2.5f);
+        [Tooltip("Warna pendaran HDR pada kaca saat malam hari (putih bersih).")]
+        [SerializeField] [ColorUsage(true, true)] private Color nightEmissionColor = new Color(1.2f, 1.2f, 1.2f, 1.0f);
 
         [Tooltip("Warna pendaran pada kaca saat siang hari (hitam = tidak berpendar).")]
         [SerializeField] private Color dayEmissionColor = Color.black;
@@ -64,6 +64,8 @@ namespace FeaturesTime.Atmosphere
         public Light LanternLight => lanternLight;
         public Renderer GlassRenderer => glassRenderer;
         public bool IsNightActive => isNightActive;
+        public float NightIntensity { get => nightIntensity; set => nightIntensity = value; }
+        public Color NightEmissionColor { get => nightEmissionColor; set => nightEmissionColor = value; }
 
         private void Awake()
         {
@@ -110,25 +112,50 @@ namespace FeaturesTime.Atmosphere
             }
         }
 
+        private bool isSubscribed = false;
+
         private void Start()
         {
-            TimeManager.DayPhase startingPhase = TimeManager.Instance != null
-                ? TimeManager.Instance.currentPhase
-                : TimeManager.DayPhase.Day;
+            EnsureSubscriptions();
 
-            ApplyInstant(startingPhase == TimeManager.DayPhase.Night);
+            bool isNight = false;
+            if (DayNightTimeManager.Instance != null)
+            {
+                isNight = DayNightTimeManager.Instance.CurrentPhase == EnvironmentPhase.Night;
+            }
+            else if (TimeManager.Instance != null)
+            {
+                isNight = TimeManager.Instance.currentPhase == TimeManager.DayPhase.Night;
+            }
+
+            ApplyInstant(isNight);
         }
 
         private void OnEnable()
         {
+            EnsureSubscriptions();
+        }
+
+        private void EnsureSubscriptions()
+        {
+            bool subscribedAny = false;
             if (TimeManager.Instance != null)
             {
+                TimeManager.Instance.OnPhaseChanged -= HandleTimeManagerPhaseChanged;
                 TimeManager.Instance.OnPhaseChanged += HandleTimeManagerPhaseChanged;
+                subscribedAny = true;
             }
 
             if (DayNightTimeManager.Instance != null)
             {
+                DayNightTimeManager.Instance.OnTimePhaseChanged -= HandleDayNightServicePhaseChanged;
                 DayNightTimeManager.Instance.OnTimePhaseChanged += HandleDayNightServicePhaseChanged;
+                subscribedAny = true;
+            }
+
+            if (subscribedAny)
+            {
+                isSubscribed = true;
             }
         }
 
@@ -143,6 +170,7 @@ namespace FeaturesTime.Atmosphere
             {
                 DayNightTimeManager.Instance.OnTimePhaseChanged -= HandleDayNightServicePhaseChanged;
             }
+            isSubscribed = false;
 
             StopAllActiveCoroutines();
         }

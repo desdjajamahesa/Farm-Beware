@@ -14,14 +14,26 @@ namespace FeaturesEconomy
     /// </summary>
     public class DailyReportModalUI : MonoBehaviour, IDailyReportService, IModalWindow
     {
+        public static bool HasInstance => _instance != null;
+        private static bool _isApplicationQuitting = false;
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetStaticState()
+        {
+            _isApplicationQuitting = false;
+            _instance = null;
+        }
+
         public static DailyReportModalUI Instance
         {
             get
             {
+                if (_isApplicationQuitting) return null;
+
                 if (_instance == null)
                 {
                     _instance = FindFirstObjectByType<DailyReportModalUI>(FindObjectsInactive.Include);
-                    if (_instance == null)
+                    if (_instance == null && !_isApplicationQuitting)
                     {
                         var canvas = GameObject.Find("UI_Canvas");
                         if (canvas != null)
@@ -66,9 +78,14 @@ namespace FeaturesEconomy
             BuildUIHierarchy();
         }
 
+        private void OnApplicationQuit()
+        {
+            _isApplicationQuitting = true;
+        }
+
         private void OnDestroy()
         {
-            if (ModalStackManager.Instance != null)
+            if (ModalStackManager.HasInstance && ModalStackManager.Instance != null)
             {
                 ModalStackManager.Instance.PopSpecific(this);
             }

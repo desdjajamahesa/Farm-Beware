@@ -1,5 +1,24 @@
 # Patch Notes
 
+## 2026-10-10
+
+### Added
+* **Hades-Inspired Silhouette Lighting**: Heroes and creatures now feature vibrant silhouette rim lighting that pops sharply against nighttime fields, ensuring instant visual readability during dark combat encounters.
+* **Dynamic Weapon Slash Trails**: Light weapon strikes slice through the air with luminous golden arcs, while the leaping heavy slam ignites a sweeping crimson flame trail across the leap into the ground impact.
+* **Stylized Enemy Telegraph Rings**: Glowing circular danger zones project onto the ground with expanding charge-up timers and impact flashes, clearly communicating enemy attack timing and threat zones.
+* **Restrained Filmic Atmosphere**: Fine-tuned environmental lighting across crisp morning, warm sunlight, golden sunset, and cool moonlight with restrained bloom so crops and stone paths stay clean and glare-free.
+
+### Changed
+* **Night Battle Cleanup**: Projectiles cleanly dissolve and reset when nighttime monster encounters end or reset.
+* **Day-to-Night Environmental Balance**: Soft shadow transitions and balanced ambient fills preserve ground clarity and prevent murky shadows during nighttime exploration.
+
+### Fixed
+* Fixed light attack three-hit combo chain skipping intermediate swings, restored leaping heavy attack airborne flame trail synchronization, and corrected environmental glare during nighttime combat.
+* Fixed jump input callback accumulation on respawn, added atomic write protection for wardrobe and save files, and resolved static service locator reference leaks on player teardown.
+* Fixed charged heavy attack swing trail timing and consistency when holding the attack button, allowing smooth uninterrupted weapon slashes and reliable charged strikes.
+
+---
+
 ## 2026-10-09
 
 ### Added

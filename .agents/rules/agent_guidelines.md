@@ -29,13 +29,9 @@ Primary operating guidelines, behavioral constraints, and Git workflow rules for
 - ❌ **NEVER** write temporary editor setup scripts (`Assets/Editor/*Setup*.cs` or `[MenuItem("...")]`).
 - ✅ **Use Direct MCP Tools**: Inspect and mutate scenes exclusively via MCP tools (`execute_code`, `manage_scene`, `manage_gameobject`, `manage_components`).
 
-### 2.4 Self-Healing Protocol (MCP-First)
-- Autonomous error resolution without asking the user to paste console logs:
-  1. Pull active console logs via `read_console` (filter: `error`).
-  2. Identify root cause and line number.
-  3. Apply targeted, minimal patches.
-  4. Trigger domain compilation via `refresh_unity`.
-  5. Verify that console logs reach 0 errors and 0 exceptions.
+### 2.4 Mandatory Console Check & Autonomous Auto-Healing
+- **Mandatory End-of-Turn Check**: Before concluding any turn involving code or asset changes, the agent MUST read the Unity console (`read_console(types: ['error'])`) to verify that the project compiles cleanly with 0 errors.
+- **Autonomous Immediate Resolution**: If any compilation error or runtime exception is detected, the agent MUST immediately fix it without waiting for user instructions or asking for permission, iterating until 0 errors remain.
 
 ### 2.5 Pure Logic vs. Thin Adapter Separation
 - Decouple pure computation from `MonoBehaviour`.

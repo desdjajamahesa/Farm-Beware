@@ -48,6 +48,15 @@ namespace FeaturesCombat.Adapters
             _trauma = Mathf.Clamp01(_trauma + amount);
         }
 
+        public void ResetTrauma()
+        {
+            _trauma = 0f;
+            if (CameraManager.Instance != null)
+            {
+                CameraManager.Instance.SetShakeOffset(Vector3.zero, Quaternion.identity);
+            }
+        }
+
         private void LateUpdate()
         {
             if (_trauma <= 0.001f)
@@ -60,10 +69,10 @@ namespace FeaturesCombat.Adapters
                 return;
             }
 
-            _trauma = Mathf.Max(0f, _trauma - traumaDecayRate * Time.deltaTime);
+            _trauma = Mathf.Max(0f, _trauma - traumaDecayRate * Time.unscaledDeltaTime);
             float shakeIntensity = _trauma * _trauma; // Quadratic curve for organic feel
 
-            _perlinTime += Time.deltaTime * 25f;
+            _perlinTime += Time.unscaledDeltaTime * 25f;
 
             float offsetX = (Mathf.PerlinNoise(_perlinTime, 0f) * 2f - 1f) * maxTranslationOffset * shakeIntensity;
             float offsetY = (Mathf.PerlinNoise(0f, _perlinTime) * 2f - 1f) * maxTranslationOffset * shakeIntensity;

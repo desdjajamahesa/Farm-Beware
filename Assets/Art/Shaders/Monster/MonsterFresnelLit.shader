@@ -164,7 +164,7 @@ Shader "FarmBeware/Monster/MonsterFresnelLit"
 
                 float3 finalColor = directLight + ambient + fresnelEmission;
                 float hitFlash = UNITY_ACCESS_INSTANCED_PROP(Props, _HitFlashAmount);
-                finalColor = lerp(finalColor, float3(1.0, 1.0, 1.0), hitFlash);
+                finalColor = lerp(finalColor, float3(2.2, 2.2, 2.2), hitFlash);
                 return float4(finalColor, 1.0);
             }
             ENDHLSL

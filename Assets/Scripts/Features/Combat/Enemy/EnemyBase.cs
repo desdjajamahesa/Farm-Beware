@@ -118,9 +118,9 @@ namespace FeaturesCombat
         private Vector3 smoothedAvoidanceDir = Vector3.forward;
 
         [Header("Telegraph & Attack Visuals")]
-        private GameObject telegraphDecal;
-        private LineRenderer telegraphLine;
+        private CombatTelegraphDecal combatTelegraph;
         private LineRenderer laserSightLine;
+        private static Material _sharedLaserSightMaterial;
 
         private void Awake()
         {
@@ -173,7 +173,7 @@ namespace FeaturesCombat
 
         private void OnDisable()
         {
-            if (telegraphDecal != null) telegraphDecal.SetActive(false);
+            if (combatTelegraph != null) combatTelegraph.Hide();
             if (laserSightLine != null) laserSightLine.enabled = false;
             isRetreatingAndHealing = false;
 
@@ -192,32 +192,12 @@ namespace FeaturesCombat
 
         private void EnsureTelegraphElements()
         {
-            if (telegraphDecal == null)
+            if (combatTelegraph == null)
             {
-                telegraphDecal = new GameObject("TelegraphDecal");
-                telegraphDecal.transform.SetParent(transform, false);
-                telegraphLine = telegraphDecal.AddComponent<LineRenderer>();
-                telegraphLine.useWorldSpace = false;
-                telegraphLine.loop = true;
-                telegraphLine.startWidth = 0.08f;
-                telegraphLine.endWidth = 0.08f;
-                telegraphLine.positionCount = 24;
-
-                Shader shader = Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Sprites/Default");
-                Material mat = new Material(shader);
-                Color warningColor = new Color(1f, 0.22f, 0.22f, 0.85f);
-                mat.color = warningColor;
-                if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", warningColor);
-                telegraphLine.material = mat;
-
-                float radius = Mathf.Max(1.2f, attackRange);
-                for (int i = 0; i < 24; i++)
-                {
-                    float angle = i * Mathf.PI * 2f / 24f;
-                    telegraphLine.SetPosition(i, new Vector3(Mathf.Cos(angle) * radius, 0.05f, Mathf.Sin(angle) * radius));
-                }
-
-                telegraphDecal.SetActive(false);
+                var decalObj = new GameObject("CombatTelegraph");
+                decalObj.transform.SetParent(transform, false);
+                combatTelegraph = decalObj.AddComponent<CombatTelegraphDecal>();
+                combatTelegraph.Initialize(Mathf.Max(1.2f, attackRange));
             }
 
             if (enemyType == EnemyType.CornMusketeer && laserSightLine == null)
@@ -230,12 +210,15 @@ namespace FeaturesCombat
                 laserSightLine.endWidth = 0.02f;
                 laserSightLine.positionCount = 2;
 
-                Shader shader = Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Sprites/Default");
-                Material mat = new Material(shader);
-                Color laserColor = new Color(1f, 0.85f, 0.1f, 0.85f);
-                mat.color = laserColor;
-                if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", laserColor);
-                laserSightLine.material = mat;
+                if (_sharedLaserSightMaterial == null)
+                {
+                    Shader shader = Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Sprites/Default");
+                    _sharedLaserSightMaterial = new Material(shader);
+                    Color laserColor = new Color(1f, 0.85f, 0.1f, 0.85f);
+                    _sharedLaserSightMaterial.color = laserColor;
+                    if (_sharedLaserSightMaterial.HasProperty("_BaseColor")) _sharedLaserSightMaterial.SetColor("_BaseColor", laserColor);
+                }
+                laserSightLine.sharedMaterial = _sharedLaserSightMaterial;
                 laserSightLine.enabled = false;
             }
         }
@@ -658,9 +641,10 @@ namespace FeaturesCombat
                 rb.linearVelocity = Vector3.zero;
             }
 
-            if (telegraphDecal != null)
+            float windupDuration = 0.35f;
+            if (combatTelegraph != null)
             {
-                telegraphDecal.SetActive(true);
+                combatTelegraph.StartCharge(windupDuration, attackRange + 0.8f);
             }
 
             if (meshRenderer != null)
@@ -669,7 +653,7 @@ namespace FeaturesCombat
             }
 
             float windupTimer = 0f;
-            while (windupTimer < 0.35f)
+            while (windupTimer < windupDuration)
             {
                 windupTimer += Time.deltaTime;
                 if (playerTarget != null)
@@ -684,9 +668,9 @@ namespace FeaturesCombat
                 SetRendererColor(originalColor);
             }
 
-            if (telegraphDecal != null)
+            if (combatTelegraph != null)
             {
-                telegraphDecal.SetActive(false);
+                combatTelegraph.Hide();
             }
 
             // 2. Active Strike Phase: Cek apakah pemain masih berada di dalam area serang (planar horizontal XZ)
@@ -1376,7 +1360,7 @@ namespace FeaturesCombat
             }
 
             EnsureTelegraphElements();
-            if (telegraphDecal != null) telegraphDecal.SetActive(false);
+            if (combatTelegraph != null) combatTelegraph.Hide();
             if (laserSightLine != null) laserSightLine.enabled = false;
 
             transform.localScale = enemyType switch

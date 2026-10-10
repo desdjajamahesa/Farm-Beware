@@ -29,19 +29,19 @@ namespace FeaturesTime.Atmosphere
             public Renderer fixtureRenderer;
 
             [Header("Color & Temperature")]
-            [Tooltip("Suhu Kelvin warna lampu (misal: 2400K - 2600K amber hangat).")]
+            [Tooltip("Suhu Kelvin warna lampu (misal: 6500K putih netral, atau 2500K amber hangat).")]
             [Range(1000f, 15000f)]
-            public float colorTemperatureKelvin = 2500f;
+            public float colorTemperatureKelvin = 6500f;
 
             [Tooltip("Warna filter pengali (default: putih).")]
             public Color lightColorFilter = Color.white;
 
-            [Header("Night Preset (Safe Zone Aktif - Kalibrasi Fisis)")]
-            [Tooltip("Intensitas Key Downlight saat malam (rentang 10.0 - 15.0 lux).")]
-            [Min(0f)] public float nightDownlightIntensity = 12.0f;
+            [Header("Night Preset (Safe Zone Aktif - Kalibrasi Fisis Lembut)")]
+            [Tooltip("Intensitas Key Downlight saat malam (rentang 3.5 - 5.5 lux).")]
+            [Min(0f)] public float nightDownlightIntensity = 4.5f;
 
-            [Tooltip("Intensitas Ambient Fill saat malam (rentang 2.0 - 3.5 lux).")]
-            [Min(0f)] public float nightFillIntensity = 2.5f;
+            [Tooltip("Intensitas Ambient Fill saat malam (rentang 0.8 - 1.5 lux).")]
+            [Min(0f)] public float nightFillIntensity = 1.0f;
 
             [Header("Day Preset")]
             [Min(0f)] public float dayDownlightIntensity = 0.0f;
@@ -94,20 +94,49 @@ namespace FeaturesTime.Atmosphere
             propBlock = new MaterialPropertyBlock();
         }
 
+        private bool isSubscribed = false;
+
         private void Start()
         {
-            TimeManager.DayPhase startingPhase = TimeManager.Instance != null 
-                ? TimeManager.Instance.currentPhase 
-                : TimeManager.DayPhase.Day;
+            EnsureSubscriptions();
 
-            ApplyInstant(startingPhase);
+            bool isNight = false;
+            if (DayNightTimeManager.Instance != null)
+            {
+                isNight = DayNightTimeManager.Instance.CurrentPhase == EnvironmentPhase.Night;
+            }
+            else if (TimeManager.Instance != null)
+            {
+                isNight = TimeManager.Instance.currentPhase == TimeManager.DayPhase.Night;
+            }
+
+            ApplyInstant(isNight ? TimeManager.DayPhase.Night : TimeManager.DayPhase.Day);
         }
 
         private void OnEnable()
         {
+            EnsureSubscriptions();
+        }
+
+        private void EnsureSubscriptions()
+        {
+            bool subscribedAny = false;
             if (TimeManager.Instance != null)
             {
+                TimeManager.Instance.OnPhaseChanged -= HandlePhaseChanged;
                 TimeManager.Instance.OnPhaseChanged += HandlePhaseChanged;
+                subscribedAny = true;
+            }
+            if (DayNightTimeManager.Instance != null)
+            {
+                DayNightTimeManager.Instance.OnTimePhaseChanged -= HandleEnvironmentPhaseChanged;
+                DayNightTimeManager.Instance.OnTimePhaseChanged += HandleEnvironmentPhaseChanged;
+                subscribedAny = true;
+            }
+
+            if (subscribedAny)
+            {
+                isSubscribed = true;
             }
         }
 
@@ -117,9 +146,21 @@ namespace FeaturesTime.Atmosphere
             {
                 TimeManager.Instance.OnPhaseChanged -= HandlePhaseChanged;
             }
+            if (DayNightTimeManager.Instance != null)
+            {
+                DayNightTimeManager.Instance.OnTimePhaseChanged -= HandleEnvironmentPhaseChanged;
+            }
+            isSubscribed = false;
 
             if (transitionCoroutine != null) StopCoroutine(transitionCoroutine);
             if (flickerCoroutine != null) StopCoroutine(flickerCoroutine);
+        }
+
+        private void HandleEnvironmentPhaseChanged(EnvironmentPhase envPhase)
+        {
+            bool isNight = (envPhase == EnvironmentPhase.Night);
+            TimeManager.DayPhase phase = isNight ? TimeManager.DayPhase.Night : TimeManager.DayPhase.Day;
+            HandlePhaseChanged(phase);
         }
 
         private void HandlePhaseChanged(TimeManager.DayPhase newPhase)
@@ -324,8 +365,8 @@ namespace FeaturesTime.Atmosphere
             r.fixtureRenderer.GetPropertyBlock(propBlock);
 
             Color evaluatedColor = r.GetEvaluatedColor();
-            // HDR exposure boost for URP Bloom threshold (0.9)
-            Color hdrEmission = evaluatedColor * (normalizedIntensity * 2.5f);
+            // HDR exposure calibrated for cozy ambient without blinding bloom
+            Color hdrEmission = evaluatedColor * (normalizedIntensity * 1.2f);
             propBlock.SetColor(EmissionColorID, hdrEmission);
             r.fixtureRenderer.SetPropertyBlock(propBlock);
         }

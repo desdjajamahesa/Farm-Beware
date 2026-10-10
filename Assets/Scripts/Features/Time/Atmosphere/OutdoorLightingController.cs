@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using FeaturesRendering.Lighting;
 
 namespace FeaturesTime.Atmosphere
 {
@@ -22,23 +23,58 @@ namespace FeaturesTime.Atmosphere
         private Coroutine transitionCoroutine;
         private Coroutine flickerCoroutine;
         private float currentNormalizedNight = 0f;
+        private bool isSubscribed = false;
 
         public List<OutdoorGardenLamp> OutdoorLamps => outdoorLamps;
 
         private void Start()
         {
-            TimeManager.DayPhase startingPhase = TimeManager.Instance != null 
-                ? TimeManager.Instance.currentPhase 
-                : TimeManager.DayPhase.Day;
+            if (outdoorLamps == null || outdoorLamps.Count == 0 || outdoorLamps.Contains(null))
+            {
+                FindAllLampsInScene();
+            }
 
-            ApplyInstant(startingPhase);
+            EnsureSubscriptions();
+
+            bool isNight = false;
+            if (DayNightTimeManager.Instance != null)
+            {
+                isNight = DayNightTimeManager.Instance.CurrentPhase == EnvironmentPhase.Night;
+            }
+            else if (TimeManager.Instance != null)
+            {
+                isNight = TimeManager.Instance.currentPhase == TimeManager.DayPhase.Night;
+            }
+
+            ApplyInstant(isNight ? TimeManager.DayPhase.Night : TimeManager.DayPhase.Day);
         }
 
         private void OnEnable()
         {
+            EnsureSubscriptions();
+        }
+
+        private void EnsureSubscriptions()
+        {
+            if (isSubscribed) return;
+
+            bool subscribedAny = false;
             if (TimeManager.Instance != null)
             {
+                TimeManager.Instance.OnPhaseChanged -= HandlePhaseChanged;
                 TimeManager.Instance.OnPhaseChanged += HandlePhaseChanged;
+                subscribedAny = true;
+            }
+            if (DayNightTimeManager.Instance != null)
+            {
+                DayNightTimeManager.Instance.OnTimePhaseChanged -= HandleEnvironmentPhaseChanged;
+                DayNightTimeManager.Instance.OnTimePhaseChanged += HandleEnvironmentPhaseChanged;
+                subscribedAny = true;
+            }
+
+            if (subscribedAny)
+            {
+                isSubscribed = true;
             }
         }
 
@@ -48,9 +84,21 @@ namespace FeaturesTime.Atmosphere
             {
                 TimeManager.Instance.OnPhaseChanged -= HandlePhaseChanged;
             }
+            if (DayNightTimeManager.Instance != null)
+            {
+                DayNightTimeManager.Instance.OnTimePhaseChanged -= HandleEnvironmentPhaseChanged;
+            }
+            isSubscribed = false;
 
             if (transitionCoroutine != null) StopCoroutine(transitionCoroutine);
             if (flickerCoroutine != null) StopCoroutine(flickerCoroutine);
+        }
+
+        private void HandleEnvironmentPhaseChanged(EnvironmentPhase envPhase)
+        {
+            bool isNight = (envPhase == EnvironmentPhase.Night);
+            TimeManager.DayPhase phase = isNight ? TimeManager.DayPhase.Night : TimeManager.DayPhase.Day;
+            HandlePhaseChanged(phase);
         }
 
         private void HandlePhaseChanged(TimeManager.DayPhase newPhase)

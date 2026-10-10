@@ -124,6 +124,18 @@ public class MainMenuController : MonoBehaviour
         {
             var t = transform.Find("LoadGameButton");
             if (t == null && mainMenuPanel != null) t = mainMenuPanel.transform.Find("LoadGameButton");
+            if (t == null)
+            {
+                var buttons = GetComponentsInChildren<Button>(true);
+                foreach (var b in buttons)
+                {
+                    if (b.name == "LoadGameButton")
+                    {
+                        t = b.transform;
+                        break;
+                    }
+                }
+            }
             if (t != null) loadGameButton = t.GetComponent<Button>();
         }
         if (quitButton == null && mainMenuPanel != null)
@@ -210,7 +222,16 @@ public class MainMenuController : MonoBehaviour
 
     void Update()
     {
+        bool escPressed = false;
+#if ENABLE_INPUT_SYSTEM
         if (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame)
+            escPressed = true;
+#endif
+#if ENABLE_LEGACY_INPUT_MANAGER
+        if (Input.GetKeyDown(KeyCode.Escape))
+            escPressed = true;
+#endif
+        if (escPressed)
         {
             HandleEscapeKey();
         }
@@ -274,7 +295,13 @@ public class MainMenuController : MonoBehaviour
         if (currentState == MenuState.Hidden)
         {
             // 1. If a gameplay UI panel was already closed on this exact frame, DO NOT pause!
-            if (Time.frameCount == LastFrameUIPanelClosed)
+            if (Time.frameCount == LastFrameUIPanelClosed || Time.frameCount == FarmBeware.Core.Runtime.UIModalHelper.LastFrameUIPanelClosed)
+            {
+                return;
+            }
+
+            // 1b. If ModalStackManager has active modal windows, let ModalStackManager handle dismissal
+            if (FarmBeware.Core.Runtime.ModalStackManager.Instance != null && FarmBeware.Core.Runtime.ModalStackManager.Instance.HasActiveModal)
             {
                 return;
             }
@@ -283,13 +310,6 @@ public class MainMenuController : MonoBehaviour
             if (TryCloseAnyGameplayPanel())
             {
                 LastFrameUIPanelClosed = Time.frameCount;
-                return;
-            }
-
-            // 3. If player control input is locked (e.g. cutscene, transition), do not pause
-            if (playerControl == null) playerControl = FindFirstObjectByType<PlayerControl>();
-            if (playerControl != null && playerControl.isInputLocked)
-            {
                 return;
             }
 
@@ -640,6 +660,7 @@ public class MainMenuController : MonoBehaviour
     {
         menuActive = true;
         gameObject.SetActive(true);
+        transform.SetAsLastSibling();
 
         Time.timeScale = isPause ? 0f : 1f;
 
@@ -712,6 +733,15 @@ public class MainMenuController : MonoBehaviour
 
         titleOriginalPos = titleText != null ? titleText.rectTransform.localPosition : Vector3.zero;
         titleOriginalScale = titleText != null ? titleText.rectTransform.localScale : Vector3.one;
+
+        if (isPause)
+        {
+            var pauseAnimator = GetComponent<PauseMenuAnimator>();
+            if (pauseAnimator != null)
+            {
+                pauseAnimator.TriggerPopIn();
+            }
+        }
     }
 
     private void SetMenuVisualsActive(bool active)
@@ -847,8 +877,8 @@ public class MainMenuController : MonoBehaviour
 
         SetMenuVisualsActive(false);
 
-        Cursor.visible = false;
-        Cursor.lockState = CursorLockMode.Locked;
+        Cursor.visible = true;
+        Cursor.lockState = CursorLockMode.None;
 
         if (FadeManager.Instance != null && FadeManager.Instance.IsFading)
         {
@@ -949,7 +979,7 @@ public class MainMenuController : MonoBehaviour
 
     public void OnLoadGameClicked()
     {
-        if (!menuActive) return;
+        if (currentState == MenuState.FadingOut) return;
         if (FeaturesSaveSystem.SaveSystemUI.Instance != null)
         {
             FeaturesSaveSystem.SaveSystemUI.Instance.Open();

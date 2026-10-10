@@ -28,12 +28,19 @@ namespace FeaturesSaveSystem
 
             worldLabel.displayName = promptLabel;
 
-            // Ensure collider is active
-            var col = GetComponent<Collider>();
-            if (col == null)
+            // Ensure an interaction trigger collider covers the table interaction area
+            var colliders = GetComponents<BoxCollider>();
+            bool hasTrigger = false;
+            foreach (var c in colliders)
             {
-                var box = gameObject.AddComponent<BoxCollider>();
-                box.size = new Vector3(1.2f, 1f, 2.6f);
+                if (c != null && c.isTrigger) { hasTrigger = true; break; }
+            }
+            if (!hasTrigger)
+            {
+                var trigger = gameObject.AddComponent<BoxCollider>();
+                trigger.isTrigger = true;
+                trigger.size = new Vector3(2.4f, 1.8f, 3.4f);
+                trigger.center = Vector3.zero;
             }
         }
 

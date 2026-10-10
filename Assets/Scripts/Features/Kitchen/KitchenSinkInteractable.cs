@@ -293,7 +293,7 @@ public class KitchenSinkInteractable : KitchenStation, IInteractable, IModalWind
 
     private void OnDestroy()
     {
-        if (ModalStackManager.Instance != null)
+        if (ModalStackManager.HasInstance && ModalStackManager.Instance != null)
         {
             ModalStackManager.Instance.PopSpecific(this);
         }

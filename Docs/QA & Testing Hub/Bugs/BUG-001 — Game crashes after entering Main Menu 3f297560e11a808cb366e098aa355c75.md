@@ -9,6 +9,6 @@ Reproductibility Steps:   1. Install Game
   3. Observe the launching
 Reproductibilty Rate / 10: 1
 Severity: Critical
-Status: Not started
+Status: Resolved
 Tag: Performance
 Test Execution: TE-1 - Attempt 1 - Game Launch (https://app.notion.com/p/TE-1-Attempt-1-Game-Launch-3df97560e11a80dc848ed87b87fb208f?pvs=21)

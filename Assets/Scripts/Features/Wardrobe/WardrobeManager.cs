@@ -110,6 +110,7 @@ namespace FeaturesWardrobe
         private Coroutine fadeCoroutine;
         private Vector3 playerOriginalPosition;
         private Quaternion playerOriginalRotation;
+        private int previousHotbarIndex = -1;
 
         #region Public API
 
@@ -123,6 +124,40 @@ namespace FeaturesWardrobe
 
             isInWardrobeMode = true;
             IsInWardrobeMode = true;
+
+            // 0. Unequip any held item / weapon so player stands in clean idle pose
+            try
+            {
+                var player = GameObject.Find("Player");
+                if (player != null)
+                {
+                    var inventory = player.GetComponent<InventoryComponent>();
+                    if (inventory != null)
+                    {
+                        previousHotbarIndex = inventory.selectedHotbarIndex;
+                    }
+
+                    var playerEquip = player.GetComponent("PlayerEquipment");
+                    if (playerEquip != null)
+                    {
+                        var destroyMethod = playerEquip.GetType().GetMethod("DestroyCurrentWeapon", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
+                        destroyMethod?.Invoke(playerEquip, null);
+                    }
+
+                    var anim = player.GetComponentInChildren<Animator>();
+                    if (anim != null)
+                    {
+                        anim.SetBool("HasWeapon", false);
+                        anim.SetBool("Idle", true);
+                        anim.SetBool("Sprinting", false);
+                        anim.SetFloat("Vel", 0f);
+                    }
+                }
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogWarning($"[WardrobeManager] Unequip held item failed: {ex.Message}");
+            }
 
             // Resync live player + mirror with persisted outfit state on entry.
             if (playerOutfit != null && playerOutfit.currentOutfit != null)
@@ -466,6 +501,30 @@ namespace FeaturesWardrobe
             // Revert preview if a preview is in flight
             if (playerOutfit != null && playerOutfit.IsPreviewing)
                 playerOutfit.Revert();
+
+            // Restore held item / hotbar selection
+            try
+            {
+                var player = GameObject.Find("Player");
+                if (player != null && previousHotbarIndex >= 0)
+                {
+                    var inventory = player.GetComponent<InventoryComponent>();
+                    if (inventory != null)
+                    {
+                        inventory.SelectHotbarSlot(previousHotbarIndex);
+                    }
+                    var playerEquip = player.GetComponent("PlayerEquipment");
+                    if (playerEquip != null)
+                    {
+                        var updateMethod = playerEquip.GetType().GetMethod("UpdateEquipmentVisual", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
+                        updateMethod?.Invoke(playerEquip, new object[] { previousHotbarIndex });
+                    }
+                }
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogWarning($"[WardrobeManager] Restore held item failed: {ex.Message}");
+            }
 
             // 5. Update state LAST.
             isInWardrobeMode = false;

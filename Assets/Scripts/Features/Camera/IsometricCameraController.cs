@@ -39,21 +39,11 @@ namespace FeaturesCamera
         [Tooltip("Enable mouse right-drag orbit.")]
         public bool allowMouseOrbit = true;
 
-        [Header("Zoom")]
-        [Tooltip("Scroll wheel zoom speed.")]
-        public float zoomSpeed = 4f;
-
-        [Tooltip("Minimum orthographic size.")]
-        public float minSize = 4f;
-
-        [Tooltip("Maximum orthographic size.")]
-        public float maxSize = 12f;
-
-        [Header("Projection")]
+        [Header("Projection & Size")]
         [Tooltip("Use orthographic projection (eliminates perspective narrowing).")]
         public bool isOrthographic = true;
 
-        [Tooltip("Orthographic camera size.")]
+        [Tooltip("Orthographic camera size (locked from mouse scroll; controlled exclusively via script events).")]
         public float orthographicSize = 6f;
 
         public static IsometricCameraController Instance { get; private set; }
@@ -87,13 +77,23 @@ namespace FeaturesCamera
             shakeCoroutine = StartCoroutine(RoutineShake(duration, intensity));
         }
 
+        public void StopShake()
+        {
+            if (shakeCoroutine != null)
+            {
+                StopCoroutine(shakeCoroutine);
+                shakeCoroutine = null;
+            }
+            shakeOffset = Vector3.zero;
+        }
+
         private System.Collections.IEnumerator RoutineShake(float duration, float intensity)
         {
             float elapsed = 0f;
             while (elapsed < duration)
             {
-                elapsed += Time.deltaTime;
-                float damp = 1f - (elapsed / duration);
+                elapsed += Time.unscaledDeltaTime;
+                float damp = Mathf.Clamp01(1f - (elapsed / duration));
                 Vector2 r = Random.insideUnitCircle;
                 shakeOffset = new Vector3(r.x, r.y * 0.4f, r.x * 0.4f) * (intensity * damp);
                 yield return null;
@@ -141,7 +141,6 @@ namespace FeaturesCamera
             bool isOrbiting = false;
             float deltaX = 0f;
             float deltaY = 0f;
-            float scrollDelta = 0f;
 
             if (Mouse.current != null)
             {
@@ -149,9 +148,6 @@ namespace FeaturesCamera
                 Vector2 delta = Mouse.current.delta.ReadValue();
                 deltaX = delta.x * 0.2f;
                 deltaY = delta.y * 0.2f;
-
-                Vector2 scroll = Mouse.current.scroll.ReadValue();
-                scrollDelta = scroll.y * 0.005f;
             }
 
             // Apply orbit
@@ -160,19 +156,6 @@ namespace FeaturesCamera
                 yaw += deltaX;
                 pitch -= deltaY;
                 pitch = Mathf.Clamp(pitch, 10f, 85f);
-            }
-
-            // Apply zoom
-            if (Mathf.Abs(scrollDelta) > 0.001f && cam != null)
-            {
-                if (cam.orthographic)
-                {
-                    cam.orthographicSize = Mathf.Clamp(cam.orthographicSize - scrollDelta * 2f, minSize, maxSize);
-                }
-                else
-                {
-                    distance = Mathf.Clamp(distance - scrollDelta, 6f, 30f);
-                }
             }
 
             // Calculate camera position (orbit-based)
@@ -213,6 +196,19 @@ namespace FeaturesCamera
             Vector3 targetPosition = targetCenter - (rotation * Vector3.forward * distance);
             transform.position = targetPosition;
             transform.rotation = rotation;
+        }
+
+        /// <summary>
+        /// Explicitly changes orthographic camera size from source code events or cutscenes.
+        /// Player cannot zoom the camera with mouse scroll.
+        /// </summary>
+        public void SetOrthographicSize(float size)
+        {
+            orthographicSize = size;
+            if (cam != null && cam.orthographic)
+            {
+                cam.orthographicSize = size;
+            }
         }
     }
 }

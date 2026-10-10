@@ -33,17 +33,17 @@ namespace FeaturesTime.Atmosphere
         [SerializeField] private Color dayCameraBackground = new Color(0.12f, 0.15f, 0.20f);
 
         [Header("Night Preset (Malam Hari - Atmospheric Moonlight & Rim)")]
-        [SerializeField] private Color nightLightColor = new Color(0.55f, 0.75f, 1.0f);    // Colder Crisp Moonlight
-        [SerializeField] private float nightLightIntensity = 1.5f;                          // Moonlight 1.5f
+        [SerializeField] private Color nightLightColor = new Color(0.58f, 0.76f, 1.0f);    // Colder Crisp Moonlight
+        [SerializeField] private float nightLightIntensity = 1.3f;                          // Moonlight 1.3f (Matches Night_LightingTheme)
         [SerializeField] private Vector3 nightLightRotation = new Vector3(55f, 35f, 0f);   // Pitch 55, Yaw 35
-        [SerializeField] private Color nightAmbientSky = new Color(0.20f, 0.24f, 0.32f);    // Cool Night Sky
-        [SerializeField] private Color nightAmbientEquator = new Color(0.14f, 0.16f, 0.22f); // Soft Horizon Fill
-        [SerializeField] private Color nightAmbientGround = new Color(0.09f, 0.10f, 0.13f); // Ground Neutral
+        [SerializeField] private Color nightAmbientSky = new Color(0.36f, 0.40f, 0.55f);    // Atmospheric Moonlight Sky Trilight
+        [SerializeField] private Color nightAmbientEquator = new Color(0.26f, 0.30f, 0.42f); // Midtone Equator Fill
+        [SerializeField] private Color nightAmbientGround = new Color(0.22f, 0.24f, 0.28f); // Stylized Ground Floor (Prevents Black Crush)
         [SerializeField] private bool nightFogEnabled = true;
-        [SerializeField] private Color nightFogColor = new Color(0.10f, 0.14f, 0.24f);     // Kabut malam lembut
+        [SerializeField] private Color nightFogColor = new Color(0.18f, 0.24f, 0.34f);     // Kabut malam atmosferik
         [SerializeField] private float nightFogStart = 52f;  // Fog di luar area gameplay
         [SerializeField] private float nightFogEnd = 115f;   // Gradasi perimeter
-        [SerializeField] private Color nightCameraBackground = new Color(0.06f, 0.09f, 0.16f); // Background malam jelas
+        [SerializeField] private Color nightCameraBackground = new Color(0.14f, 0.18f, 0.26f); // Background malam jelas
 
         [Header("Camera Projection Settings")]
         [Tooltip("Jika true, mengontrol orthographic size kamera utama saat transisi fase.")]

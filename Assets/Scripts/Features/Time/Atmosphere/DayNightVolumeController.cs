@@ -180,9 +180,9 @@ namespace FeaturesTime.Atmosphere
             return new VolumePhaseSettings
             {
                 tonemappingMode = TonemappingMode.ACES,
-                bloomThreshold = 1.5f,
+                bloomThreshold = 1.15f,
                 bloomIntensity = 0.25f,
-                bloomScatter = 0.70f,
+                bloomScatter = 0.65f,
                 postExposure = -0.2f,
                 contrast = 8f,
                 saturation = 5f,
@@ -203,8 +203,8 @@ namespace FeaturesTime.Atmosphere
             return new VolumePhaseSettings
             {
                 tonemappingMode = TonemappingMode.ACES,
-                bloomThreshold = 1.65f,
-                bloomIntensity = 0.22f,
+                bloomThreshold = 1.25f,
+                bloomIntensity = 0.25f,
                 bloomScatter = 0.65f,
                 postExposure = 0.0f,
                 contrast = 10f,
@@ -226,9 +226,9 @@ namespace FeaturesTime.Atmosphere
             return new VolumePhaseSettings
             {
                 tonemappingMode = TonemappingMode.ACES,
-                bloomThreshold = 0.95f,
-                bloomIntensity = 0.32f,
-                bloomScatter = 0.70f,
+                bloomThreshold = 1.05f,
+                bloomIntensity = 0.30f,
+                bloomScatter = 0.65f,
                 postExposure = -0.4f,
                 contrast = 12f,
                 saturation = 12f,
@@ -249,9 +249,9 @@ namespace FeaturesTime.Atmosphere
             return new VolumePhaseSettings
             {
                 tonemappingMode = TonemappingMode.ACES,
-                bloomThreshold = 0.85f,
-                bloomIntensity = 0.38f,
-                bloomScatter = 0.70f,
+                bloomThreshold = 1.05f,
+                bloomIntensity = 0.32f,
+                bloomScatter = 0.65f,
                 postExposure = -0.30f,
                 contrast = 8f,
                 saturation = 4f,

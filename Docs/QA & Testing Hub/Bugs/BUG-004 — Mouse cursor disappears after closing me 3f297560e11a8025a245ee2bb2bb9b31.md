@@ -11,6 +11,6 @@ Reproductibility Steps:   1. Enter gameplay
   5. observe the mouse cursor
 Reproductibilty Rate / 10: 10
 Severity: Medium
-Status: Not started
+Status: Resolved
 Tag: Cursor/Mouse, Input/Control, UI
 Test Execution: TE-7 - Selling & buying (https://app.notion.com/p/TE-7-Selling-buying-3f297560e11a80aa9f2ee86d7ef42ddb?pvs=21)

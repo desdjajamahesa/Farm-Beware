@@ -31,6 +31,11 @@ namespace FeaturesSaveSystem
                 if (instance == null)
                 {
                     instance = FindFirstObjectByType<SaveSystemManager>(FindObjectsInactive.Include);
+                    if (instance == null && Application.isPlaying)
+                    {
+                        var go = new GameObject("SaveSystemManager");
+                        instance = go.AddComponent<SaveSystemManager>();
+                    }
                 }
                 return instance;
             }
@@ -114,7 +119,6 @@ namespace FeaturesSaveSystem
             if (instance == this)
             {
                 instance = null;
-                isQuitting = true;
             }
         }
 
@@ -488,6 +492,15 @@ namespace FeaturesSaveSystem
             }
 
             string filePath = Path.Combine(SavesDirectory, meta.fileName);
+            if (!File.Exists(filePath))
+            {
+                string tmpPath = filePath + ".tmp";
+                if (File.Exists(tmpPath))
+                {
+                    try { File.Move(tmpPath, filePath); } catch { }
+                }
+            }
+
             if (!File.Exists(filePath))
             {
                 statusMessage = "Save file is missing on disk!";

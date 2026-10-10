@@ -498,7 +498,6 @@ namespace FeaturesTime
             if (Instance == this)
             {
                 Instance = null;
-                _isApplicationQuitting = true;
             }
         }
 
@@ -619,6 +618,18 @@ namespace FeaturesTime
             lastEmittedMinute = CurrentMinuteInt;
             lastEmittedPhase = currentPhase;
 
+            if (TimeManager.Instance != null)
+            {
+                if (currentPhase == EnvironmentPhase.Night && TimeManager.Instance.currentPhase != TimeManager.DayPhase.Night)
+                {
+                    TimeManager.Instance.StartNightPhase();
+                }
+                else if ((currentPhase == EnvironmentPhase.Day || currentPhase == EnvironmentPhase.Dawn) && TimeManager.Instance.currentPhase != TimeManager.DayPhase.Day)
+                {
+                    TimeManager.Instance.SetTimeState(TimeManager.Instance.currentDay, TimeManager.DayPhase.Day, false, notifyPhaseChanged: true);
+                }
+            }
+
             OnNormalizedTimeChanged?.Invoke(NormalizedTime);
             OnHourChanged?.Invoke(lastEmittedHour);
             OnMinuteChanged?.Invoke(lastEmittedMinute);
@@ -649,7 +660,18 @@ namespace FeaturesTime
             autoSleepTriggered = false;
 
             currentHour = dayStartHour;
-            currentDay = TimeManager.Instance != null ? TimeManager.Instance.currentDay : (currentDay + 1);
+            if (TimeManager.Instance != null)
+            {
+                if (TimeManager.Instance.currentPhase != TimeManager.DayPhase.Day)
+                {
+                    TimeManager.Instance.SetTimeState(TimeManager.Instance.currentDay + 1, TimeManager.DayPhase.Day, false, notifyPhaseChanged: true);
+                }
+                currentDay = TimeManager.Instance.currentDay;
+            }
+            else
+            {
+                currentDay++;
+            }
             currentPhase = EvaluatePhase(currentHour);
 
             lastEmittedHour = CurrentHourInt;

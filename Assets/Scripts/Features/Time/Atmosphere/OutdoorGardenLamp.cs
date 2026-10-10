@@ -27,10 +27,10 @@ namespace FeaturesTime.Atmosphere
 
         [Header("Lighting Calibration")]
         [Tooltip("Intensitas Point Light saat malam hari (lux).")]
-        [SerializeField] [Min(0f)] private float nightPointIntensity = 25.0f;
+        [SerializeField] [Min(0f)] private float nightPointIntensity = 7.5f;
 
         [Tooltip("Intensitas Spot Downlight saat malam hari (lux). Proyeksi tanah terang.")]
-        [SerializeField] [Min(0f)] private float nightDownIntensity = 40.0f;
+        [SerializeField] [Min(0f)] private float nightDownIntensity = 14.0f;
 
         [Tooltip("Intensitas cahaya saat siang hari (0 lux / mati).")]
         [SerializeField] [Min(0f)] private float dayIntensity = 0.0f;
@@ -41,18 +41,18 @@ namespace FeaturesTime.Atmosphere
         [Tooltip("Jangkauan Spot Downlight ke tanah.")]
         [SerializeField] [Range(2f, 20f)] private float downRange = 9.0f;
 
-        [Tooltip("Warna cahaya lampu taman (Kelvin hangat amber ~2400K).")]
-        [SerializeField] private Color lightColor = new Color(1.0f, 0.58f, 0.18f, 1.0f);
+        [Tooltip("Warna cahaya lampu taman (default: putih bersih / neutral white).")]
+        [SerializeField] private Color lightColor = Color.white;
 
         [Header("Bulb Visuals (Day & Night)")]
-        [Tooltip("Warna pendaran HDR bohlam saat malam hari (warm amber glow).")]
-        [SerializeField] [ColorUsage(true, true)] private Color nightBulbColor = new Color(3.2f, 2.0f, 0.6f, 1.0f);
+        [Tooltip("Warna pendaran HDR bohlam saat malam hari (putih bersih / neutral white glow).")]
+        [SerializeField] [ColorUsage(true, true)] private Color nightBulbColor = new Color(1.2f, 1.2f, 1.2f, 1.0f);
 
         [Tooltip("Warna kaca bohlam saat siang hari (frosted milky glass).")]
         [SerializeField] private Color dayBulbColor = new Color(0.96f, 0.93f, 0.85f, 1.0f);
 
-        [Tooltip("Warna inti filamen pijar saat malam hari (super-hot HDR).")]
-        [SerializeField] [ColorUsage(true, true)] private Color nightFilamentColor = new Color(7.5f, 5.0f, 1.8f, 1.0f);
+        [Tooltip("Warna inti filamen pijar saat malam hari (putih pijar HDR).")]
+        [SerializeField] [ColorUsage(true, true)] private Color nightFilamentColor = new Color(2.0f, 2.0f, 2.0f, 1.0f);
 
         [Tooltip("Warna inti filamen saat siang hari (kawat tungsten gelap).")]
         [SerializeField] private Color dayFilamentColor = new Color(0.35f, 0.28f, 0.18f, 1.0f);
@@ -69,6 +69,7 @@ namespace FeaturesTime.Atmosphere
 
         private MaterialPropertyBlock propBlock;
         private static readonly int BaseColorID = Shader.PropertyToID("_BaseColor");
+        private static readonly int EmissionColorID = Shader.PropertyToID("_EmissionColor");
         private float seed;
 
         public Light LampLight => lampLight;
@@ -78,6 +79,10 @@ namespace FeaturesTime.Atmosphere
         public bool EnableFlicker => enableFlicker;
         public float FlickerAmount => flickerAmount;
         public float FlickerSpeed => flickerSpeed;
+        public float NightPointIntensity { get => nightPointIntensity; set => nightPointIntensity = value; }
+        public float NightDownIntensity { get => nightDownIntensity; set => nightDownIntensity = value; }
+        public Color NightBulbColor { get => nightBulbColor; set => nightBulbColor = value; }
+        public Color NightFilamentColor { get => nightFilamentColor; set => nightFilamentColor = value; }
 
         private void Awake()
         {
@@ -145,6 +150,8 @@ namespace FeaturesTime.Atmosphere
                 bulbRenderer.GetPropertyBlock(propBlock);
                 Color targetBulb = Color.Lerp(dayBulbColor, nightBulbColor * flickerFactor, t);
                 propBlock.SetColor(BaseColorID, targetBulb);
+                Color targetBulbEmission = Color.Lerp(Color.black, nightBulbColor * flickerFactor, t);
+                propBlock.SetColor(EmissionColorID, targetBulbEmission);
                 bulbRenderer.SetPropertyBlock(propBlock);
             }
 
@@ -154,6 +161,8 @@ namespace FeaturesTime.Atmosphere
                 filamentRenderer.GetPropertyBlock(propBlock);
                 Color targetFil = Color.Lerp(dayFilamentColor, nightFilamentColor * flickerFactor, t);
                 propBlock.SetColor(BaseColorID, targetFil);
+                Color targetFilEmission = Color.Lerp(Color.black, nightFilamentColor * flickerFactor, t);
+                propBlock.SetColor(EmissionColorID, targetFilEmission);
                 filamentRenderer.SetPropertyBlock(propBlock);
             }
         }

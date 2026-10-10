@@ -91,6 +91,21 @@ public class PauseMenuAnimator : MonoBehaviour
 
     private void OnEnable()
     {
+        TriggerPopIn();
+    }
+
+    public void TriggerPopIn()
+    {
+        if (cardRect == null)
+        {
+            ResolveReferences();
+            if (cardRect != null)
+            {
+                cardInitialPos = cardRect.anchoredPosition;
+                cardInitialScale = cardRect.localScale != Vector3.zero ? cardRect.localScale : Vector3.one;
+            }
+        }
+
         if (cardRect != null)
         {
             if (popInCoroutine != null) StopCoroutine(popInCoroutine);

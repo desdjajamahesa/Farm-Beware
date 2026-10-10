@@ -11,6 +11,6 @@ Reproductibility Steps:   1. Enter gameplay
   5. Observe the navigation distance
 Reproductibilty Rate / 10: 10
 Severity: Medium
-Status: Not started
+Status: Resolved
 Tag: Navigation, UI
 Test Execution: TE-10 - Attack until you defeat one normal enemy (https://app.notion.com/p/TE-10-Attack-until-you-defeat-one-normal-enemy-3f297560e11a8092802cf42256947f1c?pvs=21)

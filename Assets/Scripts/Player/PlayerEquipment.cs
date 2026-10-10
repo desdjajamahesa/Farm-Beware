@@ -48,6 +48,26 @@ public class PlayerEquipment : MonoBehaviour
     [Tooltip("Biaya stamina per pukulan kombo: Hit 1, Hit 2, Hit 3.")]
     [SerializeField] private float[] comboStaminaCosts = new float[] { 10f, 10f, 15f };
 
+    [Header("Pengaturan Timing Ayunan & Trail Kombo")]
+    [Tooltip("Delay windup (detik) untuk ayunan Hit 1 (Horizontal Slash) pada base speed.")]
+    [SerializeField] private float combo1SwingDelay = 0.32f;
+    [Tooltip("Durasi aktif ayunan (detik) untuk Hit 1.")]
+    [SerializeField] private float combo1SwingDuration = 0.16f;
+
+    [Tooltip("Delay windup (detik) untuk ayunan Hit 2 (Downward Chop) pada base speed.")]
+    [SerializeField] private float combo2SwingDelay = 0.26f;
+    [Tooltip("Durasi aktif ayunan (detik) untuk Hit 2.")]
+    [SerializeField] private float combo2SwingDuration = 0.16f;
+
+    [Tooltip("Delay windup (detik) untuk putaran Hit 3 (360 Low Finisher) pada base speed.")]
+    [SerializeField] private float combo3SwingDelay = 0.10f;
+    [Tooltip("Durasi aktif putaran (detik) untuk Hit 3.")]
+    [SerializeField] private float combo3SwingDuration = 0.38f;
+
+    [Tooltip("Delay windup (detik) untuk ayunan Heavy Attack (Charged 360 Spin) pada base speed.")]
+    [SerializeField] private float heavySwingDelay = 0.42f;
+    [Tooltip("Durasi aktif putaran (detik) untuk Heavy Attack.")]
+    [SerializeField] private float heavySwingDuration = 0.38f;
 
     [Header("Pengaturan Jurus Spesial (Leap Strike)")]
     [Tooltip("Nama Trigger parameter di Animator untuk jurus spesial.")]
@@ -131,6 +151,8 @@ public class PlayerEquipment : MonoBehaviour
     [SerializeField] private bool showGizmos = true;
 
     private GameObject currentWeaponModel;
+    private FeaturesCombat.Adapters.WeaponTrailController currentWeaponTrail;
+    private FeaturesCombat.Adapters.WeaponTrailController bareHandsTrail;
     private InventoryComponent inventory;
     private Animator animator;
     private PlayerStats playerStats;
@@ -283,11 +305,7 @@ public class PlayerEquipment : MonoBehaviour
             float activeRange = is360 ? attackHitRange * 1.15f : attackHitRange;
             float finalKnockback = knockback * combatStateMachine.GetCurrentKnockbackMultiplier() * statMods.KnockbackMultiplier;
 
-            if (currentSwingCoroutine != null)
-            {
-                StopCoroutine(currentSwingCoroutine);
-                currentSwingCoroutine = null;
-            }
+            StopCurrentSwingCoroutine();
 
             currentSwingCoroutine = StartCoroutine(RoutineSwingHitbox(finalDamage, finalKnockback, atkSpdMultiplier, is360, activeRange, isFinisher: is360));
 
@@ -322,9 +340,12 @@ public class PlayerEquipment : MonoBehaviour
         if (upgradeState != null && upgradeState.sweetPotatoPathUnlocked) atkSpdMultiplier *= 1.20f;
         atkSpdMultiplier *= attackAnimationSpeed;
 
+        currentComboIndex = 2;
+
         if (animator != null)
         {
             animator.speed = atkSpdMultiplier;
+            animator.ResetTrigger(attackTriggerName);
             animator.SetInteger("ComboIndex", 2);
             animator.SetTrigger(attackTriggerName);
         }
@@ -344,11 +365,7 @@ public class PlayerEquipment : MonoBehaviour
         int finalDamage = Mathf.RoundToInt(baseDmg * dmgMult);
         float finalKnockback = knockback * combatStateMachine.GetCurrentKnockbackMultiplier();
 
-        if (currentSwingCoroutine != null)
-        {
-            StopCoroutine(currentSwingCoroutine);
-            currentSwingCoroutine = null;
-        }
+        StopCurrentSwingCoroutine();
 
         currentSwingCoroutine = StartCoroutine(RoutineSwingHitbox(finalDamage, finalKnockback, atkSpdMultiplier, is360: true, rangeOverride: attackHitRange * 1.3f, isHeavy: true));
         return true;
@@ -401,11 +418,7 @@ public class PlayerEquipment : MonoBehaviour
         int finalDamage = Mathf.RoundToInt(baseDmg * dmgMult);
         float finalKnockback = knockback * combatStateMachine.GetCurrentKnockbackMultiplier();
 
-        if (currentSwingCoroutine != null)
-        {
-            StopCoroutine(currentSwingCoroutine);
-            currentSwingCoroutine = null;
-        }
+        StopCurrentSwingCoroutine();
 
         currentSwingCoroutine = StartCoroutine(RoutineSwingHitbox(finalDamage, finalKnockback, atkSpdMultiplier, is360: false, rangeOverride: attackHitRange * 1.25f, isDash: true));
         return true;
@@ -501,10 +514,52 @@ public class PlayerEquipment : MonoBehaviour
         return false;
     }
 
+    private void StopCurrentSwingCoroutine()
+    {
+        if (currentSwingCoroutine != null)
+        {
+            StopCoroutine(currentSwingCoroutine);
+            currentSwingCoroutine = null;
+        }
+
+        var activeTrail = GetActiveTrail();
+        if (activeTrail != null)
+        {
+            activeTrail.EndTrail();
+        }
+    }
+
     private System.Collections.IEnumerator RoutineSwingHitbox(int damage, float knockback, float speedMultiplier, bool is360 = false, float rangeOverride = -1f, bool isFinisher = false, bool isHeavy = false, bool isDash = false)
     {
-        float delay = 0.12f / Mathf.Max(0.5f, speedMultiplier);
-        float duration = 0.28f / Mathf.Max(0.5f, speedMultiplier);
+        float speedRatio = Mathf.Max(0.1f, speedMultiplier);
+        float delay;
+        float duration;
+
+        if (isDash)
+        {
+            delay = 0.08f / speedRatio;
+            duration = 0.18f / speedRatio;
+        }
+        else if (isHeavy)
+        {
+            delay = heavySwingDelay / speedRatio;
+            duration = heavySwingDuration / speedRatio;
+        }
+        else if (is360 || isFinisher || currentComboIndex == 2)
+        {
+            delay = combo3SwingDelay / speedRatio;
+            duration = combo3SwingDuration / speedRatio;
+        }
+        else if (currentComboIndex == 1)
+        {
+            delay = combo2SwingDelay / speedRatio;
+            duration = combo2SwingDuration / speedRatio;
+        }
+        else
+        {
+            delay = combo1SwingDelay / speedRatio;
+            duration = combo1SwingDuration / speedRatio;
+        }
 
         TriggerRangeIndicatorPulse(delay + duration + 0.1f);
 
@@ -523,6 +578,12 @@ public class PlayerEquipment : MonoBehaviour
             }
         }
 
+        var activeTrail = GetActiveTrail();
+        if (activeTrail != null)
+        {
+            activeTrail.BeginTrail(currentComboIndex, isFinisher || is360, isHeavy);
+        }
+
         if (hitbox != null && !is360 && !isHeavy && !isDash)
         {
             hitbox.ConfigureHitRange(activeRange);
@@ -534,11 +595,21 @@ public class PlayerEquipment : MonoBehaviour
             PerformDirectMeleeSweep(damage, knockback, is360, activeRange, isFinisher, isHeavy, isDash);
         }
 
-        yield return new WaitForSeconds(duration);
-
-        if (hitbox != null)
+        try
         {
-            hitbox.Deactivate();
+            yield return new WaitForSeconds(duration);
+        }
+        finally
+        {
+            if (activeTrail != null)
+            {
+                activeTrail.EndTrail();
+            }
+
+            if (hitbox != null)
+            {
+                hitbox.Deactivate();
+            }
         }
 
         float maxWait = 0.5f / Mathf.Max(0.5f, speedMultiplier);
@@ -567,18 +638,35 @@ public class PlayerEquipment : MonoBehaviour
     {
         isExecutingSkill = true;
 
-        // Leap jump delay before ground impact
-        float impactDelay = 1.14f / Mathf.Max(0.5f, speedMultiplier);
-        float impactDuration = 0.25f / Mathf.Max(0.5f, speedMultiplier);
+        float speedRatio = speedMultiplier / Mathf.Max(0.1f, attackAnimationSpeed);
+        float launchDelay = 0.25f / speedRatio;
+        float impactDelay = 1.14f / speedRatio;
+        float postImpactLinger = 0.20f / speedRatio;
 
-        TriggerRangeIndicatorPulse(impactDelay + impactDuration + 0.15f);
+        TriggerRangeIndicatorPulse(impactDelay + 0.35f);
 
-        yield return new WaitForSeconds(impactDelay);
+        // Tunggu ancang-ancang windup selesai saat karakter melompat ke udara
+        yield return new WaitForSeconds(launchDelay);
+
+        var activeSkillTrail = GetActiveTrail();
+        if (activeSkillTrail != null)
+        {
+            activeSkillTrail.BeginTrail(2, isFinisher: true, isHeavy: true);
+        }
+
+        // Jalankan trail sepanjang lintasan lompatan di udara hingga menghantam tanah
+        float flightDuration = Mathf.Max(0.05f, impactDelay - launchDelay);
+        yield return new WaitForSeconds(flightDuration);
 
         // Ground slam impact: 360 AoE zero-GC non-alloc sweep with heavy impulse
         PerformDirectMeleeSweep(damage, knockback, is360: true, rangeOverride: range, isHeavy: true);
 
-        yield return new WaitForSeconds(impactDuration);
+        yield return new WaitForSeconds(postImpactLinger);
+
+        if (activeSkillTrail != null)
+        {
+            activeSkillTrail.EndTrail();
+        }
 
         float maxWait = 0.6f / Mathf.Max(0.5f, speedMultiplier);
         float elapsed = 0f;
@@ -683,6 +771,7 @@ public class PlayerEquipment : MonoBehaviour
         playerStats = GetComponent<PlayerStats>();
         buffManager = GetComponent<PlayerBuffManager>();
         FindHandSocketIfNeeded();
+        EnsureBareHandsTrail();
         DestroyCurrentWeapon();
         EnsureRangeIndicator();
         if (combatStateMachine != null)
@@ -729,6 +818,7 @@ public class PlayerEquipment : MonoBehaviour
 
     private void OnDisable()
     {
+        StopCurrentSwingCoroutine();
         if (inventory != null)
         {
             inventory.OnInventoryChanged -= RefreshCurrentEquipment;
@@ -1014,6 +1104,13 @@ public class PlayerEquipment : MonoBehaviour
         }
         rb.isKinematic = true;
         rb.useGravity = false;
+
+        currentWeaponTrail = currentWeaponModel.GetComponentInChildren<FeaturesCombat.Adapters.WeaponTrailController>();
+        if (currentWeaponTrail == null)
+        {
+            currentWeaponTrail = currentWeaponModel.AddComponent<FeaturesCombat.Adapters.WeaponTrailController>();
+        }
+        currentWeaponTrail.InitializeForWeapon(currentWeaponModel);
     }
 
     private void FindHandSocketIfNeeded()
@@ -1038,6 +1135,27 @@ public class PlayerEquipment : MonoBehaviour
         }
     }
 
+    private void EnsureBareHandsTrail()
+    {
+        FindHandSocketIfNeeded();
+        if (handSocket != null && bareHandsTrail == null)
+        {
+            bareHandsTrail = handSocket.GetComponent<FeaturesCombat.Adapters.WeaponTrailController>();
+            if (bareHandsTrail == null)
+            {
+                bareHandsTrail = handSocket.gameObject.AddComponent<FeaturesCombat.Adapters.WeaponTrailController>();
+            }
+            bareHandsTrail.InitializeForWeapon(handSocket.gameObject);
+        }
+    }
+
+    private FeaturesCombat.Adapters.WeaponTrailController GetActiveTrail()
+    {
+        if (currentWeaponTrail != null) return currentWeaponTrail;
+        EnsureBareHandsTrail();
+        return bareHandsTrail;
+    }
+
     public void DestroyCurrentWeapon()
     {
         if (currentWeaponModel != null)
@@ -1057,6 +1175,12 @@ public class PlayerEquipment : MonoBehaviour
                 DestroyImmediate(currentWeaponModel);
             }
             currentWeaponModel = null;
+        }
+
+        if (currentWeaponTrail != null)
+        {
+            currentWeaponTrail.EndTrail();
+            currentWeaponTrail = null;
         }
 
         // Safeguard mutlak: Pastikan SELURUH child di handSocket dibersihkan agar tidak ada
