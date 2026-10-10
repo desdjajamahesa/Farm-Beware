@@ -15,7 +15,7 @@
 ### Fixed
 * Fixed light attack three-hit combo chain skipping intermediate swings, restored leaping heavy attack airborne flame trail synchronization, and corrected environmental glare during nighttime combat.
 * Fixed jump input callback accumulation on respawn, added atomic write protection for wardrobe and save files, and resolved static service locator reference leaks on player teardown.
-* Fixed charged heavy attack swing trail timing and consistency when holding the attack button, allowing smooth uninterrupted weapon slashes and reliable charged strikes.
+* Restored three-hit combo chain progression across rhythmic clicking and attack buffering, while maintaining synchronized flame trails on charged heavy attacks.
 
 ---
 

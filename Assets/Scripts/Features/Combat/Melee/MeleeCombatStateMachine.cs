@@ -25,8 +25,8 @@ namespace FeaturesCombat.Melee
             set => _evaluator.ComboResetWindow = value;
         }
 
-        public float MinChargeForHeavy { get; set; } = 0.35f;
-        public float MaxChargeDuration { get; set; } = 1.0f;
+        public float MinChargeForHeavy { get; set; } = 0.0f;
+        public float MaxChargeDuration { get; set; } = 0.65f;
 
         public float Light1DamageMultiplier { get; set; } = 1.0f;
         public float Light2DamageMultiplier { get; set; } = 1.2f;
@@ -62,13 +62,8 @@ namespace FeaturesCombat.Melee
                 if (!IsCharging && _currentState != MeleeCombatState.HeavyRelease)
                     return 0f;
 
-                float range = MaxChargeDuration - MinChargeForHeavy;
-                if (range <= 0.001f) return 1f;
-
-                float net = _currentChargeDuration - MinChargeForHeavy;
-                if (net <= 0f) return 0f;
-
-                float ratio = net / range;
+                if (MaxChargeDuration <= 0.001f) return 1f;
+                float ratio = _currentChargeDuration / MaxChargeDuration;
                 return ratio > 1f ? 1f : ratio;
             }
         }

@@ -42,11 +42,11 @@ Semua perubahan penting pada proyek ini oleh Rafi akan dicatat di halaman ini.
     - Pohon kerja Git terisolasi murni pada `Rafi-branch` tanpa menyentuh `Sprint-branch`.
 
 ### Diperbaiki (Fixed)
-- **Konsistensi Timing & Jejak Senjata Serangan Tahan (Hold Attack & Heavy Strike Trail Consistency)**:
+- **Pemulihan Kombo 3-Hit & Konsistensi Timing Trail Serangan Berat (3-Hit Combo Restoration & Heavy Strike Trail Consistency)**:
+  - Mengembalikan alur evaluasi input serangan ringan pada [`PlayerControl.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Player/PlayerControl.cs) agar klik cepat tidak memanggil `StartHeavyCharge` maupun `ResetToIdle()`, sehingga rantai kombo Hit 1 -> Hit 2 -> Hit 3 (360 Finisher) dapat dipicu dengan lancar baik melalui rhythmic clicking maupun input buffering.
+  - Memperbarui `MinChargeForHeavy = 0.0f` pada [`MeleeCombatStateMachine.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Combat/Melee/MeleeCombatStateMachine.cs) sehingga ketika pemain menahan klik selama $\ge 0.35s$, serangan berat selalu sah dilepas tanpa risiko penolakan threshold ganda.
   - Mengeliminasi desinkronisasi divisor kecepatan ayunan pada [`PlayerEquipment.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Player/PlayerEquipment.cs) dengan membagi delay dan durasi terhadap `speedMultiplier` animasi aktual, bukan membatalkannya melalui pembagian ulang terhadap base speed.
   - Menyelaraskan delay ayunan berat (0.42s) dan durasi trail (0.38s) dengan dorongan fisika dan putaran visual 360 pada [`PlayerControl.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Player/PlayerControl.cs), sehingga pita kobaran api merah menyala presisi pada awal tebasan berputar.
-  - Menginisiasi `StartHeavyCharge` seketika saat tombol serangan mulai ditekan, menghilangkan akumulasi penundaan ganda yang sebelumnya menggagalkan eksekusi pelepasan serangan berat di `MeleeCombatStateMachine`.
-  - Mengaktifkan `attackHeld` pada buffering serangan ringan agar menahan klik-kiri dapat mengalirkan rangkaian kombo 3-hit secara mulus dan melanjutkan ke serangan berat.
   - Menambahkan proteksi `StopCurrentSwingCoroutine()` dan blok `try/finally` pada coroutine ayunan untuk menjamin pembersihan trail (`EndTrail()`) tanpa kebocoran pita trail saat ayunan disela atau dibatalkan.
 
 ## - 2026-10-09
