@@ -14,6 +14,15 @@ Semua perubahan penting pada proyek ini oleh M-Roihan (Roi) dari `branch-roi-1` 
 - **Integrasi 18 Modul Resmi Unity Technologies Skills (`.agents/skills/`)**:
   - Memasang 18 skill resmi dari Unity Technologies yang disaring khusus untuk kebutuhan game *Farm-Beware* (2D pixel perfect, 2D physics, tile palette/rule tiles, sprite atlas, sprite editor, audio mixers, optimize audio, UI uGUI/UITK, TextMeshPro, URP post-processing, URP render graph, NavMesh AI, Project Auditor, dan Localization).
 
+### Diubah (Changed)
+- **Sistem Dual Fast-Forward Waktu Siang (Shortcut '9' untuk Mode 12 Menit & Shortcut '0' untuk Mode 8x) (`DayNightTimeManager.cs`)**:
+  - Menetapkan durasi normal siang hari tetap pada basis default **16 menit (960 detik)**.
+  - Menambahkan shortcut tombol **`9`** (Alpha 9 & Numpad 9) untuk mengaktifkan **Mode Siang 12 Menit** dengan rasio percepatan **1.33x** (`16f / 12f = ~1.333x`), sehingga waktu siang 16 menit dipercepat dan selesai tepat dalam 12 menit waktu nyata.
+  - Mempertahankan shortcut tombol **`0`** (Alpha 0 & Numpad 0) untuk mode **Fast-Forward 8x** (siang hari selesai dalam 2 menit / 120 detik).
+  - Tampilan indikator kecepatan pada jam digital HUD ([`CombatPhaseTrackerUI.cs`](file:///f:/unity/Farm-Beware/Assets/Scripts/Features/Time/UI/CombatPhaseTrackerUI.cs)) otomatis menampilkan badge cyan `▶▶ 1.33x` saat mode 9 aktif dan `▶▶ 8x` saat mode 0 aktif.
+  - Floating text di atas kepala pemain memberi feedback spesifik (`⏩ Time Speed: 1.33x (12-Min Day Mode)` atau `⏩ Time Speed: 8x (Fast-Forward Mode)`).
+  - Kedua mode percepatan otomatis di-reset kembali normal (1x) saat malam hari (*Night Brawl*) dimulai.
+
 ### Diperbaiki (Fixed)
 - **Pembersihan Guard Jam Pagi 07:00-07:15 pada Save/Load & Runtime**:
   - Menghapus pengecekan hardcoded `targetHour >= 6.99f && targetHour <= 7.25f` pada [`DayNightTimeManager.cs`](file:///f:/unity/Farm-Beware/Assets/Scripts/Features/Time/DayNightTimeManager.cs) dan [`SaveSystemManager.cs`](file:///f:/unity/Farm-Beware/Assets/Scripts/Features/SaveSystem/SaveSystemManager.cs) sehingga pemain yang menyimpan game pada rentang pagi hari (07:00 - 07:15 in-game) tidak lagi ter-reset mundur ke 06:00.

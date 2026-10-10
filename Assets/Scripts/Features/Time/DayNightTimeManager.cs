@@ -103,10 +103,14 @@ namespace FeaturesTime
         [Tooltip("Jika true, menyinkronkan event fase dengan TimeManager legacy di project.")]
         [SerializeField] private bool syncWithLegacyTimeManager = true;
 
-        [Header("5. Fast-Forward Debug Settings (Shortcut Key: '0')")]
-        [Tooltip("Pengali kecepatan waktu saat mode cepat aktif (default 8x).")]
-        [SerializeField] private float fastForwardMultiplier = 8.0f;
-        [SerializeField] private bool isFastForwardActive = false;
+        [Header("5. Fast-Forward Debug Settings (Key '9': 12-Min Day [1.33x], Key '0': 8x)")]
+        [Tooltip("Pengali kecepatan waktu agar siang berlangsung 12 menit dari basis 16 menit (16/12 = ~1.333x) (Shortcut: '9').")]
+        [SerializeField] private float fastForwardMultiplier12Min = 16f / 12f;
+
+        [Tooltip("Pengali kecepatan waktu saat mode cepat 8x aktif (Shortcut: '0').")]
+        [SerializeField] private float fastForwardMultiplier8x = 8.0f;
+
+        [SerializeField] private float currentSpeedMultiplier = 1.0f;
 
         /// <summary>
         /// Flag indicating if legacy time manager synchronization is enabled.
@@ -119,14 +123,24 @@ namespace FeaturesTime
         public float DayStartHour => dayStartHour;
 
         /// <summary>
-        /// Status apakah mode percepatan waktu (4x fast-forward) sedang aktif.
+        /// Status apakah mode percepatan waktu (> 1.0x) sedang aktif.
         /// </summary>
-        public bool IsFastForwardActive => isFastForwardActive;
+        public bool IsFastForwardActive => currentSpeedMultiplier > 1.01f;
 
         /// <summary>
-        /// Pengali percepatan waktu.
+        /// Pengali percepatan waktu yang sedang aktif.
         /// </summary>
-        public float FastForwardMultiplier => fastForwardMultiplier;
+        public float FastForwardMultiplier => currentSpeedMultiplier;
+
+        /// <summary>
+        /// Pengali mode 12 menit (1.33x).
+        /// </summary>
+        public float Multiplier12Min => fastForwardMultiplier12Min;
+
+        /// <summary>
+        /// Pengali mode cepat 8x.
+        /// </summary>
+        public float Multiplier8x => fastForwardMultiplier8x;
 
         #endregion
 
@@ -228,6 +242,10 @@ namespace FeaturesTime
             duskStartHour = 15.75f;
             duskWarningHour = 15.75f;
 
+            daytimeDurationRealSeconds = 960f;
+            realSecondsPerInGameDay = 1920f;
+            currentSpeedMultiplier = 1.0f;
+
             if (currentHour < 6.0f)
             {
                 currentHour = dayStartHour;
@@ -304,7 +322,7 @@ namespace FeaturesTime
         {
             if (phase == TimeManager.DayPhase.Night)
             {
-                isFastForwardActive = false;
+                currentSpeedMultiplier = 1.0f;
                 SetTime(nightStartHour);
             }
             else if (phase == TimeManager.DayPhase.Day)
@@ -330,13 +348,19 @@ namespace FeaturesTime
             if (Time.timeScale <= 0f || FarmBeware.Core.Runtime.UIModalHelper.IsSaveUIOpen)
                 return;
 
-            // Shortcut keybind '0' (Alpha 0 & Numpad 0) untuk toggle kecepatan waktu 4x pada fase siang
+            // Shortcut keybinds:
+            // '9' -> Toggle mode 1.33x agar waktu siang selesai dalam 12 menit (16/12 = ~1.333x)
+            // '0' -> Toggle mode 8x Fast-Forward (16 menit selesai dalam 2 menit)
             if (UnityEngine.InputSystem.Keyboard.current != null)
             {
                 var kb = UnityEngine.InputSystem.Keyboard.current;
-                if (kb.digit0Key.wasPressedThisFrame || kb.numpad0Key.wasPressedThisFrame)
+                if (kb.digit9Key.wasPressedThisFrame || kb.numpad9Key.wasPressedThisFrame)
                 {
-                    ToggleFastForward();
+                    ToggleSpeedMode(fastForwardMultiplier12Min, "12-Min Day Mode");
+                }
+                else if (kb.digit0Key.wasPressedThisFrame || kb.numpad0Key.wasPressedThisFrame)
+                {
+                    ToggleSpeedMode(fastForwardMultiplier8x, "Fast-Forward Mode");
                 }
             }
 
@@ -347,8 +371,8 @@ namespace FeaturesTime
 
             if (isDay)
             {
-                // Advance real daytime timer (dikalikan pengali fast-forward jika aktif)
-                float timeStep = Time.deltaTime * (isFastForwardActive ? fastForwardMultiplier : 1.0f);
+                // Advance real daytime timer dikalikan pengali kecepatan aktif
+                float timeStep = Time.deltaTime * currentSpeedMultiplier;
                 daytimeElapsedSeconds += timeStep;
                 float targetHour = EvaluateDaytimeHour(daytimeElapsedSeconds, daytimeDurationRealSeconds);
                 ApplyHourInternal(targetHour);
@@ -369,16 +393,25 @@ namespace FeaturesTime
         }
 
         /// <summary>
-        /// Menyalakan / mematikan mode percepatan waktu (4x Fast-Forward) pada siang hari.
+        /// Menyalakan / mematikan mode percepatan waktu (1.33x untuk 12 menit, atau 8x).
         /// </summary>
-        public void ToggleFastForward()
+        public void ToggleSpeedMode(float targetMultiplier, string modeName)
         {
-            isFastForwardActive = !isFastForwardActive;
+            if (Mathf.Approximately(currentSpeedMultiplier, targetMultiplier))
+            {
+                // Jika mode yang sama sudah aktif, matikan kembali ke normal 1x
+                currentSpeedMultiplier = 1.0f;
+            }
+            else
+            {
+                currentSpeedMultiplier = targetMultiplier;
+            }
 
-            string msg = isFastForwardActive
-                ? $"⏩ Time Speed: {fastForwardMultiplier:0.#}x (Fast-Forward)"
-                : "▶️ Time Speed: 1x (Normal)";
-            Color col = isFastForwardActive ? new Color(0.2f, 0.85f, 1f) : new Color(0.85f, 0.85f, 0.85f);
+            bool isActive = IsFastForwardActive;
+            string msg = isActive
+                ? $"⏩ Time Speed: {currentSpeedMultiplier:0.##}x ({modeName})"
+                : "▶️ Time Speed: 1x (Normal 16-Minute Day)";
+            Color col = isActive ? new Color(0.2f, 0.85f, 1f) : new Color(0.85f, 0.85f, 0.85f);
 
             var floatingText = FarmBeware.Core.Runtime.ServiceLocator.Resolve<FarmBeware.Core.Runtime.IFloatingTextService>();
             var player = FarmBeware.Core.Runtime.ServiceLocator.Resolve<FarmBeware.Core.Runtime.IPlayerContext>();
@@ -388,6 +421,14 @@ namespace FeaturesTime
             }
 
             Debug.Log($"[DayNightTimeManager] {msg}");
+        }
+
+        /// <summary>
+        /// Menyalakan / mematikan mode percepatan waktu 8x (backward-compatible helper).
+        /// </summary>
+        public void ToggleFastForward()
+        {
+            ToggleSpeedMode(fastForwardMultiplier8x, "Fast-Forward Mode");
         }
 
         private void TriggerDuskWarning()
@@ -411,7 +452,7 @@ namespace FeaturesTime
 
         private void TriggerAutoSleep()
         {
-            isFastForwardActive = false;
+            currentSpeedMultiplier = 1.0f;
             autoSleepTriggered = true;
             OnAutoSleepTriggered?.Invoke();
 

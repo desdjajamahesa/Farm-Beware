@@ -167,7 +167,7 @@ namespace FeaturesTime.UI
             {
                 int displayMinute = FormatSteppedMinute(minute);
                 string ffTag = (DayNightTimeManager.Instance != null && DayNightTimeManager.Instance.IsFastForwardActive)
-                    ? $" <size=70%><color=#38BDF8>▶▶ {DayNightTimeManager.Instance.FastForwardMultiplier:0.#}x</color></size>"
+                    ? $" <size=70%><color=#38BDF8>▶▶ {DayNightTimeManager.Instance.FastForwardMultiplier:0.##}x</color></size>"
                     : "";
                 clockText.text = $"{hour:D2}:{displayMinute:D2}{ffTag}";
             }

@@ -3248,11 +3248,6 @@ MonoBehaviour:
   - 10
   - 10
   - 15
-  kickStaminaCost: 15
-  kickDamage: 22
-  kickKnockback: 10.5
-  kickHitRange: 2
-  kickCooldown: 1.8
   skillTriggerName: SkillAttack
   skillStaminaCost: 25
   skillDamageMultiplier: 2
@@ -14642,6 +14637,9 @@ MonoBehaviour:
   duskWarningHour: 15.75
   autoSleepAtNightfall: 1
   syncWithLegacyTimeManager: 1
+  fastForwardMultiplier12Min: 1.3333334
+  fastForwardMultiplier8x: 8
+  currentSpeedMultiplier: 1
   currentHour: 6
   currentDay: 1
   currentPhase: 1
@@ -42169,11 +42167,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::FeaturesTime.UI.CombatPhaseTrackerUI
   dayText: {fileID: 0}
   phaseText: {fileID: 0}
+  clockText: {fileID: 0}
   waveText: {fileID: 0}
   enemiesText: {fileID: 0}
   phaseBadgeBackground: {fileID: 0}
   dayBadgeColor: {r: 0.95, g: 0.7, b: 0.2, a: 0.85}
   nightBadgeColor: {r: 0.65, g: 0.15, b: 0.2, a: 0.9}
+  clockMinuteStep: 15
 --- !u!1 &955608161
 GameObject:
   m_ObjectHideFlags: 0
@@ -99378,9 +99378,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::FeaturesTime.Atmosphere.DayNightAudioController
   dayAmbienceClip: {fileID: 0}
   nightAmbienceClip: {fileID: 0}
+  duskBellClip: {fileID: 0}
   enableProceduralFallback: 0
   maxVolume: 0.5
   crossfadeDuration: 3
+  bellVolume: 0.85
 --- !u!114 &2027862385
 MonoBehaviour:
   m_ObjectHideFlags: 0
