@@ -389,6 +389,7 @@ namespace FeaturesSaveSystem
             nameTmp.fontSize = 22;
             nameTmp.color = new Color(0.98f, 0.92f, 0.78f);
             nameTmp.alignment = TextAlignmentOptions.MidlineLeft;
+            nameTmp.raycastTarget = false;
 
             // Details / Metadata
             var detailGO = new GameObject("Details", typeof(RectTransform), typeof(TextMeshProUGUI));
@@ -407,6 +408,7 @@ namespace FeaturesSaveSystem
             dTmp.fontSize = 14;
             dTmp.color = Color.white;
             dTmp.alignment = TextAlignmentOptions.MidlineLeft;
+            dTmp.raycastTarget = false;
 
             // Right Actions Container
             var actionsGO = new GameObject("Actions", typeof(RectTransform));
@@ -487,6 +489,7 @@ namespace FeaturesSaveSystem
             tmp.fontSize = 15;
             tmp.color = Color.white;
             tmp.alignment = TextAlignmentOptions.Center;
+            tmp.raycastTarget = false;
 
             return btn;
         }
@@ -732,6 +735,7 @@ namespace FeaturesSaveSystem
             xTmp.fontSize = 20;
             xTmp.color = Color.white;
             xTmp.alignment = TextAlignmentOptions.Center;
+            xTmp.raycastTarget = false;
 
             // 4. New Save Section (Input Field + Save Button)
             var newSaveSection = new GameObject("NewSaveSection", typeof(RectTransform), typeof(Image));
@@ -832,6 +836,7 @@ namespace FeaturesSaveSystem
             sTmp.fontSize = 18;
             sTmp.color = Color.white;
             sTmp.alignment = TextAlignmentOptions.Center;
+            sTmp.raycastTarget = false;
 
             // 5. Status Feedback Banner
             var fbGO = new GameObject("FeedbackText", typeof(RectTransform), typeof(TextMeshProUGUI));
@@ -1006,6 +1011,7 @@ namespace FeaturesSaveSystem
             cTmp.fontSize = 17;
             cTmp.color = Color.white;
             cTmp.alignment = TextAlignmentOptions.Center;
+            cTmp.raycastTarget = false;
 
             // Action Button
             var actGO = new GameObject("Btn_ConfirmAction", typeof(RectTransform), typeof(Image), typeof(Button));
@@ -1026,6 +1032,7 @@ namespace FeaturesSaveSystem
             confirmActionBtnText.fontSize = 17;
             confirmActionBtnText.color = Color.white;
             confirmActionBtnText.alignment = TextAlignmentOptions.Center;
+            confirmActionBtnText.raycastTarget = false;
 
             confirmDialogRoot.SetActive(false);
         }

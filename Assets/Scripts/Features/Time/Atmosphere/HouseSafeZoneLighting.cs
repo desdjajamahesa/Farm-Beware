@@ -29,9 +29,9 @@ namespace FeaturesTime.Atmosphere
             public Renderer fixtureRenderer;
 
             [Header("Color & Temperature")]
-            [Tooltip("Suhu Kelvin warna lampu (misal: 2400K - 2600K amber hangat).")]
+            [Tooltip("Suhu Kelvin warna lampu (misal: 6500K putih netral, atau 2500K amber hangat).")]
             [Range(1000f, 15000f)]
-            public float colorTemperatureKelvin = 2500f;
+            public float colorTemperatureKelvin = 6500f;
 
             [Tooltip("Warna filter pengali (default: putih).")]
             public Color lightColorFilter = Color.white;
@@ -96,11 +96,17 @@ namespace FeaturesTime.Atmosphere
 
         private void Start()
         {
-            TimeManager.DayPhase startingPhase = TimeManager.Instance != null 
-                ? TimeManager.Instance.currentPhase 
-                : TimeManager.DayPhase.Day;
+            bool isNight = false;
+            if (DayNightTimeManager.Instance != null)
+            {
+                isNight = DayNightTimeManager.Instance.CurrentPhase == EnvironmentPhase.Night;
+            }
+            else if (TimeManager.Instance != null)
+            {
+                isNight = TimeManager.Instance.currentPhase == TimeManager.DayPhase.Night;
+            }
 
-            ApplyInstant(startingPhase);
+            ApplyInstant(isNight ? TimeManager.DayPhase.Night : TimeManager.DayPhase.Day);
         }
 
         private void OnEnable()
@@ -108,6 +114,10 @@ namespace FeaturesTime.Atmosphere
             if (TimeManager.Instance != null)
             {
                 TimeManager.Instance.OnPhaseChanged += HandlePhaseChanged;
+            }
+            if (DayNightTimeManager.Instance != null)
+            {
+                DayNightTimeManager.Instance.OnTimePhaseChanged += HandleEnvironmentPhaseChanged;
             }
         }
 
@@ -117,9 +127,20 @@ namespace FeaturesTime.Atmosphere
             {
                 TimeManager.Instance.OnPhaseChanged -= HandlePhaseChanged;
             }
+            if (DayNightTimeManager.Instance != null)
+            {
+                DayNightTimeManager.Instance.OnTimePhaseChanged -= HandleEnvironmentPhaseChanged;
+            }
 
             if (transitionCoroutine != null) StopCoroutine(transitionCoroutine);
             if (flickerCoroutine != null) StopCoroutine(flickerCoroutine);
+        }
+
+        private void HandleEnvironmentPhaseChanged(EnvironmentPhase envPhase)
+        {
+            bool isNight = (envPhase == EnvironmentPhase.Night);
+            TimeManager.DayPhase phase = isNight ? TimeManager.DayPhase.Night : TimeManager.DayPhase.Day;
+            HandlePhaseChanged(phase);
         }
 
         private void HandlePhaseChanged(TimeManager.DayPhase newPhase)

@@ -40,6 +40,9 @@ namespace FeaturesCamera
         public bool allowMouseOrbit = true;
 
         [Header("Zoom")]
+        [Tooltip("Enable mouse scroll zoom (disabled by default to reserve scroll wheel for hotbar).")]
+        public bool enableMouseZoom = false;
+
         [Tooltip("Scroll wheel zoom speed.")]
         public float zoomSpeed = 4f;
 
@@ -150,8 +153,11 @@ namespace FeaturesCamera
                 deltaX = delta.x * 0.2f;
                 deltaY = delta.y * 0.2f;
 
-                Vector2 scroll = Mouse.current.scroll.ReadValue();
-                scrollDelta = scroll.y * 0.005f;
+                if (enableMouseZoom)
+                {
+                    Vector2 scroll = Mouse.current.scroll.ReadValue();
+                    scrollDelta = scroll.y * 0.005f;
+                }
             }
 
             // Apply orbit
@@ -163,7 +169,7 @@ namespace FeaturesCamera
             }
 
             // Apply zoom
-            if (Mathf.Abs(scrollDelta) > 0.001f && cam != null)
+            if (enableMouseZoom && Mathf.Abs(scrollDelta) > 0.001f && cam != null)
             {
                 if (cam.orthographic)
                 {

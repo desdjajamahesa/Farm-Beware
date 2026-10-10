@@ -116,14 +116,22 @@ public class DeathScreenUI : MonoBehaviour, IModalWindow
 
     private void HandleSaveUIClosed()
     {
-        if (isBrowsingSaveUI)
+        if (SaveSystemUI.Instance != null)
+        {
+            SaveSystemUI.Instance.OnSaveUIClosed -= HandleSaveUIClosed;
+        }
+
+        if (isBrowsingSaveUI && !isHandlingAction)
         {
             isBrowsingSaveUI = false;
             // Jika pemain membatalkan menu save dan HP masih 0 (belum pulih), buka kembali death screen
             var playerStats = FindFirstObjectByType<PlayerStats>();
-            if (playerStats != null && playerStats.currentHealth <= 0)
+            if (playerStats == null || playerStats.currentHealth <= 0)
             {
-                Open();
+                if (modalPanel != null)
+                {
+                    modalPanel.SetActive(true);
+                }
             }
         }
     }
@@ -386,6 +394,7 @@ public class DeathScreenUI : MonoBehaviour, IModalWindow
         tmp.fontSize = 15;
         tmp.color = Color.white;
         tmp.alignment = TextAlignmentOptions.Center;
+        tmp.raycastTarget = false;
 
         // Subtitle TMP
         var subTextGO = new GameObject("Text_Subtitle", typeof(RectTransform), typeof(TextMeshProUGUI));
@@ -400,6 +409,7 @@ public class DeathScreenUI : MonoBehaviour, IModalWindow
         subTmp.fontSize = 11;
         subTmp.color = new Color(0.9f, 0.9f, 0.95f, 0.75f);
         subTmp.alignment = TextAlignmentOptions.Center;
+        subTmp.raycastTarget = false;
 
         return btn;
     }
@@ -555,19 +565,24 @@ public class DeathScreenUI : MonoBehaviour, IModalWindow
 
         isBrowsingSaveUI = true;
 
-        // Tutup panel Death Screen seketika agar tidak menumpuk di latar belakang
-        CloseInstant();
+        // Hide Death Screen modal panel while viewing save slots
+        if (modalPanel != null)
+        {
+            modalPanel.SetActive(false);
+        }
 
         // Buka modal SaveSystemUI (pemain dapat memilih slot simpanan untuk dimuat)
         if (SaveSystemUI.Instance != null)
         {
+            SaveSystemUI.Instance.OnSaveUIClosed -= HandleSaveUIClosed;
+            SaveSystemUI.Instance.OnSaveUIClosed += HandleSaveUIClosed;
             SaveSystemUI.Instance.Open();
         }
         else
         {
             Debug.LogWarning("[DeathScreenUI] SaveSystemUI.Instance is not available.");
             isBrowsingSaveUI = false;
-            Open();
+            if (modalPanel != null) modalPanel.SetActive(true);
         }
     }
 

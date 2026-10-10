@@ -30,12 +30,12 @@ namespace FeaturesTime.Atmosphere
         [Tooltip("Jangkauan Point Light lentera.")]
         [SerializeField] [Range(1f, 20f)] private float lightRange = 5.5f;
 
-        [Tooltip("Warna cahaya lentera (hangat amber).")]
-        [SerializeField] private Color lightColor = new Color(1.0f, 0.82f, 0.55f, 1.0f);
+        [Tooltip("Warna cahaya lentera (default: putih bersih / neutral white).")]
+        [SerializeField] private Color lightColor = Color.white;
 
         [Header("Glass Emissive Visuals")]
-        [Tooltip("Warna pendaran HDR pada kaca saat malam hari.")]
-        [SerializeField] [ColorUsage(true, true)] private Color nightEmissionColor = new Color(2.5f, 2.2f, 1.75f, 2.5f);
+        [Tooltip("Warna pendaran HDR pada kaca saat malam hari (putih bersih).")]
+        [SerializeField] [ColorUsage(true, true)] private Color nightEmissionColor = new Color(2.5f, 2.5f, 2.5f, 1.0f);
 
         [Tooltip("Warna pendaran pada kaca saat siang hari (hitam = tidak berpendar).")]
         [SerializeField] private Color dayEmissionColor = Color.black;

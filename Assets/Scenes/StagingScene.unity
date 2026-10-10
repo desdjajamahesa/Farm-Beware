@@ -3054,7 +3054,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 25d535644e7085146969390a49aa021d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::FeaturesInteraction.PlayerInteractor
-  interactRadius: 1
+  interactRadius: 2.2
   interactableLayer:
     serializedVersion: 2
     m_Bits: 4294967295
@@ -3966,7 +3966,7 @@ Light:
   m_Enabled: 0
   serializedVersion: 12
   m_Type: 0
-  m_Color: {r: 1, g: 0.615902, b: 0.25636154, a: 1}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_Intensity: 0
   m_Range: 22
   m_SpotAngle: 135
@@ -7130,7 +7130,7 @@ Light:
   m_Enabled: 0
   serializedVersion: 12
   m_Type: 0
-  m_Color: {r: 1, g: 0.615902, b: 0.25636154, a: 1}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_Intensity: 0
   m_Range: 22
   m_SpotAngle: 135
@@ -17852,7 +17852,7 @@ Light:
   m_Enabled: 0
   serializedVersion: 12
   m_Type: 2
-  m_Color: {r: 1, g: 0.615902, b: 0.25636154, a: 1}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_Intensity: 0
   m_Range: 20
   m_SpotAngle: 30
@@ -44366,7 +44366,7 @@ Light:
   m_Enabled: 0
   serializedVersion: 12
   m_Type: 0
-  m_Color: {r: 1, g: 0.62378275, b: 0.27477717, a: 1}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_Intensity: 0
   m_Range: 22
   m_SpotAngle: 135
@@ -45399,7 +45399,7 @@ Light:
   m_Enabled: 0
   serializedVersion: 12
   m_Type: 2
-  m_Color: {r: 1, g: 0.63908195, b: 0.3098349, a: 1}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_Intensity: 0
   m_Range: 20
   m_SpotAngle: 30
@@ -49324,7 +49324,7 @@ Light:
   m_Enabled: 0
   serializedVersion: 12
   m_Type: 2
-  m_Color: {r: 1, g: 0.60785884, b: 0.23729977, a: 1}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_Intensity: 0
   m_Range: 20
   m_SpotAngle: 30
@@ -57036,7 +57036,7 @@ Light:
   m_Enabled: 0
   serializedVersion: 12
   m_Type: 0
-  m_Color: {r: 1, g: 0.62378275, b: 0.27477717, a: 1}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_Intensity: 0
   m_Range: 22
   m_SpotAngle: 135
@@ -75746,7 +75746,7 @@ MonoBehaviour:
     downlight: {fileID: 1716673685}
     fillLight: {fileID: 1097657420}
     fixtureRenderer: {fileID: 732686200}
-    colorTemperatureKelvin: 2400
+    colorTemperatureKelvin: 6500
     lightColorFilter: {r: 1, g: 1, b: 1, a: 1}
     nightDownlightIntensity: 18
     nightFillIntensity: 4.5
@@ -75759,7 +75759,7 @@ MonoBehaviour:
     downlight: {fileID: 1003723079}
     fillLight: {fileID: 1859136451}
     fixtureRenderer: {fileID: 521199685}
-    colorTemperatureKelvin: 2500
+    colorTemperatureKelvin: 6500
     lightColorFilter: {r: 1, g: 1, b: 1, a: 1}
     nightDownlightIntensity: 13.5
     nightFillIntensity: 3
@@ -75772,7 +75772,7 @@ MonoBehaviour:
     downlight: {fileID: 190562729}
     fillLight: {fileID: 446349628}
     fixtureRenderer: {fileID: 1884428433}
-    colorTemperatureKelvin: 2450
+    colorTemperatureKelvin: 6500
     lightColorFilter: {r: 1, g: 1, b: 1, a: 1}
     nightDownlightIntensity: 11.5
     nightFillIntensity: 2.5
@@ -75785,7 +75785,7 @@ MonoBehaviour:
     downlight: {fileID: 99922429}
     fillLight: {fileID: 2065431980}
     fixtureRenderer: {fileID: 458619726}
-    colorTemperatureKelvin: 2450
+    colorTemperatureKelvin: 6500
     lightColorFilter: {r: 1, g: 1, b: 1, a: 1}
     nightDownlightIntensity: 14
     nightFillIntensity: 3.2
@@ -75798,7 +75798,7 @@ MonoBehaviour:
     downlight: {fileID: 1283867378}
     fillLight: {fileID: 1860587561}
     fixtureRenderer: {fileID: 1110811407}
-    colorTemperatureKelvin: 2500
+    colorTemperatureKelvin: 6500
     lightColorFilter: {r: 1, g: 1, b: 1, a: 1}
     nightDownlightIntensity: 12
     nightFillIntensity: 2.6
@@ -75811,7 +75811,7 @@ MonoBehaviour:
     downlight: {fileID: 1697181016}
     fillLight: {fileID: 1020543018}
     fixtureRenderer: {fileID: 781091054}
-    colorTemperatureKelvin: 2600
+    colorTemperatureKelvin: 6500
     lightColorFilter: {r: 1, g: 1, b: 1, a: 1}
     nightDownlightIntensity: 13
     nightFillIntensity: 3
@@ -75824,7 +75824,7 @@ MonoBehaviour:
     downlight: {fileID: 0}
     fillLight: {fileID: 0}
     fixtureRenderer: {fileID: 0}
-    colorTemperatureKelvin: 2600
+    colorTemperatureKelvin: 6500
     lightColorFilter: {r: 1, g: 1, b: 1, a: 1}
     nightDownlightIntensity: 12.5
     nightFillIntensity: 2.7
@@ -75837,7 +75837,7 @@ MonoBehaviour:
     downlight: {fileID: 0}
     fillLight: {fileID: 0}
     fixtureRenderer: {fileID: 0}
-    colorTemperatureKelvin: 2400
+    colorTemperatureKelvin: 6500
     lightColorFilter: {r: 1, g: 1, b: 1, a: 1}
     nightDownlightIntensity: 14
     nightFillIntensity: 3.2
@@ -82873,7 +82873,7 @@ Light:
   m_Enabled: 0
   serializedVersion: 12
   m_Type: 0
-  m_Color: {r: 1, g: 0.63908195, b: 0.3098349, a: 1}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_Intensity: 0
   m_Range: 22
   m_SpotAngle: 135
@@ -84114,7 +84114,7 @@ Light:
   m_Enabled: 0
   serializedVersion: 12
   m_Type: 0
-  m_Color: {r: 1, g: 0.60785884, b: 0.23729977, a: 1}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_Intensity: 0
   m_Range: 22
   m_SpotAngle: 135
@@ -90612,7 +90612,7 @@ Light:
   m_Enabled: 0
   serializedVersion: 12
   m_Type: 2
-  m_Color: {r: 1, g: 0.62378275, b: 0.27477717, a: 1}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_Intensity: 0
   m_Range: 20
   m_SpotAngle: 30
@@ -90869,7 +90869,7 @@ Light:
   m_Enabled: 0
   serializedVersion: 12
   m_Type: 2
-  m_Color: {r: 1, g: 0.62378275, b: 0.27477717, a: 1}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_Intensity: 0
   m_Range: 20
   m_SpotAngle: 30
@@ -101721,7 +101721,7 @@ Light:
   m_Enabled: 0
   serializedVersion: 12
   m_Type: 2
-  m_Color: {r: 1, g: 0.615902, b: 0.25636154, a: 1}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_Intensity: 0
   m_Range: 20
   m_SpotAngle: 30

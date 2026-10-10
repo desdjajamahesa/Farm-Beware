@@ -237,7 +237,11 @@ public class InventoryManagerUI : MonoBehaviour, IModalWindow
         {
             if (Time.frameCount != frameInventoryOpened && (isPlayerOpen || IsAnyInventoryUIRelatedOpen()))
             {
-                if (!UIModalHelper.IsSaveUIOpen)
+                if (currentStorageInventory != null || isTrophyCabinetMode)
+                {
+                    CloseAllUI();
+                }
+                else
                 {
                     TogglePlayerInventory();
                 }

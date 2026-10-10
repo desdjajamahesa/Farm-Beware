@@ -78,8 +78,6 @@ namespace FarmBeware.Core.Runtime
             // Remove existing occurrence if already present
             _stack.Remove(modal);
             _stack.Add(modal);
-
-            UIModalHelper.IsSaveUIOpen = true;
         }
 
         /// <summary>
@@ -99,11 +97,6 @@ namespace FarmBeware.Core.Runtime
             {
                 top.CloseModal();
             }
-
-            if (_stack.Count == 0)
-            {
-                UIModalHelper.IsSaveUIOpen = false;
-            }
         }
 
         /// <summary>
@@ -115,11 +108,6 @@ namespace FarmBeware.Core.Runtime
 
             _stack.Remove(modal);
             UIModalHelper.LastFrameUIPanelClosed = Time.frameCount;
-
-            if (_stack.Count == 0)
-            {
-                UIModalHelper.IsSaveUIOpen = false;
-            }
         }
 
         /// <summary>

@@ -124,6 +124,18 @@ public class MainMenuController : MonoBehaviour
         {
             var t = transform.Find("LoadGameButton");
             if (t == null && mainMenuPanel != null) t = mainMenuPanel.transform.Find("LoadGameButton");
+            if (t == null)
+            {
+                var buttons = GetComponentsInChildren<Button>(true);
+                foreach (var b in buttons)
+                {
+                    if (b.name == "LoadGameButton")
+                    {
+                        t = b.transform;
+                        break;
+                    }
+                }
+            }
             if (t != null) loadGameButton = t.GetComponent<Button>();
         }
         if (quitButton == null && mainMenuPanel != null)
@@ -274,7 +286,13 @@ public class MainMenuController : MonoBehaviour
         if (currentState == MenuState.Hidden)
         {
             // 1. If a gameplay UI panel was already closed on this exact frame, DO NOT pause!
-            if (Time.frameCount == LastFrameUIPanelClosed)
+            if (Time.frameCount == LastFrameUIPanelClosed || Time.frameCount == FarmBeware.Core.Runtime.UIModalHelper.LastFrameUIPanelClosed)
+            {
+                return;
+            }
+
+            // 1b. If ModalStackManager has active modal windows, let ModalStackManager handle dismissal
+            if (FarmBeware.Core.Runtime.ModalStackManager.Instance != null && FarmBeware.Core.Runtime.ModalStackManager.Instance.HasActiveModal)
             {
                 return;
             }
@@ -283,13 +301,6 @@ public class MainMenuController : MonoBehaviour
             if (TryCloseAnyGameplayPanel())
             {
                 LastFrameUIPanelClosed = Time.frameCount;
-                return;
-            }
-
-            // 3. If player control input is locked (e.g. cutscene, transition), do not pause
-            if (playerControl == null) playerControl = FindFirstObjectByType<PlayerControl>();
-            if (playerControl != null && playerControl.isInputLocked)
-            {
                 return;
             }
 
