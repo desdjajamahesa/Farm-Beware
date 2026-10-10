@@ -166,6 +166,11 @@ namespace FeaturesCombat.Adapters
         /// <param name="isHeavy">True if performing heavy charge release strike.</param>
         public void BeginTrail(int comboIndex, bool isFinisher = false, bool isHeavy = false)
         {
+            if (trailRenderer == null)
+            {
+                InitializeForWeapon(gameObject);
+            }
+
             if (trailRenderer == null) return;
 
             EnsureStaticResources();

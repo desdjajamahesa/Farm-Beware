@@ -1135,8 +1135,8 @@ public class PlayerEquipment : MonoBehaviour
         if (currentWeaponTrail == null)
         {
             currentWeaponTrail = currentWeaponModel.AddComponent<FeaturesCombat.Adapters.WeaponTrailController>();
-            currentWeaponTrail.InitializeForWeapon(currentWeaponModel);
         }
+        currentWeaponTrail.InitializeForWeapon(currentWeaponModel);
     }
 
     private void FindHandSocketIfNeeded()
