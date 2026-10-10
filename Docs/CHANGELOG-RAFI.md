@@ -41,6 +41,14 @@ Semua perubahan penting pada proyek ini oleh Rafi akan dicatat di halaman ini.
       - Mendaftarkan pelepasan referensi `ServiceLocator.Unregister<IPlayerDamageNotifier>()` pada `OnDestroy()` di [`PlayerStats.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Player/PlayerStats.cs) untuk mencegah dangling pointer lintas scene reload.
     - Pohon kerja Git terisolasi murni pada `Rafi-branch` tanpa menyentuh `Sprint-branch`.
 
+### Diperbaiki (Fixed)
+- **Konsistensi Timing & Jejak Senjata Serangan Tahan (Hold Attack & Heavy Strike Trail Consistency)**:
+  - Mengeliminasi desinkronisasi divisor kecepatan ayunan pada [`PlayerEquipment.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Player/PlayerEquipment.cs) dengan membagi delay dan durasi terhadap `speedMultiplier` animasi aktual, bukan membatalkannya melalui pembagian ulang terhadap base speed.
+  - Menyelaraskan delay ayunan berat (0.42s) dan durasi trail (0.38s) dengan dorongan fisika dan putaran visual 360 pada [`PlayerControl.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Player/PlayerControl.cs), sehingga pita kobaran api merah menyala presisi pada awal tebasan berputar.
+  - Menginisiasi `StartHeavyCharge` seketika saat tombol serangan mulai ditekan, menghilangkan akumulasi penundaan ganda yang sebelumnya menggagalkan eksekusi pelepasan serangan berat di `MeleeCombatStateMachine`.
+  - Mengaktifkan `attackHeld` pada buffering serangan ringan agar menahan klik-kiri dapat mengalirkan rangkaian kombo 3-hit secara mulus dan melanjutkan ke serangan berat.
+  - Menambahkan proteksi `StopCurrentSwingCoroutine()` dan blok `try/finally` pada coroutine ayunan untuk menjamin pembersihan trail (`EndTrail()`) tanpa kebocoran pita trail saat ayunan disela atau dibatalkan.
+
 ## - 2026-10-09
 
 ### Ditambahkan (Added)

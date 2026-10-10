@@ -694,14 +694,14 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
         // --- COMBO ADVANCEMENT / BUFFERING DURING LIGHT ATTACK ---
         if (isLightAttacking)
         {
-            if (attackPressed)
+            if (attackPressed || attackHeld)
             {
                 if (playerEquipment != null && playerEquipment.TryPerformAttack())
                 {
                     StartLightAttack();
                     hasBufferedAttack = false;
                 }
-                else
+                else if (attackPressed)
                 {
                     hasBufferedAttack = true;
                     bufferedAttackTime = Time.time;
@@ -734,10 +734,10 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
         }
 
         // --- Standard Melee Attack Processing (Light Combo / Dash Attack / Charged Heavy) ---
-        if (attackPressed)
+        if (attackPressed || (attackHeld && !isChargingAttack && !isAttacking))
         {
             // If running/sprinting at high speed, trigger instantaneous Dash Attack!
-            if (isRunning && inputVector.sqrMagnitude >= 0.01f)
+            if (attackPressed && isRunning && inputVector.sqrMagnitude >= 0.01f)
             {
                 if (playerEquipment != null && playerEquipment.TryPerformDashAttack())
                 {
@@ -751,6 +751,10 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
 
             isChargingAttack = true;
             attackHoldDuration = 0f;
+            if (playerEquipment != null)
+            {
+                playerEquipment.CombatStateMachine.StartHeavyCharge(Time.time);
+            }
         }
 
         if (isChargingAttack)
@@ -758,9 +762,8 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
             if (attackHeld)
             {
                 attackHoldDuration += Time.deltaTime;
-                if (attackHoldDuration >= 0.35f && playerEquipment != null)
+                if (playerEquipment != null)
                 {
-                    playerEquipment.CombatStateMachine.StartHeavyCharge(Time.time);
                     playerEquipment.CombatStateMachine.UpdateCharge(Time.deltaTime);
                 }
             }
@@ -771,7 +774,8 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
                 if (attackHoldDuration >= 0.35f)
                 {
                     // Released after charging -> Heavy Attack!
-                    if (playerEquipment != null && playerEquipment.TryPerformHeavyAttack(playerEquipment.CombatStateMachine.ChargeRatio))
+                    float chargeRatio = (playerEquipment != null) ? playerEquipment.CombatStateMachine.ChargeRatio : 1f;
+                    if (playerEquipment != null && playerEquipment.TryPerformHeavyAttack(chargeRatio))
                     {
                         StartCoroutine(RoutineHeavyAttack());
                     }
@@ -779,6 +783,10 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
                 else
                 {
                     // Released quickly -> Standard 3-Hit Combo Light Attack!
+                    if (playerEquipment != null)
+                    {
+                        playerEquipment.CombatStateMachine.ResetToIdle();
+                    }
                     if (playerEquipment != null && playerEquipment.TryPerformAttack())
                     {
                         StartLightAttack();
@@ -822,7 +830,7 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
         if (animator != null)
             animator.SetBool("IsAttacking", true);
 
-        float atkSpeed = (playerEquipment != null) ? Mathf.Max(0.5f, playerEquipment.AttackAnimationSpeed) : 1f;
+        float atkSpeed = (animator != null && animator.speed > 0.1f) ? animator.speed : ((playerEquipment != null) ? Mathf.Max(0.5f, playerEquipment.AttackAnimationSpeed) : 1f);
 
         // Windup anticipation delay matching the 360 upward blade lift
         float windupWait = 0.42f / atkSpeed;
@@ -872,7 +880,7 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
         // Tunggu satu frame agar transisi animator ke state attack dimulai
         yield return null;
 
-        float atkSpeed = (playerEquipment != null) ? Mathf.Max(0.5f, playerEquipment.AttackAnimationSpeed) : 1f;
+        float atkSpeed = (animator != null && animator.speed > 0.1f) ? animator.speed : ((playerEquipment != null) ? Mathf.Max(0.5f, playerEquipment.AttackAnimationSpeed) : 1f);
         float maxLock = attackLockDuration / atkSpeed;
         float minLock = 0.20f / atkSpeed;
 
