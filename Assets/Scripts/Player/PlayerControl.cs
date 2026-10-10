@@ -771,8 +771,7 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
                 if (attackHoldDuration >= 0.35f)
                 {
                     // Released after charging -> Heavy Attack!
-                    float chargeRatio = (playerEquipment != null) ? playerEquipment.CombatStateMachine.ChargeRatio : 1f;
-                    if (playerEquipment != null && playerEquipment.TryPerformHeavyAttack(chargeRatio))
+                    if (playerEquipment != null && playerEquipment.TryPerformHeavyAttack(playerEquipment.CombatStateMachine.ChargeRatio))
                     {
                         StartCoroutine(RoutineHeavyAttack());
                     }
@@ -823,7 +822,7 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
         if (animator != null)
             animator.SetBool("IsAttacking", true);
 
-        float atkSpeed = (animator != null && animator.speed > 0.1f) ? animator.speed : ((playerEquipment != null) ? Mathf.Max(0.5f, playerEquipment.AttackAnimationSpeed) : 1f);
+        float atkSpeed = (playerEquipment != null) ? Mathf.Max(0.5f, playerEquipment.AttackAnimationSpeed) : 1f;
 
         // Windup anticipation delay matching the 360 upward blade lift
         float windupWait = 0.42f / atkSpeed;
@@ -873,7 +872,7 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
         // Tunggu satu frame agar transisi animator ke state attack dimulai
         yield return null;
 
-        float atkSpeed = (animator != null && animator.speed > 0.1f) ? animator.speed : ((playerEquipment != null) ? Mathf.Max(0.5f, playerEquipment.AttackAnimationSpeed) : 1f);
+        float atkSpeed = (playerEquipment != null) ? Mathf.Max(0.5f, playerEquipment.AttackAnimationSpeed) : 1f;
         float maxLock = attackLockDuration / atkSpeed;
         float minLock = 0.20f / atkSpeed;
 

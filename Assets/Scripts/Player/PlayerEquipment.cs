@@ -65,9 +65,9 @@ public class PlayerEquipment : MonoBehaviour
     [SerializeField] private float combo3SwingDuration = 0.38f;
 
     [Tooltip("Delay windup (detik) untuk ayunan Heavy Attack (Charged 360 Spin) pada base speed.")]
-    [SerializeField] private float heavySwingDelay = 0.42f;
+    [SerializeField] private float heavySwingDelay = 0.46f;
     [Tooltip("Durasi aktif putaran (detik) untuk Heavy Attack.")]
-    [SerializeField] private float heavySwingDuration = 0.38f;
+    [SerializeField] private float heavySwingDuration = 0.32f;
 
     [Header("Pengaturan Skill Tendangan (Spartan Kick)")]
     [Tooltip("Konsumsi stamina saat melancarkan tendangan (Kick).")]
@@ -318,7 +318,11 @@ public class PlayerEquipment : MonoBehaviour
             float activeRange = is360 ? attackHitRange * 1.15f : attackHitRange;
             float finalKnockback = knockback * combatStateMachine.GetCurrentKnockbackMultiplier() * statMods.KnockbackMultiplier;
 
-            StopCurrentSwingCoroutine();
+            if (currentSwingCoroutine != null)
+            {
+                StopCoroutine(currentSwingCoroutine);
+                currentSwingCoroutine = null;
+            }
 
             currentSwingCoroutine = StartCoroutine(RoutineSwingHitbox(finalDamage, finalKnockback, atkSpdMultiplier, is360, activeRange, isFinisher: is360));
 
@@ -378,7 +382,11 @@ public class PlayerEquipment : MonoBehaviour
         int finalDamage = Mathf.RoundToInt(baseDmg * dmgMult);
         float finalKnockback = knockback * combatStateMachine.GetCurrentKnockbackMultiplier();
 
-        StopCurrentSwingCoroutine();
+        if (currentSwingCoroutine != null)
+        {
+            StopCoroutine(currentSwingCoroutine);
+            currentSwingCoroutine = null;
+        }
 
         currentSwingCoroutine = StartCoroutine(RoutineSwingHitbox(finalDamage, finalKnockback, atkSpdMultiplier, is360: true, rangeOverride: attackHitRange * 1.3f, isHeavy: true));
         return true;
@@ -431,7 +439,11 @@ public class PlayerEquipment : MonoBehaviour
         int finalDamage = Mathf.RoundToInt(baseDmg * dmgMult);
         float finalKnockback = knockback * combatStateMachine.GetCurrentKnockbackMultiplier();
 
-        StopCurrentSwingCoroutine();
+        if (currentSwingCoroutine != null)
+        {
+            StopCoroutine(currentSwingCoroutine);
+            currentSwingCoroutine = null;
+        }
 
         currentSwingCoroutine = StartCoroutine(RoutineSwingHitbox(finalDamage, finalKnockback, atkSpdMultiplier, is360: false, rangeOverride: attackHitRange * 1.25f, isDash: true));
         return true;
@@ -610,24 +622,9 @@ public class PlayerEquipment : MonoBehaviour
         return false;
     }
 
-    private void StopCurrentSwingCoroutine()
-    {
-        if (currentSwingCoroutine != null)
-        {
-            StopCoroutine(currentSwingCoroutine);
-            currentSwingCoroutine = null;
-        }
-
-        var activeTrail = GetActiveTrail();
-        if (activeTrail != null)
-        {
-            activeTrail.EndTrail();
-        }
-    }
-
     private System.Collections.IEnumerator RoutineSwingHitbox(int damage, float knockback, float speedMultiplier, bool is360 = false, float rangeOverride = -1f, bool isFinisher = false, bool isHeavy = false, bool isDash = false)
     {
-        float speedRatio = Mathf.Max(0.1f, speedMultiplier);
+        float speedRatio = speedMultiplier / Mathf.Max(0.1f, attackAnimationSpeed);
         float delay;
         float duration;
 
@@ -691,21 +688,16 @@ public class PlayerEquipment : MonoBehaviour
             PerformDirectMeleeSweep(damage, knockback, is360, activeRange, isFinisher, isHeavy, isDash);
         }
 
-        try
-        {
-            yield return new WaitForSeconds(duration);
-        }
-        finally
-        {
-            if (activeTrail != null)
-            {
-                activeTrail.EndTrail();
-            }
+        yield return new WaitForSeconds(duration);
 
-            if (hitbox != null)
-            {
-                hitbox.Deactivate();
-            }
+        if (activeTrail != null)
+        {
+            activeTrail.EndTrail();
+        }
+
+        if (hitbox != null)
+        {
+            hitbox.Deactivate();
         }
 
         float maxWait = 0.5f / Mathf.Max(0.5f, speedMultiplier);
@@ -914,7 +906,6 @@ public class PlayerEquipment : MonoBehaviour
 
     private void OnDisable()
     {
-        StopCurrentSwingCoroutine();
         if (inventory != null)
         {
             inventory.OnInventoryChanged -= RefreshCurrentEquipment;
