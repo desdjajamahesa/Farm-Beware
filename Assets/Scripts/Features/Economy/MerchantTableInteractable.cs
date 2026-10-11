@@ -23,6 +23,32 @@ namespace FeaturesEconomy
             {
                 label.displayName = "Merchant Table (Trade)";
             }
+            if (stockItems == null || stockItems.Count == 0)
+            {
+                InitializeDefaultStock();
+            }
+        }
+
+        public void InitializeDefaultStock()
+        {
+            if (stockItems == null) stockItems = new List<ItemData>();
+            if (stockItems.Count > 0) return;
+
+            var db = Resources.Load<ItemDatabase>("Database/ItemDatabase");
+            if (db != null && db.GetAllItems() != null)
+            {
+                foreach (var item in db.GetAllItems())
+                {
+                    if (item == null) continue;
+                    if (item.category == ItemCategory.Seed ||
+                        (item.category == ItemCategory.Material && item.buyPrice > 0) ||
+                        item.itemId == "dummysword" || item.itemId == "food_bottle_water")
+                    {
+                        if (!stockItems.Contains(item))
+                            stockItems.Add(item);
+                    }
+                }
+            }
         }
 
         public void Interact(GameObject interactor)

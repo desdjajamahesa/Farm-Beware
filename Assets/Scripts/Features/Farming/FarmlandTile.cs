@@ -141,14 +141,6 @@ namespace FeaturesFarming
                 }
             }
 
-            // 2. Debug shortcut: Tekan tombol H untuk mempercepat panen secara instan (membantu testing)
-            if (Application.isPlaying && Time.timeScale > 0f && Keyboard.current != null && Keyboard.current.hKey.wasPressedThisFrame)
-            {
-                if (currentState == TileState.PlantedDry || currentState == TileState.PlantedWatered)
-                {
-                    ForceInstantHarvestReady();
-                }
-            }
         }
 
         public void Interact(GameObject interactor)

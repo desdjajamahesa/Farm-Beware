@@ -124,13 +124,23 @@ namespace FeaturesEconomy
         {
             if (itemsForSale == null) itemsForSale = new List<ItemData>();
 
-            // Muat dari ItemDatabase agar benih baru (seperti Seed_Corn) otomatis masuk katalog pedagang
+            bool IsShopItem(ItemData item)
+            {
+                if (item == null) return false;
+                if (item.category == ItemCategory.Seed) return true;
+                if (item.category == ItemCategory.Material && item.buyPrice > 0) return true;
+                if (item.itemId == "dummysword" || item.itemId == "food_bottle_water") return true;
+                if ((item.category == ItemCategory.Weapon || item.category == ItemCategory.Tool) && item.buyPrice > 0) return true;
+                return false;
+            }
+
+            // Muat dari ItemDatabase agar benih baru, bahan masak, dan pedang otomatis masuk katalog pedagang
             var db = Resources.Load<ItemDatabase>("Database/ItemDatabase");
             if (db != null && db.GetAllItems() != null)
             {
                 foreach (var item in db.GetAllItems())
                 {
-                    if (item != null && item.category == ItemCategory.Seed && !itemsForSale.Contains(item))
+                    if (IsShopItem(item) && !itemsForSale.Contains(item))
                     {
                         itemsForSale.Add(item);
                     }
@@ -140,7 +150,7 @@ namespace FeaturesEconomy
             var allItems = Resources.FindObjectsOfTypeAll<ItemData>();
             foreach (var item in allItems)
             {
-                if (item != null && item.category == ItemCategory.Seed && !itemsForSale.Contains(item))
+                if (IsShopItem(item) && !itemsForSale.Contains(item))
                 {
                     itemsForSale.Add(item);
                 }
@@ -152,7 +162,7 @@ namespace FeaturesEconomy
             {
                 string path = UnityEditor.AssetDatabase.GUIDToAssetPath(guid);
                 var item = UnityEditor.AssetDatabase.LoadAssetAtPath<ItemData>(path);
-                if (item != null && item.category == ItemCategory.Seed && !itemsForSale.Contains(item))
+                if (IsShopItem(item) && !itemsForSale.Contains(item))
                 {
                     itemsForSale.Add(item);
                 }
@@ -370,13 +380,17 @@ namespace FeaturesEconomy
                 canAfford1,
                 () => TryBuyItem(item, 1));
 
-            // 4. Buy 5 Button
-            int cost5 = item.buyPrice * 5;
-            bool canAfford5 = (playerGold >= cost5);
-            var b5 = CreateResponsiveButton(rowGO.transform, canAfford5 ? "Buy 5" : $"Buy 5 ({cost5}G)", 105,
-                canAfford5 ? new Color(0.12f, 0.48f, 0.28f, 1f) : new Color(0.24f, 0.26f, 0.3f, 0.5f),
-                canAfford5,
-                () => TryBuyItem(item, 5));
+            // 4. Buy 5 Button (only for stackable items)
+            ButtonResult b5 = default;
+            if (item.maxStack > 1)
+            {
+                int cost5 = item.buyPrice * 5;
+                bool canAfford5 = (playerGold >= cost5);
+                b5 = CreateResponsiveButton(rowGO.transform, canAfford5 ? "Buy 5" : $"Buy 5 ({cost5}G)", 105,
+                    canAfford5 ? new Color(0.12f, 0.48f, 0.28f, 1f) : new Color(0.24f, 0.26f, 0.3f, 0.5f),
+                    canAfford5,
+                    () => TryBuyItem(item, 5));
+            }
 
             cachedBuyRows.Add(new BuyRowView
             {

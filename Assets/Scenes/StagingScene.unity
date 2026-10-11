@@ -3163,12 +3163,12 @@ MonoBehaviour:
   slots:
   - item: {fileID: 11400000, guid: db06be8654e988b4ea9a81c755fd1d3c, type: 2}
     quantity: 1
-  - item: {fileID: 0}
-    quantity: 0
-  - item: {fileID: 0}
-    quantity: 0
-  - item: {fileID: 0}
-    quantity: 0
+  - item: {fileID: 11400000, guid: 9f1d2e3a4b5c6d7e8f0a1b2c3d4e5f60, type: 2}
+    quantity: 1
+  - item: {fileID: 11400000, guid: 18736835b0621ad478537e2fa98f4c07, type: 2}
+    quantity: 1
+  - item: {fileID: 11400000, guid: 204c190b81a6c054f8d1fe0f0c2a7a80, type: 2}
+    quantity: 6
   - item: {fileID: 0}
     quantity: 0
   - item: {fileID: 0}
@@ -3189,7 +3189,7 @@ MonoBehaviour:
   blockTrophyItems: 1
   hasHotbar: 1
   allowedFoodCategories: 
-  selectedHotbarIndex: 2
+  selectedHotbarIndex: 0
 --- !u!114 &81193524
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3291,7 +3291,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::FeaturesEconomy.PlayerWallet
   startingGold: 0
-  currentGold: 3385
+  currentGold: 0
 --- !u!114 &81193528
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -49225,6 +49225,12 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 204c190b81a6c054f8d1fe0f0c2a7a80, type: 2}
   - {fileID: 11400000, guid: 1555ed878052ac44c8b9e2fe43cbdf9a, type: 2}
   - {fileID: 11400000, guid: 68b7b9b656a45ff418f01157cf45b298, type: 2}
+  - {fileID: 11400000, guid: 2da20757d972f5e4387c2eab16885a48, type: 2}
+  - {fileID: 11400000, guid: 633df2dc5d064c743928aafb65fffb6f, type: 2}
+  - {fileID: 11400000, guid: 1c6c49817fca65540bf6a914b6a0b007, type: 2}
+  - {fileID: 11400000, guid: 65e193ea09deaae49bb2fbd321c6ef91, type: 2}
+  - {fileID: 11400000, guid: e23ce534d2dfa1c42961166921b2abc6, type: 2}
+  - {fileID: 11400000, guid: 18736835b0621ad478537e2fa98f4c07, type: 2}
 --- !u!114 &1094367071
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -77651,7 +77657,7 @@ GameObject:
   - component: {fileID: 1578124839}
   - component: {fileID: 1578124840}
   m_Layer: 0
-  m_Name: TestChest
+  m_Name: StorageChest
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -77683,67 +77689,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 70861eb2f122e0640af8abd768ee654f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::InventoryComponent
-  slots:
-  - item: {fileID: 11400000, guid: 204c190b81a6c054f8d1fe0f0c2a7a80, type: 2}
-    quantity: 20
-  - item: {fileID: 11400000, guid: 1555ed878052ac44c8b9e2fe43cbdf9a, type: 2}
-    quantity: 20
-  - item: {fileID: 11400000, guid: b1f5c99a438af924cbe737a1d0476132, type: 2}
-    quantity: 20
-  - item: {fileID: 11400000, guid: 871421747772b8c41b16f38651dece5e, type: 2}
-    quantity: 20
-  - item: {fileID: 11400000, guid: 7d4ca7d016e327b4f8cea215c54d2ae6, type: 2}
-    quantity: 20
-  - item: {fileID: 11400000, guid: 0b3f64f5cc4e73e4d8acc8ee24d96fda, type: 2}
-    quantity: 20
-  - item: {fileID: 11400000, guid: 633df2dc5d064c743928aafb65fffb6f, type: 2}
-    quantity: 20
-  - item: {fileID: 11400000, guid: 1c6c49817fca65540bf6a914b6a0b007, type: 2}
-    quantity: 20
-  - item: {fileID: 11400000, guid: 18736835b0621ad478537e2fa98f4c07, type: 2}
-    quantity: 20
-  - item: {fileID: 11400000, guid: 2da20757d972f5e4387c2eab16885a48, type: 2}
-    quantity: 1
-  - item: {fileID: 11400000, guid: 68b7b9b656a45ff418f01157cf45b298, type: 2}
-    quantity: 20
-  - item: {fileID: 11400000, guid: 3c12369d530350548bbca2f40c270693, type: 2}
-    quantity: 20
-  - item: {fileID: 11400000, guid: 631a56d8258854a40afd2bc5508e5304, type: 2}
-    quantity: 15
-  - item: {fileID: 11400000, guid: aadb6cfba39a5794387c1f0a6f1c53de, type: 2}
-    quantity: 10
-  - item: {fileID: 11400000, guid: 6e678c35f5e44604dbb1e4a457c0cd52, type: 2}
-    quantity: 15
-  - item: {fileID: 11400000, guid: 177b90592ae6123419e80276b292945a, type: 2}
-    quantity: 10
-  - item: {fileID: 11400000, guid: daa1a76fd4feedd4db758568f68793f5, type: 2}
-    quantity: 10
-  - item: {fileID: 11400000, guid: ffe21e61d26c9414ba3b116428a5044e, type: 2}
-    quantity: 10
-  - item: {fileID: 11400000, guid: ea52e6a8d7210d14785204d092f3008b, type: 2}
-    quantity: 10
-  - item: {fileID: 11400000, guid: 3860ab8e7c3bda0458d18f5108ad6745, type: 2}
-    quantity: 10
-  - item: {fileID: 11400000, guid: e5c0cc36a791d204eb3a2a9643b7a9a3, type: 2}
-    quantity: 10
-  - item: {fileID: 11400000, guid: 290c52e782cf683448daeceb72352ede, type: 2}
-    quantity: 10
-  - item: {fileID: 11400000, guid: 94e04a066ceb6a949b7bbe14a0a12b2c, type: 2}
-    quantity: 10
-  - item: {fileID: 11400000, guid: db06be8654e988b4ea9a81c755fd1d3c, type: 2}
-    quantity: 1
-  - item: {fileID: 11400000, guid: c55242fdf6330d84ea289b07c31b6e10, type: 2}
-    quantity: 20
-  - item: {fileID: 11400000, guid: 283857b9de52c7042a09c161091cc3bb, type: 2}
-    quantity: 10
-  - item: {fileID: 11400000, guid: 758f856859069264095930ad5c8b43ed, type: 2}
-    quantity: 10
-  - item: {fileID: 0}
-    quantity: 15
-  - item: {fileID: 0}
-    quantity: 10
-  - item: {fileID: 0}
-    quantity: 0
+  slots: []
   maxCapacity: 30
   blockTrophyItems: 0
   hasHotbar: 0

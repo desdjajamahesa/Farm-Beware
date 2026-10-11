@@ -160,6 +160,10 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
         buffManager = GetComponent<PlayerBuffManager>();
         if (GetComponent<FeaturesEconomy.PlayerWallet>() == null)
             gameObject.AddComponent<FeaturesEconomy.PlayerWallet>();
+        if (GetComponent<FeaturesFarming.PlantWaterer>() == null)
+            gameObject.AddComponent<FeaturesFarming.PlantWaterer>();
+        if (GetComponent<FeaturesKitchen.PlayerWaterBottle>() == null)
+            gameObject.AddComponent<FeaturesKitchen.PlayerWaterBottle>();
         playerEquipment = GetComponent<PlayerEquipment>();
         if (playerEquipment == null)
             playerEquipment = gameObject.AddComponent<PlayerEquipment>();

@@ -61,13 +61,6 @@ public class TimeManager : MonoBehaviour
 
     private void Update()
     {
-        // Do not process debug keys when paused or when Save UI is open
-        if (Time.timeScale <= 0f) return;
-        if (FarmBeware.Core.Runtime.UIModalHelper.IsSaveUIOpen) return;
-
-        // DEBUG SEMENTARA: tekan N untuk melompat ke fase malam (uji tidur Kasur).
-        if (Keyboard.current != null && Keyboard.current.nKey.wasPressedThisFrame)
-            SkipToNight();
     }
 
     // Transisi hari: pemain bangun di fase Day pada hari berikutnya.

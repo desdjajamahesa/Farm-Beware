@@ -139,30 +139,6 @@ public class PlayerStats : MonoBehaviour, FeaturesCombat.IDamageable, IPlayerDam
 
         // Penalti damage jika kelaparan atau kehausan habis
         HandleEmptyPenalty();
-
-        // Testing input menggunakan New Input System 
-        if (Time.timeScale > 0f && UnityEngine.InputSystem.Keyboard.current != null)
-        {
-            if (UnityEngine.InputSystem.Keyboard.current.kKey.wasPressedThisFrame)
-            {
-                TakeDamage(20);
-            }
-
-            if (UnityEngine.InputSystem.Keyboard.current.hKey.wasPressedThisFrame)
-            {
-                Heal(20);
-            }
-
-            if (UnityEngine.InputSystem.Keyboard.current.jKey.wasPressedThisFrame)
-            {
-                UseStamina(25f);
-            }
-
-            if (UnityEngine.InputSystem.Keyboard.current.gKey.wasPressedThisFrame)
-            {
-                ToggleGodMode();
-            }
-        }
     }
 
     public void ToggleGodMode()

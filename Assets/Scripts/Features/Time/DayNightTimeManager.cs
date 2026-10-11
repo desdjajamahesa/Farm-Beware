@@ -330,15 +330,6 @@ namespace FeaturesTime
             if (Time.timeScale <= 0f || FarmBeware.Core.Runtime.UIModalHelper.IsSaveUIOpen)
                 return;
 
-            // Shortcut keybind '0' (Alpha 0 & Numpad 0) untuk toggle kecepatan waktu 4x pada fase siang
-            if (UnityEngine.InputSystem.Keyboard.current != null)
-            {
-                var kb = UnityEngine.InputSystem.Keyboard.current;
-                if (kb.digit0Key.wasPressedThisFrame || kb.numpad0Key.wasPressedThisFrame)
-                {
-                    ToggleFastForward();
-                }
-            }
 
             if (!useContinuousTime || isPaused)
                 return;
