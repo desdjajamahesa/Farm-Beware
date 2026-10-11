@@ -246,17 +246,28 @@ public class SinkManager : MonoBehaviour
 
     public void OnRefillWaterClicked()
     {
+        EnsurePlayerInventoryRef();
         if (processor == null) processor = KitchenSinkInteractable.Instance;
         if (processor == null) return;
 
-        if (processor.IsRefillingWater)
+        if (processor.IsBottleReadyToCollect)
         {
-            processor.CancelRefillingWater();
+            processor.CollectFilledBottle(playerInventory);
+            PopulatePlayerInventory();
             UpdateRefillButtonState();
             return;
         }
 
-        processor.StartRefillingWater();
+        if (processor.IsRefillingWater)
+        {
+            processor.CancelRefillingWater(playerInventory);
+            PopulatePlayerInventory();
+            UpdateRefillButtonState();
+            return;
+        }
+
+        processor.StartRefillingWater(playerInventory);
+        PopulatePlayerInventory();
         UpdateRefillButtonState();
     }
 
@@ -266,23 +277,49 @@ public class SinkManager : MonoBehaviour
         if (processor == null) processor = KitchenSinkInteractable.Instance;
 
         var bottle = FeaturesKitchen.PlayerWaterBottle.Instance;
-        if (bottle == null) return;
+        var btnImg = refillWaterButton != null ? refillWaterButton.GetComponent<Image>() : null;
 
-        if (processor != null && processor.IsRefillingWater)
+        // 1. Botol sudah penuh di sink, menunggu diambil (Ready to Collect)
+        if (processor != null && processor.IsBottleReadyToCollect)
         {
-            float remaining = Mathf.Max(0f, Mathf.Ceil(processor.RefillWaterDuration * (1f - processor.RefillWaterProgress)));
-            refillWaterButtonText.text = $"💧 Refilling... ({remaining:F0}s) [Cancel]";
+            refillWaterButtonText.text = "💧 Take Full Water Bottle [Collect]";
+            if (btnImg != null) btnImg.color = new Color(0.12f, 0.70f, 0.35f, 1f); // Vibrant Emerald Green
+            if (refillWaterButton != null) refillWaterButton.interactable = true;
+            UpdateStatus("💧 Full Water Bottle is in the sink! Click button to take it.");
             return;
         }
 
-        refillWaterButtonText.text = bottle.CurrentWater >= bottle.MaxWater
-            ? $"💧 Bottle Full ({Mathf.FloorToInt(bottle.CurrentWater)}/4 Charges)"
-            : $"💧 Refill Bottle (30s) ({Mathf.FloorToInt(bottle.CurrentWater)}/4 Charges)";
+        // 2. Botol sedang diisi di sink (Refilling in progress)
+        if (processor != null && processor.IsRefillingWater)
+        {
+            float remaining = Mathf.Max(0f, Mathf.Ceil(processor.RefillWaterDuration * (1f - processor.RefillWaterProgress)));
+            refillWaterButtonText.text = $"💧 Refilling in Sink... ({remaining:F0}s) [Cancel]";
+            if (btnImg != null) btnImg.color = new Color(0.85f, 0.45f, 0.15f, 1f); // Amber / Orange
+            if (refillWaterButton != null) refillWaterButton.interactable = true;
+            UpdateStatus($"💧 Water bottle is in the sink refilling ({remaining:F0}s remaining)...");
+            return;
+        }
+
+        // 3. Normal idle state (botol di inventori player)
+        if (btnImg != null) btnImg.color = new Color(0.12f, 0.42f, 0.65f, 1f); // Deep Ocean Blue
+        int curCharges = bottle != null ? Mathf.FloorToInt(bottle.CurrentWater) : 4;
+        int maxCharges = bottle != null ? Mathf.FloorToInt(bottle.MaxWater) : 4;
+
+        if (bottle != null && bottle.CurrentWater >= bottle.MaxWater)
+        {
+            refillWaterButtonText.text = $"💧 Bottle Full ({curCharges}/{maxCharges} Charges)";
+            if (refillWaterButton != null) refillWaterButton.interactable = true;
+        }
+        else
+        {
+            refillWaterButtonText.text = $"💧 Place Bottle in Sink (30s) ({curCharges}/{maxCharges} Charges)";
+            if (refillWaterButton != null) refillWaterButton.interactable = true;
+        }
     }
 
     private void Update()
     {
-        if (processor != null && processor.IsRefillingWater)
+        if (processor != null && (processor.IsRefillingWater || processor.IsBottleReadyToCollect))
         {
             UpdateRefillButtonState();
         }

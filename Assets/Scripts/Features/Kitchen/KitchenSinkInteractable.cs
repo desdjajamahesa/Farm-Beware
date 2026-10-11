@@ -56,10 +56,15 @@ public class KitchenSinkInteractable : KitchenStation, IInteractable, IModalWind
     [SerializeField] private float refillWaterDuration = 30f;
 
     // ── Water Refill State ──
+    private bool hasBottleInSink;
     private bool isRefillingWater;
+    private bool isBottleReadyToCollect;
     private float refillWaterProgress;
+    private GameObject sinkBottleVisualGO;
 
+    public bool HasBottleInSink => hasBottleInSink;
     public bool IsRefillingWater => isRefillingWater;
+    public bool IsBottleReadyToCollect => isBottleReadyToCollect;
     public float RefillWaterProgress => refillWaterProgress;
     public float RefillWaterDuration => refillWaterDuration;
 
@@ -272,62 +277,180 @@ public class KitchenSinkInteractable : KitchenStation, IInteractable, IModalWind
         washProgress = 0f;
     }
 
-    public bool StartRefillingWater()
+    public bool StartRefillingWater(InventoryComponent playerInv = null)
     {
-        var bottle = FeaturesKitchen.PlayerWaterBottle.Instance;
-        if (bottle == null) return false;
-
-        if (bottle.CurrentWater >= bottle.MaxWater)
+        if (hasBottleInSink)
         {
-            var floatText = ServiceLocator.Resolve<IFloatingTextService>();
-            if (floatText != null)
+            if (isBottleReadyToCollect)
             {
-                var player = ServiceLocator.Resolve<IPlayerContext>();
-                Vector3 pos = player != null ? player.Transform.position + Vector3.up * 1.5f : transform.position;
-                floatText.SpawnText(pos, "💧 Water Bottle is already full!", new Color(0.3f, 0.85f, 1f));
+                SpawnFloatingAlert("💧 Full Water Bottle is in the sink! Take it.");
             }
             return false;
         }
 
-        if (isRefillingWater) return false;
+        if (playerInv == null)
+            playerInv = ServiceLocator.Resolve<IPlayerContext>()?.GetPlayerComponent<InventoryComponent>();
 
+        var bottle = FeaturesKitchen.PlayerWaterBottle.Instance;
+        if (bottle != null && bottle.CurrentWater >= bottle.MaxWater)
+        {
+            SpawnFloatingAlert("💧 Water Bottle is already full!");
+            return false;
+        }
+
+        var db = ItemDatabase.Instance ?? Resources.Load<ItemDatabase>("Database/ItemDatabase");
+        var bottleItem = db != null ? db.GetItem("food_bottle_water") : null;
+        if (bottleItem == null)
+        {
+            Debug.LogWarning("[KitchenSink] 'food_bottle_water' not found in database!");
+            return false;
+        }
+
+        if (playerInv == null || playerInv.CountItem(bottleItem) <= 0)
+        {
+            SpawnFloatingAlert("❌ No Water Bottle in inventory to place in sink!");
+            return false;
+        }
+
+        // Place bottle into the sink (removes from player inventory)
+        playerInv.RemoveItem(bottleItem, 1);
+        hasBottleInSink = true;
         isRefillingWater = true;
+        isBottleReadyToCollect = false;
         refillWaterProgress = 0f;
+
+        UpdateSinkBottleWorldVisual();
+        SpawnFloatingAlert("💧 Water Bottle placed in Sink! Refilling (30s)...");
         SyncUIIfOpen();
         return true;
     }
 
-    public void CancelRefillingWater()
+    public void CancelRefillingWater(InventoryComponent playerInv = null)
     {
-        if (!isRefillingWater) return;
+        if (!hasBottleInSink || isBottleReadyToCollect) return;
+
+        if (playerInv == null)
+            playerInv = ServiceLocator.Resolve<IPlayerContext>()?.GetPlayerComponent<InventoryComponent>();
+
+        var db = ItemDatabase.Instance ?? Resources.Load<ItemDatabase>("Database/ItemDatabase");
+        var bottleItem = db?.GetItem("food_bottle_water");
+        if (bottleItem != null && playerInv != null)
+        {
+            playerInv.AddItem(bottleItem, 1);
+        }
+
+        hasBottleInSink = false;
         isRefillingWater = false;
         refillWaterProgress = 0f;
+
+        UpdateSinkBottleWorldVisual();
+        SpawnFloatingAlert("💧 Water refill cancelled. Bottle returned to inventory.");
         SyncUIIfOpen();
     }
 
     private void CompleteWaterRefill()
     {
         isRefillingWater = false;
-        refillWaterProgress = 0f;
+        refillWaterProgress = 1f;
+        isBottleReadyToCollect = true;
+
+        // Note: Item stays in the sink and does NOT immediately teleport to player's inventory!
+        UpdateSinkBottleWorldVisual();
+        SpawnFloatingAlert("💧 Water Bottle in Sink is full! Ready to take.");
+        SyncUIIfOpen();
+    }
+
+    public bool CollectFilledBottle(InventoryComponent playerInv = null)
+    {
+        if (!hasBottleInSink || !isBottleReadyToCollect) return false;
+
+        if (playerInv == null)
+            playerInv = ServiceLocator.Resolve<IPlayerContext>()?.GetPlayerComponent<InventoryComponent>();
+
+        var db = ItemDatabase.Instance ?? Resources.Load<ItemDatabase>("Database/ItemDatabase");
+        var bottleItem = db?.GetItem("food_bottle_water");
+        if (bottleItem == null || playerInv == null) return false;
+
+        int added = playerInv.AddItemAmount(bottleItem, 1);
+        if (added <= 0)
+        {
+            SpawnFloatingAlert("❌ Inventory full! Free space to take Water Bottle.");
+            return false;
+        }
 
         var bottle = FeaturesKitchen.PlayerWaterBottle.Instance;
         if (bottle != null)
         {
-            bottle.RefillWater(4f);
+            bottle.RefillWater(bottle.MaxWater);
         }
 
+        hasBottleInSink = false;
+        isBottleReadyToCollect = false;
+        refillWaterProgress = 0f;
+
+        UpdateSinkBottleWorldVisual();
+        SpawnFloatingAlert("💧 Taken Full Water Bottle from Sink (4/4 Charges)!");
+        SyncUIIfOpen();
+        return true;
+    }
+
+    private void UpdateSinkBottleWorldVisual()
+    {
+        if (hasBottleInSink)
+        {
+            if (sinkBottleVisualGO == null)
+            {
+                sinkBottleVisualGO = new GameObject("Sink_Bottle_Visual");
+                sinkBottleVisualGO.transform.SetParent(transform, false);
+                sinkBottleVisualGO.transform.localPosition = new Vector3(0f, 0.85f, 0f);
+                sinkBottleVisualGO.transform.localScale = Vector3.one * 0.35f;
+
+                var sr = sinkBottleVisualGO.AddComponent<SpriteRenderer>();
+                var db = ItemDatabase.Instance ?? Resources.Load<ItemDatabase>("Database/ItemDatabase");
+                var bottleItem = db?.GetItem("food_bottle_water");
+                if (bottleItem != null && bottleItem.itemIcon != null)
+                {
+                    sr.sprite = bottleItem.itemIcon;
+                }
+            }
+
+            sinkBottleVisualGO.SetActive(true);
+            var renderer = sinkBottleVisualGO.GetComponent<SpriteRenderer>();
+            if (renderer != null)
+            {
+                renderer.color = isBottleReadyToCollect ? Color.white : new Color(0.7f, 0.9f, 1f, 0.9f);
+            }
+        }
+        else
+        {
+            if (sinkBottleVisualGO != null && sinkBottleVisualGO.activeSelf)
+            {
+                sinkBottleVisualGO.SetActive(false);
+            }
+        }
+    }
+
+    private void LateUpdate()
+    {
+        if (sinkBottleVisualGO != null && sinkBottleVisualGO.activeSelf)
+        {
+            Camera cam = Camera.main;
+            if (cam != null)
+            {
+                sinkBottleVisualGO.transform.forward = cam.transform.forward;
+            }
+        }
+    }
+
+    private void SpawnFloatingAlert(string text)
+    {
         var floatText = ServiceLocator.Resolve<IFloatingTextService>();
         if (floatText != null)
         {
             var player = ServiceLocator.Resolve<IPlayerContext>();
-            Vector3 pos = player != null ? player.Transform.position + Vector3.up * 1.5f : transform.position;
-            floatText.SpawnText(
-                pos,
-                "💧 Water Bottle Refilled (4/4 Charges)!",
-                new Color(0.25f, 0.85f, 1f));
+            Vector3 pos = player != null ? player.Transform.position + Vector3.up * 1.5f : transform.position + Vector3.up * 1.5f;
+            floatText.SpawnText(pos, text, new Color(0.25f, 0.85f, 1f));
         }
-
-        SyncUIIfOpen();
     }
 
     public void ClosePanel()
@@ -381,6 +504,9 @@ public class KitchenSinkInteractable : KitchenStation, IInteractable, IModalWind
         {
             ModalStackManager.Instance.PopSpecific(this);
         }
+
+        if (sinkBottleVisualGO != null)
+            Destroy(sinkBottleVisualGO);
 
         if (Instance == this)
             Instance = null;
