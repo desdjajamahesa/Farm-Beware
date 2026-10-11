@@ -20,8 +20,8 @@ MonoBehaviour:
   description: A sturdy wooden training sword, ideal for fending off nocturnal pests.
   maxStack: 1
   type: 2
-  buyPrice: 0
-  sellPrice: 0
+  buyPrice: 150
+  sellPrice: 50
   isDirty: 0
   cleanVariant: {fileID: 0}
   equipPrefab: {fileID: 8479986625188135542, guid: 6b2794aaa34bd4e40a29b00fdc58afca, type: 3}
