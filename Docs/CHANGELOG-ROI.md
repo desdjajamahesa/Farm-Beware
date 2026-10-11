@@ -4,7 +4,29 @@ Semua perubahan penting pada proyek ini oleh M-Roihan (Roi) dari `branch-roi-1` 
 
 ## - 2026-10-11
 
+### Ditambahkan (Added)
+- **Sistem Linimasa Aktivitas Siang Hari & Widget HUD Persisten (`DayActivityTimelineManager.cs`)**:
+  - Mengimplementasikan [`DayActivityTimelineManager.cs`](file:///f:/unity/Farm-Beware/Assets/Scripts/Features/Time/DayActivityTimelineManager.cs) yang mengelola 10 tahapan linimasa aktivitas harian ideal (18 menit / 06:00 - 18:00) sesuai tabel desain game:
+    1. `06:00 - 06:40` (0-60 detik real): *Collect overnight harvest, sell, plant Taro/Corn + Sweet Potato*
+    2. `06:40 - 08:00` (60-180 detik real): *Fetch water, start the pot (cooking runs in the background)*
+    3. `08:00 - 10:20` (180-390 detik real): *Upgrade at the Workbench, trade*
+    4. `10:20 - 11:00` (390-450 detik real): *Sweet Potato cycle 1 ripens: harvest, sell, replant*
+    5. `11:00 - 14:20` (450-750 detik real): *Cook food, upgrade, expand*
+    6. `14:20 - 15:00` (750-810 detik real): *Sweet Potato cycle 2 ripens: harvest, replant*
+    7. `15:00 - 16:00` (810-900 detik real): *Finalize 3 food slots, check water*
+    8. `16:00 - 16:20` (900-930 detik real): *Dusk bell DING DONG: 3 minutes until nightfall!*
+    9. `16:20 - 17:00` (930-990 detik real): *Taro/Corn ripen: harvest, sell, replant*
+    10. `17:00 - 18:00` (990-1080 detik real): *Go home, eat buff food, go to bed*
+  - Menghubungkan kartu HUD aktivitas persisten pada [`CombatPhaseTrackerUI.cs`](file:///f:/unity/Farm-Beware/Assets/Scripts/Features/Time/UI/CombatPhaseTrackerUI.cs) di bawah jam digital. Teks panduan aktivitas tidak menghilang dan terus bertahan hingga aktivitas berikutnya aktif; kartu otomatis disembunyikan saat malam hari tiba.
+  - Menambahkan alert transisi aktivitas dengan suara synthesizer melodik 2-nada (G5 -> C6) dan toast floating text di atas kepala pemain saat pergantian aktivitas terjadi.
+
 ### Diubah (Changed)
+- **Rekalibrasi Linimasa Fase Siang Menjadi 18 Menit (1080 Detik Real)**:
+  - Mengubah durasi fase siang hari (`daytimeDurationRealSeconds`) dari 960 detik (16 menit) menjadi **1080 detik (18 menit)** pada [`DayNightTimeManager.cs`](file:///f:/unity/Farm-Beware/Assets/Scripts/Features/Time/DayNightTimeManager.cs) dan [`StagingScene.unity`](file:///f:/unity/Farm-Beware/Assets/Scenes/StagingScene.unity).
+  - Mengkalibrasi peringatan *Dusk Bell* menjadi jam **16:00 in-game (menit ke-15:00 real / 900 detik)** dengan notifikasi `"🔔 Dusk Bell: 3 minutes until nightfall! Prepare for battle!"`.
+- **Penghapusan Mode Cepat 12 Menit (Keybind '9')**:
+  - Menghapus shortcut keybind tombol `9` dan field `fastForwardMultiplier12Min` pada [`DayNightTimeManager.cs`](file:///f:/unity/Farm-Beware/Assets/Scripts/Features/Time/DayNightTimeManager.cs) serta `.agents/rules/run.md`.
+  - Mempertahankan mode fast-forward **8x (Keybind '0')** untuk keperluan testing dan fast-forwarding eksplorasi siang.
 - **Rekalibrasi Durasi Pertumbuhan Tanaman & Integrasi Sistem Waktu Siang**:
   - Menyesuaikan `growthDuration` pada bibit tanaman sesuai spesifikasi tabel ekonomi:
     - **Sweet Potato** ([`Seed_SweetPotato.asset`](file:///f:/unity/Farm-Beware/Assets/Data/Items/Seeds/Seed_SweetPotato.asset)): 360 detik (Fast: 6 menit).

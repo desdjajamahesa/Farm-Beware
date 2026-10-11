@@ -2,6 +2,7 @@ using System.Collections;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
+using FeaturesTime;
 
 namespace FeaturesTime.UI
 {
@@ -19,6 +20,11 @@ namespace FeaturesTime.UI
         [SerializeField] private TextMeshProUGUI enemiesText;
         [SerializeField] private Image phaseBadgeBackground;
 
+        [Header("Day Activity Timeline UI")]
+        [SerializeField] private GameObject activityCardRoot;
+        [SerializeField] private TextMeshProUGUI activityHeaderBadgeText;
+        [SerializeField] private TextMeshProUGUI activityDetailText;
+
         [Header("Phase Colors")]
         [SerializeField] private Color dayBadgeColor = new Color(0.95f, 0.70f, 0.20f, 0.85f); // Amber / Sun
         [SerializeField] private Color nightBadgeColor = new Color(0.65f, 0.15f, 0.20f, 0.90f); // Blood / Crimson
@@ -34,6 +40,7 @@ namespace FeaturesTime.UI
         private int enemiesRemaining = 0;
 
         private Coroutine pulseCoroutine;
+        private bool isActivitySubscribed = false;
 
         private static CombatPhaseTrackerUI _instance;
         public static CombatPhaseTrackerUI Instance
@@ -84,6 +91,11 @@ namespace FeaturesTime.UI
             {
                 UpdateClockText(6, 0);
             }
+
+            if (DayActivityTimelineManager.Instance != null)
+            {
+                HandleActivityChanged(DayActivityTimelineManager.Instance.CurrentActivity);
+            }
         }
 
         private void OnEnable()
@@ -99,6 +111,12 @@ namespace FeaturesTime.UI
                 DayNightTimeManager.Instance.OnMinuteChanged += HandleMinuteChanged;
                 DayNightTimeManager.Instance.OnHourChanged += HandleHourChanged;
             }
+
+            if (DayActivityTimelineManager.Instance != null && !isActivitySubscribed)
+            {
+                DayActivityTimelineManager.Instance.OnActivityChanged += HandleActivityChanged;
+                isActivitySubscribed = true;
+            }
         }
 
         private void OnDisable()
@@ -113,6 +131,12 @@ namespace FeaturesTime.UI
             {
                 DayNightTimeManager.Instance.OnMinuteChanged -= HandleMinuteChanged;
                 DayNightTimeManager.Instance.OnHourChanged -= HandleHourChanged;
+            }
+
+            if (DayActivityTimelineManager.Instance != null && isActivitySubscribed)
+            {
+                DayActivityTimelineManager.Instance.OnActivityChanged -= HandleActivityChanged;
+                isActivitySubscribed = false;
             }
         }
 
@@ -146,6 +170,13 @@ namespace FeaturesTime.UI
 
         private void Update()
         {
+            if (!isActivitySubscribed && DayActivityTimelineManager.Instance != null)
+            {
+                DayActivityTimelineManager.Instance.OnActivityChanged += HandleActivityChanged;
+                HandleActivityChanged(DayActivityTimelineManager.Instance.CurrentActivity);
+                isActivitySubscribed = true;
+            }
+
             if (DayNightTimeManager.Instance != null && clockText != null)
             {
                 int h = DayNightTimeManager.Instance.CurrentHourInt;
@@ -158,6 +189,18 @@ namespace FeaturesTime.UI
                     lastDisplayFastForward = ff;
                     UpdateClockText(h, m);
                 }
+            }
+        }
+
+        public void HandleActivityChanged(DayActivityEntry entry)
+        {
+            if (activityHeaderBadgeText != null)
+            {
+                activityHeaderBadgeText.text = $"📋 ACTIVITY • {entry.timeRangeText}";
+            }
+            if (activityDetailText != null)
+            {
+                activityDetailText.text = entry.activityDescription;
             }
         }
 
@@ -201,6 +244,11 @@ namespace FeaturesTime.UI
         public void UpdatePhaseDisplay(TimeManager.DayPhase phase)
         {
             bool isNight = (phase == TimeManager.DayPhase.Night);
+
+            if (activityCardRoot != null)
+            {
+                activityCardRoot.SetActive(!isNight);
+            }
 
             if (dayText != null)
             {
@@ -320,6 +368,75 @@ namespace FeaturesTime.UI
                     CreateProceduralClockText(parent);
                 }
             }
+
+            EnsureActivityUIReferences();
+        }
+
+        private void EnsureActivityUIReferences()
+        {
+            if (activityCardRoot == null || activityHeaderBadgeText == null || activityDetailText == null)
+            {
+                var tmps = GetComponentsInChildren<TextMeshProUGUI>(true);
+                foreach (var t in tmps)
+                {
+                    if (t.gameObject.name.Equals("ActivityHeader", System.StringComparison.OrdinalIgnoreCase)) activityHeaderBadgeText = t;
+                    else if (t.gameObject.name.Equals("ActivityDetail", System.StringComparison.OrdinalIgnoreCase)) activityDetailText = t;
+                }
+
+                Transform existingCard = transform.Find("ActivityCard");
+                if (existingCard != null)
+                {
+                    activityCardRoot = existingCard.gameObject;
+                }
+                else
+                {
+                    BuildProceduralActivityUI();
+                }
+            }
+        }
+
+        private void BuildProceduralActivityUI()
+        {
+            activityCardRoot = new GameObject("ActivityCard", typeof(RectTransform), typeof(Image));
+            activityCardRoot.transform.SetParent(transform, false);
+            RectTransform cardRt = activityCardRoot.GetComponent<RectTransform>();
+            cardRt.anchorMin = new Vector2(0f, 0f);
+            cardRt.anchorMax = new Vector2(1f, 0f);
+            cardRt.pivot = new Vector2(0.5f, 1f);
+            cardRt.anchoredPosition = new Vector2(0f, -6f);
+            cardRt.sizeDelta = new Vector2(0f, 54f);
+
+            Image bg = activityCardRoot.GetComponent<Image>();
+            bg.color = new Color(0.10f, 0.12f, 0.16f, 0.92f);
+
+            GameObject headerObj = new GameObject("ActivityHeader", typeof(RectTransform), typeof(TextMeshProUGUI));
+            headerObj.transform.SetParent(activityCardRoot.transform, false);
+            RectTransform headerRt = headerObj.GetComponent<RectTransform>();
+            headerRt.anchorMin = new Vector2(0.04f, 0.58f);
+            headerRt.anchorMax = new Vector2(0.96f, 0.95f);
+            headerRt.offsetMin = Vector2.zero;
+            headerRt.offsetMax = Vector2.zero;
+            activityHeaderBadgeText = headerObj.GetComponent<TextMeshProUGUI>();
+            activityHeaderBadgeText.fontSize = 10.5f;
+            activityHeaderBadgeText.fontStyle = FontStyles.Bold;
+            activityHeaderBadgeText.color = new Color(1f, 0.80f, 0.25f);
+            activityHeaderBadgeText.alignment = TextAlignmentOptions.Left;
+            activityHeaderBadgeText.text = "📋 ACTIVITY • 06:00 - 06:40";
+
+            GameObject detailObj = new GameObject("ActivityDetail", typeof(RectTransform), typeof(TextMeshProUGUI));
+            detailObj.transform.SetParent(activityCardRoot.transform, false);
+            RectTransform detailRt = detailObj.GetComponent<RectTransform>();
+            detailRt.anchorMin = new Vector2(0.04f, 0.05f);
+            detailRt.anchorMax = new Vector2(0.96f, 0.58f);
+            detailRt.offsetMin = Vector2.zero;
+            detailRt.offsetMax = Vector2.zero;
+            activityDetailText = detailObj.GetComponent<TextMeshProUGUI>();
+            activityDetailText.fontSize = 9.5f;
+            activityDetailText.color = new Color(0.95f, 0.95f, 0.95f);
+            activityDetailText.textWrappingMode = TextWrappingModes.Normal;
+            activityDetailText.overflowMode = TextOverflowModes.Ellipsis;
+            activityDetailText.alignment = TextAlignmentOptions.TopLeft;
+            activityDetailText.text = "Collect overnight harvest, sell, plant Taro/Corn + Sweet Potato";
         }
 
         private void CreateProceduralClockText(Transform parent)
