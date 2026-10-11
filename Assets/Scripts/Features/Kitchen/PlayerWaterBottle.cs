@@ -32,9 +32,9 @@ namespace FeaturesKitchen
         }
         private static PlayerWaterBottle _instance;
 
-        [Header("Water Bottle Capacity (Max 4 sips/charges)")]
-        [SerializeField] private float maxWater = 4f;
-        [SerializeField] private float currentWater = 4f;
+        [Header("Water Bottle Capacity (100L Bottle)")]
+        [SerializeField] private float maxWater = 100f;
+        [SerializeField] private float currentWater = 100f;
 
         public float MaxWater => maxWater;
         public float CurrentWater => currentWater;
@@ -123,20 +123,20 @@ namespace FeaturesKitchen
         }
 
         /// <summary>
-        /// Sips water from the bottle to restore player hydration.
+        /// Sips water from the bottle to restore player hydration (default 25L / 25 Hydration).
         /// </summary>
-        public bool DrinkSip(float amount = 1f)
+        public bool DrinkSip(float amount = 25f)
         {
             if (currentWater < 1f)
             {
                 return false;
             }
 
-            float chargesToConsume = amount > 4f ? 1f : Mathf.Min(amount, currentWater);
-            currentWater = Mathf.Max(0f, currentWater - chargesToConsume);
+            float volumeToConsume = Mathf.Min(amount, currentWater);
+            currentWater = Mathf.Max(0f, currentWater - volumeToConsume);
             OnWaterChanged?.Invoke(currentWater, maxWater);
 
-            float thirstRestored = 25f * chargesToConsume;
+            float thirstRestored = volumeToConsume;
 
             var player = ServiceLocator.Resolve<IPlayerContext>();
             if (player != null)

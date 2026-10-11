@@ -4,7 +4,9 @@
     "references": [
         "FarmBeware.Core.Runtime",
         "FarmBeware.Data.Runtime",
-        "FarmBeware.Features.Inventory"
+        "FarmBeware.Features.Inventory",
+        "Unity.TextMeshPro",
+        "Unity.InputSystem"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

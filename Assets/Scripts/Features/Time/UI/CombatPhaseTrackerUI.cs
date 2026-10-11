@@ -320,6 +320,30 @@ namespace FeaturesTime.UI
             }
         }
 
+        public void SetIntermissionCountdown(int secondsRemaining, int nextWave, int maxWaves)
+        {
+            if (waveText != null)
+            {
+                waveText.text = $"Prep: {secondsRemaining}s (Next W{nextWave})";
+            }
+            if (enemiesText != null)
+            {
+                enemiesText.text = "Prepare Your Defenses!";
+            }
+        }
+
+        public void ClearIntermissionCountdown()
+        {
+            if (waveText != null)
+            {
+                waveText.text = $"Wave: {currentWave} / {totalWaves}";
+            }
+            if (enemiesText != null)
+            {
+                enemiesText.text = $"Enemies: {enemiesRemaining}";
+            }
+        }
+
         private IEnumerator NightAlertPulseRoutine()
         {
             if (phaseBadgeBackground == null) yield break;

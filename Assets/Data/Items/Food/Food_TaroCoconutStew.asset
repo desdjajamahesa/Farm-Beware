@@ -32,12 +32,12 @@ MonoBehaviour:
   hydrationRestore: 10
   buffEffects:
   - buffType: 6
-    value: 0.12
-    duration: 120
+    value: 0.25
+    duration: 180
     buffName: Powerful ATK
     description: +12% Attack Damage
   - buffType: 7
     value: 0.12
-    duration: 120
+    duration: 180
     buffName: Powerful SPD
     description: +12% Attack Speed

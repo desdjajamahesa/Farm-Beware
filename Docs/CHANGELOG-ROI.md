@@ -138,3 +138,43 @@ Semua perubahan penting pada proyek ini oleh M-Roihan (Roi) dari `branch-roi-1` 
 ### Diperbaiki (Fixed)
 - Mengatasi rintangan pergerakan pemain di pekarangan dengan memindahkan bollard batu ke tepian rumput dan menghapus collider non-esensial pada dekorasi jalan setapak.
 - Memperbaiki ukuran collider petak tanah pada [`FarmlandTile.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Farming/FarmlandTile.cs) (`col.size = (1.2f, 0.18f, 1.2f)`) agar pas dengan gundukan tanah dan tidak memblokir langkah kaki pemain.
+
+## [Unreleased] - 2026-10-12
+
+### Ditambahkan (Added)
+- **Sistem Timeline Aktivitas Fase Siang (18 Menit)**:
+  - Implementasi jadwal 10 aktivitas siang pada [`DayActivityTimelineManager.cs`](file:///f:/unity/Farm-Beware/Assets/Scripts/Features/Time/DayActivityTimelineManager.cs) yang persis dengan tabel spesifikasi dokumen desain (06:00 - 18:00 in-game, 18 menit real time).
+  - Tampilan banner notifikasi aktivitas persisten yang tetap aktif hingga masuk ke blok aktivitas berikutnya.
+  - Sinyal audio & visual lonceng senja (Dusk Bell) pada menit ke-15:00 (16:00 in-game) sebagai peringatan 3 menit tersisa.
+  - Fitur tidur paksa otomatis (Auto-Sleep) pada menit ke-18:00 (18:00 in-game).
+- **Dialog Modal Konfirmasi Tidur Siang Lebih Awal (Early Sleep Confirmation UI)**:
+  - Komponen [`BedSleepConfirmationUI.cs`](file:///f:/unity/Farm-Beware/Assets/Scripts/Features/Interaction/BedSleepConfirmationUI.cs) yang menampilkan peringatan saat pemain mencoba tidur siang jika terdapat tanaman yang hampir panen ($\le$ 180 detik atau siap panen).
+  - Integrasi [`IFarmingService.cs`](file:///f:/unity/Farm-Beware/Assets/Scripts/Core/Contracts/IFarmingService.cs) dan [`FarmingManager.cs`](file:///f:/unity/Farm-Beware/Assets/Scripts/Features/Farming/FarmingManager.cs) via `ServiceLocator` pada [`BedInteractable.cs`](file:///f:/unity/Farm-Beware/Assets/Scripts/Features/Interaction/BedInteractable.cs) dengan tombol konfirmasi "Sleep Anyway" dan "Cancel" (termasuk tombol Escape).
+- **Pembatasan Slot Makanan Fase Malam**:
+  - Validasi maksimal 3 slot makanan aktif saat transisi memasuki Night Brawl pada [`NightBrawlManager.cs`](file:///f:/unity/Farm-Beware/Assets/Scripts/Features/Combat/NightBrawlManager.cs).
+
+### Diubah (Changed)
+- **Kalibrasi Resep Memasak & Item Makanan (Cooking & Food Balance)**:
+  - Durasi memasak dan konsumsi air:
+    - Kategori Recovery (20 detik masak, 10L air): `Recipe_CornPorridge`, `Recipe_SweetPotatoPorridge`, `Recipe_RoastedSweetPotato`.
+    - Kategori Stamina (30 detik masak, 15L air): `Recipe_PurpleYamCake`, `Recipe_TaroChip`, `Recipe_TaroDumpling`.
+    - Kategori Battle (45 detik masak, 20L air): `Recipe_SweetPotatoFeast`, `Recipe_TaroCoconutStew`, `Recipe_TaroCornStew`.
+  - Efek konsumsi makanan:
+    - Recovery: Instant heal diselaraskan (`Food_RoastedSweetPotato`: 10 HP, `Food_SweetPotatoPorridge`: 25 HP, `Food_CornPorridge`: 50 HP).
+    - Stamina: Durasi buff 4 menit (240 detik).
+    - Battle: Durasi buff 3 menit (180 detik) dengan +25% bonus attack damage.
+- **Kapasitas Botol Air & Pengisian Sumur**:
+  - Peningkatan kapasitas [`PlayerWaterBottle.cs`](file:///f:/unity/Farm-Beware/Assets/Scripts/Features/Kitchen/PlayerWaterBottle.cs) menjadi 100L dengan tegukan 25L.
+  - Penambahan kemampuan [`WaterWellInteractable.cs`](file:///f:/unity/Farm-Beware/Assets/Scripts/Features/Farming/WaterWellInteractable.cs) untuk mengisi ulang botol minum pemain (100L) dan penyiram tanaman dengan cooldown 10 detik.
+- **Jadwal Gelombang & Jeda Istirahat Night Brawl (Night Waves & 30s Prep Window)**:
+  - Jeda antar gelombang (`waveIntermissionDelay`) diatur menjadi 30 detik pada [`NightBrawlManager.cs`](file:///f:/unity/Farm-Beware/Assets/Scripts/Features/Combat/NightBrawlManager.cs) dan [`CombatPhaseTrackerUI.cs`](file:///f:/unity/Farm-Beware/Assets/Scripts/Features/Time/UI/CombatPhaseTrackerUI.cs).
+  - Kalibrasi komposisi monster pada [`WaveProgressionEngine.cs`](file:///f:/unity/Farm-Beware/Assets/Scripts/Features/Combat/Wave/WaveProgressionEngine.cs) untuk Hari 1 s/d Hari 5:
+    - Hari 1: 1 wave (5 musuh).
+    - Hari 2: 2 wave (W1: 4 musuh, W2: 5 musuh).
+    - Hari 3: 3 wave (W1: 4 musuh, W2: 5 musuh, W3: 6 musuh).
+    - Hari 4: 4 wave (W1: 4 musuh, W2: 4 musuh, W3: 5 musuh, W4: Boss Taro Colossus + 4 minion).
+    - Hari 5: 5 wave (W1: 4 musuh, W2: 5 musuh, W3: 6 musuh, W4: Boss Taro Colossus, W5: Boss The Ranger + 3 minion).
+- **Nilai Jual Tanaman (Economy Balance)**:
+  - Ubi Jalar / Sweet Potato (`Crop_SweetPotato.asset`): 750 Gold.
+  - Talas / Taro (`Crop_Taro.asset`): 1,600 Gold.
+

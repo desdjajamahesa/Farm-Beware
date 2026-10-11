@@ -33,6 +33,6 @@ MonoBehaviour:
   buffEffects:
   - buffType: 0
     value: 0.1
-    duration: 60
+    duration: 240
     buffName: Vitality Boost
     description: +10% Max HP

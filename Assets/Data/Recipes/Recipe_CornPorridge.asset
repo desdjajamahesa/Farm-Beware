@@ -25,5 +25,5 @@ MonoBehaviour:
     for 90s)'
   output: {fileID: 11400000, guid: 283857b9de52c7042a09c161091cc3bb, type: 2}
   outputCount: 1
-  processTime: 90
+  processTime: 20
   waterRequired: 10

@@ -7,7 +7,7 @@ namespace FeaturesFarming
     /// Manager sentral sistem pertanian.
     /// Mengontrol seluruh petak kebun dan sinkronisasi dengan siklus waktu (TimeManager).
     /// </summary>
-    public class FarmingManager : MonoBehaviour
+    public class FarmingManager : MonoBehaviour, FarmBeware.Core.Runtime.IFarmingService
     {
         public static FarmingManager Instance { get; private set; }
 
@@ -23,6 +23,7 @@ namespace FeaturesFarming
                 return;
             }
             Instance = this;
+            FarmBeware.Core.Runtime.ServiceLocator.Register<FarmBeware.Core.Runtime.IFarmingService>(this);
 
             RefreshFarmTiles();
         }
@@ -96,6 +97,47 @@ namespace FeaturesFarming
             {
                 farmTiles.Remove(tile);
             }
+        }
+
+        public bool HasCropsAboutToRipen(float thresholdSeconds, out string cropSummary)
+        {
+            cropSummary = string.Empty;
+            int ripeningCount = 0;
+            float minRemaining = float.MaxValue;
+            string cropName = "Crops";
+
+            foreach (var tile in farmTiles)
+            {
+                if (tile == null) continue;
+                if (tile.CurrentState == TileState.ReadyToHarvest)
+                {
+                    ripeningCount++;
+                    minRemaining = 0f;
+                    if (tile.PlantedSeed != null) cropName = tile.PlantedSeed.itemName;
+                }
+                else if (tile.CurrentState == TileState.PlantedWatered)
+                {
+                    float rem = tile.GrowthDuration - tile.CurrentTimer;
+                    if (rem <= thresholdSeconds && rem > 0f)
+                    {
+                        ripeningCount++;
+                        if (rem < minRemaining)
+                        {
+                            minRemaining = rem;
+                            if (tile.PlantedSeed != null) cropName = tile.PlantedSeed.itemName;
+                        }
+                    }
+                }
+            }
+
+            if (ripeningCount > 0)
+            {
+                string timeStr = minRemaining <= 1f ? "Ready to Harvest!" : $"ripening in {Mathf.CeilToInt(minRemaining)}s";
+                cropSummary = $"{ripeningCount}x {cropName} ({timeStr})";
+                return true;
+            }
+
+            return false;
         }
     }
 }

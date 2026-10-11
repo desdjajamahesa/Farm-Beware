@@ -16,11 +16,11 @@ namespace FeaturesFarming
     public class WaterWellInteractable : MonoBehaviour, IInteractable, IObstructionExempt
     {
         [Header("Interaction Prompt")]
-        [Tooltip("The label shown on screen when player approaches (e.g. 'Refill Plant Waterer')")]
-        [SerializeField] private string promptLabel = "Refill Plant Waterer";
+        [Tooltip("The label shown on screen when player approaches (e.g. 'Draw Water from Well')")]
+        [SerializeField] private string promptLabel = "Draw Water from Well";
 
         [Header("Refill Settings")]
-        [Tooltip("Time required to refill the Plant Waterer tool in seconds.")]
+        [Tooltip("Time required to refill water in seconds.")]
         [SerializeField] private float refillDuration = 10f;
 
         [Tooltip("Maximum times the well can be refilled per in-game day.")]
@@ -139,7 +139,7 @@ namespace FeaturesFarming
             }
             else if (remaining <= 0)
             {
-                worldLabel.displayName = $"{promptLabel} (Depleted Today: 0/{maxRefillsPerDay})";
+                worldLabel.displayName = $"{promptLabel} (Depleted: 0/{maxRefillsPerDay})";
             }
             else
             {
@@ -175,69 +175,20 @@ namespace FeaturesFarming
                 return;
             }
 
-            var inv = interactor != null ? interactor.GetComponent<InventoryComponent>() : null;
-            if (inv == null)
-            {
-                var player = ServiceLocator.Resolve<IPlayerContext>();
-                if (player != null)
-                    inv = player.GetPlayerComponent<InventoryComponent>();
-            }
+            var waterService = ServiceLocator.Resolve<IWaterService>();
+            bool watererNeedsRefill = PlantWaterer.Instance != null && PlantWaterer.Instance.CurrentWater < PlantWaterer.Instance.MaxWater;
+            bool bottleNeedsRefill = waterService != null && waterService.CurrentWater < waterService.MaxWater;
 
-            // Check if player is holding drinking water bottle in active hotbar
-            if (inv != null && inv.slots != null)
-            {
-                int hotbarIdx = inv.selectedHotbarIndex;
-                if (hotbarIdx >= 0 && hotbarIdx < inv.slots.Count)
-                {
-                    var activeSlot = inv.slots[hotbarIdx];
-                    if (activeSlot != null && !activeSlot.IsEmpty && activeSlot.item != null)
-                    {
-                        string activeId = (activeSlot.item.itemId ?? "").ToLower();
-                        if (activeId == "food_bottle_water" || activeId.Contains("bottle"))
-                        {
-                            textService?.SpawnText(
-                                textPos,
-                                "⚠️ Drinking water bottle can only be refilled at Kitchen Sink!",
-                                new Color(1f, 0.6f, 0.2f));
-                            return;
-                        }
-                    }
-                }
-            }
-
-            // Validate that the player has the Plant Waterer tool in inventory
-            bool hasPlantWaterer = CheckHasPlantWaterer(inv);
-
-            // Auto-grant if missing
-            if (!hasPlantWaterer && PlantWaterer.Instance != null)
-            {
-                PlantWaterer.Instance.EnsureWatererInInventory();
-                hasPlantWaterer = CheckHasPlantWaterer(inv);
-            }
-
-            if (!hasPlantWaterer)
+            if (!watererNeedsRefill && !bottleNeedsRefill)
             {
                 textService?.SpawnText(
                     textPos,
-                    "Requires Plant Waterer to refill farm water!",
-                    new Color(1f, 0.6f, 0.2f));
+                    "💧 All water containers already full (100/100 L)!",
+                    new Color(0.3f, 0.85f, 1f));
                 return;
             }
 
-            // Refill Plant Waterer to 100L
-            if (PlantWaterer.Instance != null)
-            {
-                if (PlantWaterer.Instance.CurrentWater >= PlantWaterer.Instance.MaxWater)
-                {
-                    textService?.SpawnText(
-                        textPos,
-                        "💧 Plant Waterer is already full (100/100 L)!",
-                        new Color(0.3f, 0.85f, 1f));
-                    return;
-                }
-
-                refillCoroutine = StartCoroutine(RoutineRefillWaterer(textPos));
-            }
+            refillCoroutine = StartCoroutine(RoutineRefillWaterer(textPos));
         }
 
         private IEnumerator RoutineRefillWaterer(Vector3 textPos)
@@ -266,14 +217,21 @@ namespace FeaturesFarming
             if (PlantWaterer.Instance != null)
             {
                 PlantWaterer.Instance.RefillWater(100f);
-                refillsUsedToday++;
-
-                int remaining = Mathf.Max(0, maxRefillsPerDay - refillsUsedToday);
-                textService?.SpawnText(
-                    textPos,
-                    $"💧 Plant Waterer Refilled (100/100 L)! ({remaining}/{maxRefillsPerDay} left today)",
-                    new Color(0.25f, 0.85f, 1f));
             }
+
+            var waterService = ServiceLocator.Resolve<IWaterService>();
+            if (waterService != null)
+            {
+                waterService.RefillWater(100f);
+            }
+
+            refillsUsedToday++;
+
+            int remaining = Mathf.Max(0, maxRefillsPerDay - refillsUsedToday);
+            textService?.SpawnText(
+                textPos,
+                $"💧 Water Containers Refilled (100L)! ({remaining}/{maxRefillsPerDay} left today)",
+                new Color(0.25f, 0.85f, 1f));
 
             UpdatePromptLabel();
         }

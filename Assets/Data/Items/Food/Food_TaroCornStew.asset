@@ -32,14 +32,14 @@ MonoBehaviour:
   hydrationRestore: 10
   buffEffects:
   - buffType: 6
-    value: 0.08
-    duration: 120
+    value: 0.25
+    duration: 180
     buffName: Corn Potency
     description: +8% Attack Damage
     buffIcon: {fileID: 0}
   - buffType: 7
     value: 0.08
-    duration: 120
+    duration: 180
     buffName: Corn Swiftness
     description: +8% Attack Speed
     buffIcon: {fileID: 0}

@@ -114,7 +114,7 @@ namespace FeaturesCombat
         [SerializeField] private int currentDay = 1;
         [SerializeField] private int currentWave = 0;
         [SerializeField] private int totalWaves = 1;
-        [SerializeField] private float waveIntermissionDelay = 4f;
+        [SerializeField] private float waveIntermissionDelay = 30f;
 
         private readonly List<EnemyBase> activeEnemies = new List<EnemyBase>();
         private readonly Wave.WaveProgressionEngine waveEngine = new Wave.WaveProgressionEngine();
@@ -205,6 +205,7 @@ namespace FeaturesCombat
         {
             if (isWaveInProgress) return;
 
+            EnforceNightFoodLimit();
             EnsureHealthBarManagers();
 
             isWaveInProgress = true;
@@ -229,6 +230,94 @@ namespace FeaturesCombat
             }
 
             intermissionCoroutine = StartCoroutine(RoutineInitialSuspenseDelay());
+        }
+
+        /// <summary>
+        /// Enforces the design rule: only up to 3 food slots can be carried into the night.
+        /// Any excess food items in the player's inventory are automatically transferred to kitchen storage/refrigerator.
+        /// </summary>
+        private void EnforceNightFoodLimit()
+        {
+            var playerCtx = ServiceLocator.Resolve<IPlayerContext>();
+            var player = playerCtx != null && playerCtx.Transform != null ? playerCtx.Transform.gameObject : GameObject.FindWithTag("Player");
+            if (player == null) return;
+
+            var inv = player.GetComponent<InventoryComponent>();
+            if (inv == null || inv.slots == null) return;
+
+            int foodSlotsSeen = 0;
+            var excessIndices = new List<int>();
+
+            for (int i = 0; i < inv.slots.Count; i++)
+            {
+                var slot = inv.slots[i];
+                if (slot != null && !slot.IsEmpty && slot.item != null)
+                {
+                    if (slot.item is FoodItemData || slot.item.category == ItemCategory.Food)
+                    {
+                        foodSlotsSeen++;
+                        if (foodSlotsSeen > 3)
+                        {
+                            excessIndices.Add(i);
+                        }
+                    }
+                }
+            }
+
+            if (excessIndices.Count == 0) return;
+
+            // Find refrigerator or other storage in scene to hold excess food
+            InventoryComponent targetStorage = null;
+            var allInvs = Object.FindObjectsByType<InventoryComponent>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            foreach (var invComp in allInvs)
+            {
+                if (invComp != null && invComp != inv)
+                {
+                    string name = invComp.gameObject.name;
+                    if (name.IndexOf("Fridge", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
+                        name.IndexOf("Refrigerator", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
+                        name.IndexOf("Storage", System.StringComparison.OrdinalIgnoreCase) >= 0)
+                    {
+                        targetStorage = invComp;
+                        break;
+                    }
+                }
+            }
+
+            int movedCount = 0;
+            for (int k = excessIndices.Count - 1; k >= 0; k--)
+            {
+                int slotIdx = excessIndices[k];
+                var slot = inv.slots[slotIdx];
+                if (slot == null || slot.IsEmpty || slot.item == null) continue;
+
+                if (targetStorage != null)
+                {
+                    int qty = slot.quantity;
+                    inv.TransferItemTo(targetStorage, slotIdx);
+                    if (slot.IsEmpty || slot.quantity < qty)
+                    {
+                        movedCount++;
+                    }
+                }
+            }
+
+            var textService = ServiceLocator.Resolve<IFloatingTextService>();
+            Vector3 textPos = player.transform.position + Vector3.up * 2f;
+            if (movedCount > 0)
+            {
+                textService?.SpawnText(
+                    textPos,
+                    $"⚠️ Night Rule: Max 3 food slots allowed! {movedCount} excess food moved to Kitchen Storage.",
+                    new Color(1f, 0.75f, 0.25f));
+            }
+            else
+            {
+                textService?.SpawnText(
+                    textPos,
+                    "⚠️ Night Rule: Max 3 food slots carried into night!",
+                    new Color(1f, 0.65f, 0.2f));
+            }
         }
 
         private IEnumerator RoutineInitialSuspenseDelay()
@@ -297,7 +386,7 @@ namespace FeaturesCombat
                     Vector3 notifPos = player != null ? player.transform.position + Vector3.up * 2f : arenaCenter;
                     FloatingCombatTextManager.Instance.SpawnText(
                         notifPos,
-                        $"✨ Wave {wave} Cleared! Catch your breath...",
+                        $"✨ Wave {wave} Cleared! 30s prep window before next wave...",
                         new Color(0.4f, 0.9f, 0.4f));
                 }
 
@@ -310,7 +399,22 @@ namespace FeaturesCombat
 
         private IEnumerator RoutineIntermissionCountdown()
         {
-            yield return new WaitForSeconds(waveIntermissionDelay);
+            float countdown = waveIntermissionDelay;
+            while (countdown > 0f)
+            {
+                if (CombatPhaseTrackerUI.Instance != null)
+                {
+                    CombatPhaseTrackerUI.Instance.SetIntermissionCountdown(Mathf.CeilToInt(countdown), currentWave + 1, totalWaves);
+                }
+                yield return new WaitForSeconds(1f);
+                countdown -= 1f;
+            }
+
+            if (CombatPhaseTrackerUI.Instance != null)
+            {
+                CombatPhaseTrackerUI.Instance.ClearIntermissionCountdown();
+            }
+
             SpawnNextWave();
             intermissionCoroutine = null;
         }

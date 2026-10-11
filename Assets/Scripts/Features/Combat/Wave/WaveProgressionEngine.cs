@@ -264,18 +264,21 @@ namespace FeaturesCombat.Wave
 
             if (day == 1)
             {
-                // Day 1: 1 wave introductory combat
+                // Day 1: 1 wave (5 enemies)
+                list.Add(EnemyType.TuberMaw);
+                list.Add(EnemyType.TuberMaw);
                 list.Add(EnemyType.TuberMaw);
                 list.Add(EnemyType.TuberMaw);
                 list.Add(EnemyType.TaroBrute);
             }
             else if (day == 2)
             {
-                // Day 2: 2 waves introducing ranged musketeers
+                // Day 2: 2 waves (4 + 5 enemies)
                 if (wave == 1)
                 {
                     list.Add(EnemyType.TuberMaw);
                     list.Add(EnemyType.TuberMaw);
+                    list.Add(EnemyType.TaroBrute);
                     list.Add(EnemyType.CornMusketeer);
                 }
                 else
@@ -283,12 +286,13 @@ namespace FeaturesCombat.Wave
                     list.Add(EnemyType.TaroBrute);
                     list.Add(EnemyType.TaroBrute);
                     list.Add(EnemyType.TuberMaw);
+                    list.Add(EnemyType.TuberMaw);
                     list.Add(EnemyType.CornMusketeer);
                 }
             }
             else if (day == 3)
             {
-                // Day 3: 3 waves, ending with mini-boss Cyclops Tuber Maw
+                // Day 3: 3 waves (4 + 5 + 6 enemies)
                 if (wave == 1)
                 {
                     list.Add(EnemyType.CornMusketeer);
@@ -302,20 +306,30 @@ namespace FeaturesCombat.Wave
                     list.Add(EnemyType.TaroBrute);
                     list.Add(EnemyType.CornMusketeer);
                     list.Add(EnemyType.TuberMaw);
+                    list.Add(EnemyType.TuberMaw);
                 }
                 else
                 {
-                    list.Add(EnemyType.TuberMaw);
-                    list.Add(EnemyType.TuberMaw);
+                    // Wave 3: 6 enemies (Mini-boss Cyclops Tuber Maw + 5)
+                    list.Add(EnemyType.CyclopsTuberMaw);
+                    list.Add(EnemyType.TaroBrute);
                     list.Add(EnemyType.TaroBrute);
                     list.Add(EnemyType.CornMusketeer);
-                    list.Add(EnemyType.CyclopsTuberMaw);
+                    list.Add(EnemyType.CornMusketeer);
+                    list.Add(EnemyType.TuberMaw);
                 }
             }
             else if (day == 4)
             {
-                // Day 4: 4 waves, ending with first Boss Taro Colossus
-                if (wave <= 2)
+                // Day 4: 3 normal waves + W4 (1 boss + 4 enemies)
+                if (wave == 1)
+                {
+                    list.Add(EnemyType.CornMusketeer);
+                    list.Add(EnemyType.CornMusketeer);
+                    list.Add(EnemyType.TaroBrute);
+                    list.Add(EnemyType.TuberMaw);
+                }
+                else if (wave == 2)
                 {
                     list.Add(EnemyType.CornMusketeer);
                     list.Add(EnemyType.CornMusketeer);
@@ -327,12 +341,14 @@ namespace FeaturesCombat.Wave
                     list.Add(EnemyType.TuberMaw);
                     list.Add(EnemyType.TuberMaw);
                     list.Add(EnemyType.TaroBrute);
-                    list.Add(EnemyType.CornMusketeer);
                     list.Add(EnemyType.TaroBrute);
+                    list.Add(EnemyType.CornMusketeer);
                 }
                 else
                 {
+                    // Wave 4: 1 Boss (Taro Colossus) + 4 enemies
                     list.Add(EnemyType.TaroColossus);
+                    list.Add(EnemyType.TaroBrute);
                     list.Add(EnemyType.TaroBrute);
                     list.Add(EnemyType.CornMusketeer);
                     list.Add(EnemyType.TuberMaw);
@@ -340,32 +356,43 @@ namespace FeaturesCombat.Wave
             }
             else
             {
-                // Day 5: 5 Waves, culminating in Climax Dual Boss fight
-                if (wave <= 3)
+                // Day 5: 3 normal (4 + 5 + 6) + W4 (1 boss) + W5 (1 boss + 3 enemies)
+                if (wave == 1)
                 {
                     list.Add(EnemyType.TuberMaw);
                     list.Add(EnemyType.TuberMaw);
                     list.Add(EnemyType.TaroBrute);
                     list.Add(EnemyType.CornMusketeer);
-                    if (wave >= 2) list.Add(EnemyType.TaroBrute);
-                    if (wave >= 3) list.Add(EnemyType.CornMusketeer);
+                }
+                else if (wave == 2)
+                {
+                    list.Add(EnemyType.TuberMaw);
+                    list.Add(EnemyType.TuberMaw);
+                    list.Add(EnemyType.TaroBrute);
+                    list.Add(EnemyType.TaroBrute);
+                    list.Add(EnemyType.CornMusketeer);
+                }
+                else if (wave == 3)
+                {
+                    list.Add(EnemyType.TuberMaw);
+                    list.Add(EnemyType.TuberMaw);
+                    list.Add(EnemyType.TaroBrute);
+                    list.Add(EnemyType.TaroBrute);
+                    list.Add(EnemyType.CornMusketeer);
+                    list.Add(EnemyType.CornMusketeer);
                 }
                 else if (wave == 4)
                 {
-                    // Mini Encounter: Taro Colossus + 3 Minions
+                    // Wave 4 Boss: Taro Colossus
                     list.Add(EnemyType.TaroColossus);
-                    list.Add(EnemyType.TaroBrute);
-                    list.Add(EnemyType.TuberMaw);
-                    list.Add(EnemyType.CornMusketeer);
                 }
                 else
                 {
-                    // Wave 5 Grand Climax: 2 Bosses simultaneously + 3 Minions
-                    list.Add(EnemyType.CyclopsTuberMaw);
+                    // Wave 5 Boss + 3 enemies: The Ranger + 3 minions
                     list.Add(EnemyType.TheRanger);
-                    list.Add(EnemyType.TuberMaw);
                     list.Add(EnemyType.TaroBrute);
                     list.Add(EnemyType.CornMusketeer);
+                    list.Add(EnemyType.TuberMaw);
                 }
             }
 
