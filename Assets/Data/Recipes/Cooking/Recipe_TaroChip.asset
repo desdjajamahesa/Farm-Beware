@@ -26,4 +26,4 @@ MonoBehaviour:
     30s. (+10 Hunger, -5 Hydration)'
   output: {fileID: 11400000, guid: daa1a76fd4feedd4db758568f68793f5, type: 2}
   outputCount: 2
-  processTime: 3
+  processTime: 90

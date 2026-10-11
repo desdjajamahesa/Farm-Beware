@@ -246,33 +246,45 @@ public class SinkManager : MonoBehaviour
 
     public void OnRefillWaterClicked()
     {
-        var bottle = FeaturesKitchen.PlayerWaterBottle.Instance;
-        if (bottle != null)
+        if (processor == null) processor = KitchenSinkInteractable.Instance;
+        if (processor == null) return;
+
+        if (processor.IsRefillingWater)
         {
-            bottle.RefillWater(4f);
-            var floatText = ServiceLocator.Resolve<IFloatingTextService>();
-            if (floatText != null)
-            {
-                var player = ServiceLocator.Resolve<IPlayerContext>();
-                Vector3 pos = player != null ? player.Transform.position + Vector3.up * 1.5f : transform.position;
-                floatText.SpawnText(
-                    pos,
-                    "💧 Water Bottle Refilled (4/4 Charges)!",
-                    new Color(0.25f, 0.85f, 1f));
-            }
+            processor.CancelRefillingWater();
             UpdateRefillButtonState();
+            return;
         }
+
+        processor.StartRefillingWater();
+        UpdateRefillButtonState();
     }
 
     public void UpdateRefillButtonState()
     {
         if (refillWaterButtonText == null) return;
+        if (processor == null) processor = KitchenSinkInteractable.Instance;
+
         var bottle = FeaturesKitchen.PlayerWaterBottle.Instance;
-        if (bottle != null)
+        if (bottle == null) return;
+
+        if (processor != null && processor.IsRefillingWater)
         {
-            refillWaterButtonText.text = bottle.CurrentWater >= bottle.MaxWater
-                ? $"💧 Bottle Full ({Mathf.FloorToInt(bottle.CurrentWater)}/4 Charges)"
-                : $"💧 Refill Bottle ({Mathf.FloorToInt(bottle.CurrentWater)}/4 Charges)";
+            float remaining = Mathf.Max(0f, Mathf.Ceil(processor.RefillWaterDuration * (1f - processor.RefillWaterProgress)));
+            refillWaterButtonText.text = $"💧 Refilling... ({remaining:F0}s) [Cancel]";
+            return;
+        }
+
+        refillWaterButtonText.text = bottle.CurrentWater >= bottle.MaxWater
+            ? $"💧 Bottle Full ({Mathf.FloorToInt(bottle.CurrentWater)}/4 Charges)"
+            : $"💧 Refill Bottle (30s) ({Mathf.FloorToInt(bottle.CurrentWater)}/4 Charges)";
+    }
+
+    private void Update()
+    {
+        if (processor != null && processor.IsRefillingWater)
+        {
+            UpdateRefillButtonState();
         }
     }
 

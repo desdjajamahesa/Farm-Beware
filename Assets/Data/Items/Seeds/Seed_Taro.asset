@@ -26,7 +26,7 @@ MonoBehaviour:
   isDirty: 0
   cleanVariant: {fileID: 0}
   cropYield: {fileID: 11400000, guid: 871421747772b8c41b16f38651dece5e, type: 2}
-  growthDuration: 60
+  growthDuration: 900
   minYield: 1
   maxYield: 3
   associatedMonster: Taro Brute

@@ -26,7 +26,7 @@ MonoBehaviour:
   isDirty: 0
   cleanVariant: {fileID: 0}
   cropYield: {fileID: 11400000, guid: b1f5c99a438af924cbe737a1d0476132, type: 2}
-  growthDuration: 30
+  growthDuration: 360
   minYield: 1
   maxYield: 3
   associatedMonster: Tuber Maw

@@ -31598,7 +31598,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::KitchenSinkInteractable
   stationInventory: {fileID: 0}
   resultTarget: {fileID: 0}
-  washDurationPerItem: 2
+  washDurationPerItem: 10
   allowedCategories: 0100000002000000
   returnWashedToPlayer: 0
   panelSink: {fileID: 1116429230}

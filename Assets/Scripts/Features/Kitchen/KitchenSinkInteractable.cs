@@ -14,7 +14,7 @@ public class KitchenSinkInteractable : KitchenStation, IInteractable, IModalWind
 {
     [Header("Kitchen Sink Settings")]
     [Tooltip("Default wash duration per item in seconds.")]
-    [SerializeField] private float washDurationPerItem = 2f;
+    [SerializeField] private float washDurationPerItem = 10f;
 
     [Tooltip("Allowed food categories that can be washed in the sink.")]
     [SerializeField] private List<ItemData.FoodCategory> allowedCategories =
@@ -50,6 +50,18 @@ public class KitchenSinkInteractable : KitchenStation, IInteractable, IModalWind
     public bool IsWashing => isWashing;
     public float WashProgress => washProgress;
     public float WashDurationPerItem => washDurationPerItem;
+
+    [Header("Refill Water Settings")]
+    [Tooltip("Time required to refill the drinking water bottle in seconds (30s per MVP guideline).")]
+    [SerializeField] private float refillWaterDuration = 30f;
+
+    // ── Water Refill State ──
+    private bool isRefillingWater;
+    private float refillWaterProgress;
+
+    public bool IsRefillingWater => isRefillingWater;
+    public float RefillWaterProgress => refillWaterProgress;
+    public float RefillWaterDuration => refillWaterDuration;
 
     protected override void Awake()
     {
@@ -138,6 +150,20 @@ public class KitchenSinkInteractable : KitchenStation, IInteractable, IModalWind
     protected override void Update()
     {
         base.Update();
+
+        // ── Water Refill Timer (runs always, even when panel is closed) ──
+        if (isRefillingWater)
+        {
+            refillWaterProgress += Time.deltaTime / Mathf.Max(0.1f, refillWaterDuration);
+            if (refillWaterProgress >= 1f)
+            {
+                CompleteWaterRefill();
+            }
+            else
+            {
+                SyncUIIfOpen();
+            }
+        }
 
         // ── Washing Timer (runs always, even when panel is closed) ──
         if (!isWashing) return;
@@ -244,6 +270,64 @@ public class KitchenSinkInteractable : KitchenStation, IInteractable, IModalWind
     {
         isWashing = false;
         washProgress = 0f;
+    }
+
+    public bool StartRefillingWater()
+    {
+        var bottle = FeaturesKitchen.PlayerWaterBottle.Instance;
+        if (bottle == null) return false;
+
+        if (bottle.CurrentWater >= bottle.MaxWater)
+        {
+            var floatText = ServiceLocator.Resolve<IFloatingTextService>();
+            if (floatText != null)
+            {
+                var player = ServiceLocator.Resolve<IPlayerContext>();
+                Vector3 pos = player != null ? player.Transform.position + Vector3.up * 1.5f : transform.position;
+                floatText.SpawnText(pos, "💧 Water Bottle is already full!", new Color(0.3f, 0.85f, 1f));
+            }
+            return false;
+        }
+
+        if (isRefillingWater) return false;
+
+        isRefillingWater = true;
+        refillWaterProgress = 0f;
+        SyncUIIfOpen();
+        return true;
+    }
+
+    public void CancelRefillingWater()
+    {
+        if (!isRefillingWater) return;
+        isRefillingWater = false;
+        refillWaterProgress = 0f;
+        SyncUIIfOpen();
+    }
+
+    private void CompleteWaterRefill()
+    {
+        isRefillingWater = false;
+        refillWaterProgress = 0f;
+
+        var bottle = FeaturesKitchen.PlayerWaterBottle.Instance;
+        if (bottle != null)
+        {
+            bottle.RefillWater(4f);
+        }
+
+        var floatText = ServiceLocator.Resolve<IFloatingTextService>();
+        if (floatText != null)
+        {
+            var player = ServiceLocator.Resolve<IPlayerContext>();
+            Vector3 pos = player != null ? player.Transform.position + Vector3.up * 1.5f : transform.position;
+            floatText.SpawnText(
+                pos,
+                "💧 Water Bottle Refilled (4/4 Charges)!",
+                new Color(0.25f, 0.85f, 1f));
+        }
+
+        SyncUIIfOpen();
     }
 
     public void ClosePanel()

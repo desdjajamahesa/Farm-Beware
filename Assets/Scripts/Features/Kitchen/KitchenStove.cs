@@ -1,10 +1,11 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
+using System.Collections;
 using UnityEngine;
 using FeaturesInteraction;
 using FeaturesKitchen;
 using FeaturesInventory;
+using FarmBeware.Core.Runtime;
 
 /// <summary>
 /// Status state machine proses memasak di kompor.
@@ -18,28 +19,36 @@ public enum CookingState
 }
 
 /// <summary>
+/// Mewakili 1 slot / tungku masak di kompor (Burner).
+/// </summary>
+[Serializable]
+public class CookingSlot
+{
+    public int slotIndex;
+    public CookingState state = CookingState.Idle;
+    public KitchenRecipe activeRecipe;
+    public float remainingTime;
+    public float totalDuration;
+    public InventoryComponent activeInventory;
+    public CookingEscrowContainer escrowContainer = new CookingEscrowContainer();
+    public InventoryTransactionScope transactionScope;
+    public Coroutine coroutine;
+    public InventorySlot outputSlot = new InventorySlot();
+
+    public bool IsIdle => state == CookingState.Idle && (outputSlot == null || outputSlot.IsEmpty);
+    public bool IsCooking => state == CookingState.Cooking;
+    public bool HasOutput => outputSlot != null && !outputSlot.IsEmpty && outputSlot.quantity > 0;
+    public float Progress01 => totalDuration > 0f ? Mathf.Clamp01(1f - remainingTime / totalDuration) : 0f;
+}
+
+/// <summary>
 /// Kompor memasak (Kitchen Cooking Controller):
-/// Bertindak sebagai backend controller mandiri yang mengelola:
-/// - State machine siklus memasak (Idle -> Cooking -> Completed / Cancelled).
-/// - Pemancaran event C# publik (OnCookingStateChanged, OnCookingStarted, OnCookingProgress, dll).
-/// - Validasi bahan & kapasitas inventaris (mencegah masakan hilang/void saat tas penuh).
-/// - Transaksi inventaris aman dengan snapshot, atomic water consumption, dan rollback safety net.
-/// - Pending output recovery (menampung masakan jika inventaris mendadak penuh).
+/// Mendukung 3 slot/tungku memasak simultan (Concurrent 3-Burner Stove).
+/// Berjalan mandiri di scene background bahkan saat panel UI ditutup.
 /// </summary>
 [DisallowMultipleComponent]
 public class KitchenStove : MonoBehaviour, IInteractable
 {
-    #region Sub-types
-
-    [Serializable]
-    private struct ConsumedIngredientSnapshot
-    {
-        public ItemData item;
-        public int quantity;
-    }
-
-    #endregion
-
     #region Serialized Fields
 
     [Header("Resep Masak")]
@@ -56,35 +65,113 @@ public class KitchenStove : MonoBehaviour, IInteractable
     [SerializeField] private AudioClip cookingCompleteSound;
     [SerializeField] private ParticleSystem cookingParticleSystem;
 
+    [Header("Multi-Slot Burners (Max 3)")]
+    [SerializeField] private CookingSlot[] cookingSlots;
+
     #endregion
 
     #region State & Transactions
 
-    public CookingState CurrentState { get; private set; } = CookingState.Idle;
-    public KitchenRecipe ActiveRecipe => _activeRecipe;
-    public InventoryComponent ActiveInventory => _activeInventory;
+    public const int MaxCookingSlots = 3;
+
+    public CookingSlot[] CookingSlots => cookingSlots;
+    public CookingSlot GetSlot(int index) => (cookingSlots != null && index >= 0 && index < cookingSlots.Length) ? cookingSlots[index] : null;
+    public bool IsSlotCooking(int index) => (cookingSlots != null && index >= 0 && index < cookingSlots.Length && cookingSlots[index] != null && cookingSlots[index].IsCooking);
+
+    public int ActiveCookingCount
+    {
+        get
+        {
+            if (cookingSlots == null) return 0;
+            int count = 0;
+            for (int i = 0; i < cookingSlots.Length; i++)
+            {
+                if (cookingSlots[i] != null && cookingSlots[i].IsCooking)
+                    count++;
+            }
+            return count;
+        }
+    }
+
+    public int AvailableSlotCount
+    {
+        get
+        {
+            if (cookingSlots == null) return 0;
+            int count = 0;
+            for (int i = 0; i < cookingSlots.Length; i++)
+            {
+                if (cookingSlots[i] != null && cookingSlots[i].IsIdle)
+                    count++;
+            }
+            return count;
+        }
+    }
+
+    public int GetNextAvailableSlotIndex()
+    {
+        if (cookingSlots == null) return -1;
+        for (int i = 0; i < cookingSlots.Length; i++)
+        {
+            if (cookingSlots[i] != null && cookingSlots[i].IsIdle)
+                return i;
+        }
+        return -1;
+    }
+
+    public bool HasAnyCookedOutput
+    {
+        get
+        {
+            if (cookingSlots == null) return false;
+            for (int i = 0; i < cookingSlots.Length; i++)
+            {
+                if (cookingSlots[i] != null && cookingSlots[i].HasOutput)
+                    return true;
+            }
+            return false;
+        }
+    }
+
+    // ── Backward-compatible properties ──
+    public CookingState CurrentState => ActiveCookingCount > 0 ? CookingState.Cooking : (HasAnyCookedOutput ? CookingState.Completed : CookingState.Idle);
+    public KitchenRecipe ActiveRecipe
+    {
+        get
+        {
+            for (int i = 0; i < MaxCookingSlots; i++)
+            {
+                if (cookingSlots != null && i < cookingSlots.Length && cookingSlots[i] != null && cookingSlots[i].activeRecipe != null)
+                    return cookingSlots[i].activeRecipe;
+            }
+            return null;
+        }
+    }
+    public InventoryComponent ActiveInventory
+    {
+        get
+        {
+            for (int i = 0; i < MaxCookingSlots; i++)
+            {
+                if (cookingSlots != null && i < cookingSlots.Length && cookingSlots[i] != null && cookingSlots[i].activeInventory != null)
+                    return cookingSlots[i].activeInventory;
+            }
+            return null;
+        }
+    }
+
     public KitchenRecipe[] Recipes => recipes;
     public KitchenRecipe[] availableRecipes => recipes;
 
     [Header("Cooked Output Slot")]
     [Tooltip("Dedicated slot holding cooked dishes until player collects them.")]
     [SerializeField] private InventorySlot cookedOutputSlot = new InventorySlot();
-    public InventorySlot CookedOutputSlot => cookedOutputSlot;
-    public bool HasCookedOutput => cookedOutputSlot != null && !cookedOutputSlot.IsEmpty && cookedOutputSlot.quantity > 0;
+    public InventorySlot CookedOutputSlot => GetFirstOutputSlot() ?? cookedOutputSlot;
+    public bool HasCookedOutput => HasAnyCookedOutput || (cookedOutputSlot != null && !cookedOutputSlot.IsEmpty && cookedOutputSlot.quantity > 0);
 
     public ItemData PendingOutputItem => _pendingOutputItem;
     public int PendingOutputCount => _pendingOutputCount;
     public bool HasPendingOutput => _pendingOutputItem != null && _pendingOutputCount > 0;
-
-    [Header("Two-Phase Escrow Container")]
-    [SerializeField] private CookingEscrowContainer _escrowContainer = new CookingEscrowContainer();
-    private InventoryTransactionScope _transactionScope;
-
-    private KitchenRecipe _activeRecipe;
-    private InventoryComponent _activeInventory;
-    private readonly List<ConsumedIngredientSnapshot> _consumedSnapshots = new List<ConsumedIngredientSnapshot>();
-    private float _consumedWater = 0f;
-    private Coroutine _cookingCoroutine;
 
     private ItemData _pendingOutputItem;
     private int _pendingOutputCount;
@@ -100,6 +187,13 @@ public class KitchenStove : MonoBehaviour, IInteractable
     public event Action<KitchenRecipe> OnCookingCancelled;       // (recipe)
     public event Action<ItemData, int> OnCookedOutputChanged;    // (item, count)
     public event Action<ItemData, int> OnPendingOutputChanged;   // (item, count)
+
+    // Slot-specific events
+    public event Action<int, KitchenRecipe, float> OnSlotCookingStarted;   // (slotIndex, recipe, duration)
+    public event Action<int, float, float> OnSlotCookingProgress;         // (slotIndex, progress01, remainingSeconds)
+    public event Action<int, KitchenRecipe> OnSlotCookingCompleted;       // (slotIndex, recipe)
+    public event Action<int, KitchenRecipe> OnSlotCookingCancelled;       // (slotIndex, recipe)
+    public event Action<int, ItemData, int> OnSlotOutputChanged;          // (slotIndex, item, count)
 
     #endregion
 
@@ -130,6 +224,8 @@ public class KitchenStove : MonoBehaviour, IInteractable
         if (_instance == null)
             _instance = this;
 
+        InitCookingSlots();
+
         if (cookedOutputSlot == null)
             cookedOutputSlot = new InventorySlot();
 
@@ -138,6 +234,32 @@ public class KitchenStove : MonoBehaviour, IInteractable
 
         if (audioSource == null)
             audioSource = GetComponent<AudioSource>();
+    }
+
+    private void InitCookingSlots()
+    {
+        if (cookingSlots == null || cookingSlots.Length != MaxCookingSlots)
+        {
+            var old = cookingSlots;
+            cookingSlots = new CookingSlot[MaxCookingSlots];
+            for (int i = 0; i < MaxCookingSlots; i++)
+            {
+                cookingSlots[i] = (old != null && i < old.Length && old[i] != null)
+                    ? old[i]
+                    : new CookingSlot();
+            }
+        }
+
+        for (int i = 0; i < MaxCookingSlots; i++)
+        {
+            if (cookingSlots[i] == null)
+                cookingSlots[i] = new CookingSlot();
+            cookingSlots[i].slotIndex = i;
+            if (cookingSlots[i].outputSlot == null)
+                cookingSlots[i].outputSlot = new InventorySlot();
+            if (cookingSlots[i].escrowContainer == null)
+                cookingSlots[i].escrowContainer = new CookingEscrowContainer();
+        }
     }
 
     private void Start()
@@ -162,10 +284,7 @@ public class KitchenStove : MonoBehaviour, IInteractable
 
     private void OnDisable()
     {
-        if (CurrentState == CookingState.Cooking)
-        {
-            CancelCooking(refundIngredients: true);
-        }
+        // Background cooking is preserved; do not cancel on scene deactivate
     }
 
     #endregion
@@ -204,12 +323,17 @@ public class KitchenStove : MonoBehaviour, IInteractable
 
     #region Validation & Transaction Logic
 
-    /// <summary>
-    /// Checks recipe ingredient availability in inventory, clean water availability,
-    /// and ensures stove cooked output slot has space for the dish.
-    /// Returns false with descriptive failReason if cooking cannot start.
-    /// </summary>
     public bool CanCook(KitchenRecipe recipe, InventoryComponent inventory, out string failReason)
+    {
+        return CanCookSlot(recipe, inventory, -1, out failReason);
+    }
+
+    public bool CanCook(KitchenRecipe recipe, InventoryComponent inventory)
+    {
+        return CanCookSlot(recipe, inventory, -1, out _);
+    }
+
+    public bool CanCookSlot(KitchenRecipe recipe, InventoryComponent inventory, int targetSlotIndex, out string failReason)
     {
         if (recipe == null)
         {
@@ -223,9 +347,25 @@ public class KitchenStove : MonoBehaviour, IInteractable
             return false;
         }
 
-        if (CurrentState == CookingState.Cooking)
+        InitCookingSlots();
+
+        int slotIdx = targetSlotIndex >= 0 ? targetSlotIndex : GetNextAvailableSlotIndex();
+        if (slotIdx < 0 || slotIdx >= MaxCookingSlots)
         {
-            failReason = "Stove is currently busy cooking.";
+            failReason = "All 3 stove burners are busy or holding food!";
+            return false;
+        }
+
+        var slot = cookingSlots[slotIdx];
+        if (slot.IsCooking)
+        {
+            failReason = $"Burner {slotIdx + 1} is currently cooking.";
+            return false;
+        }
+
+        if (slot.HasOutput)
+        {
+            failReason = $"Burner {slotIdx + 1} holds '{slot.outputSlot.item.itemName}'! Collect it first.";
             return false;
         }
 
@@ -235,24 +375,7 @@ public class KitchenStove : MonoBehaviour, IInteractable
             return false;
         }
 
-        // Validate stove cooked output slot space
-        if (cookedOutputSlot != null && !cookedOutputSlot.IsEmpty)
-        {
-            if (cookedOutputSlot.item != recipe.output)
-            {
-                failReason = $"Output slot holds '{cookedOutputSlot.item.itemName}'! Collect it first.";
-                return false;
-            }
-
-            int maxStack = recipe.output.maxStack > 0 ? recipe.output.maxStack : 1;
-            if (cookedOutputSlot.quantity + recipe.outputCount > maxStack)
-            {
-                failReason = $"Stove output is full ({cookedOutputSlot.quantity}/{maxStack})! Collect cooked dish first.";
-                return false;
-            }
-        }
-
-        // 1. Validate clean water availability
+        // 1. Validate clean water
         if (recipe.waterRequired > 0f)
         {
             var bottle = PlayerWaterBottle.Instance;
@@ -264,7 +387,7 @@ public class KitchenStove : MonoBehaviour, IInteractable
             }
         }
 
-        // 2. Aggregate and validate raw ingredients
+        // 2. Validate ingredients
         var aggregatedRequirements = new Dictionary<ItemData, int>();
         var allIngredients = recipe.GetAllIngredients();
         foreach (var ingredient in allIngredients)
@@ -298,60 +421,51 @@ public class KitchenStove : MonoBehaviour, IInteractable
         return true;
     }
 
-    /// <summary>
-    /// Practical CanCook overload without out parameter.
-    /// </summary>
-    public bool CanCook(KitchenRecipe recipe, InventoryComponent inventory)
-    {
-        return CanCook(recipe, inventory, out _);
-    }
-
-    /// <summary>
-    /// Starts the cooking process:
-    /// 1. Validates ingredients, water, and stove output capacity.
-    /// 2. Atomically consumes water from PlayerWaterBottle.
-    /// 3. Records ingredient snapshot and removes items from inventory.
-    /// 4. Plays audio/visual feedback, enters Cooking state, and starts timer.
-    /// </summary>
     public bool StartCooking(KitchenRecipe recipe, InventoryComponent inventory)
     {
-        if (!CanCook(recipe, inventory, out string failReason))
+        return StartCookingSlot(recipe, inventory, -1);
+    }
+
+    public bool StartCookingSlot(KitchenRecipe recipe, InventoryComponent inventory, int targetSlotIndex = -1)
+    {
+        InitCookingSlots();
+
+        int slotIdx = targetSlotIndex >= 0 ? targetSlotIndex : GetNextAvailableSlotIndex();
+        if (!CanCookSlot(recipe, inventory, slotIdx, out string failReason))
         {
-            Debug.LogWarning($"[KitchenStove] Cannot start cooking: {failReason}");
+            Debug.LogWarning($"[KitchenStove] Cannot start cooking on burner {slotIdx + 1}: {failReason}");
             return false;
         }
 
-        if (_cookingCoroutine != null)
+        var slot = cookingSlots[slotIdx];
+        if (slot.coroutine != null)
         {
-            StopCoroutine(_cookingCoroutine);
-            _cookingCoroutine = null;
+            StopCoroutine(slot.coroutine);
+            slot.coroutine = null;
         }
 
-        _activeRecipe = recipe;
-        _activeInventory = inventory;
-        _consumedSnapshots.Clear();
-        _consumedWater = 0f;
-        _escrowContainer.Clear();
-        _transactionScope = InventoryTransactionScope.Begin(inventory);
+        slot.activeRecipe = recipe;
+        slot.activeInventory = inventory;
+        slot.escrowContainer.Clear();
+        slot.transactionScope = InventoryTransactionScope.Begin(inventory);
 
-        // 1. Consume water atomically
+        // 1. Consume clean water
         if (recipe.waterRequired > 0f)
         {
             var bottle = PlayerWaterBottle.Instance;
             if (bottle == null || !bottle.ConsumeWater(recipe.waterRequired))
             {
                 Debug.LogWarning("[KitchenStove] Failed to consume water from PlayerWaterBottle! Aborting.");
-                _activeRecipe = null;
-                _activeInventory = null;
-                _transactionScope?.Dispose();
-                _transactionScope = null;
+                slot.activeRecipe = null;
+                slot.activeInventory = null;
+                slot.transactionScope?.Dispose();
+                slot.transactionScope = null;
                 return false;
             }
-            _consumedWater = recipe.waterRequired;
-            _escrowContainer.HoldWater(recipe.waterRequired);
+            slot.escrowContainer.HoldWater(recipe.waterRequired);
         }
 
-        // 2. Aggregate and consume raw ingredients
+        // 2. Consume ingredients
         var aggregatedRequirements = new Dictionary<ItemData, int>();
         foreach (var ingredient in recipe.GetAllIngredients())
         {
@@ -368,52 +482,114 @@ public class KitchenStove : MonoBehaviour, IInteractable
         foreach (var kvp in aggregatedRequirements)
         {
             inventory.RemoveItem(kvp.Key, kvp.Value);
-            _consumedSnapshots.Add(new ConsumedIngredientSnapshot
-            {
-                item = kvp.Key,
-                quantity = kvp.Value
-            });
-            _escrowContainer.HoldIngredient(kvp.Key, kvp.Value);
-            _transactionScope.EscrowItem(kvp.Key, kvp.Value);
+            slot.escrowContainer.HoldIngredient(kvp.Key, kvp.Value);
+            slot.transactionScope.EscrowItem(kvp.Key, kvp.Value);
         }
 
         // 3. Audio & visual feedback
         PlayCookingFeedback();
 
-        // 4. Enter Cooking state and start timer
-        SetState(CookingState.Cooking);
-
+        // 4. Enter Cooking state and start slot timer
+        slot.state = CookingState.Cooking;
         float duration = recipe.processTime > 0f ? recipe.processTime : 1f;
-        OnCookingStarted?.Invoke(recipe, duration);
+        slot.remainingTime = duration;
+        slot.totalDuration = duration;
 
-        _cookingCoroutine = StartCoroutine(CookingTimerRoutine(recipe, inventory, duration));
+        OnSlotCookingStarted?.Invoke(slotIdx, recipe, duration);
+        OnCookingStarted?.Invoke(recipe, duration);
+        OnCookingStateChanged?.Invoke(CurrentState);
+
+        slot.coroutine = StartCoroutine(SlotCookingTimerRoutine(slot, recipe, inventory, duration));
         return true;
     }
 
-    /// <summary>
-    /// Cancels active cooking. If refundIngredients == true,
-    /// returns all consumed raw ingredients and water to player.
-    /// </summary>
-    public void CancelCooking(bool refundIngredients = true)
+    private IEnumerator SlotCookingTimerRoutine(CookingSlot slot, KitchenRecipe recipe, InventoryComponent inventory, float duration)
     {
-        if (CurrentState != CookingState.Cooking)
-            return;
+        float elapsed = 0f;
 
-        if (_cookingCoroutine != null)
+        while (elapsed < duration)
         {
-            StopCoroutine(_cookingCoroutine);
-            _cookingCoroutine = null;
+            elapsed += Time.deltaTime;
+            slot.remainingTime = Mathf.Max(0f, duration - elapsed);
+            float progress01 = Mathf.Clamp01(elapsed / duration);
+
+            OnSlotCookingProgress?.Invoke(slot.slotIndex, progress01, slot.remainingTime);
+            OnCookingProgress?.Invoke(progress01, slot.remainingTime);
+            yield return null;
         }
 
-        StopCookingFeedback();
+        // Commit transaction scope and clear escrow
+        if (slot.transactionScope != null)
+        {
+            slot.transactionScope.Commit();
+            slot.transactionScope.Dispose();
+            slot.transactionScope = null;
+        }
+        slot.escrowContainer.Clear();
 
-        KitchenRecipe cancelledRecipe = _activeRecipe;
-        InventoryComponent targetInventory = _activeInventory;
+        // Deposit dish into slot's output slot
+        if (recipe != null && recipe.output != null)
+        {
+            if (slot.outputSlot == null) slot.outputSlot = new InventorySlot();
+            slot.outputSlot.item = recipe.output;
+            slot.outputSlot.quantity = recipe.outputCount;
+
+            // Mirror to legacy cookedOutputSlot if empty
+            if (cookedOutputSlot == null || cookedOutputSlot.IsEmpty)
+            {
+                if (cookedOutputSlot == null) cookedOutputSlot = new InventorySlot();
+                cookedOutputSlot.item = recipe.output;
+                cookedOutputSlot.quantity = recipe.outputCount;
+            }
+
+            OnSlotOutputChanged?.Invoke(slot.slotIndex, slot.outputSlot.item, slot.outputSlot.quantity);
+            OnCookedOutputChanged?.Invoke(slot.outputSlot.item, slot.outputSlot.quantity);
+        }
+
+        slot.coroutine = null;
+        slot.state = CookingState.Completed;
+
+        // Feedback audio
+        if (ActiveCookingCount == 0)
+        {
+            StopCookingFeedback(playCompleteSound: true);
+        }
+        else if (audioSource != null && cookingCompleteSound != null)
+        {
+            audioSource.PlayOneShot(cookingCompleteSound);
+        }
+
+        // World floating alert
+        var floatText = ServiceLocator.Resolve<IFloatingTextService>();
+        if (floatText != null && recipe != null && recipe.output != null)
+        {
+            Vector3 pos = transform.position + Vector3.up * 1.8f;
+            floatText.SpawnText(pos, $"🍲 Burner {slot.slotIndex + 1}: {recipe.output.itemName} is ready!", new Color(1f, 0.85f, 0.3f));
+        }
+
+        OnSlotCookingCompleted?.Invoke(slot.slotIndex, recipe);
+        OnCookingCompleted?.Invoke(recipe);
+        OnCookingStateChanged?.Invoke(CurrentState);
+    }
+
+    public void CancelSlotCooking(int slotIndex, bool refundIngredients = true)
+    {
+        if (slotIndex < 0 || slotIndex >= MaxCookingSlots) return;
+        var slot = cookingSlots[slotIndex];
+        if (slot.state != CookingState.Cooking) return;
+
+        if (slot.coroutine != null)
+        {
+            StopCoroutine(slot.coroutine);
+            slot.coroutine = null;
+        }
+
+        KitchenRecipe cancelledRecipe = slot.activeRecipe;
+        InventoryComponent targetInventory = slot.activeInventory;
 
         if (refundIngredients)
         {
-            // Refund water and ingredients via escrow container
-            _escrowContainer.ReleaseHold(targetInventory, (overflowItem, overflowCount) =>
+            slot.escrowContainer.ReleaseHold(targetInventory, (overflowItem, overflowCount) =>
             {
                 _pendingOutputItem = overflowItem;
                 _pendingOutputCount += overflowCount;
@@ -423,107 +599,65 @@ public class KitchenStove : MonoBehaviour, IInteractable
         }
         else
         {
-            _escrowContainer.Clear();
+            slot.escrowContainer.Clear();
         }
 
-        if (_transactionScope != null)
+        if (slot.transactionScope != null)
         {
-            _transactionScope.Commit();
-            _transactionScope.Dispose();
-            _transactionScope = null;
+            slot.transactionScope.Commit();
+            slot.transactionScope.Dispose();
+            slot.transactionScope = null;
         }
 
-        _consumedSnapshots.Clear();
-        _consumedWater = 0f;
-        _activeRecipe = null;
-        _activeInventory = null;
+        slot.state = CookingState.Idle;
+        slot.activeRecipe = null;
+        slot.activeInventory = null;
 
-        SetState(CookingState.Cancelled);
+        if (ActiveCookingCount == 0)
+            StopCookingFeedback();
+
+        OnSlotCookingCancelled?.Invoke(slotIndex, cancelledRecipe);
         OnCookingCancelled?.Invoke(cancelledRecipe);
-        SetState(CookingState.Idle);
+        OnCookingStateChanged?.Invoke(CurrentState);
     }
 
-    public IEnumerator CookingTimerRoutine(KitchenRecipe recipe, InventoryComponent inventory, float duration)
+    public void CancelCooking(bool refundIngredients = true)
     {
-        float elapsed = 0f;
-
-        while (elapsed < duration)
-        {
-            elapsed += Time.deltaTime;
-            float remaining = Mathf.Max(0f, duration - elapsed);
-            float progress01 = Mathf.Clamp01(elapsed / duration);
-
-            OnCookingProgress?.Invoke(progress01, remaining);
-            yield return null;
-        }
-
-        StopCookingFeedback(playCompleteSound: true);
-
-        // Commit transaction scope and clear escrow
-        if (_transactionScope != null)
-        {
-            _transactionScope.Commit();
-            _transactionScope.Dispose();
-            _transactionScope = null;
-        }
-        _escrowContainer.Clear();
-        _consumedSnapshots.Clear();
-        _consumedWater = 0f;
-
-        // Place cooked dish directly into stove's cookedOutputSlot (keeps dish on stove)
-        if (recipe != null && recipe.output != null)
-        {
-            if (cookedOutputSlot == null)
-                cookedOutputSlot = new InventorySlot();
-
-            if (cookedOutputSlot.IsEmpty)
-            {
-                cookedOutputSlot.item = recipe.output;
-                cookedOutputSlot.quantity = recipe.outputCount;
-            }
-            else if (cookedOutputSlot.item == recipe.output)
-            {
-                cookedOutputSlot.quantity += recipe.outputCount;
-            }
-            else
-            {
-                // Fallback: deposit into pending output
-                _pendingOutputItem = recipe.output;
-                _pendingOutputCount += recipe.outputCount;
-                OnPendingOutputChanged?.Invoke(_pendingOutputItem, _pendingOutputCount);
-            }
-
-            OnCookedOutputChanged?.Invoke(cookedOutputSlot.item, cookedOutputSlot.quantity);
-        }
-
-        _cookingCoroutine = null;
-        _activeRecipe = null;
-        _activeInventory = null;
-
-        SetState(CookingState.Completed);
-        OnCookingCompleted?.Invoke(recipe);
-        SetState(CookingState.Idle);
+        CancelAllCooking(refundIngredients);
     }
 
-    /// <summary>
-    /// Collects cooked dishes from the stove's output slot into the player's inventory.
-    /// </summary>
-    public bool CollectCookedOutput(InventoryComponent targetInventory, out string failReason)
+    public void CancelAllCooking(bool refundIngredients = true)
     {
+        for (int i = 0; i < MaxCookingSlots; i++)
+        {
+            if (cookingSlots[i] != null && cookingSlots[i].IsCooking)
+                CancelSlotCooking(i, refundIngredients);
+        }
+    }
+
+    public bool CollectSlotOutput(int slotIndex, InventoryComponent targetInventory, out string failReason)
+    {
+        if (slotIndex < 0 || slotIndex >= MaxCookingSlots)
+        {
+            failReason = "Invalid slot index.";
+            return false;
+        }
+
+        var slot = cookingSlots[slotIndex];
         if (targetInventory == null)
         {
             failReason = "Player inventory not available.";
             return false;
         }
 
-        if (cookedOutputSlot == null || cookedOutputSlot.IsEmpty || cookedOutputSlot.quantity <= 0)
+        if (slot.outputSlot == null || slot.outputSlot.IsEmpty || slot.outputSlot.quantity <= 0)
         {
-            failReason = "Output slot is empty.";
+            failReason = "Burner has no cooked dish.";
             return false;
         }
 
-        ItemData dish = cookedOutputSlot.item;
-        int countToTransfer = cookedOutputSlot.quantity;
+        ItemData dish = slot.outputSlot.item;
+        int countToTransfer = slot.outputSlot.quantity;
 
         int added = targetInventory.AddItemAmount(dish, countToTransfer);
         if (added <= 0)
@@ -532,18 +666,27 @@ public class KitchenStove : MonoBehaviour, IInteractable
             return false;
         }
 
-        cookedOutputSlot.quantity -= added;
-        if (cookedOutputSlot.quantity <= 0)
+        slot.outputSlot.quantity -= added;
+        if (slot.outputSlot.quantity <= 0)
         {
-            cookedOutputSlot.item = null;
-            cookedOutputSlot.quantity = 0;
+            slot.outputSlot.item = null;
+            slot.outputSlot.quantity = 0;
+            slot.state = CookingState.Idle;
         }
 
-        OnCookedOutputChanged?.Invoke(cookedOutputSlot.item, cookedOutputSlot.quantity);
-
-        if (cookedOutputSlot.quantity > 0)
+        if (cookedOutputSlot != null && cookedOutputSlot.item == dish)
         {
-            failReason = $"Collected {added}x {dish.itemName}. Inventory full, {cookedOutputSlot.quantity} remaining on stove.";
+            cookedOutputSlot.quantity = Mathf.Max(0, cookedOutputSlot.quantity - added);
+            if (cookedOutputSlot.quantity == 0) cookedOutputSlot.item = null;
+        }
+
+        OnSlotOutputChanged?.Invoke(slotIndex, slot.outputSlot.item, slot.outputSlot.quantity);
+        OnCookedOutputChanged?.Invoke(cookedOutputSlot != null ? cookedOutputSlot.item : null, cookedOutputSlot != null ? cookedOutputSlot.quantity : 0);
+        OnCookingStateChanged?.Invoke(CurrentState);
+
+        if (slot.outputSlot.quantity > 0)
+        {
+            failReason = $"Collected {added}x {dish.itemName}. Inventory full, {slot.outputSlot.quantity} remaining on stove.";
             return true;
         }
 
@@ -551,9 +694,44 @@ public class KitchenStove : MonoBehaviour, IInteractable
         return true;
     }
 
-    /// <summary>
-    /// Claims leftover dishes or rollback items held on the stove.
-    /// </summary>
+    public bool CollectCookedOutput(InventoryComponent targetInventory, out string failReason)
+    {
+        return CollectAllOutput(targetInventory, out failReason);
+    }
+
+    public bool CollectAllOutput(InventoryComponent targetInventory, out string failReason)
+    {
+        bool anyCollected = false;
+        failReason = string.Empty;
+
+        for (int i = 0; i < MaxCookingSlots; i++)
+        {
+            if (cookingSlots[i] != null && cookingSlots[i].HasOutput)
+            {
+                if (CollectSlotOutput(i, targetInventory, out string err))
+                    anyCollected = true;
+                else
+                    failReason = err;
+            }
+        }
+
+        if (!anyCollected && string.IsNullOrEmpty(failReason))
+            failReason = "No cooked dishes to collect on stove.";
+
+        return anyCollected;
+    }
+
+    private InventorySlot GetFirstOutputSlot()
+    {
+        if (cookingSlots == null) return null;
+        for (int i = 0; i < cookingSlots.Length; i++)
+        {
+            if (cookingSlots[i] != null && cookingSlots[i].HasOutput)
+                return cookingSlots[i].outputSlot;
+        }
+        return null;
+    }
+
     public bool TryClaimPendingOutput(InventoryComponent inventory)
     {
         if (!HasPendingOutput || inventory == null) return false;
@@ -570,7 +748,7 @@ public class KitchenStove : MonoBehaviour, IInteractable
         return added > 0;
     }
 
-    private void PlayCookingFeedback()
+    public void PlayCookingFeedback()
     {
         if (cookingParticleSystem != null && !cookingParticleSystem.isPlaying)
             cookingParticleSystem.Play();
@@ -579,32 +757,29 @@ public class KitchenStove : MonoBehaviour, IInteractable
         {
             audioSource.clip = cookingLoopSound;
             audioSource.loop = true;
-            audioSource.Play();
+            if (!audioSource.isPlaying)
+                audioSource.Play();
         }
     }
 
-    private void StopCookingFeedback(bool playCompleteSound = false)
+    public void StopCookingFeedback(bool playCompleteSound = false)
     {
+        if (ActiveCookingCount > 0)
+            return; // Other slots are still cooking
+
         if (cookingParticleSystem != null && cookingParticleSystem.isPlaying)
             cookingParticleSystem.Stop();
 
         if (audioSource != null)
         {
-            if (audioSource.isPlaying)
-                audioSource.Stop();
+            audioSource.loop = false;
+            audioSource.Stop();
 
             if (playCompleteSound && cookingCompleteSound != null)
             {
                 audioSource.PlayOneShot(cookingCompleteSound);
             }
         }
-    }
-
-    private void SetState(CookingState newState)
-    {
-        if (CurrentState == newState) return;
-        CurrentState = newState;
-        OnCookingStateChanged?.Invoke(newState);
     }
 
     public void SetRecipes(KitchenRecipe[] newRecipes)
