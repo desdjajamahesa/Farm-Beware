@@ -103,14 +103,23 @@ namespace FeaturesFarming
 
         private void Update()
         {
+            // Sesuai MVP Version Guideline V0.1:
+            // "Crop growth: Only counts during the Day phase (night does not count)."
+            var timeService = ServiceLocator.Resolve<ITimeService>();
+            bool isNight = (timeService != null && timeService.IsNight) ||
+                           (TimeManager.Instance != null && TimeManager.Instance.currentPhase == TimeManager.DayPhase.Night);
+
             // 1. Logika pertumbuhan jika tanah dalam kondisi tersiram air
             if (currentState == TileState.PlantedWatered && plantedSeed != null)
             {
-                float timeMultiplier = FeaturesTime.DayNightTimeManager.Instance != null
-                    ? FeaturesTime.DayNightTimeManager.Instance.FastForwardMultiplier
-                    : 1f;
+                if (!isNight)
+                {
+                    float timeMultiplier = FeaturesTime.DayNightTimeManager.Instance != null
+                        ? FeaturesTime.DayNightTimeManager.Instance.FastForwardMultiplier
+                        : 1f;
 
-                currentTimer += Time.deltaTime * timeMultiplier;
+                    currentTimer += Time.deltaTime * timeMultiplier;
+                }
                 growthProgress = Mathf.Clamp01(currentTimer / Mathf.Max(1f, growthDuration));
 
                 // Perbarui visual HANYA saat berpindah tahap pertumbuhan (hemat CPU/GC 99.9%)
@@ -451,15 +460,20 @@ namespace FeaturesFarming
 
         /// <summary>
         /// Dipanggil saat transisi hari baru (AdvanceToNextDay) oleh TimeManager / FarmingManager.
+        /// Sesuai MVP Version Guideline V0.1:
+        /// "Crops keep their progress. Sleeping early: Allowed, but the remaining daytime is lost. Crops keep their progress."
         /// </summary>
         public void AdvanceDay()
         {
             if (currentState == TileState.PlantedWatered)
             {
-                // Hari berganti setelah disiram -> langsung matang atau maju drastis
-                currentTimer += growthDuration;
-                growthProgress = 1f;
-                SetState(TileState.ReadyToHarvest);
+                // Tanaman mempertahankan akumulasi durasi pertumbuhan dari fase siang sebelumnya.
+                // Tidak matang instan otomatis saat tidur malam.
+                if (currentTimer >= growthDuration)
+                {
+                    growthProgress = 1f;
+                    SetState(TileState.ReadyToHarvest);
+                }
             }
             else if (currentState == TileState.PlantedDry)
             {

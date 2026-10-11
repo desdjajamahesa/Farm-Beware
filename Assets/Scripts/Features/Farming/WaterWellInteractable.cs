@@ -1,3 +1,4 @@
+using System.Collections;
 using UnityEngine;
 using FeaturesInteraction;
 using FarmBeware.Core.Runtime;
@@ -9,6 +10,7 @@ namespace FeaturesFarming
     /// Enables the Water Well in the garden to act as the player's refill station for Plant Waterer.
     /// Can ONLY refill the Plant Waterer tool (100L).
     /// Does NOT refill the player's drinking water bottle (which is refillable only at Kitchen Sink).
+    /// Has a 10s refill duration and maximum 2 refills per day.
     /// </summary>
     [RequireComponent(typeof(Highlightable))]
     public class WaterWellInteractable : MonoBehaviour, IInteractable, IObstructionExempt
@@ -17,6 +19,17 @@ namespace FeaturesFarming
         [Tooltip("The label shown on screen when player approaches (e.g. 'Refill Plant Waterer')")]
         [SerializeField] private string promptLabel = "Refill Plant Waterer";
 
+        [Header("Refill Settings")]
+        [Tooltip("Time required to refill the Plant Waterer tool in seconds.")]
+        [SerializeField] private float refillDuration = 10f;
+
+        [Tooltip("Maximum times the well can be refilled per in-game day.")]
+        [SerializeField] private int maxRefillsPerDay = 2;
+
+        private int refillsUsedToday = 0;
+        private bool isRefilling = false;
+        private float refillTimer = 0f;
+        private Coroutine refillCoroutine;
         private WorldLabel worldLabel;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
@@ -71,10 +84,67 @@ namespace FeaturesFarming
             }
         }
 
+        private void Start()
+        {
+            if (TimeManager.Instance != null)
+            {
+                TimeManager.Instance.OnDayChanged -= HandleDayChanged;
+                TimeManager.Instance.OnDayChanged += HandleDayChanged;
+            }
+            UpdatePromptLabel();
+        }
+
         private void OnEnable()
         {
-            if (worldLabel != null)
-                worldLabel.displayName = promptLabel;
+            if (TimeManager.Instance != null)
+            {
+                TimeManager.Instance.OnDayChanged -= HandleDayChanged;
+                TimeManager.Instance.OnDayChanged += HandleDayChanged;
+            }
+            UpdatePromptLabel();
+        }
+
+        private void OnDisable()
+        {
+            if (TimeManager.Instance != null)
+                TimeManager.Instance.OnDayChanged -= HandleDayChanged;
+
+            if (refillCoroutine != null)
+            {
+                StopCoroutine(refillCoroutine);
+                refillCoroutine = null;
+                isRefilling = false;
+            }
+        }
+
+        private void OnDestroy()
+        {
+            if (TimeManager.Instance != null)
+                TimeManager.Instance.OnDayChanged -= HandleDayChanged;
+        }
+
+        private void HandleDayChanged(int newDay)
+        {
+            refillsUsedToday = 0;
+            UpdatePromptLabel();
+        }
+
+        private void UpdatePromptLabel()
+        {
+            if (worldLabel == null) return;
+            int remaining = Mathf.Max(0, maxRefillsPerDay - refillsUsedToday);
+            if (isRefilling)
+            {
+                worldLabel.displayName = $"Drawing Water... ({Mathf.CeilToInt(refillTimer)}s)";
+            }
+            else if (remaining <= 0)
+            {
+                worldLabel.displayName = $"{promptLabel} (Depleted Today: 0/{maxRefillsPerDay})";
+            }
+            else
+            {
+                worldLabel.displayName = $"{promptLabel} ({remaining}/{maxRefillsPerDay} Left)";
+            }
         }
 
         public bool CanInteract(GameObject interactor)
@@ -86,6 +156,24 @@ namespace FeaturesFarming
         {
             var textService = ServiceLocator.Resolve<IFloatingTextService>();
             Vector3 textPos = interactor != null ? interactor.transform.position + Vector3.up * 1.5f : transform.position + Vector3.up * 2f;
+
+            if (isRefilling)
+            {
+                textService?.SpawnText(
+                    textPos,
+                    $"💧 Drawing water from well... ({Mathf.CeilToInt(refillTimer)}s remaining)",
+                    new Color(0.3f, 0.85f, 1f));
+                return;
+            }
+
+            if (refillsUsedToday >= maxRefillsPerDay)
+            {
+                textService?.SpawnText(
+                    textPos,
+                    $"⚠️ Garden Well depleted for today! (0/{maxRefillsPerDay} refills left)",
+                    new Color(1f, 0.4f, 0.3f));
+                return;
+            }
 
             var inv = interactor != null ? interactor.GetComponent<InventoryComponent>() : null;
             if (inv == null)
@@ -148,12 +236,46 @@ namespace FeaturesFarming
                     return;
                 }
 
+                refillCoroutine = StartCoroutine(RoutineRefillWaterer(textPos));
+            }
+        }
+
+        private IEnumerator RoutineRefillWaterer(Vector3 textPos)
+        {
+            isRefilling = true;
+            refillTimer = refillDuration;
+
+            var textService = ServiceLocator.Resolve<IFloatingTextService>();
+            textService?.SpawnText(
+                textPos,
+                $"💧 Drawing water from well... ({Mathf.CeilToInt(refillTimer)}s)",
+                new Color(0.25f, 0.85f, 1f));
+
+            UpdatePromptLabel();
+
+            while (refillTimer > 0f)
+            {
+                refillTimer -= Time.deltaTime;
+                UpdatePromptLabel();
+                yield return null;
+            }
+
+            isRefilling = false;
+            refillCoroutine = null;
+
+            if (PlantWaterer.Instance != null)
+            {
                 PlantWaterer.Instance.RefillWater(100f);
+                refillsUsedToday++;
+
+                int remaining = Mathf.Max(0, maxRefillsPerDay - refillsUsedToday);
                 textService?.SpawnText(
                     textPos,
-                    "💧 Plant Waterer Refilled (100/100 L)!",
+                    $"💧 Plant Waterer Refilled (100/100 L)! ({remaining}/{maxRefillsPerDay} left today)",
                     new Color(0.25f, 0.85f, 1f));
             }
+
+            UpdatePromptLabel();
         }
 
         private bool CheckHasPlantWaterer(InventoryComponent inv)

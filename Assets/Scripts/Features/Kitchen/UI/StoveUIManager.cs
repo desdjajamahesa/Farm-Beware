@@ -1,17 +1,19 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.InputSystem;
 using TMPro;
 using FarmBeware.Core.Runtime;
+using FeaturesKitchen;
 
 /// <summary>
 /// UI View/Presenter for the Kitchen Stove cooking panel.
 /// Pure presentation layer:
 /// - Displays available recipe list with Can-Cook visual indicators (normal color vs. grayscale).
 /// - Shows rich recipe details (culinary description, nutritional stats, buffs, cook time).
-/// - Provides a dedicated Cooked Food Output Slot on the stove to hold finished dishes.
-/// - Allows the player to collect cooked dishes into their inventory without auto-dumping on panel close.
+/// - Supports 3 Concurrent Burners (Multi-Slot Cooking) with real-time countdown, progress, and individual cancel/take.
+/// - Persists background cooking when panel is closed so player can leave the stove while cooking runs.
 /// - Dispatches cooking commands to the backend controller (KitchenStove).
 /// </summary>
 public class StoveUIManager : MonoBehaviour, IModalWindow
@@ -42,7 +44,7 @@ public class StoveUIManager : MonoBehaviour, IModalWindow
     [SerializeField] private Image cookButtonImage;
     [SerializeField] private Slider cookingProgressBar;
 
-    [Header("Cooked Output Slot")]
+    [Header("Cooked Output Slot (Legacy / Fallback)")]
     [SerializeField] private GameObject cookedSlotRoot;
     [SerializeField] private Image cookedSlotIcon;
     [SerializeField] private TextMeshProUGUI cookedSlotCountText;
@@ -54,7 +56,7 @@ public class StoveUIManager : MonoBehaviour, IModalWindow
 
     [Header("Panel Behavior")]
     [Tooltip("If true, closing the panel while cooking cancels the process and refunds ingredients. If false, stove continues cooking in background.")]
-    [SerializeField] private bool cancelCookingOnPanelClose = true;
+    [SerializeField] private bool cancelCookingOnPanelClose = false;
 
     [Header("Colors")]
     [SerializeField] private Color canCookColor = new Color(0.2f, 0.7f, 0.3f, 1f);
@@ -65,6 +67,22 @@ public class StoveUIManager : MonoBehaviour, IModalWindow
     #endregion
 
     #region Internal Types & State
+
+    [Serializable]
+    public class BurnerSlotUI
+    {
+        public int slotIndex;
+        public GameObject root;
+        public Image background;
+        public TextMeshProUGUI titleText;
+        public Image iconImage;
+        public TextMeshProUGUI statusText;
+        public GameObject progressBarRoot;
+        public Image progressBarFill;
+        public Button actionButton;
+        public TextMeshProUGUI actionButtonText;
+        public Image actionButtonImage;
+    }
 
     private struct RecipeButtonEntry
     {
@@ -102,6 +120,9 @@ public class StoveUIManager : MonoBehaviour, IModalWindow
     private readonly List<GameObject> spawnedRecipeButtons = new List<GameObject>();
     private readonly List<RecipeButtonEntry> spawnedRecipeButtonEntries = new List<RecipeButtonEntry>();
     private readonly List<GameObject> spawnedIngredientRows = new List<GameObject>();
+
+    private GameObject burnerHubRoot;
+    private readonly BurnerSlotUI[] burnerSlotUIs = new BurnerSlotUI[KitchenStove.MaxCookingSlots];
 
     public static StoveUIManager Instance { get; private set; }
     public bool IsPanelOpen => panelStove != null && panelStove.activeSelf;
@@ -141,16 +162,25 @@ public class StoveUIManager : MonoBehaviour, IModalWindow
             cookingProgressBar.gameObject.SetActive(false);
 
         EnsureCookedSlotUI();
+        EnsureBurnerUI();
     }
 
     private void Update()
     {
-        if (panelStove != null && panelStove.activeSelf &&
-            Keyboard.current != null &&
-            Keyboard.current.escapeKey.wasPressedThisFrame)
+        if (panelStove != null && panelStove.activeSelf)
         {
-            UIModalHelper.LastFrameUIPanelClosed = Time.frameCount;
-            Close();
+            if (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame)
+            {
+                UIModalHelper.LastFrameUIPanelClosed = Time.frameCount;
+                Close();
+                return;
+            }
+
+            // Real-time animation of burner countdowns and progress bars while panel is open
+            if (currentStove != null && currentStove.ActiveCookingCount > 0)
+            {
+                UpdateAllBurnerTimers();
+            }
         }
     }
 
@@ -247,19 +277,13 @@ public class StoveUIManager : MonoBehaviour, IModalWindow
         ModalStackManager.Instance?.Push(this);
 
         EnsureCookedSlotUI();
+        EnsureBurnerUI();
         PopulateRecipeList();
         UpdateCookedSlotUI();
+        UpdateAllBurnerCards();
 
-        // Check if stove is currently busy cooking
-        if (currentStove != null && currentStove.CurrentState == CookingState.Cooking && currentStove.ActiveRecipe != null)
-        {
-            SelectRecipe(currentStove.ActiveRecipe);
-        }
-        else
-        {
-            selectedRecipe = null;
-            ClearDetail();
-        }
+        selectedRecipe = null;
+        ClearDetail();
 
         // Unlock cursor
         Cursor.visible = true;
@@ -271,12 +295,16 @@ public class StoveUIManager : MonoBehaviour, IModalWindow
             playerControl.IsInputLocked = true;
     }
 
-    /// <summary>Closes the stove panel.</summary>
+    /// <summary>Closes the stove panel without cancelling background cooking.</summary>
     public void Close()
     {
-        if (currentStove != null && currentStove.CurrentState == CookingState.Cooking)
+        if (cancelCookingOnPanelClose && currentStove != null && currentStove.ActiveCookingCount > 0)
         {
-            currentStove.CancelCooking(refundIngredients: true);
+            for (int i = 0; i < KitchenStove.MaxCookingSlots; i++)
+            {
+                if (currentStove.IsSlotCooking(i))
+                    currentStove.CancelSlotCooking(i, refundIngredients: true);
+            }
         }
 
         if (playerInventory != null)
@@ -335,6 +363,13 @@ public class StoveUIManager : MonoBehaviour, IModalWindow
         stove.OnCookingCompleted += HandleCookingCompleted;
         stove.OnCookingCancelled += HandleCookingCancelled;
         stove.OnCookedOutputChanged += HandleCookedOutputChanged;
+
+        // Multi-slot burner events
+        stove.OnSlotCookingStarted += HandleSlotCookingStarted;
+        stove.OnSlotCookingProgress += HandleSlotCookingProgress;
+        stove.OnSlotCookingCompleted += HandleSlotCookingCompleted;
+        stove.OnSlotCookingCancelled += HandleSlotCookingCancelled;
+        stove.OnSlotOutputChanged += HandleSlotOutputChanged;
     }
 
     private void UnsubscribeFromStove(KitchenStove stove)
@@ -346,81 +381,93 @@ public class StoveUIManager : MonoBehaviour, IModalWindow
         stove.OnCookingCompleted -= HandleCookingCompleted;
         stove.OnCookingCancelled -= HandleCookingCancelled;
         stove.OnCookedOutputChanged -= HandleCookedOutputChanged;
+
+        // Multi-slot burner events
+        stove.OnSlotCookingStarted -= HandleSlotCookingStarted;
+        stove.OnSlotCookingProgress -= HandleSlotCookingProgress;
+        stove.OnSlotCookingCompleted -= HandleSlotCookingCompleted;
+        stove.OnSlotCookingCancelled -= HandleSlotCookingCancelled;
+        stove.OnSlotOutputChanged -= HandleSlotOutputChanged;
     }
 
     private void HandleCookingStateChanged(CookingState state)
     {
+        UpdateAllBurnerCards();
         UpdateCookButton();
         UpdateRecipeListVisuals();
     }
 
     private void HandleCookingStarted(KitchenRecipe recipe, float duration)
     {
-        if (cookingProgressBar != null)
-        {
-            cookingProgressBar.gameObject.SetActive(true);
-            cookingProgressBar.value = 0f;
-        }
-
-        if (cookButtonText != null)
-            cookButtonText.text = $"Cooking... ({Mathf.CeilToInt(duration)}s) [Cancel]";
-
+        UpdateAllBurnerCards();
         UpdateCookButton();
-        UpdateIngredientDisplay(recipe);
+        if (selectedRecipe != null)
+            UpdateIngredientDisplay(selectedRecipe);
         UpdateRecipeListVisuals();
     }
 
     private void HandleCookingProgress(float progress01, float remainingSeconds)
     {
-        if (cookingProgressBar != null)
-        {
-            if (!cookingProgressBar.gameObject.activeSelf)
-                cookingProgressBar.gameObject.SetActive(true);
-            cookingProgressBar.value = progress01;
-        }
-
-        if (cookButtonText != null)
-        {
-            cookButtonText.text = $"Cooking... ({Mathf.CeilToInt(remainingSeconds)}s) [Cancel]";
-        }
+        // Smooth per-frame updates handled in UpdateAllBurnerTimers()
     }
 
     private void HandleCookingCompleted(KitchenRecipe recipe)
     {
-        if (cookingProgressBar != null)
-        {
-            cookingProgressBar.value = 1f;
-            cookingProgressBar.gameObject.SetActive(false);
-        }
-
+        UpdateAllBurnerCards();
         UpdateCookedSlotUI();
+        UpdateCookButton();
         UpdateRecipeListVisuals();
-
-        if (selectedRecipe != null)
-            SelectRecipe(selectedRecipe);
-        else
-            UpdateCookButton();
     }
 
     private void HandleCookingCancelled(KitchenRecipe recipe)
     {
-        if (cookingProgressBar != null)
-        {
-            cookingProgressBar.value = 0f;
-            cookingProgressBar.gameObject.SetActive(false);
-        }
-
+        UpdateAllBurnerCards();
         UpdateCookedSlotUI();
+        UpdateCookButton();
         UpdateRecipeListVisuals();
-
-        if (selectedRecipe != null)
-            SelectRecipe(selectedRecipe);
-        else
-            UpdateCookButton();
     }
 
     private void HandleCookedOutputChanged(ItemData item, int count)
     {
+        UpdateAllBurnerCards();
+        UpdateCookedSlotUI();
+        UpdateCookButton();
+        UpdateRecipeListVisuals();
+    }
+
+    private void HandleSlotCookingStarted(int slotIdx, KitchenRecipe recipe, float duration)
+    {
+        UpdateAllBurnerCards();
+        UpdateCookButton();
+        if (selectedRecipe != null)
+            UpdateIngredientDisplay(selectedRecipe);
+        UpdateRecipeListVisuals();
+    }
+
+    private void HandleSlotCookingProgress(int slotIdx, float progress01, float remaining)
+    {
+        // Real-time animation handled in UpdateAllBurnerTimers()
+    }
+
+    private void HandleSlotCookingCompleted(int slotIdx, KitchenRecipe recipe)
+    {
+        UpdateAllBurnerCards();
+        UpdateCookedSlotUI();
+        UpdateCookButton();
+        UpdateRecipeListVisuals();
+    }
+
+    private void HandleSlotCookingCancelled(int slotIdx, KitchenRecipe recipe)
+    {
+        UpdateAllBurnerCards();
+        UpdateCookedSlotUI();
+        UpdateCookButton();
+        UpdateRecipeListVisuals();
+    }
+
+    private void HandleSlotOutputChanged(int slotIdx, ItemData item, int count)
+    {
+        UpdateAllBurnerCards();
         UpdateCookedSlotUI();
         UpdateCookButton();
         UpdateRecipeListVisuals();
@@ -432,7 +479,6 @@ public class StoveUIManager : MonoBehaviour, IModalWindow
 
     private void PopulateRecipeList()
     {
-        // Clear old buttons
         foreach (var btn in spawnedRecipeButtons)
             SafeDestroy(btn);
         spawnedRecipeButtons.Clear();
@@ -449,7 +495,6 @@ public class StoveUIManager : MonoBehaviour, IModalWindow
             btnGO.SetActive(true);
             spawnedRecipeButtons.Add(btnGO);
 
-            // Set icon
             var icon = btnGO.transform.Find("Icon")?.GetComponent<Image>();
             if (icon != null && recipe.output != null && recipe.output.itemIcon != null)
             {
@@ -457,7 +502,6 @@ public class StoveUIManager : MonoBehaviour, IModalWindow
                 icon.enabled = true;
             }
 
-            // Set name
             var nameText = btnGO.transform.Find("Name")?.GetComponent<TextMeshProUGUI>();
             if (nameText != null)
             {
@@ -465,11 +509,9 @@ public class StoveUIManager : MonoBehaviour, IModalWindow
                 nameText.text = displayName;
             }
 
-            // Set border & badge
             var border = btnGO.transform.Find("Border")?.GetComponent<Image>();
             var statusBadge = btnGO.transform.Find("StatusBadge")?.GetComponent<TextMeshProUGUI>();
 
-            // Set click handler
             var button = btnGO.GetComponent<Button>();
             if (button != null)
             {
@@ -550,7 +592,6 @@ public class StoveUIManager : MonoBehaviour, IModalWindow
         if (emptyStatePlaceholder != null)
             emptyStatePlaceholder.SetActive(false);
 
-        // Update detail panel icon
         if (resultIcon != null)
         {
             if (recipe != null && recipe.output != null && recipe.output.itemIcon != null)
@@ -567,7 +608,6 @@ public class StoveUIManager : MonoBehaviour, IModalWindow
         if (resultName != null)
             resultName.text = recipe != null && recipe.output != null ? recipe.output.itemName : (recipe != null ? recipe.name : "");
 
-        // Complete rich description: Lore, Nutritional Values, and Buff Effects
         if (resultDescription != null)
         {
             if (recipe == null)
@@ -614,23 +654,19 @@ public class StoveUIManager : MonoBehaviour, IModalWindow
         if (processTimeText != null)
         {
             string tier = recipe != null && recipe.output is FoodItemData f ? $"{f.foodTier} Tier Meal" : "Cooked Dish";
-            processTimeText.text = recipe != null ? $"<color=#38BDF8>{tier}</color>  •  <color=#FBBF24>Cook Time: {recipe.processTime:F0}s</color>" : "";
+            processTimeText.text = recipe != null ? $"<color=#38BDF8>{tier}</color>  •  <color=#FBBF24>Cook Time: {FormatDuration(recipe.processTime)}</color>" : "";
         }
 
-        // Highlight selected recipe card in list
         UpdateRecipeListVisuals();
 
-        // Populate ingredients
         if (recipe != null)
             PopulateIngredientRows(recipe);
 
-        // Update cook button
         UpdateCookButton();
     }
 
     private void PopulateIngredientRows(KitchenRecipe recipe)
     {
-        // Clear old rows
         foreach (var row in spawnedIngredientRows)
             SafeDestroy(row);
         spawnedIngredientRows.Clear();
@@ -647,7 +683,6 @@ public class StoveUIManager : MonoBehaviour, IModalWindow
             rowGO.SetActive(true);
             spawnedIngredientRows.Add(rowGO);
 
-            // Set icon
             var icon = rowGO.transform.Find("Icon")?.GetComponent<Image>();
             if (icon != null && ingredient.item.itemIcon != null)
             {
@@ -655,12 +690,10 @@ public class StoveUIManager : MonoBehaviour, IModalWindow
                 icon.enabled = true;
             }
 
-            // Set name
             var nameText = rowGO.transform.Find("Name")?.GetComponent<TextMeshProUGUI>();
             if (nameText != null)
                 nameText.text = ingredient.item.itemName;
 
-            // Set count "owned / required"
             int owned = playerInventory != null ? playerInventory.CountItem(ingredient.item) : 0;
             int required = ingredient.quantity;
             var countText = rowGO.transform.Find("Count")?.GetComponent<TextMeshProUGUI>();
@@ -699,7 +732,7 @@ public class StoveUIManager : MonoBehaviour, IModalWindow
             if (nameText != null)
                 nameText.text = "Clean Water";
 
-            float ownedWater = FeaturesKitchen.PlayerWaterBottle.Instance != null ? FeaturesKitchen.PlayerWaterBottle.Instance.CurrentWater : 0f;
+            float ownedWater = PlayerWaterBottle.Instance != null ? PlayerWaterBottle.Instance.CurrentWater : 0f;
             float reqWater = recipe.waterRequired;
             var countText = waterRowGO.transform.Find("Count")?.GetComponent<TextMeshProUGUI>();
             if (countText != null)
@@ -717,11 +750,424 @@ public class StoveUIManager : MonoBehaviour, IModalWindow
 
     #endregion
 
-    #region Cooked Output Slot Presentation
+    #region 3-Burner Multi-Slot UI Hub
 
     /// <summary>
-    /// Auto-resolves or dynamically creates the Cooked Food Output Slot UI inside the detail panel.
+    /// Ensures the 3-Burner Multi-Slot UI hub exists and cards are instantiated.
+    /// Replaces old single-slot output with 3 dedicated burner status cards.
     /// </summary>
+    private void EnsureBurnerUI()
+    {
+        if (burnerHubRoot != null) return;
+
+        Transform parentZone = null;
+        if (cookedSlotRoot != null)
+        {
+            parentZone = cookedSlotRoot.transform.parent;
+            cookedSlotRoot.SetActive(false); // Hide old single-slot HearthTray
+        }
+        else if (panelStove != null)
+        {
+            parentZone = panelStove.transform.Find("RightContent/BottomCookZone");
+        }
+
+        if (parentZone == null) return;
+
+        Transform existing = parentZone.Find("BurnerHubZone");
+        if (existing != null)
+        {
+            burnerHubRoot = existing.gameObject;
+            BindBurnerSlotUIs(burnerHubRoot);
+            return;
+        }
+
+        GameObject hubGO = new GameObject("BurnerHubZone", typeof(RectTransform), typeof(HorizontalLayoutGroup));
+        hubGO.transform.SetParent(parentZone, false);
+        burnerHubRoot = hubGO;
+
+        var hubRect = hubGO.GetComponent<RectTransform>();
+        hubRect.anchorMin = new Vector2(0f, 0.5f);
+        hubRect.anchorMax = new Vector2(0f, 0.5f);
+        hubRect.pivot = new Vector2(0f, 0.5f);
+        hubRect.anchoredPosition = new Vector2(24f, 0f);
+        hubRect.sizeDelta = new Vector2(380f, 96f);
+
+        var hlg = hubGO.GetComponent<HorizontalLayoutGroup>();
+        hlg.childAlignment = TextAnchor.MiddleCenter;
+        hlg.spacing = 8f;
+        hlg.childControlWidth = false;
+        hlg.childControlHeight = false;
+        hlg.childForceExpandWidth = false;
+        hlg.childForceExpandHeight = false;
+
+        for (int i = 0; i < KitchenStove.MaxCookingSlots; i++)
+        {
+            burnerSlotUIs[i] = CreateBurnerCard(hubGO.transform, i);
+        }
+    }
+
+    private BurnerSlotUI CreateBurnerCard(Transform parent, int slotIndex)
+    {
+        var cardGO = new GameObject($"BurnerCard_{slotIndex + 1}", typeof(RectTransform), typeof(Image));
+        cardGO.transform.SetParent(parent, false);
+
+        var cardRect = cardGO.GetComponent<RectTransform>();
+        cardRect.sizeDelta = new Vector2(118f, 90f);
+
+        var bg = cardGO.GetComponent<Image>();
+        bg.color = new Color(0.10f, 0.13f, 0.18f, 0.95f);
+
+        TMP_FontAsset fontAsset = resultName != null ? resultName.font : null;
+
+        // Title
+        var titleGO = new GameObject("Title", typeof(RectTransform), typeof(TextMeshProUGUI));
+        titleGO.transform.SetParent(cardGO.transform, false);
+        var titleRect = titleGO.GetComponent<RectTransform>();
+        titleRect.anchorMin = new Vector2(0f, 1f);
+        titleRect.anchorMax = new Vector2(1f, 1f);
+        titleRect.pivot = new Vector2(0.5f, 1f);
+        titleRect.anchoredPosition = new Vector2(0f, -4f);
+        titleRect.sizeDelta = new Vector2(-8f, 16f);
+
+        var titleTmp = titleGO.GetComponent<TextMeshProUGUI>();
+        if (fontAsset != null) titleTmp.font = fontAsset;
+        titleTmp.text = $"Burner {slotIndex + 1}";
+        titleTmp.fontSize = 11f;
+        titleTmp.fontStyle = FontStyles.Bold;
+        titleTmp.alignment = TextAlignmentOptions.Center;
+        titleTmp.color = new Color(0.7f, 0.75f, 0.85f, 1f);
+
+        // Middle Row (Icon & Status Text)
+        var midRowGO = new GameObject("MidRow", typeof(RectTransform));
+        midRowGO.transform.SetParent(cardGO.transform, false);
+        var midRect = midRowGO.GetComponent<RectTransform>();
+        midRect.anchorMin = new Vector2(0f, 1f);
+        midRect.anchorMax = new Vector2(1f, 1f);
+        midRect.pivot = new Vector2(0.5f, 1f);
+        midRect.anchoredPosition = new Vector2(0f, -22f);
+        midRect.sizeDelta = new Vector2(-8f, 32f);
+
+        var iconGO = new GameObject("Icon", typeof(RectTransform), typeof(Image));
+        iconGO.transform.SetParent(midRowGO.transform, false);
+        var iconRect = iconGO.GetComponent<RectTransform>();
+        iconRect.anchorMin = new Vector2(0f, 0.5f);
+        iconRect.anchorMax = new Vector2(0f, 0.5f);
+        iconRect.pivot = new Vector2(0f, 0.5f);
+        iconRect.anchoredPosition = new Vector2(2f, 0f);
+        iconRect.sizeDelta = new Vector2(28f, 28f);
+
+        var iconImg = iconGO.GetComponent<Image>();
+        iconImg.enabled = false;
+
+        var statusGO = new GameObject("StatusText", typeof(RectTransform), typeof(TextMeshProUGUI));
+        statusGO.transform.SetParent(midRowGO.transform, false);
+        var statusRect = statusGO.GetComponent<RectTransform>();
+        statusRect.anchorMin = new Vector2(0f, 0f);
+        statusRect.anchorMax = new Vector2(1f, 1f);
+        statusRect.pivot = new Vector2(0.5f, 0.5f);
+        statusRect.offsetMin = new Vector2(34f, 0f);
+        statusRect.offsetMax = new Vector2(0f, 0f);
+
+        var statusTmp = statusGO.GetComponent<TextMeshProUGUI>();
+        if (fontAsset != null) statusTmp.font = fontAsset;
+        statusTmp.text = "Empty\n<color=#22C55E>Ready</color>";
+        statusTmp.fontSize = 10f;
+        statusTmp.alignment = TextAlignmentOptions.MidlineLeft;
+        statusTmp.lineSpacing = -15f;
+        statusTmp.overflowMode = TextOverflowModes.Ellipsis;
+
+        // Mini Progress Bar
+        var barRootGO = new GameObject("ProgressBar", typeof(RectTransform), typeof(Image));
+        barRootGO.transform.SetParent(cardGO.transform, false);
+        var barRootRect = barRootGO.GetComponent<RectTransform>();
+        barRootRect.anchorMin = new Vector2(0f, 0f);
+        barRootRect.anchorMax = new Vector2(1f, 0f);
+        barRootRect.pivot = new Vector2(0.5f, 0f);
+        barRootRect.anchoredPosition = new Vector2(0f, 28f);
+        barRootRect.sizeDelta = new Vector2(-12f, 4f);
+
+        var barBgImg = barRootGO.GetComponent<Image>();
+        barBgImg.color = new Color(0.18f, 0.22f, 0.30f, 1f);
+
+        var barFillGO = new GameObject("Fill", typeof(RectTransform), typeof(Image));
+        barFillGO.transform.SetParent(barRootGO.transform, false);
+        var barFillRect = barFillGO.GetComponent<RectTransform>();
+        barFillRect.anchorMin = Vector2.zero;
+        barFillRect.anchorMax = Vector2.one;
+        barFillRect.offsetMin = Vector2.zero;
+        barFillRect.offsetMax = Vector2.zero;
+
+        var barFillImg = barFillGO.GetComponent<Image>();
+        barFillImg.color = new Color(0.96f, 0.62f, 0.04f, 1f);
+        barFillImg.type = Image.Type.Filled;
+        barFillImg.fillMethod = Image.FillMethod.Horizontal;
+        barFillImg.fillOrigin = (int)Image.OriginHorizontal.Left;
+        barFillImg.fillAmount = 0f;
+        barRootGO.SetActive(false);
+
+        // Action Button
+        var btnGO = new GameObject("ActionButton", typeof(RectTransform), typeof(Image), typeof(Button));
+        btnGO.transform.SetParent(cardGO.transform, false);
+        var btnRect = btnGO.GetComponent<RectTransform>();
+        btnRect.anchorMin = new Vector2(0f, 0f);
+        btnRect.anchorMax = new Vector2(1f, 0f);
+        btnRect.pivot = new Vector2(0.5f, 0f);
+        btnRect.anchoredPosition = new Vector2(0f, 4f);
+        btnRect.sizeDelta = new Vector2(-12f, 22f);
+
+        var btnImg = btnGO.GetComponent<Image>();
+        btnImg.color = new Color(0.3f, 0.35f, 0.42f, 1f);
+
+        var btn = btnGO.GetComponent<Button>();
+        int capturedIdx = slotIndex;
+        btn.onClick.AddListener(() => OnBurnerActionClicked(capturedIdx));
+
+        var btnLabelGO = new GameObject("Label", typeof(RectTransform), typeof(TextMeshProUGUI));
+        btnLabelGO.transform.SetParent(btnGO.transform, false);
+        var btnLabelRect = btnLabelGO.GetComponent<RectTransform>();
+        btnLabelRect.anchorMin = Vector2.zero;
+        btnLabelRect.anchorMax = Vector2.one;
+        btnLabelRect.offsetMin = Vector2.zero;
+        btnLabelRect.offsetMax = Vector2.zero;
+
+        var btnLabelTmp = btnLabelGO.GetComponent<TextMeshProUGUI>();
+        if (fontAsset != null) btnLabelTmp.font = fontAsset;
+        btnLabelTmp.text = "";
+        btnLabelTmp.fontSize = 10f;
+        btnLabelTmp.fontStyle = FontStyles.Bold;
+        btnLabelTmp.alignment = TextAlignmentOptions.Center;
+        btnLabelTmp.color = Color.white;
+
+        btnGO.SetActive(false);
+
+        return new BurnerSlotUI
+        {
+            slotIndex = slotIndex,
+            root = cardGO,
+            background = bg,
+            titleText = titleTmp,
+            iconImage = iconImg,
+            statusText = statusTmp,
+            progressBarRoot = barRootGO,
+            progressBarFill = barFillImg,
+            actionButton = btn,
+            actionButtonText = btnLabelTmp,
+            actionButtonImage = btnImg
+        };
+    }
+
+    private void BindBurnerSlotUIs(GameObject hubGO)
+    {
+        for (int i = 0; i < KitchenStove.MaxCookingSlots; i++)
+        {
+            var card = hubGO.transform.Find($"BurnerCard_{i + 1}");
+            if (card != null)
+            {
+                var bg = card.GetComponent<Image>();
+                var titleTmp = card.Find("Title")?.GetComponent<TextMeshProUGUI>();
+                var iconImg = card.Find("MidRow/Icon")?.GetComponent<Image>();
+                var statusTmp = card.Find("MidRow/StatusText")?.GetComponent<TextMeshProUGUI>();
+                var barRoot = card.Find("ProgressBar")?.gameObject;
+                var barFillImg = card.Find("ProgressBar/Fill")?.GetComponent<Image>();
+                var btn = card.Find("ActionButton")?.GetComponent<Button>();
+                var btnImg = card.Find("ActionButton")?.GetComponent<Image>();
+                var btnLabelTmp = card.Find("ActionButton/Label")?.GetComponent<TextMeshProUGUI>();
+
+                if (btn != null)
+                {
+                    int capturedIdx = i;
+                    btn.onClick.RemoveAllListeners();
+                    btn.onClick.AddListener(() => OnBurnerActionClicked(capturedIdx));
+                }
+
+                burnerSlotUIs[i] = new BurnerSlotUI
+                {
+                    slotIndex = i,
+                    root = card.gameObject,
+                    background = bg,
+                    titleText = titleTmp,
+                    iconImage = iconImg,
+                    statusText = statusTmp,
+                    progressBarRoot = barRoot,
+                    progressBarFill = barFillImg,
+                    actionButton = btn,
+                    actionButtonText = btnLabelTmp,
+                    actionButtonImage = btnImg
+                };
+            }
+        }
+    }
+
+    /// <summary>Updates visuals of all 3 burner cards based on current stove state.</summary>
+    public void UpdateAllBurnerCards()
+    {
+        EnsureBurnerUI();
+        if (currentStove == null) return;
+
+        for (int i = 0; i < KitchenStove.MaxCookingSlots; i++)
+        {
+            var ui = burnerSlotUIs[i];
+            if (ui == null || ui.root == null) continue;
+
+            var slot = currentStove.GetSlot(i);
+            if (slot == null || slot.IsIdle)
+            {
+                ui.titleText.text = $"Burner {i + 1}";
+                ui.titleText.color = new Color(0.6f, 0.65f, 0.75f, 1f);
+                ui.iconImage.enabled = false;
+                ui.statusText.text = "Empty\n<color=#22C55E>Ready</color>";
+                ui.statusText.alignment = TextAlignmentOptions.Center;
+                ui.progressBarRoot.SetActive(false);
+                ui.actionButton.gameObject.SetActive(false);
+                ui.background.color = new Color(0.08f, 0.11f, 0.16f, 0.95f);
+            }
+            else if (slot.IsCooking)
+            {
+                ui.titleText.text = $"🔥 Burner {i + 1}";
+                ui.titleText.color = new Color(0.96f, 0.62f, 0.04f, 1f);
+
+                string dishName = (slot.activeRecipe != null && slot.activeRecipe.output != null)
+                    ? slot.activeRecipe.output.itemName
+                    : "Cooking";
+
+                if (slot.activeRecipe != null && slot.activeRecipe.output != null && slot.activeRecipe.output.itemIcon != null)
+                {
+                    ui.iconImage.sprite = slot.activeRecipe.output.itemIcon;
+                    ui.iconImage.enabled = true;
+                }
+                else
+                {
+                    ui.iconImage.enabled = false;
+                }
+
+                ui.statusText.alignment = TextAlignmentOptions.MidlineLeft;
+                ui.statusText.text = $"<b>{dishName}</b>\n<color=#38BDF8>{FormatDuration(slot.remainingTime)}</color>";
+
+                ui.progressBarRoot.SetActive(true);
+                ui.progressBarFill.fillAmount = slot.Progress01;
+
+                ui.actionButton.gameObject.SetActive(true);
+                ui.actionButtonImage.color = new Color(0.85f, 0.25f, 0.25f, 1f);
+                ui.actionButtonText.text = "Cancel";
+
+                ui.background.color = new Color(0.13f, 0.16f, 0.23f, 0.98f);
+            }
+            else if (slot.HasOutput)
+            {
+                ui.titleText.text = $"🍲 Burner {i + 1}";
+                ui.titleText.color = new Color(0.2f, 0.85f, 0.45f, 1f);
+
+                var item = slot.outputSlot.item;
+                int count = slot.outputSlot.quantity;
+                string dishName = item != null ? item.itemName : "Dish";
+
+                if (item != null && item.itemIcon != null)
+                {
+                    ui.iconImage.sprite = item.itemIcon;
+                    ui.iconImage.enabled = true;
+                }
+                else
+                {
+                    ui.iconImage.enabled = false;
+                }
+
+                ui.statusText.alignment = TextAlignmentOptions.MidlineLeft;
+                ui.statusText.text = $"<b>{dishName}</b>\n<color=#22C55E>Ready! x{count}</color>";
+
+                ui.progressBarRoot.SetActive(false);
+
+                ui.actionButton.gameObject.SetActive(true);
+                ui.actionButtonImage.color = new Color(0.18f, 0.65f, 0.38f, 1f);
+                ui.actionButtonText.text = "Take Dish";
+
+                ui.background.color = new Color(0.10f, 0.18f, 0.15f, 0.98f);
+            }
+        }
+    }
+
+    private void UpdateAllBurnerTimers()
+    {
+        if (currentStove == null) return;
+
+        for (int i = 0; i < KitchenStove.MaxCookingSlots; i++)
+        {
+            var slot = currentStove.GetSlot(i);
+            var ui = burnerSlotUIs[i];
+            if (slot == null || ui == null || !slot.IsCooking) continue;
+
+            string dishName = (slot.activeRecipe != null && slot.activeRecipe.output != null)
+                ? slot.activeRecipe.output.itemName
+                : "Cooking";
+
+            ui.statusText.text = $"<b>{dishName}</b>\n<color=#38BDF8>{FormatDuration(slot.remainingTime)}</color>";
+            ui.progressBarFill.fillAmount = slot.Progress01;
+        }
+
+        if (cookingProgressBar != null)
+        {
+            if (currentStove.ActiveCookingCount > 0)
+            {
+                cookingProgressBar.gameObject.SetActive(true);
+                float maxProg = 0f;
+                for (int i = 0; i < KitchenStove.MaxCookingSlots; i++)
+                {
+                    var s = currentStove.GetSlot(i);
+                    if (s != null && s.IsCooking && s.Progress01 > maxProg)
+                        maxProg = s.Progress01;
+                }
+                cookingProgressBar.value = maxProg;
+            }
+            else
+            {
+                cookingProgressBar.gameObject.SetActive(false);
+            }
+        }
+    }
+
+    private void OnBurnerActionClicked(int slotIndex)
+    {
+        if (currentStove == null) return;
+        var slot = currentStove.GetSlot(slotIndex);
+        if (slot == null) return;
+
+        if (slot.IsCooking)
+        {
+            currentStove.CancelSlotCooking(slotIndex, refundIngredients: true);
+            ServiceLocator.Resolve<IFloatingTextService>()?.SpawnText(
+                currentStove.transform.position + Vector3.up * 1.5f,
+                $"Burner {slotIndex + 1} cooking cancelled (Refunded)",
+                new Color(1f, 0.6f, 0.2f));
+        }
+        else if (slot.HasOutput)
+        {
+            if (playerInventory == null) return;
+            bool ok = currentStove.CollectSlotOutput(slotIndex, playerInventory, out string failReason);
+            if (ok)
+            {
+                ServiceLocator.Resolve<IFloatingTextService>()?.SpawnText(
+                    currentStove.transform.position + Vector3.up * 1.5f,
+                    $"Collected dish from Burner {slotIndex + 1}!",
+                    new Color(0.3f, 0.9f, 0.4f));
+            }
+            else
+            {
+                ServiceLocator.Resolve<IFloatingTextService>()?.SpawnText(
+                    currentStove.transform.position + Vector3.up * 1.5f,
+                    failReason,
+                    new Color(1f, 0.4f, 0.4f));
+            }
+        }
+
+        UpdateAllBurnerCards();
+        UpdateCookedSlotUI();
+        UpdateCookButton();
+        UpdateRecipeListVisuals();
+    }
+
+    #endregion
+
+    #region Cooked Output Slot Presentation (Legacy Support)
+
     private void EnsureCookedSlotUI()
     {
         if (cookedSlotRoot != null)
@@ -740,8 +1186,10 @@ public class StoveUIManager : MonoBehaviour, IModalWindow
             return;
         }
 
-        // Check if already created previously in the hierarchy
-        Transform found = panelStove != null ? panelStove.transform.Find("RightContent/CookedOutputSlotZone") : null;
+        Transform rightContent = panelStove != null ? panelStove.transform.Find("RightContent") : null;
+        if (rightContent == null) return;
+
+        Transform found = rightContent.Find("CookedOutputSlotZone");
         if (found != null)
         {
             cookedSlotRoot = found.gameObject;
@@ -756,97 +1204,10 @@ public class StoveUIManager : MonoBehaviour, IModalWindow
             }
             return;
         }
-
-        Transform rightContent = panelStove != null ? panelStove.transform.Find("RightContent") : null;
-        if (rightContent == null) return;
-
-        // Procedural creation with modern clean theme
-        GameObject zoneGO = new GameObject("CookedOutputSlotZone", typeof(RectTransform), typeof(HorizontalLayoutGroup));
-        zoneGO.transform.SetParent(rightContent, false);
-        var zoneRect = zoneGO.GetComponent<RectTransform>();
-        zoneRect.sizeDelta = new Vector2(0, 52);
-
-        var hlg = zoneGO.GetComponent<HorizontalLayoutGroup>();
-        hlg.childAlignment = TextAnchor.MiddleCenter;
-        hlg.spacing = 16f;
-        hlg.childControlWidth = false;
-        hlg.childControlHeight = false;
-        hlg.childForceExpandWidth = false;
-        hlg.childForceExpandHeight = false;
-
-        // Slot Box
-        GameObject slotBox = new GameObject("SlotBox", typeof(RectTransform), typeof(Image), typeof(Button));
-        slotBox.transform.SetParent(zoneGO.transform, false);
-        var slotRect = slotBox.GetComponent<RectTransform>();
-        slotRect.sizeDelta = new Vector2(48, 48);
-        var slotBg = slotBox.GetComponent<Image>();
-        slotBg.color = new Color(0.12f, 0.16f, 0.22f, 0.95f);
-        var slotBtn = slotBox.GetComponent<Button>();
-        slotBtn.onClick.AddListener(OnCollectClicked);
-
-        // Slot Icon
-        GameObject iconGO = new GameObject("Icon", typeof(RectTransform), typeof(Image));
-        iconGO.transform.SetParent(slotBox.transform, false);
-        var iconRect = iconGO.GetComponent<RectTransform>();
-        iconRect.anchorMin = Vector2.zero;
-        iconRect.anchorMax = Vector2.one;
-        iconRect.offsetMin = new Vector2(4, 4);
-        iconRect.offsetMax = new Vector2(-4, -4);
-        cookedSlotIcon = iconGO.GetComponent<Image>();
-        cookedSlotIcon.enabled = false;
-
-        // Slot Count Badge
-        GameObject countGO = new GameObject("Count", typeof(RectTransform), typeof(TextMeshProUGUI));
-        countGO.transform.SetParent(slotBox.transform, false);
-        var countRect = countGO.GetComponent<RectTransform>();
-        countRect.anchorMin = new Vector2(0.4f, 0);
-        countRect.anchorMax = new Vector2(1, 0.45f);
-        countRect.offsetMin = Vector2.zero;
-        countRect.offsetMax = Vector2.zero;
-        cookedSlotCountText = countGO.GetComponent<TextMeshProUGUI>();
-        cookedSlotCountText.alignment = TextAlignmentOptions.BottomRight;
-        cookedSlotCountText.fontSize = 14;
-        cookedSlotCountText.fontStyle = FontStyles.Bold;
-        cookedSlotCountText.color = Color.white;
-
-        // Collect Button
-        GameObject collectBtnGO = new GameObject("CollectButton", typeof(RectTransform), typeof(Image), typeof(Button));
-        collectBtnGO.transform.SetParent(zoneGO.transform, false);
-        var btnRect = collectBtnGO.GetComponent<RectTransform>();
-        btnRect.sizeDelta = new Vector2(160, 40);
-        var btnImage = collectBtnGO.GetComponent<Image>();
-        btnImage.color = new Color(0.18f, 0.65f, 0.38f, 1f);
-        collectCookedButton = collectBtnGO.GetComponent<Button>();
-        collectCookedButton.onClick.AddListener(OnCollectClicked);
-
-        GameObject labelGO = new GameObject("Label", typeof(RectTransform), typeof(TextMeshProUGUI));
-        labelGO.transform.SetParent(collectBtnGO.transform, false);
-        var labelRect = labelGO.GetComponent<RectTransform>();
-        labelRect.anchorMin = Vector2.zero;
-        labelRect.anchorMax = Vector2.one;
-        collectButtonText = labelGO.GetComponent<TextMeshProUGUI>();
-        collectButtonText.alignment = TextAlignmentOptions.Center;
-        collectButtonText.fontSize = 14;
-        collectButtonText.fontStyle = FontStyles.Bold;
-        collectButtonText.color = Color.white;
-        collectButtonText.text = "Collect Dish";
-
-        cookedSlotRoot = zoneGO;
-
-        // Position it right before BottomCookZone
-        Transform bottomCookZone = rightContent.Find("BottomCookZone");
-        if (bottomCookZone != null)
-        {
-            zoneGO.transform.SetSiblingIndex(bottomCookZone.GetSiblingIndex());
-        }
     }
 
-    /// <summary>
-    /// Updates the output slot presentation based on current stove output state.
-    /// </summary>
     public void UpdateCookedSlotUI()
     {
-        EnsureCookedSlotUI();
         if (cookedSlotRoot == null) return;
 
         bool hasOutput = currentStove != null && currentStove.HasCookedOutput;
@@ -908,32 +1269,26 @@ public class StoveUIManager : MonoBehaviour, IModalWindow
     {
         if (currentStove == null || playerInventory == null) return;
 
-        if (!currentStove.HasCookedOutput)
+        if (!currentStove.HasAnyCookedOutput && !currentStove.HasCookedOutput)
             return;
 
-        bool success = currentStove.CollectCookedOutput(playerInventory, out string failReason);
+        bool success = currentStove.CollectAllOutput(playerInventory, out string failReason);
         if (success)
         {
-            if (currentStove != null)
-            {
-                ServiceLocator.Resolve<IFloatingTextService>()?.SpawnText(
-                    currentStove.transform.position + Vector3.up * 1.5f,
-                    "Collected cooked dish!",
-                    new Color(0.3f, 0.9f, 0.4f));
-            }
+            ServiceLocator.Resolve<IFloatingTextService>()?.SpawnText(
+                currentStove.transform.position + Vector3.up * 1.5f,
+                "Collected cooked dish(es)!",
+                new Color(0.3f, 0.9f, 0.4f));
         }
         else
         {
-            if (currentStove != null)
-            {
-                ServiceLocator.Resolve<IFloatingTextService>()?.SpawnText(
-                    currentStove.transform.position + Vector3.up * 1.5f,
-                    failReason,
-                    new Color(1f, 0.4f, 0.4f));
-            }
-            Debug.LogWarning($"[StoveUIManager] Failed to collect dish: {failReason}");
+            ServiceLocator.Resolve<IFloatingTextService>()?.SpawnText(
+                currentStove.transform.position + Vector3.up * 1.5f,
+                failReason,
+                new Color(1f, 0.4f, 0.4f));
         }
 
+        UpdateAllBurnerCards();
         UpdateCookedSlotUI();
         UpdateCookButton();
         UpdateRecipeListVisuals();
@@ -945,21 +1300,35 @@ public class StoveUIManager : MonoBehaviour, IModalWindow
 
     private void UpdateCookButton()
     {
-        bool isCookingNow = currentStove != null && currentStove.CurrentState == CookingState.Cooking;
+        if (currentStove == null) return;
 
-        if (isCookingNow)
+        int availableCount = currentStove.AvailableSlotCount;
+        int nextSlot = currentStove.GetNextAvailableSlotIndex();
+
+        if (selectedRecipe == null)
         {
-            if (cookButton != null)
-                cookButton.interactable = true; // Can be clicked to cancel
-
-            if (cookButtonImage != null)
-                cookButtonImage.color = cannotCookColor;
-
+            if (cookButton != null) cookButton.interactable = false;
+            if (cookButtonImage != null) cookButtonImage.color = cannotCookColor;
+            if (cookButtonText != null) cookButtonText.text = "Select a Recipe";
             return;
         }
 
-        bool canCook = currentStove != null && selectedRecipe != null && playerInventory != null &&
-                       currentStove.CanCook(selectedRecipe, playerInventory, out string failReason);
+        if (availableCount == 0)
+        {
+            if (cookButton != null) cookButton.interactable = false;
+            if (cookButtonImage != null) cookButtonImage.color = cannotCookColor;
+            if (cookButtonText != null)
+            {
+                if (currentStove.ActiveCookingCount == KitchenStove.MaxCookingSlots)
+                    cookButtonText.text = "All 3 Burners Busy";
+                else
+                    cookButtonText.text = "Take Food to Cook";
+            }
+            return;
+        }
+
+        string failReason = string.Empty;
+        bool canCook = playerInventory != null && currentStove.CanCookSlot(selectedRecipe, playerInventory, nextSlot, out failReason);
 
         if (cookButton != null)
             cookButton.interactable = canCook;
@@ -971,19 +1340,11 @@ public class StoveUIManager : MonoBehaviour, IModalWindow
         {
             if (canCook)
             {
-                cookButtonText.text = "Cook!";
+                cookButtonText.text = $"Cook on Burner {nextSlot + 1} ({availableCount}/3 Free)";
             }
             else
             {
-                if (currentStove != null && currentStove.HasCookedOutput && selectedRecipe != null &&
-                    currentStove.CookedOutputSlot.item != selectedRecipe.output)
-                {
-                    cookButtonText.text = "Clear Output Slot";
-                }
-                else
-                {
-                    cookButtonText.text = "Missing Ingredients";
-                }
+                cookButtonText.text = !string.IsNullOrEmpty(failReason) ? failReason : "Missing Ingredients";
             }
         }
     }
@@ -991,23 +1352,30 @@ public class StoveUIManager : MonoBehaviour, IModalWindow
     private void OnCookClicked()
     {
         if (currentStove == null) return;
+        if (selectedRecipe == null || playerInventory == null) return;
 
-        // If cooking is in progress, clicking acts as Cancel
-        if (currentStove.CurrentState == CookingState.Cooking)
+        int targetSlot = currentStove.GetNextAvailableSlotIndex();
+        if (targetSlot < 0)
         {
-            currentStove.CancelCooking(refundIngredients: true);
+            Debug.LogWarning("[StoveUIManager] All 3 burners are busy or holding food!");
             return;
         }
 
-        if (selectedRecipe == null || playerInventory == null) return;
-
-        if (!currentStove.CanCook(selectedRecipe, playerInventory, out string failReason))
+        if (!currentStove.CanCookSlot(selectedRecipe, playerInventory, targetSlot, out string failReason))
         {
             Debug.LogWarning($"[StoveUIManager] Cannot cook: {failReason}");
             return;
         }
 
-        currentStove.StartCooking(selectedRecipe, playerInventory);
+        bool started = currentStove.StartCookingSlot(selectedRecipe, playerInventory, targetSlot);
+        if (started)
+        {
+            UpdateAllBurnerCards();
+            UpdateCookButton();
+            UpdateRecipeListVisuals();
+            if (selectedRecipe != null)
+                UpdateIngredientDisplay(selectedRecipe);
+        }
     }
 
     private void OnCloseClicked()
@@ -1027,6 +1395,15 @@ public class StoveUIManager : MonoBehaviour, IModalWindow
         foreach (var row in spawnedIngredientRows)
             SafeDestroy(row);
         spawnedIngredientRows.Clear();
+    }
+
+    private static string FormatDuration(float seconds)
+    {
+        int totalSec = Mathf.Max(0, Mathf.CeilToInt(seconds));
+        if (totalSec < 60) return $"{totalSec}s";
+        int m = totalSec / 60;
+        int s = totalSec % 60;
+        return s > 0 ? $"{m}m {s}s" : $"{m}m";
     }
 
     private static void SafeDestroy(GameObject go)

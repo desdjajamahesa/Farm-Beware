@@ -60,6 +60,11 @@ namespace FeaturesKitchen
 
         private void EnsureBottleInInventory()
         {
+            if (KitchenSinkInteractable.Instance != null && KitchenSinkInteractable.Instance.HasBottleInSink)
+            {
+                return;
+            }
+
             var inv = GetComponent<InventoryComponent>() ?? ServiceLocator.Resolve<IPlayerContext>()?.GetPlayerComponent<InventoryComponent>();
             if (inv != null)
             {

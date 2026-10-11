@@ -26,5 +26,5 @@ MonoBehaviour:
     & ATK SPD for 2 minutes. (+20 Hunger, +10 Hydration)'
   output: {fileID: 11400000, guid: 290c52e782cf683448daeceb72352ede, type: 2}
   outputCount: 1
-  processTime: 3
+  processTime: 300
   waterRequired: 20

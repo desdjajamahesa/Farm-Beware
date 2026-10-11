@@ -26,5 +26,5 @@ MonoBehaviour:
     Boosts offensive combat prowess. (+20 Hunger, +15 Hydration, +8% ATK & +8% ATK Speed for 120s)'
   output: {fileID: 11400000, guid: 758f856859069264095930ad5c8b43ed, type: 2}
   outputCount: 1
-  processTime: 5
+  processTime: 300
   waterRequired: 20

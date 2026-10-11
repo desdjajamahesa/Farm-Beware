@@ -65,6 +65,85 @@ namespace FeaturesCombat
                     WorldItemPickup.Spawn(enemy.transform.position, enemy.dropMaterial, 1, spreadDir);
                 }
             }
+
+            // 3. Drop Seeds (MVP Guideline V0.1 Gap 1)
+            ProcessSeedDrops(enemy, tossDir);
+        }
+
+        private static void ProcessSeedDrops(EnemyBase enemy, Vector3 tossDir)
+        {
+            string seedId = null;
+            int seedCount = 0;
+
+            switch (enemy.enemyType)
+            {
+                // Sweet Potato Line (Guideline: Tuber Maw drops 1-4 SP seeds: 60/20/10/10%)
+                case EnemyType.TuberMaw:
+                {
+                    seedId = "seed_sweet_potato";
+                    float r = Random.value;
+                    if (r < 0.60f) seedCount = 1;
+                    else if (r < 0.80f) seedCount = 2;
+                    else if (r < 0.90f) seedCount = 3;
+                    else seedCount = 4;
+                    break;
+                }
+                case EnemyType.CyclopsTuberMaw:
+                {
+                    seedId = "seed_sweet_potato";
+                    seedCount = Random.Range(2, 6); // 2-5 boss drop
+                    break;
+                }
+
+                // Taro Line (Guideline: Taro Brute drops 1-3 Taro seeds: 70/20/10%)
+                case EnemyType.TaroBrute:
+                {
+                    seedId = "seed_taro";
+                    float r = Random.value;
+                    if (r < 0.70f) seedCount = 1;
+                    else if (r < 0.90f) seedCount = 2;
+                    else seedCount = 3;
+                    break;
+                }
+                case EnemyType.TaroColossus:
+                {
+                    seedId = "seed_taro";
+                    seedCount = Random.Range(2, 6); // 2-5 boss drop
+                    break;
+                }
+
+                // Corn Line (Guideline: Corn Musketeer drops 1-3 Corn seeds: 70/20/10%)
+                case EnemyType.CornMusketeer:
+                {
+                    seedId = "seed_corn";
+                    float r = Random.value;
+                    if (r < 0.70f) seedCount = 1;
+                    else if (r < 0.90f) seedCount = 2;
+                    else seedCount = 3;
+                    break;
+                }
+                case EnemyType.TheRanger:
+                {
+                    seedId = "seed_corn";
+                    seedCount = Random.Range(2, 6); // 2-5 boss drop
+                    break;
+                }
+            }
+
+            if (!string.IsNullOrEmpty(seedId) && seedCount > 0)
+            {
+                var db = ItemDatabase.Instance ?? Resources.Load<ItemDatabase>("Database/ItemDatabase");
+                var seedItem = db != null ? db.GetItem(seedId) : null;
+                if (seedItem != null)
+                {
+                    for (int s = 0; s < seedCount; s++)
+                    {
+                        float angle = Random.Range(-35f, 35f);
+                        Vector3 spreadDir = Quaternion.Euler(0f, angle, 0f) * tossDir;
+                        WorldItemPickup.Spawn(enemy.transform.position, seedItem, 1, spreadDir);
+                    }
+                }
+            }
         }
 
         private static Vector3 CalculateTossDirection(EnemyBase enemy)
