@@ -505,7 +505,7 @@ SkinnedMeshRenderer:
   m_SmallMeshCulling: 1
   m_ForceMeshLod: -1
   m_MeshLodSelectionBias: 0
-  m_RenderingLayerMask: 1
+  m_RenderingLayerMask: 3
   m_RendererPriority: 0
   m_Materials:
   - {fileID: 2100000, guid: a07ada4c65e5c6b4b92cc4a0285f5a49, type: 2}
@@ -1333,7 +1333,7 @@ SkinnedMeshRenderer:
   m_SmallMeshCulling: 1
   m_ForceMeshLod: -1
   m_MeshLodSelectionBias: 0
-  m_RenderingLayerMask: 1
+  m_RenderingLayerMask: 3
   m_RendererPriority: 0
   m_Materials:
   - {fileID: 2100000, guid: a07ada4c65e5c6b4b92cc4a0285f5a49, type: 2}
@@ -1649,7 +1649,7 @@ SkinnedMeshRenderer:
   m_SmallMeshCulling: 1
   m_ForceMeshLod: -1
   m_MeshLodSelectionBias: 0
-  m_RenderingLayerMask: 1
+  m_RenderingLayerMask: 3
   m_RendererPriority: 0
   m_Materials:
   - {fileID: 2100000, guid: a07ada4c65e5c6b4b92cc4a0285f5a49, type: 2}
@@ -2103,7 +2103,7 @@ SkinnedMeshRenderer:
   m_SmallMeshCulling: 1
   m_ForceMeshLod: -1
   m_MeshLodSelectionBias: 0
-  m_RenderingLayerMask: 1
+  m_RenderingLayerMask: 3
   m_RendererPriority: 0
   m_Materials:
   - {fileID: 2100000, guid: a07ada4c65e5c6b4b92cc4a0285f5a49, type: 2}
@@ -2452,7 +2452,7 @@ SkinnedMeshRenderer:
   m_SmallMeshCulling: 1
   m_ForceMeshLod: -1
   m_MeshLodSelectionBias: 0
-  m_RenderingLayerMask: 1
+  m_RenderingLayerMask: 3
   m_RendererPriority: 0
   m_Materials:
   - {fileID: 2100000, guid: a07ada4c65e5c6b4b92cc4a0285f5a49, type: 2}
@@ -2609,7 +2609,7 @@ SkinnedMeshRenderer:
   m_SmallMeshCulling: 1
   m_ForceMeshLod: -1
   m_MeshLodSelectionBias: 0
-  m_RenderingLayerMask: 1
+  m_RenderingLayerMask: 3
   m_RendererPriority: 0
   m_Materials:
   - {fileID: 2100000, guid: a07ada4c65e5c6b4b92cc4a0285f5a49, type: 2}
@@ -3243,7 +3243,7 @@ SkinnedMeshRenderer:
   m_SmallMeshCulling: 1
   m_ForceMeshLod: -1
   m_MeshLodSelectionBias: 0
-  m_RenderingLayerMask: 1
+  m_RenderingLayerMask: 3
   m_RendererPriority: 0
   m_Materials:
   - {fileID: 2100000, guid: a07ada4c65e5c6b4b92cc4a0285f5a49, type: 2}
@@ -3432,7 +3432,7 @@ SkinnedMeshRenderer:
   m_SmallMeshCulling: 1
   m_ForceMeshLod: -1
   m_MeshLodSelectionBias: 0
-  m_RenderingLayerMask: 1
+  m_RenderingLayerMask: 3
   m_RendererPriority: 0
   m_Materials:
   - {fileID: 2100000, guid: a07ada4c65e5c6b4b92cc4a0285f5a49, type: 2}
@@ -3621,7 +3621,7 @@ SkinnedMeshRenderer:
   m_SmallMeshCulling: 1
   m_ForceMeshLod: -1
   m_MeshLodSelectionBias: 0
-  m_RenderingLayerMask: 1
+  m_RenderingLayerMask: 3
   m_RendererPriority: 0
   m_Materials:
   - {fileID: 2100000, guid: a07ada4c65e5c6b4b92cc4a0285f5a49, type: 2}
@@ -3809,7 +3809,7 @@ SkinnedMeshRenderer:
   m_SmallMeshCulling: 1
   m_ForceMeshLod: -1
   m_MeshLodSelectionBias: 0
-  m_RenderingLayerMask: 1
+  m_RenderingLayerMask: 3
   m_RendererPriority: 0
   m_Materials:
   - {fileID: 2100000, guid: 8d055c6e82726584abe0f76a79057016, type: 2}
@@ -3954,6 +3954,7 @@ GameObject:
   - component: {fileID: 8380052601127994954}
   - component: {fileID: 9085324991059719063}
   - component: {fileID: 4739352030835023962}
+  - component: {fileID: 6009400622756105635}
   m_Layer: 0
   m_Name: character_player
   m_TagString: Untagged
@@ -4000,7 +4001,15 @@ Animator:
   m_LinearVelocityBlending: 0
   m_StabilizeFeet: 0
   m_AnimatePhysics: 0
-  m_WarningMessage: 
+  m_WarningMessage: "\nBinding warning: Some generic clip(s) animate transforms that
+    are already bound by a Humanoid avatar. These transforms can only be changed
+    by Humanoid clips.\n\tTransform 'mixamorig:Hips'\n\tTransform 'mixamorig:LeftHandPinky3'\n\tTransform
+    'mixamorig:LeftHandRing2'\n\tTransform 'mixamorig:RightHandMiddle3'\n\tTransform
+    'mixamorig:RightArm'\n\tTransform 'mixamorig:RightHandIndex3'\n\tTransform 'mixamorig:LeftHandRing3'\n\tTransform
+    'mixamorig:LeftHandIndex2'\n\tTransform 'mixamorig:LeftHandThumb1'\n\tTransform
+    'mixamorig:RightHandPinky3'\n\tand more ...\n\tFrom animation clip 'CrouchToStand'\n\tFrom
+    animation clip 'Idle'\n\tFrom animation clip 'Planting'\n\tFrom animation clip
+    'Slow Run'\n\tFrom animation clip 'StandToPlanting'\n\tFrom animation clip 'Walking'"
   m_HasTransformHierarchy: 1
   m_AllowConstantClipSamplingOptimization: 1
   m_KeepAnimatorStateOnDisable: 0
@@ -4090,6 +4099,24 @@ MonoBehaviour:
   - {fileID: 4219982814282038943}
   - {fileID: 1973453553238357048}
   - {fileID: 3383275325250015209}
+--- !u!114 &6009400622756105635
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8394260857588023107}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c3f4bf7dbc06864408cb77181d3b9a66, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: FarmBeware.Rendering.Runtime::FeaturesRendering.Lighting.HeroNightHighlightReceiver
+  overrideDefaults: 0
+  customRimColor: {r: 0.55, g: 0.78, b: 1.25, a: 1}
+  customRimPower: 3.2
+  customRimIntensity: 2
+  customAmbientFloor: 0.22
+  groundAuraDecal: {fileID: 0}
 --- !u!1 &8472520094214433215
 GameObject:
   m_ObjectHideFlags: 0
@@ -4335,7 +4362,7 @@ SkinnedMeshRenderer:
   m_SmallMeshCulling: 1
   m_ForceMeshLod: -1
   m_MeshLodSelectionBias: 0
-  m_RenderingLayerMask: 1
+  m_RenderingLayerMask: 3
   m_RendererPriority: 0
   m_Materials:
   - {fileID: 2100000, guid: a07ada4c65e5c6b4b92cc4a0285f5a49, type: 2}

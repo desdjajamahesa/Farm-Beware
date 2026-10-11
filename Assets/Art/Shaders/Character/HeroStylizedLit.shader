@@ -12,6 +12,13 @@ Shader "FarmBeware/Character/HeroStylizedLit"
         _FresnelPower ("Fresnel Power", Range(0.5, 10.0)) = 3.0
         _FresnelIntensity ("Fresnel Intensity", Range(0.0, 5.0)) = 1.8
 
+        [Header(Night Dynamic Character Highlight)]
+        [HDR] _NightRimColor ("Night Rim Color", Color) = (0.55, 0.78, 1.25, 1.0)
+        _NightRimPower ("Night Rim Power", Range(0.5, 10.0)) = 3.2
+        _NightRimIntensity ("Night Rim Intensity", Range(0.0, 5.0)) = 2.0
+        _NightAmbientFloor ("Night Ambient Floor", Range(0.0, 0.5)) = 0.22
+        _NightHighlightWeight ("Night Highlight Weight", Range(0.0, 1.0)) = 0.0
+
         [Header(Combat Feedback)]
         [HDR] _EmissionColor ("Base Emission Color", Color) = (0.0, 0.0, 0.0, 1.0)
         _HitFlashAmount ("Hit Flash Amount", Range(0.0, 1.0)) = 0.0
@@ -46,6 +53,11 @@ Shader "FarmBeware/Character/HeroStylizedLit"
             UNITY_DEFINE_INSTANCED_PROP(float4, _HitFlashColor)
             UNITY_DEFINE_INSTANCED_PROP(float, _FresnelIntensity)
             UNITY_DEFINE_INSTANCED_PROP(float, _HitFlashAmount)
+            UNITY_DEFINE_INSTANCED_PROP(float4, _NightRimColor)
+            UNITY_DEFINE_INSTANCED_PROP(float, _NightRimIntensity)
+            UNITY_DEFINE_INSTANCED_PROP(float, _NightRimPower)
+            UNITY_DEFINE_INSTANCED_PROP(float, _NightAmbientFloor)
+            UNITY_DEFINE_INSTANCED_PROP(float, _NightHighlightWeight)
         UNITY_INSTANCING_BUFFER_END(Props)
 
         TEXTURE2D(_BaseMap);
@@ -58,6 +70,28 @@ Shader "FarmBeware/Character/HeroStylizedLit"
             float intensity = UNITY_ACCESS_INSTANCED_PROP(Props, _FresnelIntensity);
             float3 rimColor = UNITY_ACCESS_INSTANCED_PROP(Props, _FresnelColor).rgb;
             return rimColor * (rim * intensity);
+        }
+
+        inline float3 CalculateNightViewSpaceFresnel(float3 normalWS)
+        {
+            float nightWeight = UNITY_ACCESS_INSTANCED_PROP(Props, _NightHighlightWeight);
+            if (nightWeight <= 0.001)
+            {
+                return float3(0.0, 0.0, 0.0);
+            }
+
+            // Transform normal to View Space (camera-relative)
+            float3 normalVS = normalize(TransformWorldToViewNormal(normalWS, true));
+            // In isometric camera view space, normalVS.z represents depth facing.
+            // normalVS.z approaching 0 marks the 360-degree silhouette contour edges.
+            float NdotV_VS = saturate(abs(normalVS.z));
+            float rimPower = UNITY_ACCESS_INSTANCED_PROP(Props, _NightRimPower);
+            float rimFactor = pow(saturate(1.0 - NdotV_VS), max(0.1, rimPower));
+
+            float rimIntensity = UNITY_ACCESS_INSTANCED_PROP(Props, _NightRimIntensity);
+            float3 rimColor = UNITY_ACCESS_INSTANCED_PROP(Props, _NightRimColor).rgb;
+
+            return rimColor * (rimFactor * rimIntensity * nightWeight);
         }
         ENDHLSL
 
@@ -139,10 +173,18 @@ Shader "FarmBeware/Character/HeroStylizedLit"
                 inputData.normalizedScreenSpaceUV = GetNormalizedScreenSpaceUV(input.positionCS);
                 inputData.shadowMask = half4(1, 1, 1, 1);
 
-                // Main Directional Light
+                // Main Directional Light & Dynamic Night Shading Floor
                 Light mainLight = GetMainLight(inputData.shadowCoord);
-                float NdotL = saturate(dot(normalWS, mainLight.direction));
-                float3 directLight = albedo * mainLight.color * (NdotL * mainLight.shadowAttenuation);
+                float rawNdotL = dot(normalWS, mainLight.direction);
+                float standardLambert = saturate(rawNdotL);
+                float halfLambert = saturate(rawNdotL * 0.5 + 0.5);
+
+                float nightWeight = UNITY_ACCESS_INSTANCED_PROP(Props, _NightHighlightWeight);
+                float nightFloor = UNITY_ACCESS_INSTANCED_PROP(Props, _NightAmbientFloor);
+
+                float diffuseNight = max(standardLambert, halfLambert * nightFloor);
+                float finalDiffuse = lerp(standardLambert, diffuseNight, nightWeight);
+                float3 directLight = albedo * mainLight.color * (finalDiffuse * mainLight.shadowAttenuation);
 
                 // Additional Lights (Clustered loop)
             #if defined(_ADDITIONAL_LIGHTS)
@@ -164,11 +206,14 @@ Shader "FarmBeware/Character/HeroStylizedLit"
                 // Ambient Spherical Harmonics
                 float3 ambient = SampleSH(normalWS) * albedo;
 
-                // Stylized Hero Silhouette Rim
-                float3 heroRim = CalculateHeroFresnel(normalWS, viewDirWS);
+                // Stylized Hero Silhouette Rim (Strictly gated to nightWeight to prevent daytime highlight)
+                float3 heroRim = (nightWeight > 0.001) ? (CalculateHeroFresnel(normalWS, viewDirWS) * nightWeight) : float3(0.0, 0.0, 0.0);
 
-                // Combined Color
-                float3 finalColor = directLight + ambient + _EmissionColor.rgb + heroRim;
+                // Night Dynamic View-Space Highlight Rim
+                float3 nightRim = CalculateNightViewSpaceFresnel(normalWS);
+
+                // Combined Color (Zero highlight during day, active at night)
+                float3 finalColor = directLight + ambient + _EmissionColor.rgb + heroRim + nightRim;
 
                 // Hit Flash Blend
                 float hitFlash = UNITY_ACCESS_INSTANCED_PROP(Props, _HitFlashAmount);

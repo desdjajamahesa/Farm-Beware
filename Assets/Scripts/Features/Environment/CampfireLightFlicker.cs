@@ -48,6 +48,9 @@ namespace FeaturesEnvironment
 
         private void ResolveReferences()
         {
+            if (fireLight == null) fireLight = GetComponent<Light>();
+            if (propBlock == null) propBlock = new MaterialPropertyBlock();
+
             Transform parent = transform.parent;
             if (parent != null)
             {

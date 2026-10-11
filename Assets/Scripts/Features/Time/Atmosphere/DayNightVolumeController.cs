@@ -203,9 +203,9 @@ namespace FeaturesTime.Atmosphere
             return new VolumePhaseSettings
             {
                 tonemappingMode = TonemappingMode.ACES,
-                bloomThreshold = 1.25f,
-                bloomIntensity = 0.25f,
-                bloomScatter = 0.65f,
+                bloomThreshold = 1.15f,
+                bloomIntensity = 0.35f,
+                bloomScatter = 0.70f,
                 postExposure = 0.0f,
                 contrast = 10f,
                 saturation = 8f,
