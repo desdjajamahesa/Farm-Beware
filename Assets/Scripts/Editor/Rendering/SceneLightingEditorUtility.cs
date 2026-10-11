@@ -17,7 +17,7 @@ namespace FarmBeware.Editor.Rendering
         [MenuItem(MENU_DAY, priority = 100)]
         public static void SetSceneToDay()
         {
-            var director = Object.FindFirstObjectByType<LightingAndAtmosphereDirector>();
+            var director = Object.FindFirstObjectByType<global::Features.Time.Atmosphere.LightingAndAtmosphereDirector>();
             if (director != null)
             {
                 director.ApplyPresetInstant(TimeManager.DayPhase.Day);
@@ -35,6 +35,9 @@ namespace FarmBeware.Editor.Rendering
                 if (outdoor != null) outdoor.ApplyInstant(TimeManager.DayPhase.Day);
             }
 
+            var campfire = Object.FindFirstObjectByType<FeaturesEnvironment.CampfireLightFlicker>();
+            if (campfire != null) campfire.SetCampfireState(false, instant: true);
+
             MarkSceneDirty();
             Debug.Log("[SceneLightingEditorUtility] Pencahayaan scene diubah ke: SIANG (Day - Terang).");
         }
@@ -42,7 +45,7 @@ namespace FarmBeware.Editor.Rendering
         [MenuItem(MENU_NIGHT, priority = 101)]
         public static void SetSceneToNight()
         {
-            var director = Object.FindFirstObjectByType<LightingAndAtmosphereDirector>();
+            var director = Object.FindFirstObjectByType<global::Features.Time.Atmosphere.LightingAndAtmosphereDirector>();
             if (director != null)
             {
                 director.ApplyPresetInstant(TimeManager.DayPhase.Night);
@@ -59,6 +62,9 @@ namespace FarmBeware.Editor.Rendering
                 if (hsz != null) hsz.ApplyInstant(TimeManager.DayPhase.Night);
                 if (outdoor != null) outdoor.ApplyInstant(TimeManager.DayPhase.Night);
             }
+
+            var campfire = Object.FindFirstObjectByType<FeaturesEnvironment.CampfireLightFlicker>();
+            if (campfire != null) campfire.SetCampfireState(true, instant: true);
 
             MarkSceneDirty();
             Debug.Log("[SceneLightingEditorUtility] Pencahayaan scene diubah ke: MALAM (Night - Preview).");
