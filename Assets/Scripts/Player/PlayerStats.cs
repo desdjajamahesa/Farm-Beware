@@ -139,6 +139,15 @@ public class PlayerStats : MonoBehaviour, FeaturesCombat.IDamageable, IPlayerDam
 
         // Penalti damage jika kelaparan atau kehausan habis
         HandleEmptyPenalty();
+
+        // Shortcut: Toggle God Mode (G)
+        if (Time.timeScale > 0f && UnityEngine.InputSystem.Keyboard.current != null)
+        {
+            if (UnityEngine.InputSystem.Keyboard.current.gKey.wasPressedThisFrame)
+            {
+                ToggleGodMode();
+            }
+        }
     }
 
     public void ToggleGodMode()
