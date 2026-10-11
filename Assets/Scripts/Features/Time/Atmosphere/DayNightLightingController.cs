@@ -111,7 +111,7 @@ namespace FeaturesTime.Atmosphere
         private void HandlePhaseChanged(TimeManager.DayPhase newPhase)
         {
             // If centralized director is managing lighting, yield control to prevent race conditions
-            if (Features.Time.Atmosphere.LightingAndAtmosphereDirector.Instance != null)
+            if (LightingAndAtmosphereDirector.Instance != null)
             {
                 return;
             }
@@ -226,9 +226,9 @@ namespace FeaturesTime.Atmosphere
         public void ApplyPresetInstant(TimeManager.DayPhase phase)
         {
             // Safe Proxy: Delegate to Centralized Director if available
-            if (Features.Time.Atmosphere.LightingAndAtmosphereDirector.Instance != null)
+            if (LightingAndAtmosphereDirector.Instance != null)
             {
-                Features.Time.Atmosphere.LightingAndAtmosphereDirector.Instance.ApplyPresetInstant(phase);
+                LightingAndAtmosphereDirector.Instance.ApplyPresetInstant(phase);
                 return;
             }
 
