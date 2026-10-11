@@ -82,3 +82,8 @@ crashlytics-build.properties
 
 # Scratch and temporary tools
 /scratch/
+
+# Gameplay and local save files
+/[Ss]aves/*
+!/[Ss]aves/.gitkeep
+
