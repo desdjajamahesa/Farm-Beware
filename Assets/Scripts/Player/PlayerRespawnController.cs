@@ -131,19 +131,21 @@ public class PlayerRespawnController : MonoBehaviour
             playerControl.SetInputActive(false);
         }
 
+        if (playerRb != null)
+        {
+            playerRb.linearVelocity = Vector3.zero;
+            playerRb.angularVelocity = Vector3.zero;
+        }
+
         // Tampilkan teks feedback kekalahan seketika di posisi pingsan
         var floatingText = ServiceLocator.Resolve<IFloatingTextService>();
         if (floatingText != null)
         {
             floatingText.SpawnText(
                 transform.position + Vector3.up * 1.8f,
-                "💀 COLLAPSED!",
+                "💀 YOU DIED",
                 new Color(1f, 0.25f, 0.25f));
         }
-
-        // Buka kursor dan tampilkan Death Screen Menu secara instan tanpa delay
-        Cursor.visible = true;
-        Cursor.lockState = CursorLockMode.None;
 
         if (DeathScreenUI.Instance != null)
         {

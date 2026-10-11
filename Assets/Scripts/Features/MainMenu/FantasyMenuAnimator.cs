@@ -213,18 +213,14 @@ public class FantasyMenuAnimator : MonoBehaviour
         if (bgParallaxStrength <= 0f) return;
         Vector2 mouseScreen = Vector2.zero;
 
-#if ENABLE_INPUT_SYSTEM
         if (UnityEngine.InputSystem.Mouse.current != null)
         {
             mouseScreen = UnityEngine.InputSystem.Mouse.current.position.ReadValue();
         }
         else
         {
-            mouseScreen = Input.mousePosition;
+            try { mouseScreen = Input.mousePosition; } catch { }
         }
-#else
-        mouseScreen = Input.mousePosition;
-#endif
 
         float normX = (mouseScreen.x / Screen.width - 0.5f) * 2f;
         float normY = (mouseScreen.y / Screen.height - 0.5f) * 2f;

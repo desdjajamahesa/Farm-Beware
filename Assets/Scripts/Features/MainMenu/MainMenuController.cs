@@ -223,14 +223,14 @@ public class MainMenuController : MonoBehaviour
     void Update()
     {
         bool escPressed = false;
-#if ENABLE_INPUT_SYSTEM
         if (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame)
+        {
             escPressed = true;
-#endif
-#if ENABLE_LEGACY_INPUT_MANAGER
-        if (Input.GetKeyDown(KeyCode.Escape))
-            escPressed = true;
-#endif
+        }
+        else
+        {
+            try { escPressed = Input.GetKeyDown(KeyCode.Escape); } catch { }
+        }
         if (escPressed)
         {
             HandleEscapeKey();
