@@ -167,7 +167,16 @@ namespace FeaturesFarming
             if (timerText != null)
             {
                 int sec = Mathf.Max(0, Mathf.CeilToInt(remainingSeconds));
-                timerText.text = $"{sec}s";
+                if (sec >= 60)
+                {
+                    int m = sec / 60;
+                    int s = sec % 60;
+                    timerText.text = $"{m}:{s:D2}";
+                }
+                else
+                {
+                    timerText.text = $"{sec}s";
+                }
             }
         }
 

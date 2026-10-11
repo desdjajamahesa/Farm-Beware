@@ -1,6 +1,23 @@
 # Changelog (Roi)
 
 Semua perubahan penting pada proyek ini oleh M-Roihan (Roi) dari `branch-roi-1` dicatat di halaman ini.
+
+## - 2026-10-11
+
+### Diubah (Changed)
+- **Rekalibrasi Durasi Pertumbuhan Tanaman & Integrasi Sistem Waktu Siang**:
+  - Menyesuaikan `growthDuration` pada bibit tanaman sesuai spesifikasi tabel ekonomi:
+    - **Sweet Potato** ([`Seed_SweetPotato.asset`](file:///f:/unity/Farm-Beware/Assets/Data/Items/Seeds/Seed_SweetPotato.asset)): 360 detik (Fast: 6 menit).
+    - **Taro** ([`Seed_Taro.asset`](file:///f:/unity/Farm-Beware/Assets/Data/Items/Seeds/Seed_Taro.asset)): 900 detik (Medium: 15 menit).
+    - **Corn** ([`Seed_Corn.asset`](file:///f:/unity/Farm-Beware/Assets/Data/Items/Seeds/Seed_Corn.asset)): 900 detik (Medium: 15 menit).
+  - Menyinkronkan laju pertumbuhan tanaman di [`FarmlandTile.cs`](file:///f:/unity/Farm-Beware/Assets/Scripts/Features/Farming/FarmlandTile.cs) dengan `DayNightTimeManager.Instance.FastForwardMultiplier` sehingga saat waktu siang dipercepat (shortcut `9` [1.33x] atau `0` [8x]), pertumbuhan tanaman ikut terakselerasi secara proporsional.
+  - Memperbarui format tampilan hitungan mundur di [`CropGrowthCountdownUI.cs`](file:///f:/unity/Farm-Beware/Assets/Scripts/Features/Farming/UI/CropGrowthCountdownUI.cs) dan label petak tanah agar menampilkan menit:detik rapi (contoh: `6:00`, `14:59`) ketika sisa waktu $\ge 60$ detik.
+
+### Diperbaiki (Fixed)
+- **Perbaikan Animasi Heavy Attack Berjalan Dua Kali**:
+  - Menghapus trigger ganda `attackTriggerName` pada `TryPerformHeavyAttack()` di [`PlayerEquipment.cs`](file:///f:/unity/Farm-Beware/Assets/Scripts/Player/PlayerEquipment.cs) dan membersihkan transisi duplikat di [`AsepAnimator.controller`](file:///f:/unity/Farm-Beware/Assets/Resources/Player/AsepAnimator.controller) dari AnyState ke `Attack_Heavy` agar animasi charged strike hanya dieksekusi 1 kali saat tombol dilepas.
+  - Menghubungkan pelacakan coroutine `RoutineHeavyAttack()` di [`PlayerControl.cs`](file:///f:/unity/Farm-Beware/Assets/Scripts/Player/PlayerControl.cs) ke `attackCoroutine`.
+
 ## - 2026-10-10
 
 ### Ditambahkan (Added)

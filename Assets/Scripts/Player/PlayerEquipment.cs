@@ -64,10 +64,10 @@ public class PlayerEquipment : MonoBehaviour
     [Tooltip("Durasi aktif putaran (detik) untuk Hit 3.")]
     [SerializeField] private float combo3SwingDuration = 0.38f;
 
-    [Tooltip("Delay windup (detik) untuk ayunan Heavy Attack (Charged 360 Spin) pada base speed.")]
-    [SerializeField] private float heavySwingDelay = 0.42f;
-    [Tooltip("Durasi aktif putaran (detik) untuk Heavy Attack.")]
-    [SerializeField] private float heavySwingDuration = 0.38f;
+    [Tooltip("Windup delay (seconds) for Heavy Attack (Charged Combo Attack ver. 1) at base speed.")]
+    [SerializeField] private float heavySwingDelay = 0.38f;
+    [Tooltip("Active strike sweep duration (seconds) for Heavy Attack.")]
+    [SerializeField] private float heavySwingDuration = 0.65f;
 
     [Header("Pengaturan Jurus Spesial (Leap Strike)")]
     [Tooltip("Nama Trigger parameter di Animator untuk jurus spesial.")]
@@ -340,14 +340,15 @@ public class PlayerEquipment : MonoBehaviour
         if (upgradeState != null && upgradeState.sweetPotatoPathUnlocked) atkSpdMultiplier *= 1.20f;
         atkSpdMultiplier *= attackAnimationSpeed;
 
-        currentComboIndex = 2;
+        currentComboIndex = 3;
 
         if (animator != null)
         {
             animator.speed = atkSpdMultiplier;
             animator.ResetTrigger(attackTriggerName);
-            animator.SetInteger("ComboIndex", 2);
-            animator.SetTrigger(attackTriggerName);
+            animator.ResetTrigger("HeavyAttack");
+            animator.SetInteger("ComboIndex", 3);
+            animator.SetTrigger("HeavyAttack");
         }
 
         lastAttackTime = Time.time;

@@ -747,7 +747,8 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
                     float chargeRatio = (playerEquipment != null) ? playerEquipment.CombatStateMachine.ChargeRatio : 1f;
                     if (playerEquipment != null && playerEquipment.TryPerformHeavyAttack(chargeRatio))
                     {
-                        StartCoroutine(RoutineHeavyAttack());
+                        if (attackCoroutine != null) { StopCoroutine(attackCoroutine); }
+                        attackCoroutine = StartCoroutine(RoutineHeavyAttack());
                     }
                 }
                 else
@@ -798,8 +799,8 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
 
         float atkSpeed = (animator != null && animator.speed > 0.1f) ? animator.speed : ((playerEquipment != null) ? Mathf.Max(0.5f, playerEquipment.AttackAnimationSpeed) : 1f);
 
-        // Windup anticipation delay matching the 360 upward blade lift
-        float windupWait = 0.42f / atkSpeed;
+        // Windup anticipation delay matching the initial combo strike
+        float windupWait = 0.38f / atkSpeed;
         float elapsedWindup = 0f;
         while (elapsedWindup < windupWait)
         {
@@ -807,13 +808,13 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
             yield return null;
         }
 
-        // Forward impulse burst synchronized with active 360 blade release
+        // Forward impulse burst synchronized with active combo blade release
         if (rb != null)
         {
             rb.linearVelocity = transform.forward * 4.2f + Vector3.up * 0.1f;
         }
 
-        float maxLock = 0.82f / atkSpeed;
+        float maxLock = 1.5f / atkSpeed;
         float timer = elapsedWindup;
         while (timer < maxLock)
         {
@@ -822,6 +823,7 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
         }
 
         isAttacking = false;
+        attackCoroutine = null;
         if (animator != null)
             animator.SetBool("IsAttacking", false);
     }

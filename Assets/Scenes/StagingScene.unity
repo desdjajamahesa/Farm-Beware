@@ -3254,8 +3254,8 @@ MonoBehaviour:
   combo2SwingDuration: 0.16
   combo3SwingDelay: 0.1
   combo3SwingDuration: 0.38
-  heavySwingDelay: 0.46
-  heavySwingDuration: 0.32
+  heavySwingDelay: 0.38
+  heavySwingDuration: 0.65
   skillTriggerName: SkillAttack
   skillStaminaCost: 25
   skillDamageMultiplier: 2

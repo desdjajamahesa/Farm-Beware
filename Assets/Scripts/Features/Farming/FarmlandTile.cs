@@ -106,7 +106,11 @@ namespace FeaturesFarming
             // 1. Logika pertumbuhan jika tanah dalam kondisi tersiram air
             if (currentState == TileState.PlantedWatered && plantedSeed != null)
             {
-                currentTimer += Time.deltaTime;
+                float timeMultiplier = FeaturesTime.DayNightTimeManager.Instance != null
+                    ? FeaturesTime.DayNightTimeManager.Instance.FastForwardMultiplier
+                    : 1f;
+
+                currentTimer += Time.deltaTime * timeMultiplier;
                 growthProgress = Mathf.Clamp01(currentTimer / Mathf.Max(1f, growthDuration));
 
                 // Perbarui visual HANYA saat berpindah tahap pertumbuhan (hemat CPU/GC 99.9%)
@@ -530,7 +534,16 @@ namespace FeaturesFarming
 
                 case TileState.PlantedWatered:
                     float remaining = Mathf.Max(0f, growthDuration - currentTimer);
-                    worldLabel.displayName = $"{plantedSeed?.itemName ?? "Crop"} ({Mathf.CeilToInt(remaining)}s)";
+                    if (remaining >= 60f)
+                    {
+                        int m = Mathf.FloorToInt(remaining / 60f);
+                        int s = Mathf.CeilToInt(remaining % 60f);
+                        worldLabel.displayName = $"{plantedSeed?.itemName ?? "Crop"} ({m}m {s:D2}s)";
+                    }
+                    else
+                    {
+                        worldLabel.displayName = $"{plantedSeed?.itemName ?? "Crop"} ({Mathf.CeilToInt(remaining)}s)";
+                    }
                     break;
 
                 case TileState.ReadyToHarvest:

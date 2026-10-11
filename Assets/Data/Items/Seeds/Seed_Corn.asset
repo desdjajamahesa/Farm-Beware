@@ -25,7 +25,7 @@ MonoBehaviour:
   isDirty: 0
   cleanVariant: {fileID: 0}
   cropYield: {fileID: 11400000, guid: 3c12369d530350548bbca2f40c270693, type: 2}
-  growthDuration: 60
+  growthDuration: 900
   minYield: 1
   maxYield: 3
   associatedMonster: 
