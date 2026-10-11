@@ -373,7 +373,7 @@ SkinnedMeshRenderer:
   m_SmallMeshCulling: 1
   m_ForceMeshLod: -1
   m_MeshLodSelectionBias: 0
-  m_RenderingLayerMask: 1
+  m_RenderingLayerMask: 3
   m_RendererPriority: 0
   m_Materials:
   - {fileID: 3541580056157792254, guid: 407b164372bc53c40ae7d9cb828ce4b3, type: 3}
@@ -724,7 +724,15 @@ Animator:
   m_LinearVelocityBlending: 0
   m_StabilizeFeet: 0
   m_AnimatePhysics: 0
-  m_WarningMessage: 
+  m_WarningMessage: "\nBinding warning: Some generic clip(s) animate transforms that
+    are already bound by a Humanoid avatar. These transforms can only be changed
+    by Humanoid clips.\n\tTransform 'mixamorig:Hips'\n\tTransform 'mixamorig:LeftHandPinky3'\n\tTransform
+    'mixamorig:LeftHandRing2'\n\tTransform 'mixamorig:RightHandMiddle3'\n\tTransform
+    'mixamorig:RightArm'\n\tTransform 'mixamorig:RightHandIndex3'\n\tTransform 'mixamorig:LeftHandRing3'\n\tTransform
+    'mixamorig:LeftHandIndex2'\n\tTransform 'mixamorig:LeftHandThumb1'\n\tTransform
+    'mixamorig:RightHandPinky3'\n\tand more ...\n\tFrom animation clip 'CrouchToStand'\n\tFrom
+    animation clip 'Idle'\n\tFrom animation clip 'Planting'\n\tFrom animation clip
+    'Slow Run'\n\tFrom animation clip 'StandToPlanting'\n\tFrom animation clip 'Walking'"
   m_HasTransformHierarchy: 1
   m_AllowConstantClipSamplingOptimization: 1
   m_KeepAnimatorStateOnDisable: 0
@@ -1139,7 +1147,7 @@ SkinnedMeshRenderer:
   m_SmallMeshCulling: 1
   m_ForceMeshLod: -1
   m_MeshLodSelectionBias: 0
-  m_RenderingLayerMask: 1
+  m_RenderingLayerMask: 3
   m_RendererPriority: 0
   m_Materials:
   - {fileID: 3541580056157792254, guid: 407b164372bc53c40ae7d9cb828ce4b3, type: 3}
@@ -1328,7 +1336,7 @@ SkinnedMeshRenderer:
   m_SmallMeshCulling: 1
   m_ForceMeshLod: -1
   m_MeshLodSelectionBias: 0
-  m_RenderingLayerMask: 1
+  m_RenderingLayerMask: 3
   m_RendererPriority: 0
   m_Materials:
   - {fileID: 3541580056157792254, guid: 407b164372bc53c40ae7d9cb828ce4b3, type: 3}
@@ -1485,7 +1493,7 @@ SkinnedMeshRenderer:
   m_SmallMeshCulling: 1
   m_ForceMeshLod: -1
   m_MeshLodSelectionBias: 0
-  m_RenderingLayerMask: 1
+  m_RenderingLayerMask: 3
   m_RendererPriority: 0
   m_Materials:
   - {fileID: 3128259882040859959, guid: 407b164372bc53c40ae7d9cb828ce4b3, type: 3}
@@ -1767,7 +1775,7 @@ SkinnedMeshRenderer:
   m_SmallMeshCulling: 1
   m_ForceMeshLod: -1
   m_MeshLodSelectionBias: 0
-  m_RenderingLayerMask: 1
+  m_RenderingLayerMask: 3
   m_RendererPriority: 0
   m_Materials:
   - {fileID: 3541580056157792254, guid: 407b164372bc53c40ae7d9cb828ce4b3, type: 3}
@@ -2661,7 +2669,7 @@ SkinnedMeshRenderer:
   m_SmallMeshCulling: 1
   m_ForceMeshLod: -1
   m_MeshLodSelectionBias: 0
-  m_RenderingLayerMask: 1
+  m_RenderingLayerMask: 3
   m_RendererPriority: 0
   m_Materials:
   - {fileID: 3128259882040859959, guid: 407b164372bc53c40ae7d9cb828ce4b3, type: 3}
@@ -3299,7 +3307,7 @@ SkinnedMeshRenderer:
   m_SmallMeshCulling: 1
   m_ForceMeshLod: -1
   m_MeshLodSelectionBias: 0
-  m_RenderingLayerMask: 1
+  m_RenderingLayerMask: 3
   m_RendererPriority: 0
   m_Materials:
   - {fileID: 3541580056157792254, guid: 407b164372bc53c40ae7d9cb828ce4b3, type: 3}
@@ -3552,7 +3560,7 @@ SkinnedMeshRenderer:
   m_SmallMeshCulling: 1
   m_ForceMeshLod: -1
   m_MeshLodSelectionBias: 0
-  m_RenderingLayerMask: 1
+  m_RenderingLayerMask: 3
   m_RendererPriority: 0
   m_Materials:
   - {fileID: 3541580056157792254, guid: 407b164372bc53c40ae7d9cb828ce4b3, type: 3}
@@ -3773,7 +3781,7 @@ SkinnedMeshRenderer:
   m_SmallMeshCulling: 1
   m_ForceMeshLod: -1
   m_MeshLodSelectionBias: 0
-  m_RenderingLayerMask: 1
+  m_RenderingLayerMask: 3
   m_RendererPriority: 0
   m_Materials:
   - {fileID: 3128259882040859959, guid: 407b164372bc53c40ae7d9cb828ce4b3, type: 3}
@@ -3962,7 +3970,7 @@ SkinnedMeshRenderer:
   m_SmallMeshCulling: 1
   m_ForceMeshLod: -1
   m_MeshLodSelectionBias: 0
-  m_RenderingLayerMask: 1
+  m_RenderingLayerMask: 3
   m_RendererPriority: 0
   m_Materials:
   - {fileID: 3541580056157792254, guid: 407b164372bc53c40ae7d9cb828ce4b3, type: 3}
@@ -4409,7 +4417,7 @@ SkinnedMeshRenderer:
   m_SmallMeshCulling: 1
   m_ForceMeshLod: -1
   m_MeshLodSelectionBias: 0
-  m_RenderingLayerMask: 1
+  m_RenderingLayerMask: 3
   m_RendererPriority: 0
   m_Materials:
   - {fileID: 3128259882040859959, guid: 407b164372bc53c40ae7d9cb828ce4b3, type: 3}

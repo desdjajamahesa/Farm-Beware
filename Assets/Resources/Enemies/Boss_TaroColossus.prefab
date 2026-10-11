@@ -89,7 +89,7 @@ MeshRenderer:
   m_SmallMeshCulling: 1
   m_ForceMeshLod: -1
   m_MeshLodSelectionBias: 0
-  m_RenderingLayerMask: 1
+  m_RenderingLayerMask: 3
   m_RendererPriority: 0
   m_Materials:
   - {fileID: 2100000, guid: 2fda7039fd15d0442b6c8e71ed5fd9bc, type: 2}
@@ -175,6 +175,10 @@ MonoBehaviour:
   minGold: 700
   maxGold: 1000
   goldChance: 0.8
+  retreatSafeDistance: 7
+  maxRetreatDuration: 1.8
+  retreatHealCooldown: 15
+  retreatHealTargetHealth: 50
   repathInterval: 0.25
   cornerReachThreshold: 0.8
   obstacleAvoidanceDistance: 1.35

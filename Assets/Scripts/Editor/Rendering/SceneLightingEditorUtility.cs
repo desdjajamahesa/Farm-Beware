@@ -17,15 +17,23 @@ namespace FarmBeware.Editor.Rendering
         [MenuItem(MENU_DAY, priority = 100)]
         public static void SetSceneToDay()
         {
-            var dnlc = Object.FindFirstObjectByType<DayNightLightingController>();
-            var dnvc = Object.FindFirstObjectByType<DayNightVolumeController>();
-            var hsz = Object.FindFirstObjectByType<HouseSafeZoneLighting>();
-            var outdoor = Object.FindFirstObjectByType<OutdoorLightingController>();
+            var director = Object.FindFirstObjectByType<LightingAndAtmosphereDirector>();
+            if (director != null)
+            {
+                director.ApplyPresetInstant(TimeManager.DayPhase.Day);
+            }
+            else
+            {
+                var dnlc = Object.FindFirstObjectByType<DayNightLightingController>();
+                var dnvc = Object.FindFirstObjectByType<DayNightVolumeController>();
+                var hsz = Object.FindFirstObjectByType<HouseSafeZoneLighting>();
+                var outdoor = Object.FindFirstObjectByType<OutdoorLightingController>();
 
-            if (dnlc != null) dnlc.ApplyPresetInstant(TimeManager.DayPhase.Day);
-            if (dnvc != null) dnvc.ApplyInstant(TimeManager.DayPhase.Day);
-            if (hsz != null) hsz.ApplyInstant(TimeManager.DayPhase.Day);
-            if (outdoor != null) outdoor.ApplyInstant(TimeManager.DayPhase.Day);
+                if (dnlc != null) dnlc.ApplyPresetInstant(TimeManager.DayPhase.Day);
+                if (dnvc != null) dnvc.ApplyInstant(TimeManager.DayPhase.Day);
+                if (hsz != null) hsz.ApplyInstant(TimeManager.DayPhase.Day);
+                if (outdoor != null) outdoor.ApplyInstant(TimeManager.DayPhase.Day);
+            }
 
             MarkSceneDirty();
             Debug.Log("[SceneLightingEditorUtility] Pencahayaan scene diubah ke: SIANG (Day - Terang).");
@@ -34,15 +42,23 @@ namespace FarmBeware.Editor.Rendering
         [MenuItem(MENU_NIGHT, priority = 101)]
         public static void SetSceneToNight()
         {
-            var dnlc = Object.FindFirstObjectByType<DayNightLightingController>();
-            var dnvc = Object.FindFirstObjectByType<DayNightVolumeController>();
-            var hsz = Object.FindFirstObjectByType<HouseSafeZoneLighting>();
-            var outdoor = Object.FindFirstObjectByType<OutdoorLightingController>();
+            var director = Object.FindFirstObjectByType<LightingAndAtmosphereDirector>();
+            if (director != null)
+            {
+                director.ApplyPresetInstant(TimeManager.DayPhase.Night);
+            }
+            else
+            {
+                var dnlc = Object.FindFirstObjectByType<DayNightLightingController>();
+                var dnvc = Object.FindFirstObjectByType<DayNightVolumeController>();
+                var hsz = Object.FindFirstObjectByType<HouseSafeZoneLighting>();
+                var outdoor = Object.FindFirstObjectByType<OutdoorLightingController>();
 
-            if (dnlc != null) dnlc.ApplyPresetInstant(TimeManager.DayPhase.Night);
-            if (dnvc != null) dnvc.ApplyInstant(TimeManager.DayPhase.Night);
-            if (hsz != null) hsz.ApplyInstant(TimeManager.DayPhase.Night);
-            if (outdoor != null) outdoor.ApplyInstant(TimeManager.DayPhase.Night);
+                if (dnlc != null) dnlc.ApplyPresetInstant(TimeManager.DayPhase.Night);
+                if (dnvc != null) dnvc.ApplyInstant(TimeManager.DayPhase.Night);
+                if (hsz != null) hsz.ApplyInstant(TimeManager.DayPhase.Night);
+                if (outdoor != null) outdoor.ApplyInstant(TimeManager.DayPhase.Night);
+            }
 
             MarkSceneDirty();
             Debug.Log("[SceneLightingEditorUtility] Pencahayaan scene diubah ke: MALAM (Night - Preview).");

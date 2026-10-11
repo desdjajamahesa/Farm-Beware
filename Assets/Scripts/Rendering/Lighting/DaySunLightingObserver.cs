@@ -44,6 +44,16 @@ namespace FeaturesRendering.Lighting
         [Tooltip("Sudut rotasi Directional Light di malam hari (Pitch 55°, Yaw 35°).")]
         [SerializeField] private Vector3 nightEulerAngles = new Vector3(55f, 35f, 0f);
 
+        [Header("Director Delegation")]
+        [Tooltip("Jika true, komponen ini menyerahkan kendali rotasi dan ambient ke LightingAndAtmosphereDirector.")]
+        [SerializeField] private bool yieldToDirector = false;
+
+        public bool YieldToDirector
+        {
+            get => yieldToDirector;
+            set => yieldToDirector = value;
+        }
+
         [Header("1. Trajektori Matematis Matahari (Solar Trajectory)")]
         [Tooltip("Jam dimulainya fajar/siang (Matahari mulai terbit di ufuk timur-tenggara).")]
         [Range(4f, 8f)]
@@ -151,6 +161,8 @@ namespace FeaturesRendering.Lighting
 
         private void Start()
         {
+            if (yieldToDirector) return;
+
             // Defensive resolution jika ITimeService belum siap di Awake/OnEnable
             var timeService = ServiceLocator.Resolve<ITimeService>();
             if (timeService != null)
@@ -186,6 +198,8 @@ namespace FeaturesRendering.Lighting
         /// </summary>
         private void HandleMinuteChanged(int minute)
         {
+            if (yieldToDirector) return;
+
             var timeService = ServiceLocator.Resolve<ITimeService>();
             if (timeService != null && timeService.UseContinuousTime)
             {
@@ -198,6 +212,8 @@ namespace FeaturesRendering.Lighting
         /// </summary>
         private void HandlePhaseChanged(int day, DayPhase phase)
         {
+            if (yieldToDirector) return;
+
             isDaytime = (phase == DayPhase.Dawn || phase == DayPhase.Day || phase == DayPhase.Dusk);
 
             var timeService = ServiceLocator.Resolve<ITimeService>();
