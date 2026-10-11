@@ -488,10 +488,14 @@ namespace FeaturesCombat
             }
 
             // Also clean up stray projectiles and dropped item pickups from previous sessions
-            var projectiles = FindObjectsByType<Projectiles.CombatProjectile>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            if (Projectiles.CombatProjectilePool.Instance != null)
+            {
+                Projectiles.CombatProjectilePool.Instance.ReturnAll();
+            }
+            var projectiles = FindObjectsByType<Projectiles.CombatProjectile>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
             foreach (var p in projectiles)
             {
-                if (p != null) Destroy(p.gameObject);
+                if (p != null) p.Despawn();
             }
 
             var pickups = FindObjectsByType<WorldItemPickup>(FindObjectsInactive.Include, FindObjectsSortMode.None);

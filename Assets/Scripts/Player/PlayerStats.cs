@@ -61,6 +61,11 @@ public class PlayerStats : MonoBehaviour, FeaturesCombat.IDamageable, IPlayerDam
     [Tooltip("Durasi kedipan merah tubuh pemain (detik).")]
     [SerializeField] private float hurtFlashDuration = 0.12f;
 
+    private static readonly int HitFlashAmountPropertyId = Shader.PropertyToID("_HitFlashAmount");
+    private static readonly int HitFlashColorPropertyId = Shader.PropertyToID("_HitFlashColor");
+    private static readonly int BaseColorPropertyId = Shader.PropertyToID("_BaseColor");
+    private static readonly int ColorPropertyId = Shader.PropertyToID("_Color");
+
     private Renderer[] playerRenderers;
     private MaterialPropertyBlock hurtPropBlock;
     private Coroutine hurtFlashCoroutine;
@@ -82,6 +87,11 @@ public class PlayerStats : MonoBehaviour, FeaturesCombat.IDamageable, IPlayerDam
         {
             gameObject.AddComponent<PlayerRespawnController>();
         }
+    }
+
+    private void OnDestroy()
+    {
+        ServiceLocator.Unregister<IPlayerDamageNotifier>();
     }
 
     private bool isStatsRestored = false;
@@ -352,8 +362,10 @@ public class PlayerStats : MonoBehaviour, FeaturesCombat.IDamageable, IPlayerDam
     {
         if (hurtPropBlock == null) hurtPropBlock = new MaterialPropertyBlock();
 
-        hurtPropBlock.SetColor("_BaseColor", hurtFlashColor);
-        hurtPropBlock.SetColor("_Color", hurtFlashColor);
+        hurtPropBlock.SetFloat(HitFlashAmountPropertyId, 1.0f);
+        hurtPropBlock.SetColor(HitFlashColorPropertyId, hurtFlashColor);
+        hurtPropBlock.SetColor(BaseColorPropertyId, hurtFlashColor);
+        hurtPropBlock.SetColor(ColorPropertyId, hurtFlashColor);
 
         foreach (var r in playerRenderers)
         {
@@ -440,10 +452,5 @@ public class PlayerStats : MonoBehaviour, FeaturesCombat.IDamageable, IPlayerDam
         OnStaminaChanged?.Invoke(currentStamina, maxStamina);
         OnHungerChanged?.Invoke(currentHunger, maxHunger);
         OnThirstChanged?.Invoke(currentThirst, maxThirst);
-    }
-
-    private void OnDestroy()
-    {
-        ServiceLocator.Unregister<IPlayerDamageNotifier>();
     }
 }

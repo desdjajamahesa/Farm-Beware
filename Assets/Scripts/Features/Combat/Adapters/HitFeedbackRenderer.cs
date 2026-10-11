@@ -15,11 +15,11 @@ namespace FeaturesCombat.Adapters
         [SerializeField] private Renderer targetRenderer;
 
         [Tooltip("Standard duration of a single hit flash pulse in seconds.")]
-        [SerializeField] private float defaultFlashDuration = 0.12f;
+        [SerializeField] private float defaultFlashDuration = 0.10f;
 
         private MaterialPropertyBlock _propertyBlock;
         private float _flashTimer = 0f;
-        private float _activeFlashDuration = 0.12f;
+        private float _activeFlashDuration = 0.10f;
         private bool _isFlashing = false;
 
         private void Awake()
@@ -59,8 +59,9 @@ namespace FeaturesCombat.Adapters
             }
             else
             {
-                float ratio = _flashTimer / _activeFlashDuration;
-                ApplyFlash(ratio);
+                float ratio = Mathf.Clamp01(_flashTimer / _activeFlashDuration);
+                float curved = ratio * ratio; // Quadratic fast decay for punchy stylized feedback
+                ApplyFlash(curved);
             }
         }
 

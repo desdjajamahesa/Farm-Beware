@@ -195,18 +195,34 @@ namespace FeaturesWardrobe
             foreach (var o in unlockedOutfits)
                 if (o != null) data.unlockedOutfitNames.Add(o.name);
 
-            string dir = Path.GetDirectoryName(SavePath);
-            if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
+            try
             {
-                Directory.CreateDirectory(dir);
-            }
+                string dir = Path.GetDirectoryName(SavePath);
+                if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
+                {
+                    Directory.CreateDirectory(dir);
+                }
 
-            File.WriteAllText(SavePath, JsonUtility.ToJson(data, true));
+                string tempPath = SavePath + ".tmp";
+                File.WriteAllText(tempPath, JsonUtility.ToJson(data, true));
+                if (File.Exists(SavePath)) File.Delete(SavePath);
+                File.Move(tempPath, SavePath);
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogError($"[PlayerOutfit] Failed to save wardrobe data: {ex.Message}");
+            }
         }
 
         public void LoadWardrobe()
         {
             EnsureDefaultOutfitsUnlocked();
+
+            // Auto-recover from leftover .tmp if interrupted mid-save
+            if (!File.Exists(SavePath) && File.Exists(SavePath + ".tmp"))
+            {
+                try { File.Move(SavePath + ".tmp", SavePath); } catch { }
+            }
 
             // Auto-migrate if file exists in legacy persistentDataPath but not in SavePath
             if (!File.Exists(SavePath))
