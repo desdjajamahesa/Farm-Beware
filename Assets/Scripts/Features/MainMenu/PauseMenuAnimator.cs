@@ -152,14 +152,14 @@ public class PauseMenuAnimator : MonoBehaviour
         if (parallaxStrength <= 0f || cardRect == null) return;
 
         Vector2 mouseScreen = Vector2.zero;
-#if ENABLE_INPUT_SYSTEM
         if (UnityEngine.InputSystem.Mouse.current != null)
+        {
             mouseScreen = UnityEngine.InputSystem.Mouse.current.position.ReadValue();
+        }
         else
-            mouseScreen = Input.mousePosition;
-#else
-        mouseScreen = Input.mousePosition;
-#endif
+        {
+            try { mouseScreen = Input.mousePosition; } catch { }
+        }
 
         float normX = Mathf.Clamp((mouseScreen.x / Screen.width - 0.5f) * 2f, -1f, 1f);
         float normY = Mathf.Clamp((mouseScreen.y / Screen.height - 0.5f) * 2f, -1f, 1f);
