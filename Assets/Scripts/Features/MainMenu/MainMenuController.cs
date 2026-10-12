@@ -119,7 +119,7 @@ public class MainMenuController : MonoBehaviour
         if (settingsButton == null && mainMenuPanel != null)
         { var t = mainMenuPanel.transform.Find("SettingsButton"); if (t != null) settingsButton = t.GetComponent<Button>(); }
         if (checkpointButton == null && mainMenuPanel != null)
-        { var t = mainMenuPanel.transform.Find("CheckpointButton"); if (t != null) checkpointButton = t.GetComponent<Button>(); }
+        { var t = mainMenuPanel.transform.Find("CheckpointButton") ?? mainMenuPanel.transform.Find("NewGameButton"); if (t != null) checkpointButton = t.GetComponent<Button>(); }
         if (loadGameButton == null)
         {
             var t = transform.Find("LoadGameButton");
@@ -815,8 +815,18 @@ public class MainMenuController : MonoBehaviour
                 var txt = startButton.GetComponentInChildren<TextMeshProUGUI>();
                 if (txt != null)
                 {
-                    txt.gameObject.SetActive(true);
+                    txt.gameObject.SetActive(useLegacyCodeStyling);
                     txt.text = "RESUME";
+                }
+            }
+
+            if (checkpointButton != null)
+            {
+                var cpTxt = checkpointButton.GetComponentInChildren<TextMeshProUGUI>();
+                if (cpTxt != null)
+                {
+                    cpTxt.gameObject.SetActive(useLegacyCodeStyling);
+                    cpTxt.text = "NEW GAME";
                 }
             }
 
@@ -825,7 +835,7 @@ public class MainMenuController : MonoBehaviour
                 var setTxt = settingsButton.GetComponentInChildren<TextMeshProUGUI>();
                 if (setTxt != null)
                 {
-                    setTxt.gameObject.SetActive(true);
+                    setTxt.gameObject.SetActive(useLegacyCodeStyling);
                     setTxt.text = "SETTING";
                 }
             }
@@ -835,7 +845,7 @@ public class MainMenuController : MonoBehaviour
                 var quitTxt = quitButton.GetComponentInChildren<TextMeshProUGUI>();
                 if (quitTxt != null)
                 {
-                    quitTxt.gameObject.SetActive(true);
+                    quitTxt.gameObject.SetActive(useLegacyCodeStyling);
                     quitTxt.text = "MAIN MENU";
                 }
             }
@@ -845,7 +855,7 @@ public class MainMenuController : MonoBehaviour
                 var qdTxt = quitDesktopButton.GetComponentInChildren<TextMeshProUGUI>();
                 if (qdTxt != null)
                 {
-                    qdTxt.gameObject.SetActive(true);
+                    qdTxt.gameObject.SetActive(useLegacyCodeStyling);
                     qdTxt.text = "EXIT TO DESKTOP";
                 }
             }
@@ -1041,6 +1051,25 @@ public class MainMenuController : MonoBehaviour
         }
     }
 
+    [Header("Settings Menu Scale")]
+    [SerializeField] private float settingsMenuScale = 1.25f;
+
+    public float SettingsMenuScale
+    {
+        get => settingsMenuScale;
+        set => settingsMenuScale = value;
+    }
+
+    private Vector3 GetSettingsTargetScale()
+    {
+        var pauseAnimator = GetComponent<PauseMenuAnimator>();
+        if (pauseAnimator != null)
+        {
+            return Vector3.one * Mathf.Max(1.2f, pauseAnimator.MenuScale * 0.96f);
+        }
+        return Vector3.one * settingsMenuScale;
+    }
+
     private void UpdateSettingsOpening(float dt)
     {
         stateTimer += dt;
@@ -1076,13 +1105,16 @@ public class MainMenuController : MonoBehaviour
                 titleCG.interactable = false;
             }
 
+            Vector3 targetScale = GetSettingsTargetScale();
+            Vector3 startScale = targetScale * 0.9f;
+
             // Aktifkan SettingsPanel
             if (settingsPanel != null && !settingsPanel.activeSelf)
             {
                 settingsPanel.SetActive(true);
                 if (settingsCG == null)
                     settingsCG = settingsPanel.GetComponent<CanvasGroup>() ?? settingsPanel.AddComponent<CanvasGroup>();
-                settingsPanel.transform.localScale = Vector3.one * 0.9f;
+                settingsPanel.transform.localScale = startScale;
                 settingsCG.alpha = 0f;
             }
 
@@ -1097,13 +1129,13 @@ public class MainMenuController : MonoBehaviour
             }
 
             if (settingsPanel != null)
-                settingsPanel.transform.localScale = Vector3.Lerp(Vector3.one * 0.9f, Vector3.one, t);
+                settingsPanel.transform.localScale = Vector3.Lerp(startScale, targetScale, t);
 
             if (t >= 1f)
             {
                 currentState = MenuState.SettingsOpen;
                 if (settingsPanel != null)
-                    settingsPanel.transform.localScale = Vector3.one;
+                    settingsPanel.transform.localScale = targetScale;
 
                 if (settingsCG != null)
                 {
@@ -1121,6 +1153,8 @@ public class MainMenuController : MonoBehaviour
         float hideDur = 0.15f;
         float showDur = 0.20f;
 
+        Vector3 targetScale = GetSettingsTargetScale();
+
         if (stateTimer < hideDur)
         {
             float t = EaseOutCubic(Mathf.Clamp01(stateTimer / hideDur));
@@ -1130,7 +1164,7 @@ public class MainMenuController : MonoBehaviour
                 settingsCG.interactable = false;
             }
             if (settingsPanel != null)
-                settingsPanel.transform.localScale = Vector3.Lerp(Vector3.one, Vector3.one * 0.95f, t);
+                settingsPanel.transform.localScale = Vector3.Lerp(targetScale, targetScale * 0.95f, t);
         }
         else
         {
