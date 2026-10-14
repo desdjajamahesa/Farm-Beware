@@ -466,7 +466,27 @@ namespace FeaturesCombat
 
                     if (!isModalOpen)
                     {
-                        if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter) || Input.GetKeyDown(KeyCode.N))
+                        bool enterPressed = false;
+                        if (UnityEngine.InputSystem.Keyboard.current != null)
+                        {
+                            var kb = UnityEngine.InputSystem.Keyboard.current;
+                            enterPressed = kb.enterKey.wasPressedThisFrame ||
+                                           kb.numpadEnterKey.wasPressedThisFrame ||
+                                           kb.nKey.wasPressedThisFrame;
+                        }
+
+                        if (!enterPressed)
+                        {
+                            try
+                            {
+                                enterPressed = Input.GetKeyDown(KeyCode.Return) ||
+                                               Input.GetKeyDown(KeyCode.KeypadEnter) ||
+                                               Input.GetKeyDown(KeyCode.N);
+                            }
+                            catch { }
+                        }
+
+                        if (enterPressed)
                         {
                             skipped = true;
                             break;

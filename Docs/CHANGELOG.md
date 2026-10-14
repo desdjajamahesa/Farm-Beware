@@ -10,14 +10,18 @@
 
 ### Changed
 * **Wave Preparation Window**: Added a 30-second tactical prep phase between night waves with an on-screen timer, and players can press `Enter` or `N` at any time to immediately begin the next wave early.
-* **Fast-Forward Daytime Scaling**: Accelerating daytime speed now uniformly speeds up all kitchen cooking burners, dishwashing timers, and garden well refills at matching rates.
-* **Combat Food Buff Calibration**: Cooked combat meals now consistently provide 3-minute sustained stat enhancements during nighttime battles.
+* **Daytime Timeline Synchronization**: In-game clock hours now advance in exact alignment with the 18-minute daytime schedule, ensuring the Dusk Bell rings precisely at minute 15 and nightfall arrives exactly at minute 18.
+* **Hydration and Hunger Rebalance**: Adjusted player thirst and hunger drain rates to feel natural across the full 18-minute daytime cycle, preventing rapid dehydration.
+* **Dedicated Water Well Role**: The garden well now exclusively replenishes farm irrigation water for the watering can, while drinking water bottles remain strictly serviced at the indoor sink.
+* **Fast-Forward Daytime Scaling**: Accelerating daytime speed now uniformly speeds up daytime stations and is cleanly disabled during nighttime combat encounters.
 
 ### Fixed
 * Fixed the stove cooking progress bar freezing or displaying as full before meal preparation was completed.
-* Fixed the kitchen sink dishwashing percentage counter remaining permanently stuck at 0%.
+* Fixed the kitchen sink dishwashing progress gauge freezing at 100% and percent text stuck at 0%.
 * Fixed defeated monsters lingering with long delays before collapsing and disappearing from the battlefield.
 * Fixed corn seeds inadvertently summoning incorrect enemy types instead of Corn Musketeers.
+* Fixed morning day transition fades hanging when the game was paused.
+* Fixed activity guide text ranges displaying mismatched hour intervals on the HUD card.
 
 ---
 

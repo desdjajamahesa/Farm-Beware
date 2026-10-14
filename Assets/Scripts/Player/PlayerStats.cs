@@ -27,12 +27,14 @@ public class PlayerStats : MonoBehaviour, FeaturesCombat.IDamageable, IPlayerDam
     [Header("Hunger")]
     public float maxHunger = 100f;
     public float currentHunger;
-    public float hungerDrainRate = 0.5f; // Pengurangan lapar per detik
+    [Tooltip("Pengurangan lapar per detik (0.20f = ~8.3 menit per 100 hunger, terkalibrasi dengan linimasa 18 menit).")]
+    public float hungerDrainRate = 0.20f;
 
     [Header("Thirst")]
     public float maxThirst = 100f;
     public float currentThirst;
-    public float thirstDrainRate = 0.8f; // Pengurangan haus per detik
+    [Tooltip("Pengurangan haus per detik (0.25f = ~6.6 menit per 100 thirst, terkalibrasi dengan kapasitas botol 4 sips).")]
+    public float thirstDrainRate = 0.25f;
 
     [Header("Starvation & Dehydration Damage")]
     public bool takeDamageWhenEmpty = true;

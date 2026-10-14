@@ -345,21 +345,33 @@ namespace FeaturesTime
             if (Time.timeScale <= 0f || FarmBeware.Core.Runtime.UIModalHelper.IsSaveUIOpen)
                 return;
 
+            bool isDay = (TimeManager.Instance == null || TimeManager.Instance.currentPhase == TimeManager.DayPhase.Day) && currentPhase == EnvironmentPhase.Day;
+
             // Shortcut keybinds:
-            // '0' -> Toggle mode 8x Fast-Forward (18 menit selesai dalam 2.25 menit)
+            // '0' -> Toggle mode 8x Fast-Forward (18 menit selesai dalam 2.25 menit) - Day Phase only
             if (UnityEngine.InputSystem.Keyboard.current != null)
             {
                 var kb = UnityEngine.InputSystem.Keyboard.current;
                 if (kb.digit0Key.wasPressedThisFrame || kb.numpad0Key.wasPressedThisFrame)
                 {
-                    ToggleSpeedMode(fastForwardMultiplier8x, "Fast-Forward Mode");
+                    if (isDay)
+                    {
+                        ToggleSpeedMode(fastForwardMultiplier8x, "Fast-Forward Mode");
+                    }
+                    else
+                    {
+                        var floatingText = FarmBeware.Core.Runtime.ServiceLocator.Resolve<FarmBeware.Core.Runtime.IFloatingTextService>();
+                        var player = FarmBeware.Core.Runtime.ServiceLocator.Resolve<FarmBeware.Core.Runtime.IPlayerContext>();
+                        if (floatingText != null && player != null && player.Transform != null)
+                        {
+                            floatingText.SpawnText(player.Transform.position + Vector3.up * 1.5f, "⚠️ Fast-forward is only available during the day!", new Color(1f, 0.45f, 0.45f));
+                        }
+                    }
                 }
             }
 
             if (!useContinuousTime || isPaused)
                 return;
-
-            bool isDay = (TimeManager.Instance == null || TimeManager.Instance.currentPhase == TimeManager.DayPhase.Day);
 
             if (isDay)
             {
@@ -389,6 +401,12 @@ namespace FeaturesTime
         /// </summary>
         public void ToggleSpeedMode(float targetMultiplier, string modeName)
         {
+            if (currentPhase == EnvironmentPhase.Night || (TimeManager.Instance != null && TimeManager.Instance.currentPhase == TimeManager.DayPhase.Night))
+            {
+                currentSpeedMultiplier = 1.0f;
+                return;
+            }
+
             if (Mathf.Approximately(currentSpeedMultiplier, targetMultiplier))
             {
                 // Jika mode yang sama sudah aktif, matikan kembali ke normal 1x
@@ -498,16 +516,35 @@ namespace FeaturesTime
         #region Core Time Simulation Logic
 
         // Keyframe timeline table: Real Minutes (Seconds) vs In-Game 24h Clock
-        private static readonly float[] TimelineRealSeconds = { 0f, 60f, 240f, 660f, 810f, 960f };
-        private static readonly float[] TimelineInGameHours = { 6.00f, 6.75f, 9.00f, 14.00f, 15.75f, 18.00f };
+        // Aligned 100% with MVP Version Guideline V0.1 Section 2 (18 minutes = 1080 seconds):
+        // 0s (0:00) -> 06:00
+        // 60s (1:00) -> 06:40
+        // 180s (3:00) -> 08:00
+        // 360s (6:00) -> 10:00
+        // 390s (6:30) -> 10:20
+        // 450s (7:30) -> 11:00
+        // 720s (12:00) -> 14:00
+        // 750s (12:30) -> 14:20
+        // 810s (13:30) -> 15:00
+        // 900s (15:00) -> 16:00 (Dusk bell)
+        // 930s (15:30) -> 16:20
+        // 990s (16:30) -> 17:00
+        // 1080s (18:00) -> 18:00 (Nightfall)
+        private static readonly float[] TimelineRealSeconds = 
+        { 
+            0f, 60f, 180f, 360f, 390f, 450f, 720f, 750f, 810f, 900f, 930f, 990f, 1080f 
+        };
+        private static readonly float[] TimelineInGameHours = 
+        { 
+            6.00f, 6.6667f, 8.00f, 10.00f, 10.3333f, 11.00f, 14.00f, 14.3333f, 15.00f, 16.00f, 16.3333f, 17.00f, 18.00f 
+        };
 
         /// <summary>
-        /// Evaluates in-game hour monotonically across the 16-minute day phase timeline.
-        /// Matches: 0m -> 06:00, 1m -> 06:45, 4m -> 09:00, 11m -> 14:00, 13.5m -> 15:45, 16m -> 18:00.
+        /// Evaluates in-game hour monotonically across the 18-minute day phase timeline.
         /// </summary>
-        public static float EvaluateDaytimeHour(float elapsedSeconds, float totalDuration = 960f)
+        public static float EvaluateDaytimeHour(float elapsedSeconds, float totalDuration = 1080f)
         {
-            float scale = totalDuration / 960f;
+            float scale = totalDuration / 1080f;
             float clamped = Mathf.Clamp(elapsedSeconds, 0f, totalDuration);
 
             for (int i = 0; i < TimelineRealSeconds.Length - 1; i++)
@@ -523,9 +560,9 @@ namespace FeaturesTime
             return 18.0f;
         }
 
-        public static float EvaluateElapsedSecondsFromHour(float targetHour, float totalDuration = 960f)
+        public static float EvaluateElapsedSecondsFromHour(float targetHour, float totalDuration = 1080f)
         {
-            float scale = totalDuration / 960f;
+            float scale = totalDuration / 1080f;
             float clampedHour = Mathf.Clamp(targetHour, 6.00f, 18.00f);
 
             for (int i = 0; i < TimelineInGameHours.Length - 1; i++)

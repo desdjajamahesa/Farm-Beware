@@ -55,10 +55,25 @@ Konsolidasi dokumentasi teknis dari seluruh kontributor tim pengembang (`Rafi`, 
   - Menyinkronkan seluruh penghitung waktu pada [`KitchenStation.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Kitchen/KitchenStation.cs), kompor 3-tungku ([`KitchenStove.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Kitchen/KitchenStove.cs)), tempat mencuci piring ([`SinkManager.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Kitchen/SinkManager.cs)), serta pengisian air di wastafel dan sumur agar berakselerasi mengikuti mode 8x (shortcut `0`).
 - **Perbaikan Bar Progres Kompor ([`StoveUIManager.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Kitchen/UI/StoveUIManager.cs))**:
   - Memperbaiki uGUI Image fill type menjadi Horizontal dengan sprite solid putih dan sinkronisasi slider sehingga bar terisi bertahap 0-100% tanpa membeku atau langsung penuh.
-- **Perbaikan Persentase Mencuci ([`SinkManager.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Kitchen/SinkManager.cs))**:
+- **Perbaikan Persentase & Freeze UI Mencuci ([`SinkManager.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Kitchen/SinkManager.cs))**:
   - Memperbaiki kalkulasi progres pada `PercentText` dan `TimeText` sehingga angka persentase bertambah dinamis secara real-time.
+  - Menambahkan deteksi transisi edge `wasWashing` untuk mencegah UI membeku di 100% saat pencucian piring/sayur selesai.
 
-#### 5. Integrasi Menu Jeda Fantasi & Visual Polish `[Bhaskoro]`
+#### 5. Kalibrasi Kurva Linimasa 18 Menit & Harmonisasi Sistem Waktu `[Rafi]`
+- **Tabel Keyframe Linimasa 18 Menit ([`DayNightTimeManager.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Time/DayNightTimeManager.cs))**:
+  - Mengkalibrasi ulang `TimelineRealSeconds` dan `TimelineInGameHours` dengan 13 titik keyframe presisi (06:00 s.d. 18:00) yang menyinkronkan jam digital in-game 100% dengan linimasa 18 menit ideal MVP.
+  - Menjamin lonceng senja (Dusk Bell) berbunyi tepat di jam 16:00 in-game (menit 15:00 real) dan malam tiba di jam 18:00 in-game (menit 18:00 real).
+  - Membatasi shortcut fast-forward `0` hanya di fase siang (`EnvironmentPhase.Day`), mencegah desinkronisasi kecepatan saat Night Brawl.
+- **Penyelarasan Teks Linimasa Aktivitas ([`DayActivityTimelineManager.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Time/DayActivityTimelineManager.cs))**:
+  - Memperbaiki label teks pada kartu aktivitas HUD (`08:00 - 10:20`, `11:00 - 14:20`, dan `16:00 - 16:20`).
+- **Pemisahan Ketat Sistem Air Kebun ([`WaterWellInteractable.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Farming/WaterWellInteractable.cs))**:
+  - Menghapus ketergantungan `IWaterService` pada sumur kebun sehingga botol minum pemain (`PlayerWaterBottle`) tidak dapat diisi di sumur luar, menjaga integritas peran wastafel dapur.
+- **Proteksi Transisi Layar Bebas Freeze ([`DayTransitionUI.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Time/UI/DayTransitionUI.cs))**:
+  - Mengonversi transisi layar ke `Time.unscaledDeltaTime` dan `WaitForSecondsRealtime(1.5f)` sehingga transisi tidak dapat terhenti akibat pause atau timescale 0.
+- **Harmonisasi Vitals Drain ([`PlayerStats.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Player/PlayerStats.cs))**:
+  - Menyesuaikan `thirstDrainRate = 0.25f` dan `hungerDrainRate = 0.20f` agar kapasitas botol air 4 sips bertahan proporsional melintasi siklus 18 menit.
+
+#### 6. Integrasi Menu Jeda Fantasi & Visual Polish `[Bhaskoro]`
 - **Menu Jeda Fantasi & Animasi Kematian**:
   - Mengintegrasikan antarmuka menu jeda bergaya kayu dan transisi animator pop-up dari `bas-branch` ke dalam `Rafi-branch`.
   - Integrasi sekuens animasi kematian pemain (*You Collapsed Screen*) dengan pilihan Checkpoint, Load Game, atau Main Menu.

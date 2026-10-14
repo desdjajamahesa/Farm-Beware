@@ -328,7 +328,7 @@ namespace FeaturesTime.UI
             }
             if (enemiesText != null)
             {
-                enemiesText.text = "Prep Time ([Enter] to Skip)";
+                enemiesText.text = "Prep Time ([Enter] / [N] to Skip)";
             }
         }
 

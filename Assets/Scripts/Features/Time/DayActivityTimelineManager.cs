@@ -41,12 +41,12 @@ namespace FeaturesTime
         {
             new DayActivityEntry(6.0f, 6.6667f, "06:00 - 06:40", "Collect overnight harvest, sell, plant Taro/Corn + Sweet Potato"),
             new DayActivityEntry(6.6667f, 8.0f, "06:40 - 08:00", "Fetch water, start the pot (cooking runs in the background)"),
-            new DayActivityEntry(8.0f, 10.3333f, "08:00 - 10:00", "Upgrade at the Workbench, trade"),
+            new DayActivityEntry(8.0f, 10.3333f, "08:00 - 10:20", "Upgrade at the Workbench, trade"),
             new DayActivityEntry(10.3333f, 11.0f, "10:20 - 11:00", "Sweet Potato cycle 1 ripens: harvest, sell, replant"),
-            new DayActivityEntry(11.0f, 14.3333f, "11:00 - 14:00", "Cook food, upgrade, expand"),
+            new DayActivityEntry(11.0f, 14.3333f, "11:00 - 14:20", "Cook food, upgrade, expand"),
             new DayActivityEntry(14.3333f, 15.0f, "14:20 - 15:00", "Sweet Potato cycle 2 ripens: harvest, replant"),
             new DayActivityEntry(15.0f, 16.0f, "15:00 - 16:00", "Finalize 3 food slots, check water"),
-            new DayActivityEntry(16.0f, 16.3333f, "16:00", "Dusk bell DING DONG (3 minutes until nightfall!)"),
+            new DayActivityEntry(16.0f, 16.3333f, "16:00 - 16:20", "Dusk bell DING DONG (3 minutes until nightfall!)"),
             new DayActivityEntry(16.3333f, 17.0f, "16:20 - 17:00", "Taro/Corn ripen: harvest, sell, replant"),
             new DayActivityEntry(17.0f, 18.0f, "17:00 - 18:00", "Go home, eat buff food, go to bed")
         };

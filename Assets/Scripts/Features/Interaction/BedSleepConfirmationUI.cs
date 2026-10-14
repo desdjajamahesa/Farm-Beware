@@ -11,7 +11,7 @@ namespace FeaturesInteraction
     /// while crops in the farmland are about to ripen.
     /// Provides confirmation options: "Sleep Anyway" or "Cancel".
     /// </summary>
-    public class BedSleepConfirmationUI : MonoBehaviour
+    public class BedSleepConfirmationUI : MonoBehaviour, IModalWindow
     {
         private static BedSleepConfirmationUI _instance;
 
@@ -19,6 +19,11 @@ namespace FeaturesInteraction
         private TextMeshProUGUI warningDetailsText;
         private Action onConfirmAction;
         private Action onCancelAction;
+
+        bool IModalWindow.IsOpen => modalRoot != null && modalRoot.activeSelf;
+        bool IModalWindow.CanDismissWithEscape => true;
+        void IModalWindow.OpenModal() => modalRoot?.SetActive(true);
+        void IModalWindow.CloseModal() => HandleCancel();
 
         public static void Show(string cropSummary, Action onConfirm, Action onCancel = null)
         {
@@ -53,6 +58,7 @@ namespace FeaturesInteraction
                 modalRoot.SetActive(true);
             }
 
+            ModalStackManager.Instance?.Push(this);
             UIModalHelper.IsSaveUIOpen = true;
         }
 
@@ -63,6 +69,7 @@ namespace FeaturesInteraction
                 modalRoot.SetActive(false);
             }
 
+            ModalStackManager.Instance?.PopSpecific(this);
             UIModalHelper.IsSaveUIOpen = false;
             UIModalHelper.LastFrameUIPanelClosed = Time.frameCount;
         }

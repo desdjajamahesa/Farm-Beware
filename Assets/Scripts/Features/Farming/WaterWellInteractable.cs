@@ -180,15 +180,30 @@ namespace FeaturesFarming
                 return;
             }
 
-            var waterService = ServiceLocator.Resolve<IWaterService>();
-            bool watererNeedsRefill = PlantWaterer.Instance != null && PlantWaterer.Instance.CurrentWater < PlantWaterer.Instance.MaxWater;
-            bool bottleNeedsRefill = waterService != null && waterService.CurrentWater < waterService.MaxWater;
+            var pInv = interactor != null ? interactor.GetComponent<InventoryComponent>() : null;
+            if (pInv == null)
+            {
+                var pContext = ServiceLocator.Resolve<IPlayerContext>();
+                if (pContext != null && pContext.Transform != null)
+                    pInv = pContext.Transform.GetComponent<InventoryComponent>();
+            }
 
-            if (!watererNeedsRefill && !bottleNeedsRefill)
+            // Check if player has Plant Waterer tool
+            bool hasWaterer = CheckHasPlantWaterer(pInv);
+            if (!hasWaterer)
             {
                 textService?.SpawnText(
                     textPos,
-                    "💧 All water containers already full (100/100 L)!",
+                    "⚠️ Requires Plant Waterer to draw water! (Drinking bottle is refilled at Kitchen Sink)",
+                    new Color(1f, 0.65f, 0.2f));
+                return;
+            }
+
+            if (PlantWaterer.Instance != null && PlantWaterer.Instance.CurrentWater >= PlantWaterer.Instance.MaxWater)
+            {
+                textService?.SpawnText(
+                    textPos,
+                    "💧 Plant Waterer is already full (100/100 L)!",
                     new Color(0.3f, 0.85f, 1f));
                 return;
             }
@@ -238,18 +253,12 @@ namespace FeaturesFarming
                 PlantWaterer.Instance.RefillWater(100f);
             }
 
-            var waterService = ServiceLocator.Resolve<IWaterService>();
-            if (waterService != null)
-            {
-                waterService.RefillWater(100f);
-            }
-
             refillsUsedToday++;
 
             int remaining = Mathf.Max(0, maxRefillsPerDay - refillsUsedToday);
             textService?.SpawnText(
                 textPos,
-                $"💧 Water Containers Refilled (100L)! ({remaining}/{maxRefillsPerDay} left today)",
+                $"💧 Plant Waterer Refilled (100/100 L)! ({remaining}/{maxRefillsPerDay} left today)",
                 new Color(0.25f, 0.85f, 1f));
 
             UpdatePromptLabel();

@@ -347,6 +347,8 @@ public class SinkManager : MonoBehaviour
         }
     }
 
+    private bool wasWashing = false;
+
     private void Update()
     {
         if (processor != null)
@@ -356,10 +358,18 @@ public class SinkManager : MonoBehaviour
                 UpdateRefillButtonState();
             }
 
-            if (processor.IsWashing)
+            bool currentlyWashing = processor.IsWashing;
+            if (currentlyWashing)
             {
                 SyncProgressUI();
             }
+            else if (wasWashing && !currentlyWashing)
+            {
+                // Edge transition: washing completed this frame
+                SyncProgressUI();
+                RefreshSlotVisuals();
+            }
+            wasWashing = currentlyWashing;
         }
     }
 
