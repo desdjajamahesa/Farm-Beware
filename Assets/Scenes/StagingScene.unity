@@ -34081,14 +34081,6 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 861477375}
     m_Modifications:
-    - target: {fileID: 2029277003308748391, guid: cd0b7aad76241f1438c9812ee70d3c4f, type: 3}
-      propertyPath: m_fontColor32.rgba
-      value: 4292474367
-      objectReference: {fileID: 0}
-    - target: {fileID: 2029277003308748391, guid: cd0b7aad76241f1438c9812ee70d3c4f, type: 3}
-      propertyPath: m_TextStyleHashCode
-      value: -1183493901
-      objectReference: {fileID: 0}
     - target: {fileID: 3376121720948050071, guid: cd0b7aad76241f1438c9812ee70d3c4f, type: 3}
       propertyPath: m_Pivot.x
       value: 0.5
@@ -34172,38 +34164,6 @@ PrefabInstance:
     - target: {fileID: 3601623458039191392, guid: cd0b7aad76241f1438c9812ee70d3c4f, type: 3}
       propertyPath: m_Name
       value: PauseMenuUI
-      objectReference: {fileID: 0}
-    - target: {fileID: 4390522195517953459, guid: cd0b7aad76241f1438c9812ee70d3c4f, type: 3}
-      propertyPath: m_fontColor32.rgba
-      value: 4291949311
-      objectReference: {fileID: 0}
-    - target: {fileID: 4390522195517953459, guid: cd0b7aad76241f1438c9812ee70d3c4f, type: 3}
-      propertyPath: m_TextStyleHashCode
-      value: -1183493901
-      objectReference: {fileID: 0}
-    - target: {fileID: 5620537276402033049, guid: cd0b7aad76241f1438c9812ee70d3c4f, type: 3}
-      propertyPath: m_fontColor32.rgba
-      value: 4291949311
-      objectReference: {fileID: 0}
-    - target: {fileID: 5620537276402033049, guid: cd0b7aad76241f1438c9812ee70d3c4f, type: 3}
-      propertyPath: m_TextStyleHashCode
-      value: -1183493901
-      objectReference: {fileID: 0}
-    - target: {fileID: 7030460798903464456, guid: cd0b7aad76241f1438c9812ee70d3c4f, type: 3}
-      propertyPath: m_fontColor32.rgba
-      value: 4291949311
-      objectReference: {fileID: 0}
-    - target: {fileID: 7030460798903464456, guid: cd0b7aad76241f1438c9812ee70d3c4f, type: 3}
-      propertyPath: m_TextStyleHashCode
-      value: -1183493901
-      objectReference: {fileID: 0}
-    - target: {fileID: 8396103208805504289, guid: cd0b7aad76241f1438c9812ee70d3c4f, type: 3}
-      propertyPath: m_fontColor32.rgba
-      value: 4291949311
-      objectReference: {fileID: 0}
-    - target: {fileID: 8396103208805504289, guid: cd0b7aad76241f1438c9812ee70d3c4f, type: 3}
-      propertyPath: m_TextStyleHashCode
-      value: -1183493901
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -36224,6 +36184,7 @@ MonoBehaviour:
   allowedCategories: 0100000002000000
   returnWashedToPlayer: 0
   panelSink: {fileID: 1116429230}
+  refillWaterDuration: 30
 --- !u!114 &714534237
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -73304,6 +73265,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: FarmBeware.Features.Farming::FeaturesFarming.WaterWellInteractable
   promptLabel: Refill Plant Waterer
+  refillDuration: 10
+  maxRefillsPerDay: 2
 --- !u!65 &1449891772
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -80591,12 +80554,10 @@ MonoBehaviour:
   cookingLoopSound: {fileID: 0}
   cookingCompleteSound: {fileID: 0}
   cookingParticleSystem: {fileID: 0}
+  cookingSlots: []
   cookedOutputSlot:
     item: {fileID: 0}
     quantity: 0
-  _escrowContainer:
-    _heldIngredients: []
-    _heldWater: 0
 --- !u!1 &1513112201
 GameObject:
   m_ObjectHideFlags: 0
