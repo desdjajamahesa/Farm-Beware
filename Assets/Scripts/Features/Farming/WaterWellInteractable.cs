@@ -31,6 +31,7 @@ namespace FeaturesFarming
         private float refillTimer = 0f;
         private Coroutine refillCoroutine;
         private WorldLabel worldLabel;
+        private WaterRefillProgressUI refillProgressUI;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void AutoSetupWaterWells()
@@ -66,6 +67,7 @@ namespace FeaturesFarming
 
         private void Awake()
         {
+            refillProgressUI = GetComponent<WaterRefillProgressUI>() ?? gameObject.AddComponent<WaterRefillProgressUI>();
             worldLabel = GetComponent<WorldLabel>();
             if (worldLabel == null)
                 worldLabel = GetComponentInChildren<WorldLabel>();
@@ -115,6 +117,9 @@ namespace FeaturesFarming
                 refillCoroutine = null;
                 isRefilling = false;
             }
+
+            if (refillProgressUI != null)
+                refillProgressUI.UpdateRefillState(false, 0f, 0f, false);
         }
 
         private void OnDestroy()
@@ -206,9 +211,23 @@ namespace FeaturesFarming
 
             while (refillTimer > 0f)
             {
-                refillTimer -= Time.deltaTime;
+                float timeMultiplier = FeaturesTime.DayNightTimeManager.Instance != null
+                    ? FeaturesTime.DayNightTimeManager.Instance.FastForwardMultiplier
+                    : 1f;
+                refillTimer -= Time.deltaTime * timeMultiplier;
                 UpdatePromptLabel();
+
+                float progress01 = 1f - (refillTimer / Mathf.Max(0.1f, refillDuration));
+                if (refillProgressUI != null)
+                {
+                    refillProgressUI.UpdateRefillState(true, progress01, refillTimer, false, "WELL");
+                }
                 yield return null;
+            }
+
+            if (refillProgressUI != null)
+            {
+                refillProgressUI.UpdateRefillState(false, 1f, 0f, true, "WELL");
             }
 
             isRefilling = false;

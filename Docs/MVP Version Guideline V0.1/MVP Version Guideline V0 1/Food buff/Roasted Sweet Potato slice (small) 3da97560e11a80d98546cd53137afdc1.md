@@ -2,6 +2,7 @@
 
 Buffs: Steady Stamina: +10% Max stamina & 10% Movement speed (30s)
 Cooking time: 1m30s
+Costs: 3k gold
 Hunger/Hyrdation: +10 Hunger & -8 Hydration
 Resource: 3 Sweet Potato
 

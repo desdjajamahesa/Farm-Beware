@@ -11,7 +11,28 @@ namespace FeaturesCombat.Adapters
     /// </summary>
     public class TraumaCameraShake : MonoBehaviour
     {
-        public static TraumaCameraShake Instance { get; private set; }
+        private static TraumaCameraShake _instance;
+        public static TraumaCameraShake Instance
+        {
+            get
+            {
+                if (_instance == null)
+                {
+                    _instance = FindFirstObjectByType<TraumaCameraShake>();
+                    if (_instance == null)
+                    {
+                        var go = new GameObject("TraumaCameraShake");
+                        _instance = go.AddComponent<TraumaCameraShake>();
+                        if (Application.isPlaying)
+                        {
+                            DontDestroyOnLoad(go);
+                        }
+                    }
+                }
+                return _instance;
+            }
+            private set => _instance = value;
+        }
 
         [Header("Trauma Decay Configuration")]
         [Tooltip("Rate of trauma reduction per second.")]
@@ -32,12 +53,12 @@ namespace FeaturesCombat.Adapters
 
         private void Awake()
         {
-            if (Instance != null && Instance != this)
+            if (_instance != null && _instance != this)
             {
                 Destroy(gameObject);
                 return;
             }
-            Instance = this;
+            _instance = this;
         }
 
         /// <summary>

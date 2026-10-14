@@ -26,13 +26,18 @@ public abstract class KitchenStation : MonoBehaviour, FarmBeware.Core.Runtime.IS
     public event System.Action<int> OnProcessCompleted;        // (slot)
     public event System.Action<int> OnProcessCancelled;        // (slot) — proses dibatalkan (item dicabut di tengah)
 
+    protected void RaiseProcessStarted(int slot, float duration) => OnProcessStarted?.Invoke(slot, duration);
+    protected void RaiseProcessProgress(int slot, float progress01) => OnProcessProgress?.Invoke(slot, progress01);
+    protected void RaiseProcessCompleted(int slot) => OnProcessCompleted?.Invoke(slot);
+    protected void RaiseProcessCancelled(int slot) => OnProcessCancelled?.Invoke(slot);
+
     public InventoryComponent StationInventory { get { return stationInventory; } }
 
     // Akses state read-only untuk visual/data-driven (mis. overlay polling),
     // mandiri dari event agar UI tidak menggantung ketika proses sudah berjalan sebelum subscribe.
     public int ActiveSlotCount { get { return activeRecipes.Count; } }
-    public bool IsProcessing(int slot) { return activeRecipes.ContainsKey(slot); }
-    public float GetSlotProgress(int slot)
+    public virtual bool IsProcessing(int slot) { return activeRecipes.ContainsKey(slot); }
+    public virtual float GetSlotProgress(int slot)
     {
         if (!remainingTime.TryGetValue(slot, out float remaining))
             return 0f;
@@ -126,9 +131,10 @@ public abstract class KitchenStation : MonoBehaviour, FarmBeware.Core.Runtime.IS
         if (activeRecipes.Count == 0 || stationInventory == null)
             return;
 
-        // Clamp deltaTime: satu frame maksimal memajukan 1 detik agar spike deltaTime
-        // (mis. editor tidak fokus) tidak bisa menyelesaikan proses 3-5 detik dalam satu frame.
-        float dt = Mathf.Min(Time.deltaTime, 1f);
+        float timeMultiplier = FeaturesTime.DayNightTimeManager.Instance != null
+            ? FeaturesTime.DayNightTimeManager.Instance.FastForwardMultiplier
+            : 1f;
+        float dt = Mathf.Min(Time.deltaTime * timeMultiplier, 1f * timeMultiplier);
 
         List<int> indices = new List<int>(remainingTime.Keys);
         for (int k = 0; k < indices.Count; k++)

@@ -11,7 +11,28 @@ namespace FeaturesCombat.Adapters
     /// </summary>
     public class HitstopCoordinator : MonoBehaviour
     {
-        public static HitstopCoordinator Instance { get; private set; }
+        private static HitstopCoordinator _instance;
+        public static HitstopCoordinator Instance
+        {
+            get
+            {
+                if (_instance == null)
+                {
+                    _instance = FindFirstObjectByType<HitstopCoordinator>();
+                    if (_instance == null)
+                    {
+                        var go = new GameObject("HitstopCoordinator");
+                        _instance = go.AddComponent<HitstopCoordinator>();
+                        if (Application.isPlaying)
+                        {
+                            DontDestroyOnLoad(go);
+                        }
+                    }
+                }
+                return _instance;
+            }
+            private set => _instance = value;
+        }
 
         private struct HitstopEntry
         {
@@ -32,12 +53,28 @@ namespace FeaturesCombat.Adapters
 
         private void Awake()
         {
-            if (Instance != null && Instance != this)
+            if (_instance != null && _instance != this)
             {
                 Destroy(gameObject);
                 return;
             }
-            Instance = this;
+            _instance = this;
+        }
+
+        /// <summary>
+        /// Registers dual hitstop: momentarily freezes the attacker's weapon swing (0.045s)
+        /// and the victim (0.08s) to produce high-impact, crunchy combat game feel.
+        /// </summary>
+        public void RegisterDualHitstop(GameObject attacker, GameObject victim, float attackerDuration = 0.045f, float victimDuration = 0.08f)
+        {
+            if (attacker != null)
+            {
+                RegisterHitstop(attacker, attackerDuration, 0.0f);
+            }
+            if (victim != null)
+            {
+                RegisterHitstop(victim, victimDuration, 0.0f);
+            }
         }
 
         /// <summary>

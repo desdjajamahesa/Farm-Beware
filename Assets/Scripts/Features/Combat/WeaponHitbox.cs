@@ -219,16 +219,34 @@ namespace FeaturesCombat
                     isSkill: false);
             }
 
-            // Zero-GC hitstop freeze on hit entity
-            if (FeaturesCombat.Adapters.HitstopCoordinator.Instance != null)
+            // Visceral Combat Hit Feedback: procedural blade audio, hit sparks, hit flash, dual hitstop, and camera shake
+            if (FeaturesCombat.Adapters.CombatHitVfxEngine.Instance != null)
             {
-                FeaturesCombat.Adapters.HitstopCoordinator.Instance.RegisterHitstop(targetObj, 0.08f, 0.0f);
+                FeaturesCombat.Adapters.CombatHitVfxEngine.Instance.TriggerHit(
+                    hitPoint,
+                    attackDirection,
+                    targetObj,
+                    attacker,
+                    isCrit: (effectiveDamage >= 9999)
+                );
+            }
+            else
+            {
+                // Fallback direct calls if engine is inactive
+                if (FeaturesCombat.Adapters.HitstopCoordinator.Instance != null)
+                {
+                    FeaturesCombat.Adapters.HitstopCoordinator.Instance.RegisterDualHitstop(attacker, targetObj, 0.045f, 0.08f);
+                }
+                if (FeaturesCombat.Adapters.TraumaCameraShake.Instance != null)
+                {
+                    FeaturesCombat.Adapters.TraumaCameraShake.Instance.AddTrauma(0.22f);
+                }
             }
 
-            // Trauma Camera Shake
-            if (FeaturesCombat.Adapters.TraumaCameraShake.Instance != null)
+            // Optional explicit custom hitSound override if assigned in inspector
+            if (hitSound != null)
             {
-                FeaturesCombat.Adapters.TraumaCameraShake.Instance.AddTrauma(0.18f);
+                AudioSource.PlayClipAtPoint(hitSound, hitPoint, 0.9f);
             }
         }
     }

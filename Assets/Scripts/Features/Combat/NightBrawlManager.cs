@@ -116,10 +116,18 @@ namespace FeaturesCombat
         [SerializeField] private int totalWaves = 1;
         [SerializeField] private float waveIntermissionDelay = 30f;
 
+        [Header("Staggered Spawning Settings")]
+        [Tooltip("Interval minimum (detik) antar kemunculan monster dalam satu wave (default: 15 detik).")]
+        [SerializeField] private float spawnIntervalMin = 15f;
+
+        [Tooltip("Interval maksimum (detik) antar kemunculan monster dalam satu wave (default: 20 detik).")]
+        [SerializeField] private float spawnIntervalMax = 20f;
+
         private readonly List<EnemyBase> activeEnemies = new List<EnemyBase>();
         private readonly Wave.WaveProgressionEngine waveEngine = new Wave.WaveProgressionEngine();
         private bool isWaveInProgress = false;
         private Coroutine intermissionCoroutine;
+        private Coroutine spawnCoroutine;
 
         public event System.Action<EnemyBase> OnEnemySpawned;
         public event System.Action<EnemyBase> OnEnemyDied;
@@ -168,6 +176,18 @@ namespace FeaturesCombat
             waveEngine.OnWaveCompleted -= HandleWaveCompleted;
             waveEngine.OnAllWavesCleared -= HandleAllWavesCleared;
             waveEngine.OnEnemiesRemainingChanged -= HandleEnemiesRemainingChanged;
+
+            if (spawnCoroutine != null)
+            {
+                StopCoroutine(spawnCoroutine);
+                spawnCoroutine = null;
+            }
+
+            if (intermissionCoroutine != null)
+            {
+                StopCoroutine(intermissionCoroutine);
+                intermissionCoroutine = null;
+            }
         }
 
         private void Start()
@@ -333,8 +353,29 @@ namespace FeaturesCombat
             List<EnemyType> toSpawn = waveEngine.PrepareNextWave();
             currentWave = waveEngine.CurrentWaveIndex;
 
-            foreach (var type in toSpawn)
+            if (spawnCoroutine != null)
             {
+                StopCoroutine(spawnCoroutine);
+                spawnCoroutine = null;
+            }
+
+            spawnCoroutine = StartCoroutine(RoutineSpawnWaveStaggered(toSpawn));
+        }
+
+        private IEnumerator RoutineSpawnWaveStaggered(List<EnemyType> toSpawn)
+        {
+            if (toSpawn == null || toSpawn.Count == 0)
+            {
+                spawnCoroutine = null;
+                yield break;
+            }
+
+            int totalCount = toSpawn.Count;
+            for (int i = 0; i < totalCount; i++)
+            {
+                if (!isWaveInProgress) yield break;
+
+                EnemyType type = toSpawn[i];
                 Vector3 spawnPos = CalculateRandomSpawnPoint();
                 EnemyBase enemy = EnemyObjectPool.Instance != null
                     ? EnemyObjectPool.Instance.Spawn(type, spawnPos)
@@ -345,9 +386,17 @@ namespace FeaturesCombat
                     activeEnemies.Add(enemy);
                     OnEnemySpawned?.Invoke(enemy);
                 }
+
+                // If not the last enemy in wave, wait 15-20 seconds before spawning the next monster
+                if (i < totalCount - 1)
+                {
+                    float interval = UnityEngine.Random.Range(spawnIntervalMin, spawnIntervalMax);
+                    yield return new WaitForSeconds(interval);
+                }
             }
 
-            Debug.Log($"[NightBrawlManager] Day {currentDay} Wave {currentWave} spawned: {activeEnemies.Count} enemies.");
+            Debug.Log($"[NightBrawlManager] Day {currentDay} Wave {currentWave} completed staggered spawn: {activeEnemies.Count} enemies.");
+            spawnCoroutine = null;
         }
 
         private void HandleWaveStarted(int day, int wave)
@@ -386,7 +435,7 @@ namespace FeaturesCombat
                     Vector3 notifPos = player != null ? player.transform.position + Vector3.up * 2f : arenaCenter;
                     FloatingCombatTextManager.Instance.SpawnText(
                         notifPos,
-                        $"✨ Wave {wave} Cleared! 30s prep window before next wave...",
+                        $"✨ Wave {wave} Cleared! Next wave in {Mathf.RoundToInt(waveIntermissionDelay)}s ([Enter] to Skip)",
                         new Color(0.4f, 0.9f, 0.4f));
                 }
 
@@ -406,7 +455,33 @@ namespace FeaturesCombat
                 {
                     CombatPhaseTrackerUI.Instance.SetIntermissionCountdown(Mathf.CeilToInt(countdown), currentWave + 1, totalWaves);
                 }
-                yield return new WaitForSeconds(1f);
+
+                // Check for instant skip input ([Enter] or [N]) every frame - non-conflicting with movement, attack, or jump
+                float elapsed = 0f;
+                bool skipped = false;
+                while (elapsed < 1f)
+                {
+                    bool isModalOpen = FarmBeware.Core.Runtime.UIModalHelper.IsSaveUIOpen ||
+                                       (InventoryManagerUI.Instance != null && InventoryManagerUI.Instance.IsAnyInventoryUIRelatedOpen());
+
+                    if (!isModalOpen)
+                    {
+                        if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter) || Input.GetKeyDown(KeyCode.N))
+                        {
+                            skipped = true;
+                            break;
+                        }
+                    }
+
+                    elapsed += Time.deltaTime;
+                    yield return null;
+                }
+
+                if (skipped)
+                {
+                    break;
+                }
+
                 countdown -= 1f;
             }
 
@@ -573,6 +648,12 @@ namespace FeaturesCombat
                 intermissionCoroutine = null;
             }
 
+            if (spawnCoroutine != null)
+            {
+                StopCoroutine(spawnCoroutine);
+                spawnCoroutine = null;
+            }
+
             // Cleanup any existing active enemies
             foreach (var enemy in activeEnemies)
             {
@@ -735,6 +816,12 @@ namespace FeaturesCombat
             {
                 StopCoroutine(intermissionCoroutine);
                 intermissionCoroutine = null;
+            }
+
+            if (spawnCoroutine != null)
+            {
+                StopCoroutine(spawnCoroutine);
+                spawnCoroutine = null;
             }
 
             isWaveInProgress = false;

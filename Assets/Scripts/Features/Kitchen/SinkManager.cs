@@ -21,6 +21,8 @@ public class SinkManager : MonoBehaviour
     [SerializeField] private TextMeshProUGUI statusText;
     [SerializeField] private TextMeshProUGUI inputCountText;
     [SerializeField] private TextMeshProUGUI outputCountText;
+    [SerializeField] private TextMeshProUGUI percentText;
+    [SerializeField] private TextMeshProUGUI timeText;
 
     [Header("Slot Parent Transforms (Anti-Inspector Bug)")]
     [Tooltip("Parent transform for InputSlot. Auto-resolves child Image/TMP if missing.")]
@@ -76,6 +78,34 @@ public class SinkManager : MonoBehaviour
                 outputSlotImage = outputSlotUI.Find("ItemIcon")?.GetComponent<Image>();
             if (outputCountText == null)
                 outputCountText = outputSlotUI.Find("Count")?.GetComponent<TextMeshProUGUI>();
+        }
+
+        if (percentText == null)
+        {
+            var pt = transform.Find("MiddleContent/ProgressSection/ProgressInfo/PercentText");
+            if (pt != null) percentText = pt.GetComponent<TextMeshProUGUI>();
+            if (percentText == null)
+            {
+                var tmps = GetComponentsInChildren<TextMeshProUGUI>(true);
+                for (int i = 0; i < tmps.Length; i++)
+                {
+                    if (tmps[i].gameObject.name == "PercentText") { percentText = tmps[i]; break; }
+                }
+            }
+        }
+
+        if (timeText == null)
+        {
+            var tt = transform.Find("MiddleContent/ProgressSection/ProgressInfo/TimeText");
+            if (tt != null) timeText = tt.GetComponent<TextMeshProUGUI>();
+            if (timeText == null)
+            {
+                var tmps = GetComponentsInChildren<TextMeshProUGUI>(true);
+                for (int i = 0; i < tmps.Length; i++)
+                {
+                    if (tmps[i].gameObject.name == "TimeText") { timeText = tmps[i]; break; }
+                }
+            }
         }
 
         EnsureRefillWaterButton();
@@ -319,9 +349,17 @@ public class SinkManager : MonoBehaviour
 
     private void Update()
     {
-        if (processor != null && (processor.IsRefillingWater || processor.IsBottleReadyToCollect))
+        if (processor != null)
         {
-            UpdateRefillButtonState();
+            if (processor.IsRefillingWater || processor.IsBottleReadyToCollect)
+            {
+                UpdateRefillButtonState();
+            }
+
+            if (processor.IsWashing)
+            {
+                SyncProgressUI();
+            }
         }
     }
 
@@ -334,14 +372,26 @@ public class SinkManager : MonoBehaviour
 
         if (processor.IsWashing)
         {
+            float p01 = Mathf.Clamp01(processor.WashProgress);
             if (progressFillImage != null)
-                progressFillImage.fillAmount = processor.WashProgress;
+                progressFillImage.fillAmount = p01;
 
-            float remaining = Mathf.Ceil(processor.WashDurationPerItem * (1f - processor.WashProgress));
+            if (percentText != null)
+                percentText.text = $"{Mathf.RoundToInt(p01 * 100f)}%";
+
+            float remaining = Mathf.Max(0f, processor.WashDurationPerItem * (1f - p01));
+            if (timeText != null)
+                timeText.text = $"{Mathf.CeilToInt(remaining)}s";
+
             UpdateStatus($"Washing... ({remaining:F0}s)");
         }
         else
         {
+            if (percentText != null)
+                percentText.text = "0%";
+            if (timeText != null)
+                timeText.text = "—";
+
             if (processor.InputSlot != null && !processor.InputSlot.IsEmpty)
             {
                 // Items waiting but not washing (output full, etc.)

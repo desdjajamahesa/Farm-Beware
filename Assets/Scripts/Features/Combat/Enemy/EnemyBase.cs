@@ -1280,11 +1280,24 @@ namespace FeaturesCombat
         {
             currentHealth = 0;
 
+            StopAllCoroutines();
+
+            // Immediately disable collider so dead monster doesn't block player or absorb subsequent attacks
+            var col = GetComponent<Collider>();
+            if (col != null) col.enabled = false;
+
             if (rb != null)
             {
+                rb.isKinematic = true;
                 rb.linearVelocity = Vector3.zero;
                 rb.angularVelocity = Vector3.zero;
             }
+
+            if (combatTelegraph != null) combatTelegraph.Hide();
+            if (laserSightLine != null) laserSightLine.enabled = false;
+
+            // Trigger visceral monster defeat sound & burst VFX
+            FeaturesCombat.Adapters.CombatHitVfxEngine.Instance?.TriggerMonsterDefeated(transform.position, Vector3.up);
 
             FeaturesCombat.Adapters.HitstopCoordinator.Instance?.Unregister(gameObject);
             if (airborneHazard != null) airborneHazard.DeactivateHazard();
@@ -1298,11 +1311,11 @@ namespace FeaturesCombat
 
             if (EnemyObjectPool.Instance != null)
             {
-                StartCoroutine(RoutineReturnToPool(0.12f));
+                StartCoroutine(RoutineReturnToPool(0.04f));
             }
             else
             {
-                Destroy(gameObject, 0.12f);
+                Destroy(gameObject, 0.04f);
             }
         }
 
@@ -1345,8 +1358,12 @@ namespace FeaturesCombat
             StopAllCoroutines();
             OnHealthChanged?.Invoke(currentHealth, maxHealth);
 
+            var col = GetComponent<Collider>();
+            if (col != null) col.enabled = true;
+
             if (rb != null)
             {
+                rb.isKinematic = false;
                 rb.position = transform.position;
                 rb.rotation = transform.rotation;
                 rb.linearVelocity = Vector3.zero;

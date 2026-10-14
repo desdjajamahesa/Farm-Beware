@@ -194,27 +194,69 @@ Contoh konsep:
 
 ## Time Management Day & Night
 
-### 1. Core parameter:
+### 1. Proposed Parameters
 
 | Parameter | Value |
 | --- | --- |
-| Day phase length | **16 real minutes** (06:00 → 18:00 in-game, 1 real minute = 45 in-game minutes) |
-| Night phase | **Not fixed**, ends when all waves are cleared (3 → 15 minutes depending on the day) |
-| Crop growth | **Only counts during the Day phase** (night does not count) |
-| Switching to night | Player chooses to sleep, or **auto-sleep at 16:00** (dusk warning at minute 13:30) |
-| Sleeping early | Allowed, but the remaining daytime is lost. Crops keep their progress |
+| Day phase | **18 real minutes** (06:00 → 18:00 in-game, 1 real minute = 40 in-game minutes) |
+| Dusk bell | **Minute 15:00** (16:00 in-game), 3 minutes left |
+| Auto-sleep | Minute 18:00 (18:00 in-game) (forced player to sleep) |
+| Night phase | No timer, ends when waves are cleared |
+| Crop growth | **Daytime only**; frozen at night, progress is kept |
+| Sleeping early | Allowed, with a confirmation dialog if crops are about to ripen |
 
-### 2. Timeline of One Day Phase (16 minutes) -ideal play
+### 2. Timeline of One Day Phase (18 minutes) -ideal play
 
-| Real minute | In-game time | Activity | Purpose |
+| Real minute | In-game time | Activity |
+| --- | --- | --- |
+| 0:00 - 1:00 | 06:00 - 06:40 | Collect overnight harvest, sell, **plant Taro/Corn + Sweet Potato** |
+| 1:00 - 3:00 | 06:40 - 08:00 | Fetch water, start the pot (cooking runs in the background) |
+| 3:00 - 6:00 | 08:00 - 10:00 | Upgrade at the Workbench, trade |
+| **6:30 - 7:30** | 10:20 - 11:00 | **Sweet Potato cycle 1 ripens**: harvest, sell, replant |
+| 7:30 - 12:00 | 11:00 - 14:00 | Cook food, upgrade, expand |
+| **12:30 - 13:30** | 14:20 - 15:00 | **Sweet Potato cycle 2 ripens**: harvest, replant |
+| 13:30 - 15:00 | 15:00 - 16:00 | Finalize 3 food slots, check water |
+| **15:00** | 16:00 | **Dusk bell DING DONG** |
+| 15:30 - 16:30 | 16:20 - 17:00 | Taro/Corn ripen: harvest, sell, replant |
+| 16:30 - 18:00 | 17:00 - 18:00 | Go home, eat buff food, go to bed |
+
+### 3. Cooking
+
+| Food | Cook time | Water | Effect |
 | --- | --- | --- | --- |
-| 0:00 – 1:00 | 06:00 – 06:45 | Plant seeds immediately | **Must** plant **before** minute **1:00** so **Sweet Potato** can ripen within the day |
-| 1:00 – 4:00 | 06:45 – 09:00 | Fetch water, cook, trade | Start cooking early since cooking takes time |
-| 4:00 – 11:00 | 09:00 – 14:00 | Weapon upgrades, preparation, waiting for crops | Strategic downtime |
-| 11:00 – 13:30 | 14:00 – 15:45 | Finalize food, check water | Prepare for night |
-| 13:30 | 15:45 | **Dusk bell (DING DONG DING DONG)** | Warning: 2.5 minutes left |
-| 15:00 – 15:45 | 17:15 – 17:50 | Harvest, sell, **replant a new crop** | Gold ready for the next day |
-| 16:00 | 18:00 | Auto-sleep | Night begins |
+| Recovery | 20 seconds | 10 L | Instant heal (+10/25/50% HP) |
+| Stamina | 30 seconds | 15 L | 4 minutes |
+| Battle (+25%) | 45 seconds | 20 L | 3 minutes |
+- 100 L bottle, well refills in 10 seconds, max 2 times per day.
+- Only **3 food slots** can be carried into the night.
+- Battle Food (3 minutes) should be used **right before a boss wave**. Nights 4 and 5 therefore need a 30-second “prep” window between waves.
+
+### 4. Night Phase
+
+Each wave takes about 2:30 minutes (boss waves about 3:00), with a 30-second break between waves.
+
+| Day | Wave structure | Night | Total day + night |
+| --- | --- | --- | --- |
+| 1 | 1 normal wave (5 enemies) | ~2:30 | ~20:30 |
+| 2 | 2 normal waves (4+5) | ~5:30 | ~23:30 |
+| 3 | 3 normal waves (4+5+6) | ~9:00 | ~27:00 |
+| 4 | 3 normal + W4 (1 boss + 4 enemies) | ~12:30 | ~30:30 |
+| 5 | 3 normal + W4 boss + W5 boss + 3 enemies | ~15:30 | ~33:30 |
+
+### 5. Economy Balance (6 plots)
+
+With the current values:
+
+| Crop | Gold per harvest (6 plots) | Realistic harvests/day | Gold/day |
+| --- | --- | --- | --- |
+| Sweet Potato (6 min) | 4,500 (all plot) | ~2.5 (accounting for travel delay) | **~13,100** |
+| Taro/Corn (15 min) | 9,600 (all plot) | ~1.1 | **~10,500** |
+- Sweet Potato becomes the **active** choice (run back to replant 2-3 times per day).
+- Taro/Corn becomes the **passive** choice (plant once, then go upgrade and cook).
+
+Total crop income over 5 days is roughly 50-60k gold, plus about 13k from night monsters. To keep the player feeling slightly short on money, total upgrade costs (weapon, water bottle, plots, cooking ingredients) should be about **45-50k**.
+
+Opportunity cost of food: 1 dish = 3 ingredients, worth about 2,100 gold (Sweet Potato at the new value) to 4,800 gold (Taro/Corn), or 20-45% of daily income. This keeps the “sell or keep for cooking” dilemma the document is aiming for.
 
 ![Area Rumah Harvest Pipeline-2026-09-10-105210.png](MVP%20Version%20Guideline%20V0%201/Area_Rumah_Harvest_Pipeline-2026-09-10-105210.png)
 
