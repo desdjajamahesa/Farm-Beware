@@ -2,6 +2,43 @@
 
 Semua perubahan penting pada proyek ini oleh Rafi akan dicatat di halaman ini.
 
+## - 2026-10-14
+
+### Ditambahkan & Diintegrasikan (Added & Integrated)
+- **Antarmuka Pengisian Air Radial Screen-Space (`WaterRefillProgressUI.cs`)**:
+  - Mengimplementasikan komponen prosedural [`WaterRefillProgressUI.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Interaction/WaterRefillProgressUI.cs) berbasis *Screen Space - Overlay Canvas*.
+  - Menyajikan indikator melingkar radial (*circular filled ring gauge*) bersih di tengah layar lengkap dengan pembacaan persentase (`0%` - `100%`) dan label kontekstual (`Refilling Water Bottle...`, `Refilling Plant Waterer...`).
+  - Mengeliminasi ikon mengambang 3D di atas kepala karakter sesuai arahan desain antarmuka.
+  - Terintegrasi penuh dengan [`KitchenSinkInteractable.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Kitchen/KitchenSinkInteractable.cs) (botol minum) dan [`WaterWellInteractable.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Farming/WaterWellInteractable.cs) (kaleng siram tanaman).
+- **Mesin Efek Impak Tempur & Audio Sintetis (`CombatHitVfxEngine.cs` & `HitstopCoordinator.cs`)**:
+  - Mengembangkan [`CombatHitVfxEngine.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Combat/Adapters/CombatHitVfxEngine.cs) yang mengelola sintesis audio prosedural *metal-on-flesh / blade clash* tanpa beban file audio diskrit, dengan modulasi acak nada harmonik (0.95x - 1.15x) bebas alokasi GC.
+  - Menghasilkan partikel percikan bunga api emas (*golden burst sparks*) pada titik kontak bilah pedang ([`WeaponHitbox.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Combat/WeaponHitbox.cs)) dengan penanganan `StopEmittingAndClear` untuk mencegah runtime warning durasi ParticleSystem.
+  - Memperkuat koordinasi *Dual Hitstop* ([`HitstopCoordinator.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Combat/Adapters/HitstopCoordinator.cs)) yang membekukan animasi penyerang dan target selama 0.06s - 0.10s secara independen tanpa memanipulasi waktu global, serta mengintegrasikan impuls getaran kamera dinamis via [`TraumaCameraShake.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Combat/Adapters/TraumaCameraShake.cs).
+- **Siklus Spawning Bertahap (*Staggered Waves*) & Periode Persiapan Gelombang (`NightBrawlManager.cs`)**:
+  - Mengubah mekanika pemunculan musuh dari *simultaneous instant batch* menjadi pemunculan bertahap (*staggered spawn*) dengan interval 15 hingga 20 detik per monster.
+  - Menambahkan jeda persiapan taktis 30 detik antar gelombang malam dengan penampil hitungan mundur di layar.
+  - Menyediakan shortcut instan `[Enter]` dan `[N]` untuk melewati sisa waktu persiapan gelombang tanpa bentrok dengan tombol pergerakan atau menu.
+- **Integrasi Visual & Pause Menu (`bas-branch`)**:
+  - Mengintegrasikan aset menu jeda fantasi bergaya kayu, animator pop-up, serta animasi sekuens tumbang (*player death*) hasil sinkronisasi branch `bas-branch`.
+
+### Diubah & Dioptimasi (Changed & Optimized)
+- **Skalasi Percepatan Waktu (Fast-Forward x8) Stasiun Dapur & Sumur**:
+  - Menyinkronkan seluruh penghitung waktu stasiun memasak ([`KitchenStation.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Kitchen/KitchenStation.cs)), kompor 3-tungku ([`KitchenStove.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Kitchen/KitchenStove.cs)), tempat mencuci piring ([`SinkManager.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Kitchen/SinkManager.cs)), serta pengisian air di wastafel ([`KitchenSinkInteractable.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Kitchen/KitchenSinkInteractable.cs)) dan sumur pekarangan ([`WaterWellInteractable.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Farming/WaterWellInteractable.cs)) dengan faktor pengali waktu `FastForwardMultiplier` (8x saat shortcut `0` aktif).
+- **Penyelarasan Durasi Buff Makanan Tempur MVP V0.1**:
+  - Menstandardisasi seluruh durasi status buff makanan siap saji tempur (*Combat Food Buffs*) menjadi 3 menit (180 detik) pada dokumentasi acuan MVP dan dataset CSV.
+
+### Diperbaiki (Fixed)
+- **Sinkronisasi Bar Progres Kompor Memasak ([`StoveUIManager.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Kitchen/UI/StoveUIManager.cs))**:
+  - Memperbaiki uGUI Image fill type menjadi Horizontal dengan sprite solid putih serta sinkronisasi nilai slider 0-1 dan event listener dari `KitchenStation` sehingga bar terisi mulus dari 0% hingga matang dan tidak membeku atau langsung penuh.
+- **Indikator Persentase & Timer Mencuci Sink ([`SinkManager.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Kitchen/SinkManager.cs))**:
+  - Memperbaiki binding teks `PercentText` dan `TimeText` agar menghitung rasio progres secara dinamis dan tidak lagi tertahan di nilai `0%`.
+- **Eliminasi Delay Kematian Musuh ([`EnemyBase.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Combat/Enemy/EnemyBase.cs))**:
+  - Mengeliminasi delay penundaan destruksi objek yang menyebabkan musuh tampak membeku lama sebelum lenyap setelah HP mencapai 0.
+- **Asosiasi Monster Bibit Jagung ([`Seed_Corn.asset`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Data/Items/Seeds/Seed_Corn.asset))**:
+  - Memperbaiki relasi bibit jagung agar memicu pemunculan *Corn Musketeer* sesuai spesifikasi desain monster malam.
+
+---
+
 ## - 2026-10-10
 
 ### Ditambahkan & Dioptimasi (Added & Optimized)

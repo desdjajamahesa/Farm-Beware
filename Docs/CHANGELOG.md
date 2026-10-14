@@ -1,5 +1,26 @@
 # Patch Notes
 
+## 2026-10-14
+
+### Added
+* **Tactical Staggered Wave Spawns**: Night brawl enemies now emerge onto the battlefield gradually every 15 to 20 seconds rather than flooding the front gate all at once, creating a dynamic, rhythmic combat flow.
+* **Impactful Combat Audio & Sparks**: Weapon hits now deliver punchy blade impact sounds paired with golden burst sparks and micro-freeze frames on contact, giving every sword slash visceral weight.
+* **Screen-Space Water Refill Meter**: Refilling drinking bottles at the sink or the watering can at the well now features a clean, responsive circular progress gauge positioned neatly at the center of the screen without obstructive floating icons.
+* **Fantasy Pause Menu & Visual Polish**: Introduced an atmospheric wooden fantasy pause menu with smooth button animations and cohesive styling matching the main menu.
+
+### Changed
+* **Wave Preparation Window**: Added a 30-second tactical prep phase between night waves with an on-screen timer, and players can press `Enter` or `N` at any time to immediately begin the next wave early.
+* **Fast-Forward Daytime Scaling**: Accelerating daytime speed now uniformly speeds up all kitchen cooking burners, dishwashing timers, and garden well refills at matching rates.
+* **Combat Food Buff Calibration**: Cooked combat meals now consistently provide 3-minute sustained stat enhancements during nighttime battles.
+
+### Fixed
+* Fixed the stove cooking progress bar freezing or displaying as full before meal preparation was completed.
+* Fixed the kitchen sink dishwashing percentage counter remaining permanently stuck at 0%.
+* Fixed defeated monsters lingering with long delays before collapsing and disappearing from the battlefield.
+* Fixed corn seeds inadvertently summoning incorrect enemy types instead of Corn Musketeers.
+
+---
+
 ## 2026-10-10
 
 ### Added

@@ -12,12 +12,73 @@ Konsolidasi dokumentasi teknis dari seluruh kontributor tim pengembang (`Rafi`, 
 ---
 
 ## Daftar Isi Kronologis
+- [2026-10-14](#--2026-10-14)
+- [2026-10-10](#--2026-10-10)
 - [2026-10-09](#--2026-10-09)
 - [2026-10-04](#--2026-10-04)
 - [2026-10-03](#--2026-10-03)
 - [2026-10-02](#--2026-10-02)
 - [2026-10-01](#--2026-10-01)
 - [2026-09-30](#--2026-09-30)
+
+---
+
+## - 2026-10-14
+
+### Ditambahkan & Diintegrasikan (Added & Integrated)
+
+#### 1. Arsitektur Efek Impak Tempur & Eliminasi Delay Kematian Musuh (Combat Feel Engine) `[Rafi]`
+- **Dual Hitstop Coordination ([`HitstopCoordinator.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Combat/Adapters/HitstopCoordinator.cs))**:
+  - Mengembangkan sistem freeze mikro terkoordinasi yang membekukan animator penyerang (player) dan korban (monster) selama 0.06s hingga 0.10s tanpa memotong `Time.timeScale` global sistem game.
+  - Mengintegrasikan impuls guncangan kamera dinamis melalui [`TraumaCameraShake.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Combat/Adapters/TraumaCameraShake.cs).
+- **Procedural Blade Hit Audio & Spark VFX Engine ([`CombatHitVfxEngine.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Combat/Adapters/CombatHitVfxEngine.cs))**:
+  - Menghasilkan audio sintetis dinamis benturan pedang logam dan tebasan musuh secara prosedural dengan modulasi pitch acak (0.95x - 1.15x) dan variasi harmonik zero-garbage heap allocation.
+  - Sistem partikel percikan bunga api keemasan (*burst sparks*) pada titik benturan kontak ([`WeaponHitbox.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Combat/WeaponHitbox.cs)) dengan penanganan `StopEmittingAndClear` untuk mencegah runtime error durasi ParticleSystem.
+- **Eliminasi Delay Kematian Musuh ([`EnemyBase.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Combat/Enemy/EnemyBase.cs))**:
+  - Menghilangkan delay penundaan destruksi objek yang membuat monster membeku lama sebelum lenyap setelah HP mencapai 0; eksekusi pembersihan collider, ragdoll, dan navmesh kini instan dengan notifikasi langsung ke penyelesaian wave.
+
+#### 2. Spawning Gelombang Bertahap (Staggered Waves) & Shortcut Persiapan `[Rafi]`
+- **Interval Spawning Dinamis ([`NightBrawlManager.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Combat/NightBrawlManager.cs))**:
+  - Menggantikan instant batch dump di gerbang depan dengan mekanisme pemunculan bertahap (*staggered spawn*): 1 monster dimunculkan setiap 15 hingga 20 detik secara berkala.
+- **Jeda Persiapan Taktis 30 Detik**:
+  - Memberikan jendela waktu 30 detik antar gelombang malam untuk memulihkan posisi dan strategi pemain, dilengkapi penampil hitungan mundur di layar.
+  - Menyediakan shortcut instan `[Enter]` dan `[N]` untuk melewati hitungan mundur persiapan tanpa bentrok dengan kontrol navigasi atau inventory.
+
+#### 3. Antarmuka Pengisian Air Radial Screen-Space (Screen-Space Water Refill UI) `[Rafi]`
+- **Komponen Prosedural ([`WaterRefillProgressUI.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Interaction/WaterRefillProgressUI.cs))**:
+  - Membangun UI overlay berbasis canvas Screen Space dengan visual meter melingkar radial (*circular filled gauge*), persentase numerik, dan label dinamis.
+  - Menghapus ikon floating 3D di atas kepala pemain untuk menjaga kejernihan visual isometric.
+  - Menghubungkan pengisian botol minum di wastafel ([`KitchenSinkInteractable.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Kitchen/KitchenSinkInteractable.cs)) dan kaleng siram di sumur pekarangan ([`WaterWellInteractable.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Farming/WaterWellInteractable.cs)).
+
+#### 4. Sinkronisasi Waktu Akselerasi (Fast-Forward x8) & Perbaikan Stasiun Dapur `[Rafi]`
+- **Skalasi Waktu Proporsional**:
+  - Menyinkronkan seluruh penghitung waktu pada [`KitchenStation.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Kitchen/KitchenStation.cs), kompor 3-tungku ([`KitchenStove.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Kitchen/KitchenStove.cs)), tempat mencuci piring ([`SinkManager.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Kitchen/SinkManager.cs)), serta pengisian air di wastafel dan sumur agar berakselerasi mengikuti mode 8x (shortcut `0`).
+- **Perbaikan Bar Progres Kompor ([`StoveUIManager.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Kitchen/UI/StoveUIManager.cs))**:
+  - Memperbaiki uGUI Image fill type menjadi Horizontal dengan sprite solid putih dan sinkronisasi slider sehingga bar terisi bertahap 0-100% tanpa membeku atau langsung penuh.
+- **Perbaikan Persentase Mencuci ([`SinkManager.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Kitchen/SinkManager.cs))**:
+  - Memperbaiki kalkulasi progres pada `PercentText` dan `TimeText` sehingga angka persentase bertambah dinamis secara real-time.
+
+#### 5. Integrasi Menu Jeda Fantasi & Visual Polish `[Bhaskoro]`
+- **Menu Jeda Fantasi & Animasi Kematian**:
+  - Mengintegrasikan antarmuka menu jeda bergaya kayu dan transisi animator pop-up dari `bas-branch` ke dalam `Rafi-branch`.
+  - Integrasi sekuens animasi kematian pemain (*You Collapsed Screen*) dengan pilihan Checkpoint, Load Game, atau Main Menu.
+
+---
+
+## - 2026-10-10
+
+### Ditambahkan & Diintegrasikan (Added & Integrated)
+
+#### 1. Arsitektur Pencahayaan & Keterbacaan Tempur Bergaya Hades (Hades-Inspired Lighting & Shaders) `[Rafi]`
+- **Fondasi Trilight & Directional Moon Shadow ([`Night_LightingTheme.asset`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Settings/LightingThemes/Night_LightingTheme.asset), [`DayNightLightingController.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Time/Atmosphere/DayNightLightingController.cs))**:
+  - Palet pencahayaan trilight atmosfer malam (Langit `#5C668C`, Ekuator `#424C6B`, Tanah `#383D47`) untuk mengeliminasi pemadaman bayangan pekat (*black crush*).
+  - Cahaya bulan spektrum dingin 11500K `#94C2FF` 1.3 lux dengan soft shadow 4-cascade.
+- **Shader Siluet Karakter & Rim Fresnel Musuh ([`HeroStylizedLit.shader`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Art/Shaders/Character/HeroStylizedLit.shader), [`MonsterFresnelLit.shader`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Art/Shaders/Monster/MonsterFresnelLit.shader))**:
+  - Rim lighting emas untuk karakter pemain dan identitas Fresnel HDR unik untuk setiap arketipe musuh (Emerald untuk TuberMaw, Amber untuk CornMusketeer, Bronze untuk TaroBrute, Crimson Menace untuk Boss).
+- **Cincin Bahaya Telegraf Serangan ([`CombatTelegraphDecal.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Combat/Enemy/CombatTelegraphDecal.cs))**:
+  - Cincin proyeksi geometris bahaya musuh dengan radial fill timer 0-100% dan impak flash tajam.
+- **Kalibrasi Bloom & Performa Zero-GC ([`SampleSceneProfile.asset`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Settings/SampleSceneProfile.asset), [`CombatProjectilePool.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Combat/Projectiles/CombatProjectilePool.cs))**:
+  - Kalibrasi threshold bloom 1.05 dan intensitas 0.32 untuk pendaran HDR terisolasi tanpa silau lingkungan SDR.
 
 ---
 
