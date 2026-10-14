@@ -118,6 +118,15 @@ public class PlayerRespawnController : MonoBehaviour
         {
             DeathScreenUI.Instance.CloseInstant();
         }
+        if (playerControl != null)
+        {
+            playerControl.SetInputActive(true);
+        }
+        else
+        {
+            playerControl = GetComponent<PlayerControl>() ?? FindFirstObjectByType<PlayerControl>();
+            playerControl?.SetInputActive(true);
+        }
     }
 
     private void HandlePlayerDied()

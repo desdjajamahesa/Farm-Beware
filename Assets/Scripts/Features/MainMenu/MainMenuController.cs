@@ -907,12 +907,24 @@ public class MainMenuController : MonoBehaviour
             return;
         }
 
-        // When starting from Main Menu: automatically enter the last saved game if one exists!
-        if (FeaturesSaveSystem.SaveSystemManager.Instance != null)
+        // When starting from Main Menu: check if saved games exist
+        var saveMgr = FeaturesSaveSystem.SaveSystemManager.Instance;
+        var existingSaves = saveMgr != null ? saveMgr.GetSaveList() : null;
+
+        if (existingSaves != null && existingSaves.Count > 0)
         {
-            string lastSaveId = FeaturesSaveSystem.SaveSystemManager.Instance.GetLastPlayedSaveId();
-            FeaturesSaveSystem.SaveSystemManager.PendingSaveIdToLoad = lastSaveId;
-            Debug.Log($"[MainMenuController] OnStartClicked: Auto-loading last save '{lastSaveId}'");
+            // Player has existing saves! Open the Save/Load modal UI so they can either load a slot or click "+ New Game"
+            if (FeaturesSaveSystem.SaveSystemUI.Instance != null)
+            {
+                FeaturesSaveSystem.SaveSystemUI.Instance.Open();
+                return;
+            }
+        }
+
+        // No saves exist: proceed directly to fresh New Game session
+        if (saveMgr != null)
+        {
+            FeaturesSaveSystem.SaveSystemManager.PendingSaveIdToLoad = null;
         }
 
         bool willLoadScene = loadSceneOnStart && !string.IsNullOrEmpty(targetSceneName);
@@ -999,20 +1011,61 @@ public class MainMenuController : MonoBehaviour
     private void OnCheckpointClicked()
     {
         if (!menuActive) return;
-        Debug.Log("[MainMenuController] Reloading scene / checkpoint.");
+        OnNewGameClicked();
+    }
+
+    /// <summary>
+    /// Starts a clean New Game. Prompts confirmation dialog if invoked during active gameplay.
+    /// </summary>
+    public void OnNewGameClicked()
+    {
+        bool isMainMenu = SceneManager.GetActiveScene().name == "MainMenuScene";
+
+        if (!isMainMenu)
+        {
+            // If in-game, confirm with player before starting New Game so unsaved work isn't lost
+            if (FeaturesSaveSystem.SaveSystemUI.Instance != null)
+            {
+                FeaturesSaveSystem.SaveSystemUI.Instance.ShowConfirmDialog(
+                    title: "START NEW GAME",
+                    message: "Are you sure you want to start a <color=#FBBF24>New Game</color>?\nAny unsaved progress in this session will be lost.",
+                    actionLabel: "START NEW GAME",
+                    actionColor: new Color(0.85f, 0.45f, 0.15f, 1f),
+                    onConfirm: () =>
+                    {
+                        ExecuteNewGame();
+                    }
+                );
+                return;
+            }
+        }
+
+        ExecuteNewGame();
+    }
+
+    private void ExecuteNewGame()
+    {
         Time.timeScale = 1f;
         LockPlayerInput(false);
+        menuActive = false;
+        currentState = MenuState.Hidden;
+        SetMenuVisualsActive(false);
 
-        if (FadeManager.Instance != null)
+        if (FeaturesSaveSystem.SaveSystemManager.Instance != null)
         {
-            FadeManager.Instance.FadeIn(0.3f, () =>
-            {
-                SceneManager.LoadScene(SceneManager.GetActiveScene().name);
-            });
+            FeaturesSaveSystem.SaveSystemManager.Instance.StartNewGame();
         }
         else
         {
-            SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+            FeaturesSaveSystem.SaveSystemManager.PendingSaveIdToLoad = null;
+            if (FeaturesCommon.CloudTransitionManager.Instance != null)
+            {
+                FeaturesCommon.CloudTransitionManager.Instance.TransitionToScene("StagingScene");
+            }
+            else
+            {
+                SceneManager.LoadScene("StagingScene");
+            }
         }
     }
 
