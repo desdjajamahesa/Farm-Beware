@@ -345,7 +345,7 @@ namespace FeaturesTime
             if (Time.timeScale <= 0f || FarmBeware.Core.Runtime.UIModalHelper.IsSaveUIOpen)
                 return;
 
-            bool isDay = (TimeManager.Instance == null || TimeManager.Instance.currentPhase == TimeManager.DayPhase.Day) && currentPhase == EnvironmentPhase.Day;
+            bool isDay = (TimeManager.Instance == null || TimeManager.Instance.currentPhase == TimeManager.DayPhase.Day) && currentPhase != EnvironmentPhase.Night;
 
             // Shortcut keybinds:
             // '0' -> Toggle mode 8x Fast-Forward (18 menit selesai dalam 2.25 menit) - Day Phase only

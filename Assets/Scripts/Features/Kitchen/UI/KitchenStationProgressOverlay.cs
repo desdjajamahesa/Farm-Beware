@@ -23,9 +23,11 @@ public class KitchenStationProgressOverlay : MonoBehaviour
 
     [Header("Tampilan")]
     [Tooltip("Warna dasar overlay.")]
-    [SerializeField] private Color overlayColor = new Color(1f, 1f, 1f, 0.5f);
-    [Tooltip("Lebar overlay dalam satuan dunia.")]
+    [SerializeField] private Color overlayColor = new Color(0.35f, 0.85f, 1f, 0.90f);
+    [Tooltip("Lebar overlay dalam satuan dunia (panjang garis).")]
     [SerializeField] private float overlayWidth = 0.9f;
+    [Tooltip("Ketebalan garis progress (satuan dunia).")]
+    [SerializeField] private float barThickness = 0.045f;
     [Tooltip("Tinggi maksimum overlay saat progress penuh (satuan dunia).")]
     [SerializeField] private float maxHeight = 0.7f;
     [Tooltip("Bila true, overlay menghadap kamera (billboard, terkunci sumbu Y = tetap naik ke atas).")]
@@ -50,7 +52,8 @@ public class KitchenStationProgressOverlay : MonoBehaviour
     private class SlotOverlay
     {
         public Transform root;          // pivot tetap di dasar slot (kompensasi skala parent)
-        public Transform quad;          // quad anak: posisi.y = tinggi/2, skala.y = tinggi
+        public Transform quad;          // quad anak pengisi progress garis horizontal
+        public Transform track;         // quad latar rel garis panjang
         public MeshRenderer renderer;
         public bool started;            // sedang proses aktif
         public Coroutine hideRoutine;
@@ -181,7 +184,7 @@ public class KitchenStationProgressOverlay : MonoBehaviour
                 ? slotAnchors[i]
                 : null;
 
-            Vector3 worldPos = anchor != null ? anchor.position : fallbackAnchor;
+            Vector3 worldPos = anchor != null ? (anchor.position + Vector3.up * 0.04f) : (fallbackAnchor + Vector3.up * 0.04f);
 
             // Root pivot: kompensasi skala non-uniform parent agar ukuran quad = satuan dunia.
             GameObject rootGO = new GameObject("ProgressOverlay_" + i);
@@ -192,7 +195,26 @@ public class KitchenStationProgressOverlay : MonoBehaviour
                 root.localScale = new Vector3(1f / s.x, 1f / s.y, 1f / s.z);
             root.position = worldPos;
 
-            // Quad veil.
+            // 1. Rel Latar Belakang Garis (Track)
+            GameObject trackGO = GameObject.CreatePrimitive(PrimitiveType.Quad);
+            trackGO.name = "Track_" + i;
+            Collider trackCol = trackGO.GetComponent<Collider>();
+            if (trackCol != null) Destroy(trackCol);
+
+            Transform trackTransform = trackGO.transform;
+            trackTransform.SetParent(root, false);
+            trackTransform.localPosition = Vector3.zero;
+            trackTransform.localRotation = Quaternion.identity;
+            trackTransform.localScale = new Vector3(overlayWidth, barThickness, 1f);
+
+            MeshRenderer trackMesh = trackGO.GetComponent<MeshRenderer>();
+            trackMesh.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            trackMesh.receiveShadows = false;
+            trackMesh.motionVectorGenerationMode = MotionVectorGenerationMode.ForceNoMotion;
+            if (overlayMaterial != null) { trackMesh.material = overlayMaterial; trackMesh.material.renderQueue = 3999; }
+            trackMesh.material.color = new Color(0.10f, 0.15f, 0.22f, 0.65f);
+
+            // 2. Garis Pengisi Progress Horizontal (Fill Bar)
             GameObject quadGO = GameObject.CreatePrimitive(PrimitiveType.Quad);
             quadGO.name = "Veil_" + i;
             Collider col = quadGO.GetComponent<Collider>();
@@ -201,9 +223,9 @@ public class KitchenStationProgressOverlay : MonoBehaviour
 
             Transform quad = quadGO.transform;
             quad.SetParent(root, false);
-            quad.localPosition = Vector3.zero;
+            quad.localPosition = new Vector3(-overlayWidth * 0.5f, 0f, -0.002f);
             quad.localRotation = Quaternion.identity;
-            quad.localScale = new Vector3(overlayWidth, 0.0001f, 1f);
+            quad.localScale = new Vector3(0.0001f, barThickness, 1f);
 
             MeshRenderer mesh = quadGO.GetComponent<MeshRenderer>();
             mesh.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
@@ -220,11 +242,13 @@ public class KitchenStationProgressOverlay : MonoBehaviour
             SlotOverlay slot = new SlotOverlay();
             slot.root = root;
             slot.quad = quad;
+            slot.track = trackTransform;
             slot.renderer = mesh;
             slot.started = false;
             slot.defaultColor = color;
 
             rootGO.SetActive(false);
+            trackGO.SetActive(true);
             quadGO.SetActive(true);
             overlays[i] = slot;
         }
@@ -342,10 +366,11 @@ public class KitchenStationProgressOverlay : MonoBehaviour
         if (o.quad == null)
             return;
 
-        float h = Mathf.Max(height, 0.0001f);
-        o.quad.localScale = new Vector3(overlayWidth, h, 1f);
-        // Quad ber-pivot di tengah -> geser setengah tinggi agar TEPI BAWAH tetap di dasar (naik dari bawah ke atas).
-        o.quad.localPosition = new Vector3(0f, h * 0.5f, 0f);
+        float progress01 = maxHeight > 0.001f ? Mathf.Clamp01(height / maxHeight) : 0f;
+        float currentW = Mathf.Max(overlayWidth * progress01, 0.0001f);
+        o.quad.localScale = new Vector3(currentW, barThickness, 1f);
+        // Quad ber-pivot di tengah -> geser setengah lebar dari kiri agar terisi dari kiri ke kanan secara konsisten
+        o.quad.localPosition = new Vector3(-overlayWidth * 0.5f + (currentW * 0.5f), 0f, -0.002f);
     }
 
     private string BuildOverlayPositionReport()

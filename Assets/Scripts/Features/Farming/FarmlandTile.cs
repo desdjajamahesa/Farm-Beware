@@ -325,7 +325,16 @@ namespace FeaturesFarming
                     int yieldCount = Random.Range(plantedSeed.minYield, plantedSeed.maxYield + 1);
                     if (yieldCount < 1) yieldCount = 1;
 
-                    bool added = inventory.AddItem(dropItem, yieldCount);
+                    bool fruitAdded = inventory.AddItem(dropItem, yieldCount);
+                    if (!fruitAdded)
+                    {
+                        // Inventaris penuh untuk buah: jatuhkan buah ke tanah
+                        FeaturesCombat.WorldItemPickup.Spawn(
+                            transform.position + Vector3.up * 0.4f,
+                            dropItem,
+                            yieldCount,
+                            Vector3.up + Random.insideUnitSphere * 0.3f);
+                    }
 
                     // Drop benih bonus sesuai tabel spesifikasi ekonomi MVP
                     int seedBonusCount = CalculateSeedDrop(plantedSeed);
@@ -333,29 +342,46 @@ namespace FeaturesFarming
                     if (seedBonusCount > 0)
                     {
                         seedAdded = inventory.AddItem(plantedSeed, seedBonusCount);
+                        if (!seedAdded)
+                        {
+                            // Inventaris penuh (misal hanya tersisa 1 slot yang sudah terisi buah):
+                            // Jatuhkan benih ke tanah agar tidak hilang!
+                            FeaturesCombat.WorldItemPickup.Spawn(
+                                transform.position + Vector3.up * 0.4f,
+                                plantedSeed,
+                                seedBonusCount,
+                                Vector3.up + Random.insideUnitSphere * 0.3f);
+                        }
                     }
 
                     // Catat hasil panen ke DailyEconomyManager via service
                     ServiceLocator.Resolve<IDailyEconomyService>()?.RecordCropHarvested(dropItem, yieldCount);
 
-                    if (added)
+                    string harvestMsg;
+                    if (fruitAdded && seedAdded && seedBonusCount > 0)
                     {
-                        string harvestMsg = (seedAdded && seedBonusCount > 0)
-                            ? $"+{yieldCount} {dropItem.itemName}, +{seedBonusCount} {plantedSeed.itemName}"
-                            : $"+{yieldCount} {dropItem.itemName}";
-
-                        Debug.Log($"[FarmlandTile] Harvest successful! Obtained {yieldCount}x {dropItem.itemName} and {seedBonusCount}x seeds.");
-                        if (playerControl != null)
-                        {
-                            ServiceLocator.Resolve<IFloatingTextService>()?.SpawnText(
-                                transform.position + Vector3.up * 1.2f,
-                                harvestMsg,
-                                new Color(0.25f, 0.90f, 0.35f));
-                        }
+                        harvestMsg = $"+{yieldCount} {dropItem.itemName}, +{seedBonusCount} {plantedSeed.itemName}";
+                    }
+                    else if (fruitAdded && !seedAdded && seedBonusCount > 0)
+                    {
+                        harvestMsg = $"+{yieldCount} {dropItem.itemName} (+{seedBonusCount} seeds on ground!)";
+                    }
+                    else if (fruitAdded)
+                    {
+                        harvestMsg = $"+{yieldCount} {dropItem.itemName}";
                     }
                     else
                     {
-                        Debug.LogWarning("[FarmlandTile] Inventory full! Could not collect harvest.");
+                        harvestMsg = "Inventory full! Harvest dropped on ground.";
+                    }
+
+                    Debug.Log($"[FarmlandTile] Harvest completed: {yieldCount}x {dropItem.itemName} (in inventory: {fruitAdded}), {seedBonusCount}x seeds (in inventory: {seedAdded})");
+                    if (playerControl != null)
+                    {
+                        ServiceLocator.Resolve<IFloatingTextService>()?.SpawnText(
+                            transform.position + Vector3.up * 1.2f,
+                            harvestMsg,
+                            new Color(0.25f, 0.90f, 0.35f));
                     }
                 }
             }

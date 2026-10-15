@@ -643,7 +643,7 @@ namespace FeaturesSaveSystem
                 data.gold = PlayerWallet.Instance.CurrentGold;
             }
 
-            // 3. Water Bottle & Plant Waterer
+            // 3. Water Bottle, Plant Waterer & Garden Well
             if (PlayerWaterBottle.Instance != null)
             {
                 data.waterBottleAmount = PlayerWaterBottle.Instance.CurrentWater;
@@ -651,6 +651,15 @@ namespace FeaturesSaveSystem
             if (FeaturesFarming.PlantWaterer.Instance != null)
             {
                 data.plantWatererAmount = FeaturesFarming.PlantWaterer.Instance.CurrentWater;
+            }
+            if (FeaturesFarming.WaterWellInteractable.Instance != null)
+            {
+                var well = FeaturesFarming.WaterWellInteractable.Instance;
+                data.wellHasWaterer = well.HasWatererInWell;
+                data.wellWatererReady = well.IsWatererReadyToCollect;
+                data.wellWatererProgress = well.RefillWaterProgress;
+                data.wellWatererStartAmount = well.WatererStartAmount;
+                data.wellRefillsUsedToday = well.RefillsUsedToday;
             }
 
             // 4. Time System (24h continuous clock & phase)
@@ -842,16 +851,26 @@ namespace FeaturesSaveSystem
                 PlayerWallet.Instance.SetGold(data.gold);
             }
 
-            // 5. Water Bottle & Plant Waterer
+            // 5. Water Bottle, Plant Waterer & Garden Well
             if (PlayerWaterBottle.Instance != null)
             {
-                float bottleAmt = data.waterBottleAmount > 4f ? 4f : (data.waterBottleAmount > 0f ? data.waterBottleAmount : 4f);
+                float bottleAmt = data.waterBottleAmount >= 0f ? Mathf.Clamp(data.waterBottleAmount, 0f, 100f) : 100f;
                 PlayerWaterBottle.Instance.SetWater(bottleAmt);
             }
             if (FeaturesFarming.PlantWaterer.Instance != null)
             {
-                float plantAmt = data.plantWatererAmount > 0f ? data.plantWatererAmount : 100f;
+                float plantAmt = data.plantWatererAmount >= 0f ? data.plantWatererAmount : 100f;
                 FeaturesFarming.PlantWaterer.Instance.SetWater(plantAmt);
+            }
+            if (FeaturesFarming.WaterWellInteractable.Instance != null)
+            {
+                FeaturesFarming.WaterWellInteractable.Instance.RestoreWellState(
+                    data.wellHasWaterer,
+                    data.wellWatererReady,
+                    data.wellWatererProgress,
+                    data.wellWatererStartAmount,
+                    data.wellRefillsUsedToday
+                );
             }
 
             // 6. Weapon Upgrades

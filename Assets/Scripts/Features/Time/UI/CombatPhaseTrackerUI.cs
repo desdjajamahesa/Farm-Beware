@@ -26,8 +26,8 @@ namespace FeaturesTime.UI
         [SerializeField] private TextMeshProUGUI activityDetailText;
 
         [Header("Phase Colors")]
-        [SerializeField] private Color dayBadgeColor = new Color(0.95f, 0.70f, 0.20f, 0.85f); // Amber / Sun
-        [SerializeField] private Color nightBadgeColor = new Color(0.65f, 0.15f, 0.20f, 0.90f); // Blood / Crimson
+        [SerializeField] private Color dayBadgeColor = new Color(0.08f, 0.11f, 0.17f, 0.92f); // Deep Slate
+        [SerializeField] private Color nightBadgeColor = new Color(0.18f, 0.05f, 0.08f, 0.94f); // Deep Crimson
 
         [Header("Clock Display Settings")]
         [Tooltip("Interval kelipatan menit in-game untuk tampilan jam digital (default 15 menit: :00, :15, :30, :45).")]
@@ -234,10 +234,10 @@ namespace FeaturesTime.UI
 
         private void UpdateDayText(int day)
         {
-            // Permintaan pengguna: tidak menampilkan informasi hari (DAY X / 5), cukup keterangan Siang / Malam.
             if (dayText != null)
             {
-                dayText.gameObject.SetActive(false);
+                dayText.gameObject.SetActive(true);
+                dayText.text = $"DAY {day}";
             }
         }
 
@@ -252,18 +252,21 @@ namespace FeaturesTime.UI
 
             if (dayText != null)
             {
-                dayText.gameObject.SetActive(false);
+                dayText.gameObject.SetActive(true);
+                int day = TimeManager.Instance != null ? TimeManager.Instance.currentDay : 1;
+                dayText.text = $"DAY {day}";
+                dayText.color = isNight ? new Color(1f, 0.55f, 0.55f) : new Color(1f, 0.84f, 0.25f);
             }
 
             if (phaseText != null)
             {
                 phaseText.text = isNight ? "🌙 NIGHT" : "☀️ DAY";
-                phaseText.color = isNight ? new Color(1f, 0.45f, 0.45f) : new Color(1f, 0.95f, 0.70f);
+                phaseText.color = isNight ? new Color(1f, 0.45f, 0.45f) : new Color(0.95f, 0.96f, 0.98f);
             }
 
             if (clockText != null)
             {
-                clockText.color = isNight ? new Color(1f, 0.65f, 0.65f) : new Color(1f, 0.95f, 0.70f);
+                clockText.color = isNight ? new Color(1f, 0.80f, 0.80f) : new Color(0.98f, 0.98f, 1f);
             }
 
             if (phaseBadgeBackground != null)
@@ -276,12 +279,14 @@ namespace FeaturesTime.UI
                 if (isNight)
                 {
                     waveText.gameObject.SetActive(true);
-                    waveText.text = totalWaves > 1 ? $"Wave: {currentWave} / {totalWaves}" : "Beware of Monsters!";
+                    waveText.text = totalWaves > 1 ? $"⚔️ Wave {currentWave} / {totalWaves}" : "⚔️ Beware of Monsters!";
+                    waveText.color = new Color(1f, 0.70f, 0.70f);
                 }
                 else
                 {
                     waveText.gameObject.SetActive(true);
-                    waveText.text = "Safe & Farming";
+                    waveText.text = "🛡️ Safe & Farming";
+                    waveText.color = new Color(0.70f, 0.92f, 0.75f);
                 }
             }
 
@@ -427,36 +432,36 @@ namespace FeaturesTime.UI
             cardRt.anchorMin = new Vector2(0f, 0f);
             cardRt.anchorMax = new Vector2(1f, 0f);
             cardRt.pivot = new Vector2(0.5f, 1f);
-            cardRt.anchoredPosition = new Vector2(0f, -6f);
-            cardRt.sizeDelta = new Vector2(0f, 54f);
+            cardRt.anchoredPosition = new Vector2(0f, -8f);
+            cardRt.sizeDelta = new Vector2(0f, 72f);
 
             Image bg = activityCardRoot.GetComponent<Image>();
-            bg.color = new Color(0.10f, 0.12f, 0.16f, 0.92f);
+            bg.color = new Color(0.06f, 0.08f, 0.13f, 0.94f);
 
             GameObject headerObj = new GameObject("ActivityHeader", typeof(RectTransform), typeof(TextMeshProUGUI));
             headerObj.transform.SetParent(activityCardRoot.transform, false);
             RectTransform headerRt = headerObj.GetComponent<RectTransform>();
-            headerRt.anchorMin = new Vector2(0.04f, 0.58f);
-            headerRt.anchorMax = new Vector2(0.96f, 0.95f);
+            headerRt.anchorMin = new Vector2(0.05f, 0.60f);
+            headerRt.anchorMax = new Vector2(0.95f, 0.94f);
             headerRt.offsetMin = Vector2.zero;
             headerRt.offsetMax = Vector2.zero;
             activityHeaderBadgeText = headerObj.GetComponent<TextMeshProUGUI>();
-            activityHeaderBadgeText.fontSize = 10.5f;
+            activityHeaderBadgeText.fontSize = 12f;
             activityHeaderBadgeText.fontStyle = FontStyles.Bold;
-            activityHeaderBadgeText.color = new Color(1f, 0.80f, 0.25f);
+            activityHeaderBadgeText.color = new Color(1f, 0.78f, 0.20f);
             activityHeaderBadgeText.alignment = TextAlignmentOptions.Left;
             activityHeaderBadgeText.text = "📋 ACTIVITY • 06:00 - 06:40";
 
             GameObject detailObj = new GameObject("ActivityDetail", typeof(RectTransform), typeof(TextMeshProUGUI));
             detailObj.transform.SetParent(activityCardRoot.transform, false);
             RectTransform detailRt = detailObj.GetComponent<RectTransform>();
-            detailRt.anchorMin = new Vector2(0.04f, 0.05f);
-            detailRt.anchorMax = new Vector2(0.96f, 0.58f);
+            detailRt.anchorMin = new Vector2(0.05f, 0.08f);
+            detailRt.anchorMax = new Vector2(0.95f, 0.60f);
             detailRt.offsetMin = Vector2.zero;
             detailRt.offsetMax = Vector2.zero;
             activityDetailText = detailObj.GetComponent<TextMeshProUGUI>();
-            activityDetailText.fontSize = 9.5f;
-            activityDetailText.color = new Color(0.95f, 0.95f, 0.95f);
+            activityDetailText.fontSize = 11.5f;
+            activityDetailText.color = new Color(0.95f, 0.96f, 0.98f);
             activityDetailText.textWrappingMode = TextWrappingModes.Normal;
             activityDetailText.overflowMode = TextOverflowModes.Ellipsis;
             activityDetailText.alignment = TextAlignmentOptions.TopLeft;
@@ -468,15 +473,15 @@ namespace FeaturesTime.UI
             GameObject clockObj = new GameObject("ClockText", typeof(RectTransform), typeof(TextMeshProUGUI));
             clockObj.transform.SetParent(parent, false);
             RectTransform clockRt = clockObj.GetComponent<RectTransform>();
-            clockRt.anchorMin = new Vector2(0.50f, 0.45f);
-            clockRt.anchorMax = new Vector2(0.94f, 0.92f);
+            clockRt.anchorMin = new Vector2(0.58f, 0.50f);
+            clockRt.anchorMax = new Vector2(0.95f, 0.94f);
             clockRt.offsetMin = Vector2.zero;
             clockRt.offsetMax = Vector2.zero;
             clockText = clockObj.GetComponent<TextMeshProUGUI>();
-            clockText.fontSize = 15f;
+            clockText.fontSize = 18f;
             clockText.fontStyle = FontStyles.Bold;
             clockText.alignment = TextAlignmentOptions.Right;
-            clockText.color = new Color(1f, 0.95f, 0.70f);
+            clockText.color = new Color(0.98f, 0.98f, 1f);
             clockText.text = "06:00";
         }
 
@@ -486,9 +491,9 @@ namespace FeaturesTime.UI
             if (rootRt == null)
                 rootRt = gameObject.AddComponent<RectTransform>();
 
-            rootRt.sizeDelta = new Vector2(230f, 75f);
+            rootRt.sizeDelta = new Vector2(280f, 78f);
 
-            // Background Badge
+            // Background Badge (Deep Slate translucent container)
             GameObject badgeObj = new GameObject("TrackerBadge", typeof(RectTransform), typeof(Image));
             badgeObj.transform.SetParent(transform, false);
             RectTransform badgeRt = badgeObj.GetComponent<RectTransform>();
@@ -499,51 +504,65 @@ namespace FeaturesTime.UI
             phaseBadgeBackground = badgeObj.GetComponent<Image>();
             phaseBadgeBackground.color = dayBadgeColor;
 
-            // Day Text (Dinonaktifkan sesuai permintaan pengguna)
+            // Day Text (Pill / Tag di kiri atas)
             GameObject dayObj = new GameObject("DayText", typeof(RectTransform), typeof(TextMeshProUGUI));
             dayObj.transform.SetParent(badgeObj.transform, false);
-            dayObj.SetActive(false);
+            RectTransform dayRt = dayObj.GetComponent<RectTransform>();
+            dayRt.anchorMin = new Vector2(0.05f, 0.52f);
+            dayRt.anchorMax = new Vector2(0.32f, 0.92f);
+            dayRt.offsetMin = Vector2.zero;
+            dayRt.offsetMax = Vector2.zero;
             dayText = dayObj.GetComponent<TextMeshProUGUI>();
+            dayText.fontSize = 13.5f;
+            dayText.fontStyle = FontStyles.Bold;
+            dayText.alignment = TextAlignmentOptions.Left;
+            dayText.color = new Color(1f, 0.84f, 0.25f);
+            int initialDay = TimeManager.Instance != null ? TimeManager.Instance.currentDay : 1;
+            dayText.text = $"DAY {initialDay}";
+            dayObj.SetActive(true);
 
-            // Phase Text (Kiri Atas)
+            // Phase Text (Berdampingan dengan Day Text)
             GameObject phaseObj = new GameObject("PhaseText", typeof(RectTransform), typeof(TextMeshProUGUI));
             phaseObj.transform.SetParent(badgeObj.transform, false);
             RectTransform phaseRt = phaseObj.GetComponent<RectTransform>();
-            phaseRt.anchorMin = new Vector2(0.06f, 0.45f);
-            phaseRt.anchorMax = new Vector2(0.50f, 0.92f);
+            phaseRt.anchorMin = new Vector2(0.32f, 0.52f);
+            phaseRt.anchorMax = new Vector2(0.58f, 0.92f);
             phaseRt.offsetMin = Vector2.zero;
             phaseRt.offsetMax = Vector2.zero;
             phaseText = phaseObj.GetComponent<TextMeshProUGUI>();
-            phaseText.fontSize = 15f;
+            phaseText.fontSize = 13.5f;
             phaseText.fontStyle = FontStyles.Bold;
             phaseText.alignment = TextAlignmentOptions.Left;
+            phaseText.color = new Color(0.95f, 0.96f, 0.98f);
             phaseText.text = "☀️ DAY";
 
             // Clock Text (Kanan Atas: HH:mm)
             CreateProceduralClockText(badgeObj.transform);
 
-            // Wave & Enemies Row
+            // Wave & Status Row (Bawah)
             GameObject waveObj = new GameObject("WaveText", typeof(RectTransform), typeof(TextMeshProUGUI));
             waveObj.transform.SetParent(badgeObj.transform, false);
             RectTransform waveRt = waveObj.GetComponent<RectTransform>();
-            waveRt.anchorMin = new Vector2(0.06f, 0.05f);
-            waveRt.anchorMax = new Vector2(0.55f, 0.35f);
+            waveRt.anchorMin = new Vector2(0.05f, 0.08f);
+            waveRt.anchorMax = new Vector2(0.60f, 0.44f);
             waveRt.offsetMin = Vector2.zero;
             waveRt.offsetMax = Vector2.zero;
             waveText = waveObj.GetComponent<TextMeshProUGUI>();
-            waveText.fontSize = 10f;
+            waveText.fontSize = 11.5f;
+            waveText.color = new Color(0.70f, 0.92f, 0.75f);
             waveText.alignment = TextAlignmentOptions.Left;
-            waveText.text = "Safe Zone (Daytime)";
+            waveText.text = "🛡️ Safe & Farming";
 
             GameObject enemyObj = new GameObject("EnemyText", typeof(RectTransform), typeof(TextMeshProUGUI));
             enemyObj.transform.SetParent(badgeObj.transform, false);
             RectTransform enemyRt = enemyObj.GetComponent<RectTransform>();
-            enemyRt.anchorMin = new Vector2(0.55f, 0.05f);
-            enemyRt.anchorMax = new Vector2(0.94f, 0.35f);
+            enemyRt.anchorMin = new Vector2(0.60f, 0.08f);
+            enemyRt.anchorMax = new Vector2(0.95f, 0.44f);
             enemyRt.offsetMin = Vector2.zero;
             enemyRt.offsetMax = Vector2.zero;
             enemiesText = enemyObj.GetComponent<TextMeshProUGUI>();
-            enemiesText.fontSize = 10f;
+            enemiesText.fontSize = 11.5f;
+            enemiesText.color = new Color(1f, 0.45f, 0.45f);
             enemiesText.alignment = TextAlignmentOptions.Right;
             enemiesText.text = "";
         }

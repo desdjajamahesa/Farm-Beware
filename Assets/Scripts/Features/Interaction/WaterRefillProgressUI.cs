@@ -264,7 +264,9 @@ namespace FeaturesInteraction
 
             headerText = headerGO.GetComponent<TextMeshProUGUI>();
             headerText.alignment = TextAlignmentOptions.Center;
-            headerText.fontSize = 11;
+            headerText.enableAutoSizing = true;
+            headerText.fontSizeMin = 8;
+            headerText.fontSizeMax = 11;
             headerText.fontStyle = FontStyles.Bold;
             headerText.color = new Color(0.6f, 0.9f, 1f, 0.9f);
             headerText.raycastTarget = false;

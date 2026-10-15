@@ -44,10 +44,13 @@ namespace FeaturesInteraction
 
         public void UpdateLabel()
         {
+            if (worldLabel == null)
+                worldLabel = GetComponent<WorldLabel>();
+
             if (worldLabel == null) return;
 
             var timeService = ServiceLocator.Resolve<ITimeService>();
-            if (timeService == null || timeService.CurrentPhase == DayPhase.Day)
+            if (timeService == null || timeService.CurrentPhase != DayPhase.Night)
             {
                 worldLabel.displayName = "Sleep (Start Night Phase)";
             }
@@ -72,8 +75,8 @@ namespace FeaturesInteraction
             var pc = interactor != null ? interactor.GetComponent<IPlayerContext>() : ServiceLocator.Resolve<IPlayerContext>();
             var floatingText = ServiceLocator.Resolve<IFloatingTextService>();
 
-            // 1. Interaksi di siang hari: memicu fase malam (Night Brawl)
-            if (timeService.CurrentPhase == DayPhase.Day)
+            // 1. Interaksi sebelum malam (Day / Dusk / Dawn): memicu fase malam (Night Brawl)
+            if (timeService.CurrentPhase != DayPhase.Night)
             {
                 var farmingService = ServiceLocator.Resolve<IFarmingService>();
                 if (farmingService != null && farmingService.HasCropsAboutToRipen(180f, out string cropWarning))

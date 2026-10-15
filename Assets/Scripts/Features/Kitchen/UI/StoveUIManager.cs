@@ -1140,27 +1140,11 @@ public class StoveUIManager : MonoBehaviour, IModalWindow
 
     private void SyncCookingProgressBar()
     {
-        if (cookingProgressBar == null || currentStove == null) return;
-
-        if (currentStove.ActiveCookingCount > 0)
+        // Legacy global cooking progress bar above 'Select a Recipe' removed per user request.
+        // Each burner slot (Burner 1, 2, 3) already has dedicated progress indicators.
+        if (cookingProgressBar != null && cookingProgressBar.gameObject.activeSelf)
         {
-            if (!cookingProgressBar.gameObject.activeSelf)
-                cookingProgressBar.gameObject.SetActive(true);
-
-            float maxProg = 0f;
-            for (int i = 0; i < KitchenStove.MaxCookingSlots; i++)
-            {
-                var s = currentStove.GetSlot(i);
-                if (s != null && s.IsCooking && s.Progress01 > maxProg)
-                    maxProg = s.Progress01;
-            }
-            cookingProgressBar.value = Mathf.Clamp01(maxProg);
-        }
-        else
-        {
-            cookingProgressBar.value = 0f;
-            if (cookingProgressBar.gameObject.activeSelf)
-                cookingProgressBar.gameObject.SetActive(false);
+            cookingProgressBar.gameObject.SetActive(false);
         }
     }
 

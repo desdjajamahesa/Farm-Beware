@@ -435,12 +435,13 @@ public class InventoryComponent : MonoBehaviour
                         return;
                     }
 
-                    bottle.DrinkSip(1f);
+                    bottle.DrinkSip(25f);
                     if (textService != null)
                     {
+                        int chargesLeft = Mathf.FloorToInt(bottle.CurrentWater / 25f);
                         textService.SpawnText(
                             transform.position + Vector3.up * 1.5f,
-                            $"💧 Gulp! (+25 Hydration | {Mathf.FloorToInt(bottle.CurrentWater)}/4 Charges)",
+                            $"💧 Gulp! (+25 Hydration | {chargesLeft}/4 Charges)",
                             new Color(0.2f, 0.85f, 1f));
                     }
                     return;

@@ -68,8 +68,15 @@ namespace FeaturesSaveSystem
         public int dailyGoldEarnedCombat;
 
         // Water Bottle & Plant Waterer
-        public float waterBottleAmount;
-        public float plantWatererAmount;
+        public float waterBottleAmount = -1f;
+        public float plantWatererAmount = -1f;
+
+        // Garden Water Well Station
+        public bool wellHasWaterer;
+        public bool wellWatererReady;
+        public float wellWatererProgress;
+        public float wellWatererStartAmount;
+        public float wellRefillsUsedToday;
 
         // Time System
         public int currentDay;
