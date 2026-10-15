@@ -6,6 +6,9 @@ using FeaturesTime;
 using FeaturesTime.UI;
 using FeaturesKitchen;
 using FeaturesCombat;
+using FeaturesCombat.Adapters;
+using FeaturesEconomy;
+using UnityEngine.EventSystems;
 using FarmBeware.Core.Runtime;
 
 namespace FarmBeware.EditorTests
@@ -20,22 +23,29 @@ namespace FarmBeware.EditorTests
             Debug.Log("[AUDIT-SUITE] ========================================================");
 
             int passed = 0;
-            int total = 8;
+            int total = 15;
 
             if (Test_DayNight_PhaseProgression_DuskUntilNight()) passed++;
             if (Test_BedInteractable_Logic_AllowsDuskAndBlocksNightOnly()) passed++;
             if (Test_PlayerWaterBottle_4Charges_FullToEmpty()) passed++;
             if (Test_WaterBottle_CapacityPreservation_100L()) passed++;
-            if (Test_KitchenSinkProgressOverlay_HorizontalGeometry()) passed++;
+            if (Test_KitchenSinkProgressOverlay_VerticalGeometry()) passed++;
             if (Test_StoveUI_CookingProgressBarPermanentlyHidden()) passed++;
             if (Test_CombatPhaseTrackerUI_ProceduralDayAndClock()) passed++;
             if (Test_FarmlandTile_WorldItemPickup_SpawnOnFullInventory()) passed++;
+            if (Test_FarmlandPlot_1_NoHighlightOverrides()) passed++;
+            if (Test_Hotbar_MouseClick_Selection()) passed++;
+            if (Test_AttackTrail_NightOnly()) passed++;
+            if (Test_MerchantShopUI_ResetScrollPosition()) passed++;
+            if (Test_WorldItemPickup_Protection_FullInventory()) passed++;
+            if (Test_PlayerInventory_16Slots_Allocation()) passed++;
+            if (Test_PlayerBuff_FastForward8x_DurationAndTickAcceleration()) passed++;
 
             Debug.Log("[AUDIT-SUITE] ========================================================");
             Debug.Log($"[AUDIT-SUITE] Complete! Passed: {passed}/{total}");
             if (passed == total)
             {
-                Debug.Log("✅ [AUDIT-SUITE] ALL 8 COMPREHENSIVE AUDIT TESTS PASSED SUCCESSFULLY!");
+                Debug.Log("✅ [AUDIT-SUITE] ALL 15 COMPREHENSIVE AUDIT TESTS PASSED SUCCESSFULLY!");
             }
             else
             {
@@ -245,8 +255,8 @@ namespace FarmBeware.EditorTests
             protected override KitchenRecipe FindRecipeFor(ItemData item, int slotIndex) => null;
         }
 
-        // Test 5: Kitchen station horizontal progress line geometry (one long bar)
-        private static bool Test_KitchenSinkProgressOverlay_HorizontalGeometry()
+        // Test 5: Kitchen station vertical progress bar geometry
+        private static bool Test_KitchenSinkProgressOverlay_VerticalGeometry()
         {
             var stationGO = new GameObject("Test_Sink");
             try
@@ -275,20 +285,20 @@ namespace FarmBeware.EditorTests
                     return false;
                 }
 
-                // Verify track has full horizontal width and thin height
-                if (Mathf.Abs(track.localScale.y - 0.045f) > 0.01f)
+                // Verify track has vertical bar dimensions (thickness width and full vertical height)
+                if (Mathf.Abs(track.localScale.x - 0.045f) > 0.01f)
                 {
-                    Debug.LogError($"Track thickness was {track.localScale.y}, expected ~0.045m!");
+                    Debug.LogError($"Track width was {track.localScale.x}, expected ~0.045m!");
                     return false;
                 }
 
-                if (Mathf.Abs(track.localScale.x - 0.9f) > 0.01f)
+                if (Mathf.Abs(track.localScale.y - 0.7f) > 0.01f)
                 {
-                    Debug.LogError($"Track width was {track.localScale.x}, expected ~0.9m!");
+                    Debug.LogError($"Track height was {track.localScale.y}, expected ~0.70m!");
                     return false;
                 }
 
-                Debug.Log("✅ Test 5: Kitchen sink progress line geometry (track & horizontal fill bar) verified.");
+                Debug.Log("✅ Test 5: Kitchen sink vertical progress bar geometry (track & vertical fill bar) verified.");
                 return true;
             }
             finally
@@ -422,5 +432,339 @@ namespace FarmBeware.EditorTests
                 Object.DestroyImmediate(item);
             }
         }
+
+        // Test 9: FarmlandPlot_1 has no Mat_Highlight overrides on crop renderers
+        private static bool Test_FarmlandPlot_1_NoHighlightOverrides()
+        {
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/Compound/Farmland.prefab");
+            if (prefab == null)
+            {
+                Debug.LogError("Farmland.prefab could not be loaded!");
+                return false;
+            }
+
+            var plot1 = prefab.transform.Find("FarmlandPlot_1");
+            if (plot1 == null)
+            {
+                Debug.LogError("FarmlandPlot_1 could not be found under Farmland.prefab!");
+                return false;
+            }
+
+            var renderers = plot1.GetComponentsInChildren<MeshRenderer>(true);
+            foreach (var r in renderers)
+            {
+                if (r.sharedMaterial != null && r.sharedMaterial.name.Contains("Highlight"))
+                {
+                    Debug.LogError($"Renderer {r.name} in FarmlandPlot_1 still has Highlight material!");
+                    return false;
+                }
+            }
+
+            Debug.Log("✅ Test 9: FarmlandPlot_1 crop highlight override fix verified (0 Mat_Highlight on crops).");
+            return true;
+        }
+
+        // Test 10: Hotbar mouse click slot selection
+        private static bool Test_Hotbar_MouseClick_Selection()
+        {
+            var go = new GameObject("Test_HotbarClick");
+            try
+            {
+                var inv = go.AddComponent<InventoryComponent>();
+                inv.ResetInventory(16);
+                inv.HasHotbar = true;
+                inv.selectedHotbarIndex = 0;
+
+                var slotGO = new GameObject("Slot_2");
+                slotGO.transform.SetParent(go.transform);
+                var slotUI = slotGO.AddComponent<InventorySlotUI>();
+                slotUI.Init(null, 2, inv);
+
+                var pointerData = new PointerEventData(EventSystem.current)
+                {
+                    button = PointerEventData.InputButton.Left
+                };
+
+                slotUI.OnPointerClick(pointerData);
+
+                if (inv.selectedHotbarIndex != 2)
+                {
+                    Debug.LogError($"Expected hotbar index 2, got {inv.selectedHotbarIndex}!");
+                    return false;
+                }
+
+                Debug.Log("✅ Test 10: Hotbar mouse click slot selection verified (selectedHotbarIndex updated).");
+                return true;
+            }
+            finally
+            {
+                Object.DestroyImmediate(go);
+            }
+        }
+
+        // Test 11: Attack trail night-only emission gating
+        private static bool Test_AttackTrail_NightOnly()
+        {
+            var weaponGO = new GameObject("Test_Weapon");
+            try
+            {
+                var trail = weaponGO.AddComponent<WeaponTrailController>();
+                trail.InitializeForWeapon(weaponGO);
+
+                // Daytime: allowDaytimeTrail is false, time managers absent -> IsNightTime is false
+                trail.AllowDaytimeTrail = false;
+                trail.BeginTrail(0);
+                var tr = weaponGO.GetComponentInChildren<TrailRenderer>();
+                if (tr != null && tr.emitting)
+                {
+                    Debug.LogError("Trail is emitting during daytime when it should be suppressed!");
+                    return false;
+                }
+
+                // Nighttime: simulated via AllowDaytimeTrail = true
+                trail.AllowDaytimeTrail = true;
+                trail.BeginTrail(0);
+                if (tr == null || !tr.emitting)
+                {
+                    Debug.LogError("Trail failed to emit when night conditions are met!");
+                    return false;
+                }
+
+                trail.EndTrail();
+                if (tr.emitting)
+                {
+                    Debug.LogError("Trail failed to stop emitting on EndTrail!");
+                    return false;
+                }
+
+                Debug.Log("✅ Test 11: Attack trail night-only emission gating verified.");
+                return true;
+            }
+            finally
+            {
+                Object.DestroyImmediate(weaponGO);
+            }
+        }
+
+        // Test 12: Merchant shop scroll position reset to top
+        private static bool Test_MerchantShopUI_ResetScrollPosition()
+        {
+            var go = new GameObject("Test_MerchantShop");
+            try
+            {
+                var shopUI = go.AddComponent<MerchantShopUI>();
+                var scrollGO = new GameObject("ScrollRect", typeof(RectTransform));
+                scrollGO.transform.SetParent(go.transform, false);
+                var scrollRT = scrollGO.GetComponent<RectTransform>();
+                scrollRT.sizeDelta = new Vector2(400f, 300f);
+
+                var scroll = scrollGO.AddComponent<ScrollRect>();
+                var contentGO = new GameObject("Content", typeof(RectTransform));
+                contentGO.transform.SetParent(scrollGO.transform, false);
+                var contentRT = contentGO.GetComponent<RectTransform>();
+                contentRT.sizeDelta = new Vector2(400f, 1000f);
+                scroll.content = contentRT;
+                scroll.viewport = scrollRT;
+
+                var field = typeof(MerchantShopUI).GetField("scrollRect", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                if (field != null) field.SetValue(shopUI, scroll);
+
+                // Simulate scrolled to bottom
+                scroll.verticalNormalizedPosition = 0f;
+
+                shopUI.ResetScrollPosition();
+
+                if (Mathf.Abs(scroll.verticalNormalizedPosition - 1f) > 0.05f)
+                {
+                    Debug.LogError($"Expected scroll position 1f, got {scroll.verticalNormalizedPosition}!");
+                    return false;
+                }
+
+                Debug.Log("✅ Test 12: Merchant shop scroll position reset to top verified.");
+                return true;
+            }
+            finally
+            {
+                Object.DestroyImmediate(go);
+            }
+        }
+
+        // Test 13: WorldItemPickup drop protection on full inventory
+        private static bool Test_WorldItemPickup_Protection_FullInventory()
+        {
+            var playerGO = new GameObject("Test_Player_Isolated");
+            var item = ScriptableObject.CreateInstance<ItemData>();
+            item.itemId = "drop_loot_gem";
+            item.itemName = "Monster Drop Gem";
+            item.maxStack = 1;
+
+            var fillerItem = ScriptableObject.CreateInstance<ItemData>();
+            fillerItem.itemId = "filler_item";
+            fillerItem.itemName = "Filler Item";
+            fillerItem.maxStack = 1;
+
+            try
+            {
+                var inv = playerGO.AddComponent<InventoryComponent>();
+                inv.ResetInventory(16);
+
+                // Fill all 16 slots with unstackable items
+                for (int i = 0; i < 16; i++)
+                {
+                    inv.slots[i].item = fillerItem;
+                    inv.slots[i].quantity = 1;
+                }
+
+                if (inv.HasSpaceFor(item, 1))
+                {
+                    Debug.LogError("Inventory should be completely full!");
+                    return false;
+                }
+
+                var pickup = WorldItemPickup.Spawn(Vector3.zero, item, 1, Vector3.up);
+                if (pickup == null)
+                {
+                    Debug.LogError("Failed to spawn pickup!");
+                    return false;
+                }
+
+                pickup.TargetInventory = inv;
+
+                if (pickup.CanPlayerPickUp())
+                {
+                    Debug.LogError("CanPlayerPickUp should be FALSE when inventory is full!");
+                    Object.DestroyImmediate(pickup.gameObject);
+                    return false;
+                }
+
+                // Simulate Collect invocation when full
+                var collectMethod = typeof(WorldItemPickup).GetMethod("Collect", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                if (collectMethod != null) collectMethod.Invoke(pickup, null);
+
+                // Verify pickup was NOT destroyed
+                if (pickup == null || pickup.gameObject == null)
+                {
+                    Debug.LogError("Pickup was destroyed even though inventory was full! Item would be lost!");
+                    return false;
+                }
+
+                Object.DestroyImmediate(pickup.gameObject);
+                Debug.Log("✅ Test 13: WorldItemPickup drop protection on full inventory verified (item preserved on ground).");
+                return true;
+            }
+            finally
+            {
+                Object.DestroyImmediate(playerGO);
+                Object.DestroyImmediate(item);
+                Object.DestroyImmediate(fillerItem);
+            }
+        }
+
+        // Test 14: Player inventory 16-slot auto-allocation
+        private static bool Test_PlayerInventory_16Slots_Allocation()
+        {
+            var playerGO = new GameObject("Player");
+            playerGO.tag = "Player";
+            try
+            {
+                var inv = playerGO.AddComponent<InventoryComponent>();
+                // Simulasikan prefab/scene dengan 12 slot lama
+                inv.maxCapacity = 12;
+                inv.slots.Clear();
+                for (int i = 0; i < 12; i++) inv.slots.Add(new InventorySlot());
+
+                // Trigger Awake via reflection
+                var awakeMethod = typeof(InventoryComponent).GetMethod("Awake", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                if (awakeMethod != null) awakeMethod.Invoke(inv, null);
+
+                if (inv.maxCapacity != 16 || inv.slots.Count != 16)
+                {
+                    Debug.LogError($"Expected capacity 16 and 16 slots, got capacity={inv.maxCapacity}, count={inv.slots.Count}!");
+                    return false;
+                }
+
+                if (!inv.HasHotbar)
+                {
+                    Debug.LogError("Player inventory should have HasHotbar = true!");
+                    return false;
+                }
+
+                Debug.Log("✅ Test 14: Player inventory 16-slot expansion (4 hotbar + 12 main) verified.");
+                return true;
+            }
+            finally
+            {
+                Object.DestroyImmediate(playerGO);
+            }
+        }
+
+        // Test 15: Food buff duration and tick acceleration under x8 fast forward mode
+        private static bool Test_PlayerBuff_FastForward8x_DurationAndTickAcceleration()
+        {
+            var go = new GameObject("Test_Player_BuffSpeed");
+            try
+            {
+                var stats = go.AddComponent<PlayerStats>();
+                stats.maxHealth = 100;
+                stats.currentHealth = 50;
+
+                var buffMgr = go.AddComponent<PlayerBuffManager>();
+
+                // 1. Normal mode (1x): buff with 20s duration and HealthRegenTick 5 HP/s
+                var normalBuff = new BuffEffectData(BuffType.HealthRegenTick, 5f, 20f, "Normal Regen", "5 HP/s", null);
+                buffMgr.ApplyBuff(normalBuff);
+
+                buffMgr.TimeMultiplierOverride = 1.0f;
+                // Tick 1 second real time
+                buffMgr.TickBuffs(1.0f);
+
+                var activeBuff = buffMgr.ActiveBuffs[0];
+                if (Mathf.Abs(activeBuff.remainingDuration - 19.0f) > 0.05f)
+                {
+                    Debug.LogError($"Expected 19s remaining under 1x speed, got {activeBuff.remainingDuration}!");
+                    return false;
+                }
+                if (stats.currentHealth != 55)
+                {
+                    Debug.LogError($"Expected 55 health after 1s tick, got {stats.currentHealth}!");
+                    return false;
+                }
+
+                // 2. Fast-Forward mode (8x): Apply 8x multiplier override
+                buffMgr.TimeMultiplierOverride = 8.0f;
+
+                // Tick 1 second real time -> should consume 8 seconds of buff duration (19s - 8s = 11s)
+                // and trigger 8 periodic healing ticks (8 * 5 = 40 HP healed -> 55 + 40 = 95 HP)
+                buffMgr.TickBuffs(1.0f);
+
+                if (Mathf.Abs(activeBuff.remainingDuration - 11.0f) > 0.05f)
+                {
+                    Debug.LogError($"Expected 11s remaining under 8x fast-forward, got {activeBuff.remainingDuration}!");
+                    return false;
+                }
+                if (stats.currentHealth != 95)
+                {
+                    Debug.LogError($"Expected 95 health after 8x acceleration, got {stats.currentHealth}!");
+                    return false;
+                }
+
+                // Tick another 1.5 seconds real time (1.5 * 8 = 12s) -> exceeds 11s remaining -> buff should expire and be removed
+                buffMgr.TickBuffs(1.5f);
+
+                if (buffMgr.ActiveBuffs.Count != 0)
+                {
+                    Debug.LogError($"Expected buff to expire and be removed, but count is {buffMgr.ActiveBuffs.Count}!");
+                    return false;
+                }
+
+                Debug.Log("✅ Test 15: Food buff duration and tick acceleration under x8 fast forward mode verified.");
+                return true;
+            }
+            finally
+            {
+                Object.DestroyImmediate(go);
+            }
+        }
     }
 }
+

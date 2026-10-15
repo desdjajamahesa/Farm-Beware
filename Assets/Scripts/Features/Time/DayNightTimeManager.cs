@@ -179,6 +179,7 @@ namespace FeaturesTime
         public int CurrentMinuteInt => Mathf.FloorToInt((currentHour - Mathf.Floor(currentHour)) * 60f) % 60;
         public int CurrentDay => currentDay;
         public EnvironmentPhase CurrentPhase => currentPhase;
+        public bool IsNight => currentPhase == EnvironmentPhase.Night;
         public float NormalizedTime => Mathf.Clamp01(currentHour / 24.0f);
         public bool IsPaused => isPaused;
         public bool UseContinuousTime

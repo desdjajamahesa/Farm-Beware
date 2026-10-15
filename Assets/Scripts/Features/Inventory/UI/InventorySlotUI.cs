@@ -204,6 +204,13 @@ public class InventorySlotUI : MonoBehaviour, IDropHandler, IPointerClickHandler
         if (eventData.dragging)
             return;
 
+        // Seleksi Hotbar via klik mouse (Slot 0..3 pada inventory dengan Hotbar)
+        bool isHotbarSlot = (ownerInventory != null && ownerInventory.HasHotbar && SlotIndex >= 0 && SlotIndex < 4);
+        if (isHotbarSlot)
+        {
+            ownerInventory.SelectHotbarSlot(SlotIndex);
+        }
+
         // DOUBLE-CLICK: use the item (only for player inventory items).
         if (eventData.clickCount >= 2)
         {

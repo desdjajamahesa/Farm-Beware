@@ -24,8 +24,10 @@ public class KitchenStationProgressOverlay : MonoBehaviour
     [Header("Tampilan")]
     [Tooltip("Warna dasar overlay.")]
     [SerializeField] private Color overlayColor = new Color(0.35f, 0.85f, 1f, 0.90f);
+#pragma warning disable 0414
     [Tooltip("Lebar overlay dalam satuan dunia (panjang garis).")]
     [SerializeField] private float overlayWidth = 0.9f;
+#pragma warning restore 0414
     [Tooltip("Ketebalan garis progress (satuan dunia).")]
     [SerializeField] private float barThickness = 0.045f;
     [Tooltip("Tinggi maksimum overlay saat progress penuh (satuan dunia).")]
@@ -184,7 +186,7 @@ public class KitchenStationProgressOverlay : MonoBehaviour
                 ? slotAnchors[i]
                 : null;
 
-            Vector3 worldPos = anchor != null ? (anchor.position + Vector3.up * 0.04f) : (fallbackAnchor + Vector3.up * 0.04f);
+            Vector3 worldPos = anchor != null ? anchor.position : fallbackAnchor;
 
             // Root pivot: kompensasi skala non-uniform parent agar ukuran quad = satuan dunia.
             GameObject rootGO = new GameObject("ProgressOverlay_" + i);
@@ -195,7 +197,7 @@ public class KitchenStationProgressOverlay : MonoBehaviour
                 root.localScale = new Vector3(1f / s.x, 1f / s.y, 1f / s.z);
             root.position = worldPos;
 
-            // 1. Rel Latar Belakang Garis (Track)
+            // 1. Rel Latar Belakang Garis Vertikal (Track)
             GameObject trackGO = GameObject.CreatePrimitive(PrimitiveType.Quad);
             trackGO.name = "Track_" + i;
             Collider trackCol = trackGO.GetComponent<Collider>();
@@ -203,9 +205,9 @@ public class KitchenStationProgressOverlay : MonoBehaviour
 
             Transform trackTransform = trackGO.transform;
             trackTransform.SetParent(root, false);
-            trackTransform.localPosition = Vector3.zero;
+            trackTransform.localPosition = new Vector3(0f, maxHeight * 0.5f, 0f);
             trackTransform.localRotation = Quaternion.identity;
-            trackTransform.localScale = new Vector3(overlayWidth, barThickness, 1f);
+            trackTransform.localScale = new Vector3(barThickness, maxHeight, 1f);
 
             MeshRenderer trackMesh = trackGO.GetComponent<MeshRenderer>();
             trackMesh.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
@@ -214,7 +216,7 @@ public class KitchenStationProgressOverlay : MonoBehaviour
             if (overlayMaterial != null) { trackMesh.material = overlayMaterial; trackMesh.material.renderQueue = 3999; }
             trackMesh.material.color = new Color(0.10f, 0.15f, 0.22f, 0.65f);
 
-            // 2. Garis Pengisi Progress Horizontal (Fill Bar)
+            // 2. Garis Pengisi Progress Vertikal (Fill Bar dari Bawah ke Atas)
             GameObject quadGO = GameObject.CreatePrimitive(PrimitiveType.Quad);
             quadGO.name = "Veil_" + i;
             Collider col = quadGO.GetComponent<Collider>();
@@ -223,9 +225,9 @@ public class KitchenStationProgressOverlay : MonoBehaviour
 
             Transform quad = quadGO.transform;
             quad.SetParent(root, false);
-            quad.localPosition = new Vector3(-overlayWidth * 0.5f, 0f, -0.002f);
+            quad.localPosition = new Vector3(0f, 0.0001f, -0.002f);
             quad.localRotation = Quaternion.identity;
-            quad.localScale = new Vector3(0.0001f, barThickness, 1f);
+            quad.localScale = new Vector3(barThickness, 0.0001f, 1f);
 
             MeshRenderer mesh = quadGO.GetComponent<MeshRenderer>();
             mesh.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
@@ -261,7 +263,7 @@ public class KitchenStationProgressOverlay : MonoBehaviour
         if (r != null)
         {
             Bounds b = r.bounds;
-            pos = new Vector3(b.center.x, b.max.y, b.max.z);
+            pos = new Vector3(b.center.x, b.max.y + 0.15f, b.center.z);
         }
         return pos;
     }
@@ -367,10 +369,10 @@ public class KitchenStationProgressOverlay : MonoBehaviour
             return;
 
         float progress01 = maxHeight > 0.001f ? Mathf.Clamp01(height / maxHeight) : 0f;
-        float currentW = Mathf.Max(overlayWidth * progress01, 0.0001f);
-        o.quad.localScale = new Vector3(currentW, barThickness, 1f);
-        // Quad ber-pivot di tengah -> geser setengah lebar dari kiri agar terisi dari kiri ke kanan secara konsisten
-        o.quad.localPosition = new Vector3(-overlayWidth * 0.5f + (currentW * 0.5f), 0f, -0.002f);
+        float currentH = Mathf.Max(maxHeight * progress01, 0.0001f);
+        o.quad.localScale = new Vector3(barThickness, currentH, 1f);
+        // Quad ber-pivot di tengah -> geser setengah tinggi dari dasar agar terisi dari bawah ke atas secara konsisten
+        o.quad.localPosition = new Vector3(0f, currentH * 0.5f, -0.002f);
     }
 
     private string BuildOverlayPositionReport()

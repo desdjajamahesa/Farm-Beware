@@ -1,4 +1,5 @@
 using UnityEngine;
+using FarmBeware.Core.Runtime;
 
 namespace FeaturesCombat.Adapters
 {
@@ -158,6 +159,32 @@ namespace FeaturesCombat.Adapters
             }
         }
 
+        [Header("Time Gate Configuration")]
+        [Tooltip("Bila true, trail diizinkan muncul di siang hari (mis. keperluan debug/test). Default false (hanya malam hari).")]
+        [SerializeField] private bool allowDaytimeTrail = false;
+
+        public bool AllowDaytimeTrail
+        {
+            get => allowDaytimeTrail;
+            set => allowDaytimeTrail = value;
+        }
+
+        public bool IsNightTime()
+        {
+            if (allowDaytimeTrail) return true;
+
+            if (FeaturesTime.DayNightTimeManager.Instance != null)
+            {
+                return FeaturesTime.DayNightTimeManager.Instance.IsNight;
+            }
+            if (TimeManager.Instance != null)
+            {
+                return TimeManager.Instance.currentPhase == TimeManager.DayPhase.Night;
+            }
+
+            return false;
+        }
+
         /// <summary>
         /// Begins emitting the stylized slash trail ribbon with attack-specific gradient and width.
         /// </summary>
@@ -166,6 +193,12 @@ namespace FeaturesCombat.Adapters
         /// <param name="isHeavy">True if performing heavy charge release strike.</param>
         public void BeginTrail(int comboIndex, bool isFinisher = false, bool isHeavy = false)
         {
+            // Attack trail dibuat hanya ada di malam hari saja sesuai permintaan desain
+            if (!IsNightTime())
+            {
+                return;
+            }
+
             if (trailRenderer == null)
             {
                 InitializeForWeapon(gameObject);

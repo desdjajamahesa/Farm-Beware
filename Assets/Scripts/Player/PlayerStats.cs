@@ -117,6 +117,10 @@ public class PlayerStats : MonoBehaviour, FeaturesCombat.IDamageable, IPlayerDam
 
     public void ApplyBuffModifiers(float healthModPercent, float staminaModPercent, float staminaRegenModPercent)
     {
+        if (baseMaxHealth <= 0) baseMaxHealth = maxHealth > 0 ? maxHealth : 100;
+        if (baseMaxStamina <= 0f) baseMaxStamina = maxStamina > 0f ? maxStamina : 120f;
+        if (baseStaminaRegenRate <= 0f) baseStaminaRegenRate = staminaRegenRate > 0f ? staminaRegenRate : 20f;
+
         int newMaxHealth = Mathf.Max(1, Mathf.RoundToInt(baseMaxHealth * (1f + healthModPercent)));
         float newMaxStamina = Mathf.Max(1f, baseMaxStamina * (1f + staminaModPercent));
         staminaRegenRate = baseStaminaRegenRate * (1f + staminaRegenModPercent);
