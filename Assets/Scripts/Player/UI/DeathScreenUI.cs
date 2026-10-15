@@ -205,7 +205,9 @@ public class DeathScreenUI : MonoBehaviour, IModalWindow
 
     private void HandleLoadCompleted(GameSaveData saveData)
     {
+        isHandlingAction = false;
         isBrowsingSaveUI = false;
+        SetButtonsInteractable(true);
         CloseInstant();
     }
 

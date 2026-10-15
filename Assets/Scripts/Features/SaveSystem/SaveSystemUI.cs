@@ -299,21 +299,24 @@ namespace FeaturesSaveSystem
             bool isMainMenu = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name == "MainMenuScene";
             if (isMainMenu)
             {
-                SaveSystemManager.PendingSaveIdToLoad = null;
-                Debug.Log("[SaveSystemUI] Starting fresh New Game from SaveSystemUI...");
-                Close();
-                var fade = ServiceLocator.Resolve<IFadeService>();
-                if (fade != null)
+                if (SaveSystemManager.Instance != null)
                 {
-                    fade.FadeIn(0.4f, () =>
-                    {
-                        UnityEngine.SceneManagement.SceneManager.LoadScene("StagingScene");
-                    });
+                    SaveSystemManager.Instance.StartNewGame();
                 }
                 else
                 {
+                    SaveSystemManager.PendingSaveIdToLoad = null;
+                    Close();
                     UnityEngine.SceneManagement.SceneManager.LoadScene("StagingScene");
                 }
+                return;
+            }
+
+            // Prevent saving while player is dead/collapsed
+            var playerCtx = FarmBeware.Core.Runtime.ServiceLocator.Resolve<FarmBeware.Core.Runtime.IPlayerContext>();
+            if (playerCtx != null && playerCtx.Health <= 0)
+            {
+                if (statusFeedbackText != null) statusFeedbackText.text = "<color=#F87171>✗ Cannot save while collapsed!</color>";
                 return;
             }
 
@@ -484,8 +487,10 @@ namespace FeaturesSaveSystem
                 OnLoadSlotClicked(meta.saveId);
             });
 
-            // 2. [OVERWRITE] Button (Only when in gameplay, not in Main Menu)
-            if (!isMainMenu)
+            // 2. [OVERWRITE] Button (Only when in gameplay, not in Main Menu, and only when player is alive)
+            var pCtx = FarmBeware.Core.Runtime.ServiceLocator.Resolve<FarmBeware.Core.Runtime.IPlayerContext>();
+            bool isDead = pCtx != null && pCtx.Health <= 0;
+            if (!isMainMenu && !isDead)
             {
                 CreateMiniButton(actionsGO.transform, "Btn_Overwrite", "Overwrite", new Color(0.80f, 0.54f, 0.15f, 1f), 115, () =>
                 {
@@ -595,6 +600,13 @@ namespace FeaturesSaveSystem
 
         private void RequestOverwriteConfirmation(SaveMetadata meta)
         {
+            var pCtx = FarmBeware.Core.Runtime.ServiceLocator.Resolve<FarmBeware.Core.Runtime.IPlayerContext>();
+            if (pCtx != null && pCtx.Health <= 0)
+            {
+                if (statusFeedbackText != null) statusFeedbackText.text = "<color=#F87171>✗ Cannot overwrite while collapsed!</color>";
+                return;
+            }
+
             ShowConfirmDialog(
                 title: "OVERWRITE SAVE",
                 message: $"Are you sure you want to overwrite <color=#FBBF24>'{meta.displayName}'</color> with current game progress?\nThis will replace the previous save file.",
@@ -639,8 +651,10 @@ namespace FeaturesSaveSystem
 
         #region Confirmation Dialog
 
-        private void ShowConfirmDialog(string title, string message, string actionLabel, Color actionColor, Action onConfirm)
+        public void ShowConfirmDialog(string title, string message, string actionLabel, Color actionColor, Action onConfirm)
         {
+            EnsureUIHierarchy();
+            WireButtonListeners();
             if (confirmDialogRoot == null) return;
 
             pendingConfirmAction = onConfirm;
@@ -660,7 +674,13 @@ namespace FeaturesSaveSystem
                 confirmActionButton.colors = colors;
             }
 
+            if (modalPanel != null)
+            {
+                modalPanel.transform.SetAsLastSibling();
+                modalPanel.SetActive(true);
+            }
             confirmDialogRoot.SetActive(true);
+            confirmDialogRoot.transform.SetAsLastSibling();
         }
 
         private void CloseConfirmDialog()
