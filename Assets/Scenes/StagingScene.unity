@@ -3322,7 +3322,7 @@ MonoBehaviour:
   staminaDrainRate: 20
   staminaRegenDelay: 1.2
   maxHunger: 100
-  currentHunger: 0
+  currentHunger: 10
   hungerDrainRate: 0.1
   maxThirst: 100
   currentThirst: 0
@@ -3393,6 +3393,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerBuffManager
   activeBuffs: []
+  timeMultiplierOverride: -1
 --- !u!114 &81193527
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -6035,7 +6036,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6114843564634600145, guid: fba25e851f51e84498b6b264eae2c159, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 36
+      value: 38.38
       objectReference: {fileID: 0}
     - target: {fileID: 6114843564634600145, guid: fba25e851f51e84498b6b264eae2c159, type: 3}
       propertyPath: m_LocalPosition.y
@@ -23653,6 +23654,8 @@ MonoBehaviour:
   currentWave: 0
   totalWaves: 1
   waveIntermissionDelay: 4
+  spawnIntervalMin: 15
+  spawnIntervalMax: 20
 --- !u!1001 &472431269
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -36342,6 +36345,7 @@ MonoBehaviour:
   overlayMaterial: {fileID: 2100000, guid: 1b4aa5cb681d04a4d9d62386abff4b67, type: 2}
   overlayColor: {r: 1, g: 1, b: 1, a: 0.5}
   overlayWidth: 0.9
+  barThickness: 0.045
   maxHeight: 0.7
   useBillboard: 1
   billboardCameraTag: MainCamera
@@ -47383,6 +47387,9 @@ MonoBehaviour:
   waveText: {fileID: 0}
   enemiesText: {fileID: 0}
   phaseBadgeBackground: {fileID: 0}
+  activityCardRoot: {fileID: 0}
+  activityHeaderBadgeText: {fileID: 0}
+  activityDetailText: {fileID: 0}
   dayBadgeColor: {r: 0.95, g: 0.7, b: 0.2, a: 0.85}
   nightBadgeColor: {r: 0.65, g: 0.15, b: 0.2, a: 0.9}
   clockMinuteStep: 15
@@ -47767,6 +47774,7 @@ MonoBehaviour:
     m_ColorSpace: -1
     m_NumColorKeys: 2
     m_NumAlphaKeys: 2
+  allowDaytimeTrail: 0
 --- !u!1 &960816880
 GameObject:
   m_ObjectHideFlags: 0
@@ -56497,6 +56505,8 @@ MonoBehaviour:
   statusText: {fileID: 1478252984}
   inputCountText: {fileID: 672241290}
   outputCountText: {fileID: 1361015392}
+  percentText: {fileID: 0}
+  timeText: {fileID: 0}
   inputSlotUI: {fileID: 681690790}
   outputSlotUI: {fileID: 38065683}
   playerInventoryGrid: {fileID: 1383748452}
@@ -73183,6 +73193,7 @@ MonoBehaviour:
   promptLabel: Refill Plant Waterer
   refillDuration: 10
   maxRefillsPerDay: 2
+  sfxVolume: 0.5
 --- !u!65 &1449891772
 BoxCollider:
   m_ObjectHideFlags: 0
