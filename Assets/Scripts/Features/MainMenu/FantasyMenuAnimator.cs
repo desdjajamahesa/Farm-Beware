@@ -53,6 +53,7 @@ public class FantasyMenuAnimator : MonoBehaviour
 
     [Header("Wooden Signs Breeze Sway")]
     [SerializeField] private RectTransform playButtonRect;
+    [SerializeField] private RectTransform loadButtonRect;
     [SerializeField] private RectTransform settingsButtonRect;
     [SerializeField] private RectTransform exitButtonRect;
     [SerializeField] private float swayAngleMax = 1.2f;
@@ -155,8 +156,14 @@ public class FantasyMenuAnimator : MonoBehaviour
 
         if (playButtonRect == null && signpostPanel != null)
         {
-            var b = signpostPanel.Find("StartButton");
+            var b = signpostPanel.Find("StartButton") ?? signpostPanel.Find("NewGameButton");
             if (b != null) playButtonRect = b.GetComponent<RectTransform>();
+        }
+
+        if (loadButtonRect == null && signpostPanel != null)
+        {
+            var b = signpostPanel.Find("LoadGameButton");
+            if (b != null) loadButtonRect = b.GetComponent<RectTransform>();
         }
 
         if (settingsButtonRect == null && signpostPanel != null)
@@ -167,7 +174,7 @@ public class FantasyMenuAnimator : MonoBehaviour
 
         if (exitButtonRect == null && signpostPanel != null)
         {
-            var b = signpostPanel.Find("QuitButton");
+            var b = signpostPanel.Find("QuitButton") ?? signpostPanel.Find("ExitButton");
             if (b != null) exitButtonRect = b.GetComponent<RectTransform>();
         }
     }
@@ -295,6 +302,12 @@ public class FantasyMenuAnimator : MonoBehaviour
             playButtonRect.localRotation = Quaternion.Euler(0f, 0f, sway);
         }
 
+        if (loadButtonRect != null)
+        {
+            float sway = Mathf.Sin(time * (swaySpeed * 1.05f) + 0.6f) * (swayAngleMax * 0.9f);
+            loadButtonRect.localRotation = Quaternion.Euler(0f, 0f, sway);
+        }
+
         if (settingsButtonRect != null)
         {
             float sway = Mathf.Sin(time * (swaySpeed * 0.95f) + 1.2f) * (swayAngleMax * 0.85f);
@@ -343,6 +356,15 @@ public class FantasyMenuAnimator : MonoBehaviour
             var glow = playButtonRect.Find("SelectionGlow");
             if (glow != null) glow.gameObject.SetActive(false);
         }
+        if (loadButtonRect != null)
+        {
+            var uih = loadButtonRect.GetComponent<UIAnimationHandler>();
+            if (uih != null) uih.enabled = false;
+            var ind = loadButtonRect.Find("IndicatorIcon");
+            if (ind != null) ind.gameObject.SetActive(false);
+            var glow = loadButtonRect.Find("SelectionGlow");
+            if (glow != null) glow.gameObject.SetActive(false);
+        }
         if (settingsButtonRect != null)
         {
             var uih = settingsButtonRect.GetComponent<UIAnimationHandler>();
@@ -365,6 +387,7 @@ public class FantasyMenuAnimator : MonoBehaviour
         // Cache initial positions and scales
         Vector3 playBtnStartScale = playButtonRect != null ? playButtonRect.localScale : Vector3.one;
         Vector2 playBtnStartPos = playButtonRect != null ? playButtonRect.anchoredPosition : Vector2.zero;
+        Vector2 loadStartPos = loadButtonRect != null ? loadButtonRect.anchoredPosition : Vector2.zero;
         Vector2 settingsStartPos = settingsButtonRect != null ? settingsButtonRect.anchoredPosition : Vector2.zero;
         Vector2 exitStartPos = exitButtonRect != null ? exitButtonRect.anchoredPosition : Vector2.zero;
         Vector2 titleStartPos = titleRect != null ? titleRect.anchoredPosition : Vector2.zero;
@@ -372,6 +395,7 @@ public class FantasyMenuAnimator : MonoBehaviour
         Vector3 vortexStartScale = vortexRect != null ? vortexRect.localScale : Vector3.one;
 
         var playCG = playButtonRect != null ? (playButtonRect.GetComponent<CanvasGroup>() ?? playButtonRect.gameObject.AddComponent<CanvasGroup>()) : null;
+        var loadCG = loadButtonRect != null ? (loadButtonRect.GetComponent<CanvasGroup>() ?? loadButtonRect.gameObject.AddComponent<CanvasGroup>()) : null;
         var settingsCG = settingsButtonRect != null ? (settingsButtonRect.GetComponent<CanvasGroup>() ?? settingsButtonRect.gameObject.AddComponent<CanvasGroup>()) : null;
         var exitCG = exitButtonRect != null ? (exitButtonRect.GetComponent<CanvasGroup>() ?? exitButtonRect.gameObject.AddComponent<CanvasGroup>()) : null;
         var titleCG = titleRect != null ? (titleRect.GetComponent<CanvasGroup>() ?? titleRect.gameObject.AddComponent<CanvasGroup>()) : null;
@@ -436,9 +460,15 @@ public class FantasyMenuAnimator : MonoBehaviour
                 }
             }
 
-            // --- B. Settings, Exit, and Title Dispersal ---
+            // --- B. Load, Settings, Exit, and Title Dispersal ---
             float disperseT = Mathf.Clamp01(t / 0.32f);
             float disperseEase = 1f - Mathf.Pow(1f - disperseT, 3f);
+
+            if (loadButtonRect != null)
+            {
+                loadButtonRect.anchoredPosition = loadStartPos + new Vector2(0f, -50f * disperseEase);
+                if (loadCG != null) loadCG.alpha = 1f - disperseEase;
+            }
 
             if (settingsButtonRect != null)
             {
