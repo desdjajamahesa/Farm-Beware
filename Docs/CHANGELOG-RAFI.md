@@ -2,6 +2,82 @@
 
 Semua perubahan penting pada proyek ini oleh Rafi akan dicatat di halaman ini.
 
+## - 2026-10-16
+
+### Ditambahkan & Diintegrasikan (Added & Integrated)
+- **Arsitektur Pure C# POCO Tactical AI ([`MonsterTacticalEvaluator.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Combat/Core/PureLogic/MonsterTacticalEvaluator.cs))**:
+  - Mengembangkan evaluator taktis murni (`MonsterTacticalEvaluator`) dalam namespace `FeaturesCombat.Core.PureLogic` tanpa dependensi siklus hidup `MonoBehaviour` (Zero-GC, deterministik, thread-safe).
+  - **Tactical Encirclement Ring**: Menghitung vektor kepungan tangensial pada radius ring tempur ($3.2\text{m} - 4.8\text{m}$) dengan distribusi arah rotasi berlawanan (*clockwise* vs *counter-clockwise*) menggunakan paritas ID entitas (`(entityId & 1) == 0 ? 1 : -1`).
+  - **Tangential Evasive Kiting**: Menghitung vektor mundur bersudut $\pm 120^\circ$ dengan komponen offset lateral bagi musuh spesialis ranged ([`CornMusketeer`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Combat/Enemy/EnemyType.cs)) ketika pemain mendekat ke radius kritis ($< 3.8\text{m}$), mencegah musuh terjebak di dinding lurus.
+  - **Ambient Patrol Wander**: Menghitung titik patroli santai lokal secara acak di sekitar anchor spawn awal ketika musuh belum aggro.
+- **Mekanika Pack Morale Surge ([`EnemyBase.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Combat/Enemy/EnemyBase.cs))**:
+  - Berlangganan event statis `EnemyBase.OnAnyEnemyDied`. Saat rekan kawanan gugur dalam radius $8.0\text{m}$, monster di sekitarnya menerima lonjakan moral berupa $+15\%$ kecepatan gerak dan repathing instan selama $2.5\text{ detik}$ disertai feedback visual terapung `⚡ Surge!`.
+- **Ekspansi Automated Audit Test Suite ([`GameplayAndHUDTests.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Editor/GameplayAndHUDTests.cs))**:
+  - Menambahkan **Test 16**: `Test_MonsterTacticalEvaluator_EncirclementAndKiting` (validasi formasi orbit tangensial, diferensiasi arah paritas ID, dan diagonal kiting).
+  - Menambahkan **Test 17**: `Test_AttackTokenDispatcher_AnticipatoryAcquisitionAndEviction` (validasi siklus hidup token serang antisipatif, batas kapasitas, dan priority eviction Boss).
+  - Menambahkan **Test 18**: `Test_NavMesh_ObstaclePathfinding_RoutesAroundFences` (validasi raycast rintangan pagar, celah gerbang, dan navigasi memutar melewati `MainEntranceGate`).
+
+### Diubah & Dioptimasi (Changed & Optimized)
+- **NavMesh Barrier Carving & Gate Routing ([`StagingScene.unity`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scenes/StagingScene.unity) & [`NavMesh-_WORLD 1.asset`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scenes/StagingScene/NavMesh-_WORLD%201.asset))**:
+  - Memasang komponen `NavMeshModifier (overrideArea = true, area = 1 / Not Walkable)` pada seluruh 5 segmen pagar keliling (`Fence_North_WestWing`, `Fence_North_EastWing`, `Fence_South`, `Fence_West`, `Fence_East`), pilar gerbang, pilar sudut, serta pembatas kebun dan workshop.
+  - Membakar (*bake*) ulang NavMesh secara resmi menggunakan `NavMeshAssetManager.StartBakingSurfaces`, memastikan seluruh pagar memotong NavMesh dengan batas agent radius yang presisi dan gerbang `MainEntranceGate` ($X=18.4 - 22.4, Z=48.0$) menjadi satu-satunya jalur masuk legal.
+- **Anticipatory Attack Token Acquisition ([`EnemyBase.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Combat/Enemy/EnemyBase.cs))**:
+  - Memperbarui `EnemyBase.Update()` agar monster yang cooldown serangnya siap secara proaktif mengklaim token serangan dari `TokenDispatcher` saat memasuki jarak pendekatan ($\le 7.0\text{m}$), bukan menunggu hingga jarak serang melee ($\le 1.5\text{m}$).
+  - Monster pemegang token langsung beralih ke state `EngageDirect`, menerjang maju dengan kecepatan penuh untuk melancarkan serangan bertelegraf.
+  - Membatasi kuota token serang simultan (3 Melee, 2 Ranged) dengan giliran rotasi alami: monster cadangan mengitari pemain (`FlankOrbit`) dan langsung menerobos masuk begitu token dilepaskan (`ReleaseToken`).
+
+### Diperbaiki (Fixed)
+- **Eliminasi Deadlock Agresi Musuh Jarak Dekat ([`EnemyBase.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Combat/Enemy/EnemyBase.cs))**:
+  - Memecahkan siklus Catch-22 di mana monster tanpa token dipaksa mengitari pemain pada jarak 4m sehingga tidak pernah mencapai 1.5m untuk memicu klaim token.
+- **Line-of-Walkability Raycast Obstruction ([`EnemyBase.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Combat/Enemy/EnemyBase.cs))**:
+  - Menambahkan pengecekan `NavMesh.Raycast` sebelum mengevaluasi orbit dan serangan. Mencegah monster mengitari pagar dari luar atau mencoba menyerang menembus papan kayu saat pemain berdiri dekat di balik pagar.
+- **Orientasi Hadap Cerdas (*Dynamic Head Rotation*) ([`EnemyBase.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Combat/Enemy/EnemyBase.cs))**:
+  - Menonaktifkan `LookAtTarget` saat jalur langsung terhalang rintangan solid (`isDirectPathBlocked`), sehingga monster menatap ke arah gerak navigasi (`finalMoveDir`) saat membelok mencari gerbang alih-alih menatap kaku ke arah dinding pagar.
+- **Position Snapping di `ChaseTarget` ([`EnemyBase.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Combat/Enemy/EnemyBase.cs))**:
+  - Menyematkan `NavMesh.SamplePosition` pada titik awal dan titik tujuan dengan toleransi radius $2.0\text{m} - 3.0\text{m}$ untuk menjamin keandalan kalkulasi jalur pada medan berkontur.
+
+---
+
+## - 2026-10-15
+
+### Ditambahkan & Diintegrasikan (Added & Integrated)
+- **Perombakan Stasiun Sumur Pekarangan: Place & Collect ([`WaterWellInteractable.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Farming/WaterWellInteractable.cs))**:
+  - Merombak total mekanika sumur kebun menjadi stasiun interaktif berdurasi (*Place & Collect*).
+  - Pemain menaruh kaleng siram (`Plant Waterer`) ke dudukan timba sumur, memicu animasi rotasi engkol kayu (*crank*), timba turun-naik, serta audio prosedural gesekan batu dan percikan air (*stone grind & water splash SFX*).
+  - Mendukung pengisian kuota proporsional berbasis sisa isi air saat ditaruh, serta serialisasi status penyimpanan ke save file (`WellStationSaveState`).
+- **Ekspansi Kapasitas Tas Menjadi 16 Slot ([`InventoryComponent.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Inventory/InventoryComponent.cs))**:
+  - Memperluas kapasitas tas pemain dari 12 slot menjadi **16 slot penuh** (4 slot hotbar + 12 slot tas utama).
+  - Mengimplementasikan seleksi hotbar via klik mouse pada slot UI ([`InventorySlotUI.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Inventory/UI/InventorySlotUI.cs)) dengan penanganan tombol kiri mouse `PointerEventData.InputButton.Left`.
+- **Integrasi Menu Layar Kematian & Sistem Respawn (`bas-branch`)**:
+  - Mengintegrasikan sekuens layar tumbang (*You Collapsed Screen*) melalui [`DeathScreenUI.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Player/UI/DeathScreenUI.cs) dan controller respawn [`PlayerRespawnController.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Player/PlayerRespawnController.cs).
+  - Menyediakan opsi kebangkitan Checkpoint (terbangun di ranjang pukul 06:00 dengan pemulihan status) dan integrasi laporan harian [`DailyEconomyManager.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Economy/DailyEconomyManager.cs).
+- **Automated Comprehensive Audit Tests ([`GameplayAndHUDTests.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Editor/GameplayAndHUDTests.cs))**:
+  - Membangun suite audit otomatis mandiri yang memvalidasi 15 pengujian sistem kunci (linimasa siang, perizinan ranjang, siklus 4 tegukan botol minum, retensi 100L save/load, UI kompor, ekspansi 16 slot tas, dan akselerasi x8 buff makanan).
+
+### Diubah & Dioptimasi (Changed & Optimized)
+- **Akselerasi Status Buff Makanan pada Mode Fast-Forward 8x ([`PlayerBuffManager.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Player/PlayerBuffManager.cs))**:
+  - Menyinkronkan pengurangan durasi aktif buff makanan dan interval tick periodik pemulihan HP (`HealthRegenTick`) dengan faktor pengali `FastForwardMultiplier` (8x saat shortcut `0` aktif) agar buff tidak bertahan berlebihan saat eksplorasi siang dipercepat.
+- **Kelanjutan Simulasi Waktu Melewati Dusk (16:00 $\rightarrow$ 18:00) ([`DayNightTimeManager.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Time/DayNightTimeManager.cs))**:
+  - Memperbaiki penghentian jam di pukul 16:00 (Dusk) sehingga waktu terus berjalan mulus hingga pukul 18:00 (Nightfall).
+  - Mengizinkan pemain tidur di ranjang ([`BedInteractable.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Interaction/BedInteractable.cs)) saat fase Dusk (16:00 - 18:00) tanpa peringatan palsu monster malam.
+- **Redesain Kartu Panduan HUD & Jam Digital ([`CombatPhaseTrackerUI.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Time/UI/CombatPhaseTrackerUI.cs))**:
+  - Menyematkan badge aktif `'DAY 1'` yang tebal, jam digital 18pt berpenanda jelas, serta panel slate berukuran 280x72 dengan tipografi kontras tinggi (12pt judul, 11.5pt deskripsi).
+- **Refactoring Indikator Progres Stasiun Dapur**:
+  - Menghapus bar progres global yang membingungkan pada [`StoveUIManager.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Kitchen/UI/StoveUIManager.cs) dan memusatkan progres pada masing-masing kartu tungku aktif.
+  - Memodernisasi overlay wastafel ([`KitchenStationProgressOverlay.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Kitchen/UI/KitchenStationProgressOverlay.cs)) dari veil vertikal 0.7m menjadi bar progres horizontal ramping dengan cyan fill line.
+
+### Diperbaiki (Fixed)
+- **Proteksi Jatuhnya Hasil Panen Saat Tas Penuh ([`FarmlandTile.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Farming/FarmlandTile.cs) & [`WorldItemPickup.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Combat/WorldItemPickup.cs))**:
+  - Memperbaiki hilangnya bibit saat memanen tanaman dengan sisa 1 slot kosong: bibit yang tidak muat di tas otomatis dimunculkan mengapung di tanah via `WorldItemPickup.Spawn` dengan proteksi penyerapan instan 1.5 detik.
+- **Pelepasan Emisi Trail Serangan Khusus Malam Hari ([`WeaponTrailController.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Combat/Adapters/WeaponTrailController.cs))**:
+  - Membatasi nyala efek visual trail tebasan pedang agar hanya aktif pada malam hari (`DayPhase.Night` atau `IsNightBrawlActive`), menjaga ayunan cangkul dan pedang di siang hari tetap bersih.
+- **Reset Otomatis Scroll Bar Toko Pedagang ([`MerchantShopUI.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Economy/MerchantShopUI.cs))**:
+  - Mengembalikan posisi scroll view ke paling atas (`verticalNormalizedPosition = 1f`) setiap kali jendela toko dibuka atau tab kategori diganti.
+- **Keamanan I/O Direktori Multi-Slot Save System ([`SaveSystemManager.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/SaveSystem/SaveSystemManager.cs))**:
+  - Menambahkan verifikasi `Directory.CreateDirectory` otomatis sebelum operasi penyimpanan dan penanganan fallback graceful jika metadata slot kosong.
+
+---
+
 ## - 2026-10-14
 
 ### Ditambahkan & Diintegrasikan (Added & Integrated)

@@ -1,5 +1,46 @@
 # Patch Notes
 
+## 2026-10-16
+
+### Added
+* **Tactical Encirclement Ring**: Monsters awaiting an attack opportunity now dynamically surround the player in a 360-degree combat ring (3.2m to 4.8m radius), distributing themselves evenly with clockwise and counter-clockwise movement rather than bunching up or standing still.
+* **Tangential Evasive Kiting**: Ranged specialists (Corn Musketeer and The Ranger) execute lateral and diagonal evasive retreats when approached within close combat distance (< 3.8m), preventing them from being pinned against straight walls.
+* **Pack Morale Surge**: Defeating a monster in combat triggers a brief surge of adrenaline among nearby pack members within 8 meters, granting them an immediate +15% movement speed burst and tactical repathing for 2.5 seconds with floating "⚡ Surge!" combat feedback.
+* **Ambient Idle Wander**: Non-aggroed monsters now patrol naturally in a relaxed perimeter around their spawn anchors rather than freezing in place.
+
+### Changed
+* **Gate Pathfinding & Perimeter Obstacle Navigation**: The homestead perimeter fences, corner posts, and workshop structures are now fully carved into the navigation mesh. Monsters spawning outside the perimeter actively navigate around the fences and route through the `MainEntranceGate` opening rather than blindly pressing into wooden fences.
+* **Horde Attack Turn-Taking**: Up to 3 melee enemies and 2 ranged enemies can hold active attack tokens simultaneously. Excess enemies circle menacingly in the flank ring and immediately charge in as soon as an attacking enemy completes its strike.
+
+### Fixed
+* **Melee Enemy Circling Deadlock**: Fixed an issue where melee enemies remained trapped circling at 4 meters distance without ever initiating attacks unless the player walked directly into their strike range, by implementing anticipatory attack token acquisition during their approach run (<= 7m).
+* **Fence Line-of-Walkability Raycast**: Prevented enemies from attempting to strike through solid perimeter fences or orbiting barriers when physical obstacles block direct line of walkability to the player.
+* **Dynamic Head Orientation**: Monsters rounding corners or navigating toward gates now look along their travel path rather than staring sideways into solid walls.
+
+---
+
+## 2026-10-15
+
+### Added
+* **Garden Water Well Redesign (Station Place & Collect)**: Transformed the homestead garden well into an interactive station where players place the Plant Waterer into the well bucket cradle, watch the crank and bucket animate with procedural stone and splash SFX, and collect the refilled 100L can upon completion.
+* **Expanded 16-Slot Inventory**: The player's carrying capacity is now expanded to 16 full slots (4 hotbar slots + 12 main bag slots), providing ample space for seeds, crops, tools, and cooked food rations.
+* **Mouse Click Hotbar Selection**: Players can now click directly on hotbar slot icons with the mouse to equip weapons, tools, or seeds in addition to number keys 1–4.
+* **Player Defeat & Respawn Flow**: Integrated the "You Collapsed" defeat screen and respawn mechanics (`bas-branch`), awakening in bed at 06:00 morning with morning vitals restored and coordination with the daily economy report.
+
+### Changed
+* **Accelerated Food Buffs (8x Fast-Forward)**: Fast-forward mode (shortcut `0`) now accelerates active food buff remaining durations and periodic health regeneration ticks proportionally by 8x, matching the accelerated daytime progression.
+* **Continuous Day Simulation through Dusk**: The daytime clock now runs continuously past 16:00 (Dusk) all the way to 18:00 (Nightfall), and players can safely sleep in bed during Dusk without premature monster alert warnings.
+* **Redesigned HUD & Clock Readout**: The top-right HUD features a prominent active "DAY 1" badge, an 18pt digital clock, and a spacious 280x72 slate activity card with high-contrast typography.
+* **Kitchen Progress Bar Overhauls**: Replaced legacy progress bars on the cooking stove with dedicated per-burner timers, and refactored the kitchen sink progress overlay to a sleek vertical bar.
+
+### Fixed
+* **Crop Harvest Drop Protection**: Harvesting crops with a full inventory (or only 1 free slot) now automatically spawns uncollected seeds onto the ground as floating pickups via `WorldItemPickup`, preventing seed loss.
+* **Nighttime-Only Attack Trail**: Weapon slash trails now exclusively emit during nighttime combat encounters, keeping daytime farming swings clean.
+* **Merchant Shop Scroll Reset**: Opening the merchant shop or switching item tabs now resets the scroll view to the top automatically.
+* **Multi-Slot Save System Safety**: Hardened multi-slot save and load routines with persistent directory creation and safe fallback handling.
+
+---
+
 ## 2026-10-14
 
 ### Added

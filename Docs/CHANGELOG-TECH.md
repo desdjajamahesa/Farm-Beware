@@ -12,6 +12,8 @@ Konsolidasi dokumentasi teknis dari seluruh kontributor tim pengembang (`Rafi`, 
 ---
 
 ## Daftar Isi Kronologis
+- [2026-10-16](#--2026-10-16)
+- [2026-10-15](#--2026-10-15)
 - [2026-10-14](#--2026-10-14)
 - [2026-10-10](#--2026-10-10)
 - [2026-10-09](#--2026-10-09)
@@ -20,6 +22,88 @@ Konsolidasi dokumentasi teknis dari seluruh kontributor tim pengembang (`Rafi`, 
 - [2026-10-02](#--2026-10-02)
 - [2026-10-01](#--2026-10-01)
 - [2026-09-30](#--2026-09-30)
+
+---
+
+## - 2026-10-16
+
+### Ditambahkan & Diintegrasikan (Added & Integrated)
+
+#### 1. Arsitektur AI Taktis Monster & POCO Evaluator Berbasis Peran (Tactical AI System) `[Rafi]`
+- **Pure C# POCO Evaluator ([`MonsterTacticalEvaluator.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Combat/Enemy/MonsterTacticalEvaluator.cs))**:
+  - Mengembangkan evaluator taktis berbasis pure C# tanpa dependensi lifecycle engine (Zero-GC) untuk menghitung posisi offset dinamis monster di sekitar target.
+  - Mengimplementasikan 3 profil perilaku monster:
+    - *Melee Harasser*: Mengelilingi target secara dinamis dengan formasi menyebar (flanking angle), menjaga jarak waspada (2.5m - 4.5m) dengan kecepatan orbit acak, lalu menerjang saat memperoleh token serangan.
+    - *Ranged Skirmisher*: Menjaga jarak tembak optimal (6.0m - 9.0m), aktif melakukan repositioning (kiting), dan melangkah mundur menjauhi pemain bila didekati terlalu dekat (< 4.0m).
+    - *Tank / Berserker*: Melakukan pengejaran langsung tanpa manuver flank untuk mendominasi ruang tempur.
+- **Integrasi Adapter Musuh ([`EnemyBase.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Combat/Enemy/EnemyBase.cs))**:
+  - Menghubungkan evaluator taktis ke siklus tick `UpdateMovement` pada `EnemyBase` dengan sanitasi `NavMesh.SamplePosition` pada radius 1.5m untuk memastikan titik navigasi valid di atas surface.
+  - Memperbarui transisi state tempur: monster kini bergerak lincah dan berputar mengelilingi pemain alih-alih berdiam diri kaku.
+
+#### 2. Resolusi Deadlock Agresi Melee & Dispatcher Token Antisipatif (Attack Token Dispatcher) `[Rafi]`
+- **Anticipatory Token Reservation ([`AttackTokenDispatcher.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Combat/Enemy/AttackTokenDispatcher.cs))**:
+  - Mengeliminasi *deadlock pasif* di mana monster jarak dekat hanya mengitari pemain tanpa menyerang bila pemain tidak mendekat duluan.
+  - Token serangan kini dialokasikan saat monster berada dalam *engagement radius* (hingga 5.0m), memicu monster untuk langsung menutup jarak (*closing the gap*) dan melancarkan tebasan begitu tiba di jarak serang (`attackRange`).
+  - Menetapkan batas maksimum token bersamaan (default 2 penyerang simultan) dan durasi kedaluwarsa token (3.5 detik) guna mencegah monster memonopoli slot serangan bila terhalang rintangan.
+- **Logika Eksekusi Serangan Melee ([`EnemyBase.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Combat/Enemy/EnemyBase.cs))**:
+  - Saat memegang token aktif, target navigasi langsung dikunci ke posisi pemain (`target.position`), menonaktifkan manuver flanking dan memaksa pendekatan agresif.
+  - Eksekusi serangan langsung memanggil `animator.SetTrigger("Attack")` dan merilis token kembali ke dispatcher setelah animasi selesai atau saat cooldown dimulai.
+
+#### 3. NavMesh Barrier Carving, Gate Routing & Raycast Obstruction Handling `[Rafi]`
+- **Obstacle Carving & Dynamic Rebaking ([`StagingScene.unity`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scenes/StagingScene.unity))**:
+  - Menambahkan komponen `NavMeshObstacle` dengan `Carve = true`, `Move Threshold = 0.1`, dan `Carving Time To Stationary = 0.5s` pada prefab pagar (`Fence_Medium_01`, `Fence_Single_01`, gerbang, dan dinding luar).
+  - Melakukan rebake NavMesh Surface pekarangan untuk memotong rongga fisik pagar, memaksa `NavMeshAgent` mencari jalur terbuka (gerbang dan celah jalan) alih-alih menabrak dan tersangkut di dinding pagar saat mengejar pemain.
+- **Raycast Line-of-Sight & Obstruction Pathing ([`EnemyBase.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Combat/Enemy/EnemyBase.cs))**:
+  - Menambahkan verifikasi `Physics.Linecast` atau raycast visibilitas dengan layer mask `Default | Obstacles`.
+  - Jika garis pandang terhalang oleh pagar atau objek statis, monster memprioritaskan kalkulasi pathing global agen NavMesh menuju gerbang terdekat daripada memaksakan direct approach point.
+
+#### 4. Ekspansi Test Suite Audit Otomatis (18/18 Passing) `[Rafi]`
+- **Penambahan Test Rig ([`GameplayAndHUDTests.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Editor/GameplayAndHUDTests.cs))**:
+  - `Test16_MonsterTacticalEvaluator_MeleeFlankingCalculation`: Memvalidasi kalkulasi polar coordinate offset, batas jarak orbit, dan pergeseran sudut dinamis pada `MonsterTacticalEvaluator`.
+  - `Test17_MonsterTacticalEvaluator_RangedKitingBehavior`: Memverifikasi reposisi mundur (*kiting retreat*) ranged monster ketika jarak pemain berada di bawah batas minimum.
+  - `Test18_AttackTokenDispatcher_AcquireAndReleaseLifecycle`: Memverifikasi siklus reservasi token antisipatif, batas kapasitas simultan, dan rilis otomatis saat kedaluwarsa.
+  - Seluruh rangkaian audit sistem lolos 18 dari 18 pengujian (18/18 Passed, 0 Errors, 0 Warnings).
+
+---
+
+## - 2026-10-15
+
+### Ditambahkan & Diintegrasikan (Added & Integrated)
+
+#### 1. Redesain Stasiun Sumur Air Pekarangan: Sistem Place & Collect (Water Well Refactor) `[Rafi]`
+- **Mekanik Tempatkan & Ambil Kaleng Siram ([`WaterWellInteractable.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Farming/WaterWellInteractable.cs))**:
+  - Mengubah sumur luar ruangan dari pengisian instan menjadi siklus kerja dua tahap interaktif:
+    - *Tahap 1 (Place Can)*: Pemain meletakkan kaleng siram (`WateringCan`) di bibir sumur. Kaleng otomatis terisi selama durasi progres (default 3.0 detik, terakselerasi di mode 8x).
+    - *Tahap 2 (Collect Can)*: Pemain mengambil kembali kaleng siram yang telah terisi penuh 100% (5/5 uses) ke dalam hotbar/inventory.
+  - Menambahkan perlindungan *ownership guard*: kaleng tidak dapat diambil sebelum proses pengisian selesai secara menyeluruh.
+- **Visualisasi & Animasi Posisi Ember**:
+  - Memperbaiki penempatan ember dan posisi koordinat sumur di pekarangan ([`StagingScene.unity`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scenes/StagingScene.unity)) agar sejajar dengan ground mesh dan tidak melayang.
+
+#### 2. Akselerasi Fast-Forward 8x Buff Makanan & Penguatan PlayerStats `[Rafi]`
+- **Skalasi Waktu Konsumsi Makanan ([`PlayerBuffManager.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Cooking/PlayerBuffManager.cs))**:
+  - Mengintegrasikan deteksi `TimeManager.Instance.IsFastForwarding` ke dalam loop pengurangan durasi buff makanan (`BuffDecayTick`), sehingga durasi buff menyusut 8x lebih cepat seirama dengan akselerasi waktu in-game.
+- **Pencegahan Null-Reference & State Guard ([`PlayerStats.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Player/PlayerStats.cs))**:
+  - Memperkuat null-safety saat menginisialisasi dan memperbarui buff stamina dan attack boost dari resep makanan, mencegah exception saat transisi pergantian scene atau pemuatan save data.
+
+#### 3. Peningkatan Kapasitas Inventory 16-Slot & Navigasi Hotbar Mouse Click `[Rafi]`
+- **Ekspansi Kapasitas Penyimpanan ([`InventoryManager.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Inventory/InventoryManager.cs))**:
+  - Meningkatkan kapasitas penyimpanan default inventaris pemain dari 8 slot menjadi 16 slot (2 baris x 8 kolom) untuk menampung hasil panen, bahan masakan dapur, dan senjata tempur.
+- **Interaksi Mouse Hotbar ([`HotbarUI.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Inventory/HotbarUI.cs))**:
+  - Menambahkan dukungan klik mouse langsung pada slot hotbar di layar bagian bawah, melengkapi navigasi sebelumnya yang hanya mengandalkan keyboard numpad `1`–`8` dan scroll wheel mouse.
+
+#### 4. Integrasi Layar Kematian (Death Screen) & Hardening Multi-Slot Save System `[Bhaskoro & Rafi]`
+- **Sistem Respawn Pemain & Penalti Pagi Hari ([`DeathScreenUI.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Combat/UI/DeathScreenUI.cs), [`PlayerRespawnController.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Player/PlayerRespawnController.cs))**:
+  - Mengintegrasikan branch fitur `bas-branch` ke dalam `Rafi-branch` (merge commit `224f365`).
+  - Menghubungkan layar kematian saat HP pemain habis: menampilkan pesan kekalahan, memutar efek audio sedih, dan memicu respawn pemain di tempat tidur rumah pada pukul 06:00 pagi keesokan harinya dengan pemulihan HP & Stamina.
+  - Mengkoordinasikan pemotongan biaya perawatan atau penalti denda harian melalui [`DailyEconomyManager.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Economy/DailyEconomyManager.cs).
+- **Hardening Multi-Slot Save System ([`SaveSystemManager.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/SaveLoad/SaveSystemManager.cs))**:
+  - Menambahkan validasi integritas slot penyimpanan (`slotIndex` 0–2), penanganan pembuatan direktori `Application.persistentDataPath` secara defensif, dan fallback graceful jika berkas JSON korup atau tidak ditemukan.
+
+#### 5. Proteksi Pemetikan Tanaman & Night-Only Weapon Trail Emission `[Rafi]`
+- **Pencegahan Panen Tanaman Belum Matang ([`CropPlot.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Farming/CropPlot.cs))**:
+  - Memperbaiki interaksi panen agar pemain tidak dapat secara tidak sengaja memetik atau menghancurkan tanaman bibit yang belum mencapai tahap matang (*Mature*).
+- **Kondisional Emisi Trail Senjata ([`PlayerCombatController.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Combat/PlayerCombatController.cs))**:
+  - Mengatur efek jejak tebasan pedang (`TrailRenderer` / `MeleeTrailVFX`) agar hanya menyala aktif saat fase pertempuran malam (*Night Brawl Phase*), menjaga suasana tenang dan estetika visual saat siang hari.
 
 ---
 

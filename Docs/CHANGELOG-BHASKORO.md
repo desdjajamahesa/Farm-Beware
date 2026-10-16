@@ -103,3 +103,28 @@ Sistem transisi visual sinematik berbasis awan organik berbulu (*organic feather
   - [`FantasyMenuAnimator.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/MainMenu/FantasyMenuAnimator.cs): Menyelaraskan durasi `enterTransitionDuration = 0.40f` dengan animasi awan.
   - [`MainMenuScene.unity`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scenes/MainMenuScene.unity): Menautkan hierarki transisi ke scene menu utama.
 
+---
+
+## 6. Death Screen UI, Player Respawn Lifecycle & Save System Hardening (2026-10-15)
+
+Pengembangan sistem penanganan kematian pemain (*Death Scene & Respawn Lifecycle*), proteksi kondisi kegagalan pada antarmuka penyimpanan, koordinasi ekonomi harian, dan hardening restorasi data save/load (`bas-branch`, diintegrasikan via commit `86ebfd7` & merge commit `224f365`).
+
+### Komponen & Arsitektur:
+- [`DeathScreenUI.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Player/UI/DeathScreenUI.cs):
+  - Layar modal kekalahan pemain saat Health mencapai 0, menampilkan efek redup dramatis, pesan narasi pingsan, dan opsi memuat simpanan terakhir (*Load Game*) atau respawn keesokan harinya di tempat tidur.
+  - Penanganan transisi bersih saat load save berhasil (`HandleLoadCompleted`): me-reset state browsing, membuka interaktivitas tombol (`SetButtonsInteractable(true)`), dan menutup layar seketika.
+- [`PlayerRespawnController.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Player/PlayerRespawnController.cs):
+  - Mengelola pemulihan pemain setelah pingsan: memindahkan koordinat pemain ke tempat tidur rumah (`BedInteractable`), menyetel jam menjadi pukul 06:00 pagi keesokan harinya, dan merestorasi status vital pemain.
+  - Memastikan re-aktivasi input controller (`playerControl.SetInputActive(true)`) sehingga pemain dapat langsung bergerak setelah transisi bangun tidur selesai.
+- [`SaveSystemManager.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/SaveSystem/SaveSystemManager.cs):
+  - **Void Fallback Protection**: Mendeteksi jika posisi koordinat hasil load berada di (0,0,0) atau di bawah batas jurang tanah (`y < -20f`), secara otomatis mengarahkan titik teleport ke posisi tempat tidur (`(27.1f, 0.5f, 21.04f)`) untuk mencegah pemain jatuh ke dalam void.
+  - **Vital Floor Guarantees**: Menjamin nilai HP minimal 1 dan Stamina/Hunger/Thirst minimal 10 unit saat data dimuat, mencegah pemain mengalami *death loop* langsung setelah memuat file save.
+  - **Input State Unlock**: Menghapus kunci kontrol (`playerCtx.IsInputLocked = false`, `playerCtx.SetControlLock(false)`) saat restorasi save tuntas.
+- [`SaveSystemUI.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/SaveSystem/SaveSystemUI.cs):
+  - **Dead State Guard**: Mencegah operasi Save atau Overwrite ketika pemain sedang dalam kondisi pingsan/mati (`playerCtx.Health <= 0`) dan menampilkan pesan peringatan merah `"Cannot save/overwrite while collapsed!"`.
+  - **Hierarki Dialog Konfirmasi**: Menjamin inisialisasi hierarki dan pendengar tombol pada `ShowConfirmDialog` dengan penempatan `modalPanel.transform.SetAsLastSibling()`.
+- [`DailyEconomyManager.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Economy/DailyEconomyManager.cs):
+  - Mengintegrasikan kalkulasi penalti biaya perawatan dan sinkronisasi laporan ekonomi harian saat siklus pergantian hari dipicu oleh respawn kematian.
+- [`MainMenuController.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/MainMenu/MainMenuController.cs):
+  - Integrasi pemilihan slot penyimpanan langsung dari menu utama dengan pengecekan ketersediaan data simpanan sebelum memulai sesi permainan.
+
