@@ -151,6 +151,24 @@ namespace FeaturesCombat.Core.PureLogic
         }
 
         /// <summary>
+        /// Checks whether the entity currently holds an active, unexpired attack token. Zero-GC.
+        /// </summary>
+        public bool HasToken(int entityId, bool isRanged, float currentTime)
+        {
+            if (entityId == 0) return false;
+            int[] owners = isRanged ? _rangedOwners : _meleeOwners;
+            float[] expirations = isRanged ? _rangedExpirations : _meleeExpirations;
+            for (int i = 0; i < owners.Length; i++)
+            {
+                if (owners[i] == entityId && currentTime < expirations[i])
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        /// <summary>
         /// Releases all tokens currently assigned to the entity across both melee and ranged pools.
         /// </summary>
         public void ReleaseAllForEntity(int entityId)

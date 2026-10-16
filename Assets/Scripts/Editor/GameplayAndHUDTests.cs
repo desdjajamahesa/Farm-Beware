@@ -7,6 +7,7 @@ using FeaturesTime.UI;
 using FeaturesKitchen;
 using FeaturesCombat;
 using FeaturesCombat.Adapters;
+using FeaturesCombat.Core.PureLogic;
 using FeaturesEconomy;
 using UnityEngine.EventSystems;
 using FarmBeware.Core.Runtime;
@@ -23,7 +24,7 @@ namespace FarmBeware.EditorTests
             Debug.Log("[AUDIT-SUITE] ========================================================");
 
             int passed = 0;
-            int total = 15;
+            int total = 18;
 
             if (Test_DayNight_PhaseProgression_DuskUntilNight()) passed++;
             if (Test_BedInteractable_Logic_AllowsDuskAndBlocksNightOnly()) passed++;
@@ -40,12 +41,15 @@ namespace FarmBeware.EditorTests
             if (Test_WorldItemPickup_Protection_FullInventory()) passed++;
             if (Test_PlayerInventory_16Slots_Allocation()) passed++;
             if (Test_PlayerBuff_FastForward8x_DurationAndTickAcceleration()) passed++;
+            if (Test_MonsterTacticalEvaluator_EncirclementAndKiting()) passed++;
+            if (Test_AttackTokenDispatcher_AnticipatoryAcquisitionAndEviction()) passed++;
+            if (Test_NavMesh_ObstaclePathfinding_RoutesAroundFences()) passed++;
 
             Debug.Log("[AUDIT-SUITE] ========================================================");
             Debug.Log($"[AUDIT-SUITE] Complete! Passed: {passed}/{total}");
             if (passed == total)
             {
-                Debug.Log("✅ [AUDIT-SUITE] ALL 15 COMPREHENSIVE AUDIT TESTS PASSED SUCCESSFULLY!");
+                Debug.Log("✅ [AUDIT-SUITE] ALL 18 COMPREHENSIVE AUDIT TESTS PASSED SUCCESSFULLY!");
             }
             else
             {
@@ -764,6 +768,271 @@ namespace FarmBeware.EditorTests
             {
                 Object.DestroyImmediate(go);
             }
+        }
+
+        // Test 16: Monster tactical evaluator encirclement ring, tangential kiting, and ambient wander
+        private static bool Test_MonsterTacticalEvaluator_EncirclementAndKiting()
+        {
+            var evaluator = new MonsterTacticalEvaluator(orbitMinRadius: 3.0f, orbitMaxRadius: 5.0f, kiteDistanceThreshold: 4.0f);
+
+            Vector3 playerPos = new Vector3(10f, 0f, 10f);
+            Vector3 enemyPos = new Vector3(10f, 0f, 6f); // 4m south of player (inside combat ring)
+            float dist = 4.0f;
+
+            // 1. Melee with attack token -> must engage directly towards player
+            Vector3 directDir = evaluator.EvaluateMovement(
+                enemyPos, playerPos, dist,
+                hasAttackToken: true,
+                isRanged: false,
+                entityId: 2,
+                attackRange: 1.5f,
+                out MonsterTacticalState engageState);
+
+            if (engageState != MonsterTacticalState.EngageDirect)
+            {
+                Debug.LogError($"Expected EngageDirect when holding attack token, got {engageState}!");
+                return false;
+            }
+            if (Vector3.Dot(directDir, Vector3.forward) < 0.95f)
+            {
+                Debug.LogError($"Expected direct forward movement towards player, got {directDir}!");
+                return false;
+            }
+
+            // 2. Melee WITHOUT attack token in combat ring -> must FlankOrbit tangentially
+            Vector3 orbitDirEven = evaluator.EvaluateMovement(
+                enemyPos, playerPos, dist,
+                hasAttackToken: false,
+                isRanged: false,
+                entityId: 2, // Even ID
+                attackRange: 1.5f,
+                out MonsterTacticalState orbitStateEven);
+
+            if (orbitStateEven != MonsterTacticalState.FlankOrbit)
+            {
+                Debug.LogError($"Expected FlankOrbit when in combat ring without token, got {orbitStateEven}!");
+                return false;
+            }
+            // Tangent to south-to-north vector is along X axis
+            if (Mathf.Abs(orbitDirEven.x) < 0.5f)
+            {
+                Debug.LogError($"Expected strong lateral tangent in orbit vector, got {orbitDirEven}!");
+                return false;
+            }
+
+            // 3. Parity distribution: Odd entity ID must produce opposite lateral sign for encirclement
+            Vector3 orbitDirOdd = evaluator.EvaluateMovement(
+                enemyPos, playerPos, dist,
+                hasAttackToken: false,
+                isRanged: false,
+                entityId: 3, // Odd ID
+                attackRange: 1.5f,
+                out MonsterTacticalState orbitStateOdd);
+
+            if (orbitStateOdd != MonsterTacticalState.FlankOrbit)
+            {
+                Debug.LogError($"Expected FlankOrbit for odd ID, got {orbitStateOdd}!");
+                return false;
+            }
+            if (Mathf.Sign(orbitDirEven.x) == Mathf.Sign(orbitDirOdd.x))
+            {
+                Debug.LogError($"Expected opposite orbit directions for even vs odd entity IDs, got even={orbitDirEven}, odd={orbitDirOdd}!");
+                return false;
+            }
+
+            // 4. Ranged within kite distance threshold (< 4m) -> must TangentialKite away with evasive side-step
+            Vector3 rangedPos = new Vector3(10f, 0f, 8f); // 2m from player
+            Vector3 kiteDir = evaluator.EvaluateMovement(
+                rangedPos, playerPos, 2.0f,
+                hasAttackToken: false,
+                isRanged: true,
+                entityId: 4,
+                attackRange: 12f,
+                out MonsterTacticalState kiteState);
+
+            if (kiteState != MonsterTacticalState.TangentialKite)
+            {
+                Debug.LogError($"Expected TangentialKite when player is close to ranged enemy, got {kiteState}!");
+                return false;
+            }
+            // Must have negative Z component (fleeing south from player) and non-zero X component (lateral evasion)
+            if (kiteDir.z >= 0f || Mathf.Abs(kiteDir.x) < 0.2f)
+            {
+                Debug.LogError($"Expected evasive diagonal retreat, got {kiteDir}!");
+                return false;
+            }
+
+            // 5. Ambient wander target calculation within radius
+            Vector3 anchor = new Vector3(20f, 0f, 20f);
+            Vector3 wanderTarget = MonsterTacticalEvaluator.CalculateAmbientWanderTarget(anchor, 3.5f, 45f, 0.8f);
+            float wanderDist = Vector3.Distance(anchor, wanderTarget);
+            if (wanderDist > 3.51f || wanderDist < 0.5f)
+            {
+                Debug.LogError($"Expected wander target within 3.5m radius, got distance {wanderDist}!");
+                return false;
+            }
+
+            Debug.Log("✅ Test 16: Monster tactical evaluator encirclement ring, tangential kiting, and ambient wander verified.");
+            return true;
+        }
+
+        // Test 17: Attack token dispatcher anticipatory acquisition, capacity capping, priority eviction, and orbit-to-charge transition
+        private static bool Test_AttackTokenDispatcher_AnticipatoryAcquisitionAndEviction()
+        {
+            var dispatcher = new AttackTokenDispatcher(maxMeleeTokens: 3, maxRangedTokens: 2);
+            float time = 100.0f;
+
+            // 1. Minion 101, 102, 103 claim tokens during approach (<= 7m)
+            bool acquired1 = dispatcher.TryAcquireToken(101, isRanged: false, time, 3.5f, AttackTokenPriority.Minion);
+            bool acquired2 = dispatcher.TryAcquireToken(102, isRanged: false, time, 3.5f, AttackTokenPriority.Minion);
+            bool acquired3 = dispatcher.TryAcquireToken(103, isRanged: false, time, 3.5f, AttackTokenPriority.Minion);
+
+            if (!acquired1 || !acquired2 || !acquired3)
+            {
+                Debug.LogError("Expected first 3 minion token acquisitions to succeed!");
+                return false;
+            }
+
+            // 2. Minion 104 requests token: capacity reached (3/3 melee tokens active), must be denied!
+            bool acquired4 = dispatcher.TryAcquireToken(104, isRanged: false, time, 3.5f, AttackTokenPriority.Minion);
+            if (acquired4)
+            {
+                Debug.LogError("Expected 4th minion token request to be denied when capacity is 3!");
+                return false;
+            }
+
+            // 3. Movement evaluator state check:
+            // Minion 101 (hasToken == true) at 4m -> must evaluate to EngageDirect (charging player)
+            // Minion 104 (hasToken == false) at 4m -> must evaluate to FlankOrbit (circling player)
+            var evaluator = new MonsterTacticalEvaluator(orbitMinRadius: 3.0f, orbitMaxRadius: 5.0f);
+            Vector3 playerPos = new Vector3(0f, 0f, 0f);
+            Vector3 monsterPos = new Vector3(0f, 0f, 4.0f); // 4m from player
+
+            evaluator.EvaluateMovement(monsterPos, playerPos, 4.0f, hasAttackToken: dispatcher.HasToken(101, false, time), isRanged: false, entityId: 101, attackRange: 1.5f, out MonsterTacticalState state101);
+            evaluator.EvaluateMovement(monsterPos, playerPos, 4.0f, hasAttackToken: dispatcher.HasToken(104, false, time), isRanged: false, entityId: 104, attackRange: 1.5f, out MonsterTacticalState state104);
+
+            if (state101 != MonsterTacticalState.EngageDirect)
+            {
+                Debug.LogError($"Expected EngageDirect for token holder 101, got {state101}!");
+                return false;
+            }
+            if (state104 != MonsterTacticalState.FlankOrbit)
+            {
+                Debug.LogError($"Expected FlankOrbit for waiting minion 104, got {state104}!");
+                return false;
+            }
+
+            // 4. Boss (ID: 999, Priority: Boss) requests token: must succeed via priority eviction of a minion token!
+            bool bossAcquired = dispatcher.TryAcquireToken(999, isRanged: false, time, 3.5f, AttackTokenPriority.Boss);
+            if (!bossAcquired)
+            {
+                Debug.LogError("Expected Boss token request to succeed via priority eviction!");
+                return false;
+            }
+            if (!dispatcher.HasToken(999, false, time))
+            {
+                Debug.LogError("Expected Boss 999 to hold an active token!");
+                return false;
+            }
+
+            // 5. Strike completion: Token release frees up a slot
+            dispatcher.ReleaseToken(102, false);
+            if (dispatcher.HasToken(102, false, time))
+            {
+                Debug.LogError("Expected entity 102 to no longer hold a token after release!");
+                return false;
+            }
+
+            // Minion 104 now claims the freed slot, breaking out of orbit!
+            bool acquired4AfterRelease = dispatcher.TryAcquireToken(104, isRanged: false, time, 3.5f, AttackTokenPriority.Minion);
+            if (!acquired4AfterRelease)
+            {
+                Debug.LogError("Expected waiting minion 104 to acquire token immediately after token release!");
+                return false;
+            }
+            evaluator.EvaluateMovement(monsterPos, playerPos, 4.0f, hasAttackToken: dispatcher.HasToken(104, false, time), isRanged: false, entityId: 104, attackRange: 1.5f, out MonsterTacticalState state104After);
+            if (state104After != MonsterTacticalState.EngageDirect)
+            {
+                Debug.LogError($"Expected minion 104 to transition from FlankOrbit to EngageDirect after acquiring freed token, got {state104After}!");
+                return false;
+            }
+
+            // 6. Expiration check: advancing past 3.5s automatically expires remaining unreleased tokens
+            float futureTime = time + 4.0f;
+            if (dispatcher.HasToken(104, false, futureTime))
+            {
+                Debug.LogError("Expected token for entity 104 to expire after 3.5s duration elapsed!");
+                return false;
+            }
+
+            Debug.Log("✅ Test 17: Attack token dispatcher anticipatory acquisition, priority eviction, and orbit-to-charge transition verified.");
+            return true;
+        }
+
+        // Test 18: NavMesh obstacle definition, fence barrier raycast obstruction, and route through gate
+        private static bool Test_NavMesh_ObstaclePathfinding_RoutesAroundFences()
+        {
+            // 1. Raycast across Fence_North_WestWing: must be blocked!
+            Vector3 outsideFence = new Vector3(9.6f, 0.08f, 52.0f);
+            Vector3 insideFence = new Vector3(9.6f, 0.08f, 44.0f);
+            bool fenceBlocked = UnityEngine.AI.NavMesh.Raycast(outsideFence, insideFence, out var fenceHit, UnityEngine.AI.NavMesh.AllAreas);
+
+            if (!fenceBlocked)
+            {
+                Debug.LogError("Expected NavMesh.Raycast across Fence_North_WestWing to be blocked!");
+                return false;
+            }
+
+            // 2. Raycast through MainEntranceGate opening: must be clear!
+            Vector3 outsideGate = new Vector3(20.4f, 0.08f, 52.0f);
+            Vector3 insideGate = new Vector3(20.4f, 0.08f, 44.0f);
+            bool gateBlocked = UnityEngine.AI.NavMesh.Raycast(outsideGate, insideGate, out var gateHit, UnityEngine.AI.NavMesh.AllAreas);
+
+            if (gateBlocked)
+            {
+                Debug.LogError($"Expected NavMesh.Raycast through MainEntranceGate to be clear, but was blocked at {gateHit.position}!");
+                return false;
+            }
+
+            // 3. Path calculation from spawn point 3 (9.6, 64.5) to farm (9.6, 30.0)
+            // Must succeed, have > 2 corners, and route through the gate entrance (X in [17, 24], Z in [46, 50])
+            var path = new UnityEngine.AI.NavMeshPath();
+            Vector3 spawnPoint3 = new Vector3(9.6f, 0.08f, 64.5f);
+            Vector3 farmTarget = new Vector3(9.6f, 0.08f, 30.0f);
+
+            bool pathSuccess = UnityEngine.AI.NavMesh.CalculatePath(spawnPoint3, farmTarget, UnityEngine.AI.NavMesh.AllAreas, path);
+            if (!pathSuccess || path.status != UnityEngine.AI.NavMeshPathStatus.PathComplete)
+            {
+                Debug.LogError($"Expected PathComplete from spawn point 3 to farm, got success={pathSuccess}, status={path.status}!");
+                return false;
+            }
+
+            if (path.corners.Length < 3)
+            {
+                Debug.LogError($"Expected path to route around fence (> 2 corners), but got only {path.corners.Length} corners!");
+                return false;
+            }
+
+            bool routesThroughGate = false;
+            foreach (var corner in path.corners)
+            {
+                if (corner.x >= 16.5f && corner.x <= 24.5f && corner.z >= 45.0f && corner.z <= 51.0f)
+                {
+                    routesThroughGate = true;
+                    break;
+                }
+            }
+
+            if (!routesThroughGate)
+            {
+                var cornerList = new System.Collections.Generic.List<string>();
+                foreach (var c in path.corners) cornerList.Add(c.ToString("F2"));
+                Debug.LogError($"Expected at least one corner at MainEntranceGate (X: 17-24, Z: 46-50), but got: {string.Join(" -> ", cornerList)}!");
+                return false;
+            }
+
+            Debug.Log("✅ Test 18: NavMesh obstacle raycast obstruction, gate clearance, and path routing around fences verified.");
+            return true;
         }
     }
 }
