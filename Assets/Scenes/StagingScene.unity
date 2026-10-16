@@ -3097,6 +3097,7 @@ GameObject:
   - component: {fileID: 81193528}
   - component: {fileID: 81193529}
   - component: {fileID: 81193530}
+  - component: {fileID: 81193531}
   m_Layer: 0
   m_Name: Player
   m_TagString: Player
@@ -3365,6 +3366,14 @@ MonoBehaviour:
   skillDamageMultiplier: 2
   skillHitRange: 2.5
   skillKnockback: 8
+  weaponAudioSource: {fileID: 81193531}
+  swingLightClip: {fileID: 8300000, guid: 70322b2f367c28c48946ca0728174cf2, type: 3}
+  swingMediumClip: {fileID: 8300000, guid: 491458da45e472c46a33dc7510d13c84, type: 3}
+  swingHeavyClip: {fileID: 8300000, guid: e51d490570f128f438bc6d6f84d2845d, type: 3}
+  swingDashClip: {fileID: 8300000, guid: cac61bedcc12b714190904031cb80dcb, type: 3}
+  swingSkillClip: {fileID: 8300000, guid: dc74e9feaab78e64dabed108276e5a2c, type: 3}
+  swingPunchClip: {fileID: 8300000, guid: cd8fcdab7e8996a49bda74452a43b705, type: 3}
+  swingAudioVolume: 0.85
   attackHitRange: 1.8
   rangeIndicatorMode: 0
   rangeIndicatorColor: {r: 0.2, g: 0.8, b: 1, a: 0.45}
@@ -3451,6 +3460,103 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::FeaturesKitchen.PlayerWaterBottle
   maxWater: 100
   currentWater: 100
+--- !u!82 &81193531
+AudioSource:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 81193515}
+  m_Enabled: 1
+  serializedVersion: 4
+  OutputAudioMixerGroup: {fileID: 0}
+  m_audioClip: {fileID: 0}
+  m_Resource: {fileID: 0}
+  m_PlayOnAwake: 0
+  m_Volume: 1
+  m_Pitch: 1
+  Loop: 0
+  Mute: 0
+  Spatialize: 0
+  SpatializePostEffects: 0
+  Priority: 128
+  DopplerLevel: 1
+  MinDistance: 1
+  MaxDistance: 500
+  Pan2D: 0
+  rolloffMode: 0
+  BypassEffects: 0
+  BypassListenerEffects: 0
+  BypassReverbZones: 0
+  rolloffCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    - serializedVersion: 3
+      time: 1
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  panLevelCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0.35
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  spreadCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  reverbZoneMixCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
 --- !u!1 &82282849 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 165959378731185851, guid: ac2f88c1521cf72439d6cb864ca0ced9, type: 3}
@@ -23645,6 +23751,8 @@ MonoBehaviour:
   currentWave: 0
   totalWaves: 1
   waveIntermissionDelay: 4
+  spawnIntervalMin: 15
+  spawnIntervalMax: 20
 --- !u!1001 &472431269
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -36334,6 +36442,7 @@ MonoBehaviour:
   overlayMaterial: {fileID: 2100000, guid: 1b4aa5cb681d04a4d9d62386abff4b67, type: 2}
   overlayColor: {r: 1, g: 1, b: 1, a: 0.5}
   overlayWidth: 0.9
+  barThickness: 0.045
   maxHeight: 0.7
   useBillboard: 1
   billboardCameraTag: MainCamera
@@ -47467,8 +47576,13 @@ MonoBehaviour:
   waveText: {fileID: 0}
   enemiesText: {fileID: 0}
   phaseBadgeBackground: {fileID: 0}
+  activityCardRoot: {fileID: 0}
+  activityHeaderBadgeText: {fileID: 0}
+  activityDetailText: {fileID: 0}
   dayBadgeColor: {r: 0.95, g: 0.7, b: 0.2, a: 0.85}
   nightBadgeColor: {r: 0.65, g: 0.15, b: 0.2, a: 0.9}
+  clockMode: 0
+  clockUpdateIntervalRealSeconds: 60
   clockMinuteStep: 15
 --- !u!1 &955608161
 GameObject:
@@ -56581,6 +56695,8 @@ MonoBehaviour:
   statusText: {fileID: 1478252984}
   inputCountText: {fileID: 672241290}
   outputCountText: {fileID: 1361015392}
+  percentText: {fileID: 0}
+  timeText: {fileID: 0}
   inputSlotUI: {fileID: 681690790}
   outputSlotUI: {fileID: 38065683}
   playerInventoryGrid: {fileID: 1383748452}
@@ -73267,6 +73383,7 @@ MonoBehaviour:
   promptLabel: Refill Plant Waterer
   refillDuration: 10
   maxRefillsPerDay: 2
+  sfxVolume: 0.5
 --- !u!65 &1449891772
 BoxCollider:
   m_ObjectHideFlags: 0

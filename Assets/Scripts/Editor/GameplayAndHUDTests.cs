@@ -381,7 +381,27 @@ namespace FarmBeware.EditorTests
                     return false;
                 }
 
-                Debug.Log("✅ Test 7: Procedural HUD Day badge, 18pt Clock, and 72px Activity Card verified.");
+                if (tracker.CurrentClockMode != FeaturesTime.UI.ClockDisplayMode.FullStep60s || Mathf.Abs(tracker.ClockUpdateIntervalRealSeconds - 60f) > 0.01f)
+                {
+                    Debug.LogError($"Default ClockMode should be FullStep60s (60s), got {tracker.CurrentClockMode} ({tracker.ClockUpdateIntervalRealSeconds}s)!");
+                    return false;
+                }
+
+                tracker.ToggleClockMode();
+                if (tracker.CurrentClockMode != FeaturesTime.UI.ClockDisplayMode.HalfStep30s || Mathf.Abs(tracker.ClockUpdateIntervalRealSeconds - 30f) > 0.01f)
+                {
+                    Debug.LogError($"ToggleClockMode should switch to HalfStep30s (30s), got {tracker.CurrentClockMode} ({tracker.ClockUpdateIntervalRealSeconds}s)!");
+                    return false;
+                }
+
+                tracker.ToggleClockMode();
+                if (tracker.CurrentClockMode != FeaturesTime.UI.ClockDisplayMode.FullStep60s || Mathf.Abs(tracker.ClockUpdateIntervalRealSeconds - 60f) > 0.01f)
+                {
+                    Debug.LogError($"ToggleClockMode should switch back to FullStep60s (60s), got {tracker.CurrentClockMode} ({tracker.ClockUpdateIntervalRealSeconds}s)!");
+                    return false;
+                }
+
+                Debug.Log("✅ Test 7: Procedural HUD Day badge, 18pt Clock, 72px Activity Card, and Dual Clock Mode (60s/30s) toggle verified.");
                 return true;
             }
             finally
