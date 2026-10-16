@@ -35,6 +35,11 @@ namespace FeaturesCombat.Adapters
             }
         }
 
+        [Header("Combat Hit Audio Assets (Optional Overrides)")]
+        [SerializeField] private AudioClip sliceHitClip;
+        [SerializeField] private AudioClip heavyHitClip;
+        [SerializeField] private AudioClip critHitClip;
+
         private AudioSource _audioSource;
         private AudioClip _bladeHitClip;
         private AudioClip _monsterDefeatClip;
@@ -68,9 +73,18 @@ namespace FeaturesCombat.Adapters
                 _audioSource.spatialBlend = 0.4f; // 40% 3D spatial, 60% punchy 2D direct
             }
 
+#if UNITY_EDITOR
+            if (sliceHitClip == null)
+                sliceHitClip = UnityEditor.AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/SFX/Combat/SFX_Weapon_Hit_Slice.wav");
+            if (heavyHitClip == null)
+                heavyHitClip = UnityEditor.AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/SFX/Combat/SFX_Weapon_Hit_Heavy.wav");
+            if (critHitClip == null)
+                critHitClip = UnityEditor.AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/SFX/Combat/SFX_Weapon_Hit_Crit.wav");
+#endif
+
             if (_bladeHitClip == null)
             {
-                _bladeHitClip = GenerateBladeHitClip();
+                _bladeHitClip = sliceHitClip != null ? sliceHitClip : GenerateBladeHitClip();
             }
 
             if (_monsterDefeatClip == null)
@@ -173,12 +187,19 @@ namespace FeaturesCombat.Adapters
             EnsureAudioSource();
             EnsureParticleSystems();
 
-            // 1. Procedural Blade Impact Audio
-            if (_audioSource != null && _bladeHitClip != null)
+            // 1. Blade Impact Audio
+            if (_audioSource != null)
             {
-                _audioSource.pitch = Random.Range(0.93f, 1.07f);
-                _audioSource.transform.position = hitPoint;
-                _audioSource.PlayOneShot(_bladeHitClip, isCrit ? 1.0f : 0.85f);
+                AudioClip clipToPlay = isCrit
+                    ? (critHitClip != null ? critHitClip : _bladeHitClip)
+                    : (_bladeHitClip != null ? _bladeHitClip : sliceHitClip);
+
+                if (clipToPlay != null)
+                {
+                    _audioSource.pitch = Random.Range(0.93f, 1.07f);
+                    _audioSource.transform.position = hitPoint;
+                    _audioSource.PlayOneShot(clipToPlay, isCrit ? 1.0f : 0.85f);
+                }
             }
 
             // 2. Visual Spark Particles

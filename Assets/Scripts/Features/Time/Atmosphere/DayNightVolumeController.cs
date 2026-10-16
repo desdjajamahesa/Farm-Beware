@@ -487,6 +487,11 @@ namespace FeaturesTime.Atmosphere
 
         private void HandleTimePhaseChanged(EnvironmentPhase newPhase)
         {
+            if (newPhase == currentActivePhase && !isTransitioning)
+            {
+                return;
+            }
+
             if (_transitionCoroutine != null)
             {
                 StopCoroutine(_transitionCoroutine);
