@@ -989,69 +989,116 @@ namespace FarmBeware.EditorTests
             return true;
         }
 
-        // Test 18: NavMesh obstacle definition, fence barrier raycast obstruction, and route through gate
+        // Test 18: Full 360-degree compound perimeter fence obstruction, gate clearance, and multi-directional routing
         private static bool Test_NavMesh_ObstaclePathfinding_RoutesAroundFences()
         {
             // 1. Raycast across Fence_North_WestWing: must be blocked!
-            Vector3 outsideFence = new Vector3(9.6f, 0.08f, 52.0f);
-            Vector3 insideFence = new Vector3(9.6f, 0.08f, 44.0f);
-            bool fenceBlocked = UnityEngine.AI.NavMesh.Raycast(outsideFence, insideFence, out var fenceHit, UnityEngine.AI.NavMesh.AllAreas);
-
-            if (!fenceBlocked)
+            Vector3 outsideNW = new Vector3(9.6f, 0.08f, 52.0f);
+            Vector3 insideNW = new Vector3(9.6f, 0.08f, 44.0f);
+            bool nwBlocked = UnityEngine.AI.NavMesh.Raycast(outsideNW, insideNW, out var nwHit, UnityEngine.AI.NavMesh.AllAreas);
+            if (!nwBlocked)
             {
                 Debug.LogError("Expected NavMesh.Raycast across Fence_North_WestWing to be blocked!");
                 return false;
             }
 
-            // 2. Raycast through MainEntranceGate opening: must be clear!
+            // 2. Raycast across Fence_North_EastWing: must be blocked!
+            Vector3 outsideNE = new Vector3(31.9f, 0.08f, 52.0f);
+            Vector3 insideNE = new Vector3(31.9f, 0.08f, 44.0f);
+            bool neBlocked = UnityEngine.AI.NavMesh.Raycast(outsideNE, insideNE, out var neHit, UnityEngine.AI.NavMesh.AllAreas);
+            if (!neBlocked)
+            {
+                Debug.LogError("Expected NavMesh.Raycast across Fence_North_EastWing to be blocked!");
+                return false;
+            }
+
+            // 3. Raycast across Fence_South: must be blocked!
+            Vector3 outsideSouth = new Vector3(20.4f, 0.08f, -21.0f);
+            Vector3 insideSouth = new Vector3(20.4f, 0.08f, -13.0f);
+            bool southBlocked = UnityEngine.AI.NavMesh.Raycast(outsideSouth, insideSouth, out var southHit, UnityEngine.AI.NavMesh.AllAreas);
+            if (!southBlocked)
+            {
+                Debug.LogError("Expected NavMesh.Raycast across Fence_South to be blocked!");
+                return false;
+            }
+
+            // 4. Raycast across Fence_West: must be blocked!
+            Vector3 outsideWest = new Vector3(-4.0f, 0.08f, 15.5f);
+            Vector3 insideWest = new Vector3(4.0f, 0.08f, 15.5f);
+            bool westBlocked = UnityEngine.AI.NavMesh.Raycast(outsideWest, insideWest, out var westHit, UnityEngine.AI.NavMesh.AllAreas);
+            if (!westBlocked)
+            {
+                Debug.LogError("Expected NavMesh.Raycast across Fence_West to be blocked!");
+                return false;
+            }
+
+            // 5. Raycast across Fence_East: must be blocked!
+            Vector3 outsideEast = new Vector3(45.0f, 0.08f, 15.5f);
+            Vector3 insideEast = new Vector3(35.0f, 0.08f, 15.5f);
+            bool eastBlocked = UnityEngine.AI.NavMesh.Raycast(outsideEast, insideEast, out var eastHit, UnityEngine.AI.NavMesh.AllAreas);
+            if (!eastBlocked)
+            {
+                Debug.LogError("Expected NavMesh.Raycast across Fence_East to be blocked!");
+                return false;
+            }
+
+            // 6. Raycast through MainEntranceGate opening: must be clear!
             Vector3 outsideGate = new Vector3(20.4f, 0.08f, 52.0f);
             Vector3 insideGate = new Vector3(20.4f, 0.08f, 44.0f);
             bool gateBlocked = UnityEngine.AI.NavMesh.Raycast(outsideGate, insideGate, out var gateHit, UnityEngine.AI.NavMesh.AllAreas);
-
             if (gateBlocked)
             {
                 Debug.LogError($"Expected NavMesh.Raycast through MainEntranceGate to be clear, but was blocked at {gateHit.position}!");
                 return false;
             }
 
-            // 3. Path calculation from spawn point 3 (9.6, 64.5) to farm (9.6, 30.0)
-            // Must succeed, have > 2 corners, and route through the gate entrance (X in [17, 24], Z in [46, 50])
-            var path = new UnityEngine.AI.NavMeshPath();
-            Vector3 spawnPoint3 = new Vector3(9.6f, 0.08f, 64.5f);
-            Vector3 farmTarget = new Vector3(9.6f, 0.08f, 30.0f);
-
-            bool pathSuccess = UnityEngine.AI.NavMesh.CalculatePath(spawnPoint3, farmTarget, UnityEngine.AI.NavMesh.AllAreas, path);
-            if (!pathSuccess || path.status != UnityEngine.AI.NavMeshPathStatus.PathComplete)
+            // 7. Path calculation from NW spawn point (9.6, 64.5) to farm target (20.4, 25.0)
+            Vector3 farmTarget = new Vector3(20.4f, 0.08f, 25.0f);
+            var pathNW = new UnityEngine.AI.NavMeshPath();
+            Vector3 spawnNW = new Vector3(9.6f, 0.08f, 64.5f);
+            bool pathSuccessNW = UnityEngine.AI.NavMesh.CalculatePath(spawnNW, farmTarget, UnityEngine.AI.NavMesh.AllAreas, pathNW);
+            if (!pathSuccessNW || pathNW.status != UnityEngine.AI.NavMeshPathStatus.PathComplete || pathNW.corners.Length < 3)
             {
-                Debug.LogError($"Expected PathComplete from spawn point 3 to farm, got success={pathSuccess}, status={path.status}!");
+                Debug.LogError($"Expected PathComplete from NW spawn around fence (>2 corners), got success={pathSuccessNW}, corners={pathNW.corners.Length}!");
                 return false;
             }
 
-            if (path.corners.Length < 3)
+            // 8. Path calculation from NE spawn point (37.4, 64.2) to farm target
+            var pathNE = new UnityEngine.AI.NavMeshPath();
+            Vector3 spawnNE = new Vector3(37.4f, 0.08f, 64.2f);
+            bool pathSuccessNE = UnityEngine.AI.NavMesh.CalculatePath(spawnNE, farmTarget, UnityEngine.AI.NavMesh.AllAreas, pathNE);
+            if (!pathSuccessNE || pathNE.status != UnityEngine.AI.NavMeshPathStatus.PathComplete || pathNE.corners.Length < 3)
             {
-                Debug.LogError($"Expected path to route around fence (> 2 corners), but got only {path.corners.Length} corners!");
+                Debug.LogError($"Expected PathComplete from NE spawn around fence (>2 corners), got success={pathSuccessNE}, corners={pathNE.corners.Length}!");
                 return false;
             }
 
-            bool routesThroughGate = false;
-            foreach (var corner in path.corners)
+            // 9. Path calculation from South rear perimeter (20.4, -25.0) to farm target: must route around to front entrance
+            var pathSouth = new UnityEngine.AI.NavMeshPath();
+            Vector3 spawnSouth = new Vector3(20.4f, 0.08f, -25.0f);
+            bool pathSuccessSouth = UnityEngine.AI.NavMesh.CalculatePath(spawnSouth, farmTarget, UnityEngine.AI.NavMesh.AllAreas, pathSouth);
+            if (!pathSuccessSouth || pathSouth.status != UnityEngine.AI.NavMeshPathStatus.PathComplete || pathSouth.corners.Length < 4)
+            {
+                Debug.LogError($"Expected PathComplete from South rear around perimeter (>3 corners), got success={pathSuccessSouth}, corners={pathSouth.corners.Length}!");
+                return false;
+            }
+
+            bool entersGate = false;
+            foreach (var corner in pathSouth.corners)
             {
                 if (corner.x >= 16.5f && corner.x <= 24.5f && corner.z >= 45.0f && corner.z <= 51.0f)
                 {
-                    routesThroughGate = true;
+                    entersGate = true;
                     break;
                 }
             }
-
-            if (!routesThroughGate)
+            if (!entersGate)
             {
-                var cornerList = new System.Collections.Generic.List<string>();
-                foreach (var c in path.corners) cornerList.Add(c.ToString("F2"));
-                Debug.LogError($"Expected at least one corner at MainEntranceGate (X: 17-24, Z: 46-50), but got: {string.Join(" -> ", cornerList)}!");
+                Debug.LogError("Expected path from South rear to enter compound through MainEntranceGate (X: 16.5-24.5, Z: 45-51)!");
                 return false;
             }
 
-            Debug.Log("✅ Test 18: NavMesh obstacle raycast obstruction, gate clearance, and path routing around fences verified.");
+            Debug.Log("✅ Test 18: Full 360° perimeter fence obstruction (NW, NE, South, West, East), MainEntranceGate clearance, and multi-directional routing verified.");
             return true;
         }
     }
