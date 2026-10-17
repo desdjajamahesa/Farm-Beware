@@ -16,19 +16,23 @@ MonoBehaviour:
   displayName: Corn Musketeer
   isBoss: 0
   evolvedBossVariant: {fileID: 11400000, guid: 503bad8f277dace4381c4ce07b3e0dad, type: 2}
-  maxHealth: 80
-  armor: 10
-  moveSpeed: 2.5
-  contactDamage: 10
-  attackRate: 0.35
-  attackRange: 8
+  maxHealth: 85
+  armor: 0
+  moveSpeed: 3
+  contactDamage: 15
+  attackRate: 0.8
+  attackRange: 10
   aggroRange: 10
   knockbackResistance: 0.15
+  maxPoise: 100
+  poiseRegenRate: 25
+  poiseRegenDelay: 2.5
+  hasSuperArmor: 0
   lootDrops:
   - item: {fileID: 11400000, guid: acb54d03dc9b4144a8b8f577992e991a, type: 2}
     minQuantity: 1
-    maxQuantity: 2
-    dropChance: 0.45
-  minGold: 150
-  maxGold: 400
+    maxQuantity: 3
+    dropChance: 0.5
+  minGold: 200
+  maxGold: 500
   goldChance: 0.5

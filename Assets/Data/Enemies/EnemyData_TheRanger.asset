@@ -16,23 +16,23 @@ MonoBehaviour:
   displayName: The Ranger
   isBoss: 1
   evolvedBossVariant: {fileID: 0}
-  maxHealth: 500
+  maxHealth: 750
   armor: 30
-  moveSpeed: 3.5
-  contactDamage: 25
-  attackRate: 0.6
-  attackRange: 10
+  moveSpeed: 0
+  contactDamage: 60
+  attackRate: 0.5
+  attackRange: 5
   aggroRange: 14
-  knockbackResistance: 0.4
+  knockbackResistance: 1
+  maxPoise: 100
+  poiseRegenRate: 25
+  poiseRegenDelay: 2.5
+  hasSuperArmor: 0
   lootDrops:
   - item: {fileID: 11400000, guid: 4f7d88e8909f6ec4e90f1c9207138114, type: 2}
     minQuantity: 1
     maxQuantity: 2
-    dropChance: 0.4
-  - item: {fileID: 11400000, guid: acb54d03dc9b4144a8b8f577992e991a, type: 2}
-    minQuantity: 2
-    maxQuantity: 4
-    dropChance: 1
-  minGold: 750
-  maxGold: 1100
-  goldChance: 0.75
+    dropChance: 0.15
+  minGold: 700
+  maxGold: 1000
+  goldChance: 0.85

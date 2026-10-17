@@ -26,7 +26,7 @@ namespace FeaturesCombat.Data
         [Header("Combat Attributes")]
         [Min(1)] public int maxHealth = 100;
         [Min(0)] public int armor = 20;
-        [Min(0.1f)] public float moveSpeed = 3.0f;
+        [Min(0f)] public float moveSpeed = 3.0f;
         [Min(1)] public int contactDamage = 15;
         [Min(0.1f)] public float attackRate = 0.4f;
         [Min(0.5f)] public float attackRange = 1.5f;

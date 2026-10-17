@@ -16,23 +16,23 @@ MonoBehaviour:
   displayName: Taro Colossus
   isBoss: 1
   evolvedBossVariant: {fileID: 0}
-  maxHealth: 850
-  armor: 50
-  moveSpeed: 1.6
-  contactDamage: 35
+  maxHealth: 900
+  armor: 55
+  moveSpeed: 2
+  contactDamage: 45
   attackRate: 0.5
-  attackRange: 3
+  attackRange: 2
   aggroRange: 12
-  knockbackResistance: 0.95
+  knockbackResistance: 1
+  maxPoise: 100
+  poiseRegenRate: 25
+  poiseRegenDelay: 2.5
+  hasSuperArmor: 0
   lootDrops:
   - item: {fileID: 11400000, guid: 177b90592ae6123419e80276b292945a, type: 2}
     minQuantity: 1
-    maxQuantity: 2
-    dropChance: 0.4
-  - item: {fileID: 11400000, guid: 6e678c35f5e44604dbb1e4a457c0cd52, type: 2}
-    minQuantity: 2
-    maxQuantity: 5
-    dropChance: 1
-  minGold: 800
-  maxGold: 1200
+    maxQuantity: 1
+    dropChance: 0.2
+  minGold: 700
+  maxGold: 1000
   goldChance: 0.8
