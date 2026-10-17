@@ -112,6 +112,7 @@ public class MainMenuController : MonoBehaviour
         if (startButton == null && mainMenuPanel != null)
         {
             var t = mainMenuPanel.transform.Find("StartButton");
+            if (t == null) t = mainMenuPanel.transform.Find("NewGameButton");
             if (t == null) t = mainMenuPanel.transform.Find("ContinueButton");
             if (t == null) t = mainMenuPanel.transform.Find("ResumeButton");
             if (t != null) startButton = t.GetComponent<Button>();
@@ -122,8 +123,8 @@ public class MainMenuController : MonoBehaviour
         { var t = mainMenuPanel.transform.Find("CheckpointButton") ?? mainMenuPanel.transform.Find("NewGameButton"); if (t != null) checkpointButton = t.GetComponent<Button>(); }
         if (loadGameButton == null)
         {
-            var t = transform.Find("LoadGameButton");
-            if (t == null && mainMenuPanel != null) t = mainMenuPanel.transform.Find("LoadGameButton");
+            var t = mainMenuPanel != null ? mainMenuPanel.transform.Find("LoadGameButton") : null;
+            if (t == null) t = transform.Find("LoadGameButton");
             if (t == null)
             {
                 var buttons = GetComponentsInChildren<Button>(true);
@@ -141,6 +142,7 @@ public class MainMenuController : MonoBehaviour
         if (quitButton == null && mainMenuPanel != null)
         {
             var t = mainMenuPanel.transform.Find("QuitButton");
+            if (t == null) t = mainMenuPanel.transform.Find("ExitButton");
             if (t == null) t = mainMenuPanel.transform.Find("MainMenuButton");
             if (t != null) quitButton = t.GetComponent<Button>();
         }
@@ -796,6 +798,16 @@ public class MainMenuController : MonoBehaviour
                 var txt = startButton.GetComponentInChildren<TextMeshProUGUI>();
                 if (txt != null && !useLegacyCodeStyling) txt.gameObject.SetActive(false);
             }
+            if (loadGameButton != null)
+            {
+                var loadTxt = loadGameButton.GetComponentInChildren<TextMeshProUGUI>();
+                if (loadTxt != null && !useLegacyCodeStyling) loadTxt.gameObject.SetActive(false);
+            }
+            if (settingsButton != null)
+            {
+                var setTxt = settingsButton.GetComponentInChildren<TextMeshProUGUI>();
+                if (setTxt != null && !useLegacyCodeStyling) setTxt.gameObject.SetActive(false);
+            }
             if (quitButton != null)
             {
                 var quitTxt = quitButton.GetComponentInChildren<TextMeshProUGUI>();
@@ -925,6 +937,7 @@ public class MainMenuController : MonoBehaviour
         if (saveMgr != null)
         {
             FeaturesSaveSystem.SaveSystemManager.PendingSaveIdToLoad = null;
+            Debug.Log("[MainMenuController] OnStartClicked: Starting a fresh New Game");
         }
 
         bool willLoadScene = loadSceneOnStart && !string.IsNullOrEmpty(targetSceneName);
