@@ -3,9 +3,16 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 using FeaturesTime;
+using FeaturesRendering.Lighting;
 
 namespace FeaturesTime.UI
 {
+    public enum ClockDisplayMode
+    {
+        FullStep60s = 0, // 60 detik real = +40 menit game (Default)
+        HalfStep30s = 1  // 30 detik real = +20 menit game (Setengahnya)
+    }
+
     /// <summary>
     /// Menampilkan tracker fase waktu (Day/Night) dan gelombang tempur (Combat Wave) di pojok kanan atas HUD.
     /// Memberi peringatan visual saat malam tiba dan siap menerima data wave dari spawner monster.
@@ -30,9 +37,29 @@ namespace FeaturesTime.UI
         [SerializeField] private Color nightBadgeColor = new Color(0.18f, 0.05f, 0.08f, 0.94f); // Deep Crimson
 
         [Header("Clock Display Settings")]
-        [Tooltip("Interval kelipatan menit in-game untuk tampilan jam digital (default 15 menit: :00, :15, :30, :45).")]
+        [Tooltip("Mode tampilan interval jam digital (FullStep60s = 60s real / 40m game, HalfStep30s = 30s real / 20m game).")]
+        [SerializeField] private ClockDisplayMode clockMode = ClockDisplayMode.FullStep60s;
+
+        [Tooltip("Interval pembaruan tampilan jam digital dalam detik waktu nyata (default 60 detik / 1 menit real = 40 menit game). Jika > 0, jam digital memperbarui tampilannya tepat setiap interval detik ini.")]
+        [SerializeField] private float clockUpdateIntervalRealSeconds = 60f;
+
+        [Tooltip("Interval kelipatan menit in-game untuk tampilan jam digital jika clockUpdateIntervalRealSeconds <= 0 (default 15 menit: :00, :15, :30, :45).")]
         [Range(1, 60)]
         [SerializeField] private int clockMinuteStep = 15;
+
+        public ClockDisplayMode CurrentClockMode => clockMode;
+
+        public float ClockUpdateIntervalRealSeconds
+        {
+            get => clockUpdateIntervalRealSeconds;
+            set => clockUpdateIntervalRealSeconds = value;
+        }
+
+        public int ClockMinuteStep
+        {
+            get => clockMinuteStep;
+            set => clockMinuteStep = value;
+        }
 
         [Header("Wave Tracking State")]
         private int currentWave = 1;
@@ -85,7 +112,8 @@ namespace FeaturesTime.UI
 
             if (DayNightTimeManager.Instance != null)
             {
-                UpdateClockText(DayNightTimeManager.Instance.CurrentHourInt, DayNightTimeManager.Instance.CurrentMinuteInt);
+                GetDisplayTime(out int startH, out int startM);
+                UpdateClockText(startH, startM);
             }
             else
             {
@@ -140,6 +168,31 @@ namespace FeaturesTime.UI
             }
         }
 
+        private void GetDisplayTime(out int hour, out int minute)
+        {
+            bool isNight = (TimeManager.Instance != null && TimeManager.Instance.currentPhase == TimeManager.DayPhase.Night)
+                || (DayNightTimeManager.Instance != null && DayNightTimeManager.Instance.CurrentPhase == EnvironmentPhase.Night);
+
+            if (DayNightTimeManager.Instance != null && !isNight && clockUpdateIntervalRealSeconds > 0f)
+            {
+                float elapsed = DayNightTimeManager.Instance.DaytimeElapsedSeconds;
+                float duration = DayNightTimeManager.Instance.DaytimeDurationRealSeconds;
+                float steppedElapsed = Mathf.Floor(elapsed / clockUpdateIntervalRealSeconds) * clockUpdateIntervalRealSeconds;
+                float steppedHourFloat = DayNightTimeManager.EvaluateDaytimeHour(steppedElapsed, duration);
+                hour = Mathf.FloorToInt(steppedHourFloat) % 24;
+                minute = Mathf.RoundToInt((steppedHourFloat - Mathf.Floor(steppedHourFloat)) * 60f);
+                if (minute >= 60)
+                {
+                    minute = 0;
+                    hour = (hour + 1) % 24;
+                }
+                return;
+            }
+
+            hour = DayNightTimeManager.Instance != null ? DayNightTimeManager.Instance.CurrentHourInt : 6;
+            minute = FormatSteppedMinute(DayNightTimeManager.Instance != null ? DayNightTimeManager.Instance.CurrentMinuteInt : 0);
+        }
+
         private int FormatSteppedMinute(int minute)
         {
             if (clockMinuteStep <= 1) return minute;
@@ -148,20 +201,24 @@ namespace FeaturesTime.UI
 
         private void HandleMinuteChanged(int minute)
         {
-            int hour = DayNightTimeManager.Instance != null ? DayNightTimeManager.Instance.CurrentHourInt : 6;
-            int steppedMinute = FormatSteppedMinute(minute);
-            if (steppedMinute != lastDisplayMinute)
+            GetDisplayTime(out int h, out int m);
+            if (h != lastDisplayHour || m != lastDisplayMinute)
             {
-                lastDisplayMinute = steppedMinute;
-                UpdateClockText(hour, steppedMinute);
+                lastDisplayHour = h;
+                lastDisplayMinute = m;
+                UpdateClockText(h, m);
             }
         }
 
         private void HandleHourChanged(int hour)
         {
-            int minute = DayNightTimeManager.Instance != null ? DayNightTimeManager.Instance.CurrentMinuteInt : 0;
-            int steppedMinute = FormatSteppedMinute(minute);
-            UpdateClockText(hour, steppedMinute);
+            GetDisplayTime(out int h, out int m);
+            if (h != lastDisplayHour || m != lastDisplayMinute)
+            {
+                lastDisplayHour = h;
+                lastDisplayMinute = m;
+                UpdateClockText(h, m);
+            }
         }
 
         private int lastDisplayHour = -1;
@@ -170,6 +227,15 @@ namespace FeaturesTime.UI
 
         private void Update()
         {
+            if (UnityEngine.InputSystem.Keyboard.current != null && !FarmBeware.Core.Runtime.UIModalHelper.IsSaveUIOpen)
+            {
+                var kb = UnityEngine.InputSystem.Keyboard.current;
+                if (kb.tKey.wasPressedThisFrame || kb.digit9Key.wasPressedThisFrame || kb.numpad9Key.wasPressedThisFrame)
+                {
+                    ToggleClockMode();
+                }
+            }
+
             if (!isActivitySubscribed && DayActivityTimelineManager.Instance != null)
             {
                 DayActivityTimelineManager.Instance.OnActivityChanged += HandleActivityChanged;
@@ -179,8 +245,7 @@ namespace FeaturesTime.UI
 
             if (DayNightTimeManager.Instance != null && clockText != null)
             {
-                int h = DayNightTimeManager.Instance.CurrentHourInt;
-                int m = FormatSteppedMinute(DayNightTimeManager.Instance.CurrentMinuteInt);
+                GetDisplayTime(out int h, out int m);
                 bool ff = DayNightTimeManager.Instance.IsFastForwardActive;
                 if (h != lastDisplayHour || m != lastDisplayMinute || ff != lastDisplayFastForward)
                 {
@@ -190,6 +255,50 @@ namespace FeaturesTime.UI
                     UpdateClockText(h, m);
                 }
             }
+        }
+
+        /// <summary>
+        /// Mengatur mode tampilan jam digital (FullStep60s = 60s real/40m game, HalfStep30s = 30s real/20m game).
+        /// </summary>
+        public void SetClockMode(ClockDisplayMode newMode, bool showFeedback = true)
+        {
+            clockMode = newMode;
+            clockUpdateIntervalRealSeconds = (clockMode == ClockDisplayMode.HalfStep30s) ? 30f : 60f;
+
+            if (showFeedback)
+            {
+                bool isHalf = (clockMode == ClockDisplayMode.HalfStep30s);
+                string msg = isHalf
+                    ? "⏱️ Clock Display: 30s Real = 20m Game (Half Step)"
+                    : "⏱️ Clock Display: 60s Real = 40m Game (Full Step)";
+                Color col = isHalf ? new Color(0.25f, 0.85f, 1f) : new Color(0.95f, 0.95f, 0.95f);
+
+                var floatingText = FarmBeware.Core.Runtime.ServiceLocator.Resolve<FarmBeware.Core.Runtime.IFloatingTextService>();
+                var player = FarmBeware.Core.Runtime.ServiceLocator.Resolve<FarmBeware.Core.Runtime.IPlayerContext>();
+                if (floatingText != null && player != null && player.Transform != null)
+                {
+                    floatingText.SpawnText(player.Transform.position + Vector3.up * 1.8f, msg, col);
+                }
+
+                Debug.Log($"[CombatPhaseTrackerUI] {msg}");
+            }
+
+            // Invalidate display cache for immediate visual update
+            lastDisplayHour = -1;
+            lastDisplayMinute = -1;
+            GetDisplayTime(out int h, out int m);
+            UpdateClockText(h, m);
+        }
+
+        /// <summary>
+        /// Beralih antara Mode 1 (Full Step: 60s real = 40m game) dan Mode 2 (Half Step: 30s real = 20m game).
+        /// </summary>
+        public void ToggleClockMode()
+        {
+            var nextMode = (clockMode == ClockDisplayMode.FullStep60s)
+                ? ClockDisplayMode.HalfStep30s
+                : ClockDisplayMode.FullStep60s;
+            SetClockMode(nextMode, showFeedback: true);
         }
 
         public void HandleActivityChanged(DayActivityEntry entry)
@@ -208,7 +317,7 @@ namespace FeaturesTime.UI
         {
             if (clockText != null)
             {
-                int displayMinute = FormatSteppedMinute(minute);
+                int displayMinute = clockUpdateIntervalRealSeconds > 0f ? minute : FormatSteppedMinute(minute);
                 string ffTag = (DayNightTimeManager.Instance != null && DayNightTimeManager.Instance.IsFastForwardActive)
                     ? $" <size=70%><color=#38BDF8>▶▶ {DayNightTimeManager.Instance.FastForwardMultiplier:0.##}x</color></size>"
                     : "";

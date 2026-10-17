@@ -82,6 +82,12 @@ namespace FeaturesTime.Atmosphere
 
         private void Start()
         {
+            // If centralized director is managing lighting, yield control entirely
+            if (LightingAndAtmosphereDirector.Instance != null)
+            {
+                return;
+            }
+
             if (TimeManager.Instance != null)
             {
                 ApplyPresetInstant(TimeManager.Instance.currentPhase);
@@ -94,6 +100,12 @@ namespace FeaturesTime.Atmosphere
 
         private void OnEnable()
         {
+            // If centralized director is managing lighting, yield control entirely
+            if (LightingAndAtmosphereDirector.Instance != null)
+            {
+                return;
+            }
+
             if (TimeManager.Instance != null)
             {
                 TimeManager.Instance.OnPhaseChanged += HandlePhaseChanged;

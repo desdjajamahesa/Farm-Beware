@@ -85,6 +85,18 @@ public class PlayerEquipment : MonoBehaviour
     [Tooltip("Kekuatan dorongan knockback jurus spesial.")]
     [SerializeField] private float skillKnockback = 8.0f;
 
+    [Header("Pengaturan Audio Serangan Senjata")]
+    [Tooltip("AudioSource khusus untuk memutar efek ayunan senjata pemain. Jika null, otomatis mengambil/membuat AudioSource di objek ini.")]
+    [SerializeField] private AudioSource weaponAudioSource;
+    [SerializeField] private AudioClip swingLightClip;
+    [SerializeField] private AudioClip swingMediumClip;
+    [SerializeField] private AudioClip swingHeavyClip;
+    [SerializeField] private AudioClip swingDashClip;
+    [SerializeField] private AudioClip swingSkillClip;
+    [SerializeField] private AudioClip swingPunchClip;
+    [Range(0f, 1f)]
+    [SerializeField] private float swingAudioVolume = 0.85f;
+
     private int currentComboIndex = 0;
     private float lastAttackTime = -999f;
     private bool isExecutingSkill = false;
@@ -582,6 +594,8 @@ public class PlayerEquipment : MonoBehaviour
             activeTrail.BeginTrail(currentComboIndex, isFinisher || is360, isHeavy);
         }
 
+        PlayAttackSwingSound(is360, isFinisher, isHeavy, isDash);
+
         if (hitbox != null && !is360 && !isHeavy && !isDash)
         {
             hitbox.ConfigureHitRange(activeRange);
@@ -640,6 +654,8 @@ public class PlayerEquipment : MonoBehaviour
 
         // Tunggu ancang-ancang windup selesai saat karakter melompat ke udara
         yield return new WaitForSeconds(launchDelay);
+
+        PlaySwingAudio(swingSkillClip != null ? swingSkillClip : swingHeavyClip);
 
         var activeSkillTrail = GetActiveTrail();
         if (activeSkillTrail != null)
@@ -988,6 +1004,10 @@ public class PlayerEquipment : MonoBehaviour
             UpdateCircleGeometry();
             UpdateIndicatorVisual(isCurrentlyPulsing ? attackPulseColor : rangeIndicatorColor);
         }
+
+#if UNITY_EDITOR
+        AutoAssignCombatAudio();
+#endif
     }
 
     private void OnDrawGizmosSelected()
@@ -1200,4 +1220,86 @@ public class PlayerEquipment : MonoBehaviour
             }
         }
     }
+
+    #region Combat Audio Management
+
+    private void EnsureWeaponAudioSource()
+    {
+        if (weaponAudioSource == null)
+        {
+            weaponAudioSource = GetComponent<AudioSource>();
+            if (weaponAudioSource == null)
+            {
+                weaponAudioSource = gameObject.AddComponent<AudioSource>();
+            }
+            weaponAudioSource.playOnAwake = false;
+            weaponAudioSource.spatialBlend = 0.35f;
+        }
+
+#if UNITY_EDITOR
+        AutoAssignCombatAudio();
+#endif
+    }
+
+    private void PlaySwingAudio(AudioClip clip)
+    {
+        if (clip == null) return;
+        EnsureWeaponAudioSource();
+        if (weaponAudioSource != null)
+        {
+            weaponAudioSource.pitch = Random.Range(0.94f, 1.06f);
+            weaponAudioSource.PlayOneShot(clip, swingAudioVolume);
+        }
+    }
+
+    private void PlayAttackSwingSound(bool is360, bool isFinisher, bool isHeavy, bool isDash)
+    {
+        if (!IsHoldingWeapon)
+        {
+            PlaySwingAudio(swingPunchClip);
+            return;
+        }
+
+        if (isDash)
+        {
+            PlaySwingAudio(swingDashClip != null ? swingDashClip : swingLightClip);
+        }
+        else if (isHeavy)
+        {
+            PlaySwingAudio(swingHeavyClip);
+        }
+        else if (isFinisher || is360 || currentComboIndex == 2)
+        {
+            PlaySwingAudio(swingHeavyClip != null ? swingHeavyClip : swingMediumClip);
+        }
+        else if (currentComboIndex == 1)
+        {
+            PlaySwingAudio(swingMediumClip != null ? swingMediumClip : swingLightClip);
+        }
+        else
+        {
+            PlaySwingAudio(swingLightClip);
+        }
+    }
+
+#if UNITY_EDITOR
+
+    private void AutoAssignCombatAudio()
+    {
+        if (swingLightClip == null)
+            swingLightClip = UnityEditor.AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/SFX/Combat/SFX_Weapon_Swing_Light.wav");
+        if (swingMediumClip == null)
+            swingMediumClip = UnityEditor.AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/SFX/Combat/SFX_Weapon_Swing_Medium.wav");
+        if (swingHeavyClip == null)
+            swingHeavyClip = UnityEditor.AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/SFX/Combat/SFX_Weapon_Swing_Heavy.wav");
+        if (swingDashClip == null)
+            swingDashClip = UnityEditor.AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/SFX/Combat/SFX_Weapon_Swing_Dash.wav");
+        if (swingSkillClip == null)
+            swingSkillClip = UnityEditor.AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/SFX/Combat/SFX_Weapon_Swing_Skill.wav");
+        if (swingPunchClip == null)
+            swingPunchClip = UnityEditor.AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/SFX/Combat/SFX_Weapon_Swing_Punch.wav");
+    }
+#endif
+
+    #endregion
 }

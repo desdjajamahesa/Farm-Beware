@@ -2,6 +2,17 @@
 
 Semua perubahan penting pada proyek ini oleh M-Roihan (Roi) dari `branch-roi-1` dicatat di halaman ini.
 
+## - 2026-10-16
+
+### Ditambahkan (Added)
+- **Sistem Dual Clock Display Mode & Shortcut Toggle (`CombatPhaseTrackerUI.cs`)**:
+  - Menambahkan enum `ClockDisplayMode` (`FullStep60s` dan `HalfStep30s`) pada [`CombatPhaseTrackerUI.cs`](file:///f:/unity/Farm-Beware/Assets/Scripts/Features/Time/UI/CombatPhaseTrackerUI.cs) yang memungkinkan pemain memilih ritme pembaruan jam digital HUD:
+    - **Mode 1 (Full Step — Default)**: Pembaruan setiap 60 detik real time (+40 menit in-game: `06:00` -> `06:40` -> `07:20` -> `08:00`...).
+    - **Mode 2 (Half Step — Setengahnya)**: Pembaruan setiap 30 detik real time (+20 menit in-game: `06:00` -> `06:20` -> `06:40` -> `07:00`...).
+  - Menambahkan shortcut tombol keyboard **`T`** (*Time*) atau **`9` / `Numpad 9`** untuk beralih mode secara instan di fase siang disertai notifikasi floating text di atas kepala pemain.
+  - Mempertahankan integritas total waktu siang 18 menit (1080 detik), siklus panen tanaman, durasi kompor, dan lonceng senja tanpa terpengaruh.
+  - Menambahkan unit test otomatis pada [`GameplayAndHUDTests.cs`](file:///f:/unity/Farm-Beware/Assets/Scripts/Editor/GameplayAndHUDTests.cs) untuk memvalidasi transisi antar mode.
+
 ## - 2026-10-11
 
 ### Ditambahkan (Added)
