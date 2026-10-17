@@ -39,6 +39,7 @@ public class UIAnimationHandler : MonoBehaviour, IPointerEnterHandler, IPointerE
     private bool isHovered = false;
     private bool isPressed = false;
     private Image targetImage;
+    private PadiDaunAnimator foliageAnimator;
 
     // Indicator animation state
     private RectTransform indicatorRect;
@@ -50,8 +51,17 @@ public class UIAnimationHandler : MonoBehaviour, IPointerEnterHandler, IPointerE
     {
         if (originalScale == Vector3.zero)
             originalScale = transform.localScale != Vector3.zero ? transform.localScale : Vector3.one;
+        
         targetImage = GetComponent<Image>();
+        if (targetImage == null)
+        {
+            var vis = transform.Find("ButtonVisual");
+            if (vis != null) targetImage = vis.GetComponent<Image>();
+            if (targetImage == null) targetImage = GetComponentInChildren<Image>();
+        }
         if (targetImage != null) originalColor = targetImage.color;
+
+        foliageAnimator = GetComponentInChildren<PadiDaunAnimator>();
         
         InitGlow();
         InitIndicator();
@@ -151,6 +161,9 @@ public class UIAnimationHandler : MonoBehaviour, IPointerEnterHandler, IPointerE
         if (glowCanvasGroup != null)
             AnimateGlow(0.95f, glowFadeDuration);
 
+        if (foliageAnimator != null)
+            foliageAnimator.OnButtonHoverEnter();
+
         AnimateIndicatorShow();
     }
 
@@ -167,6 +180,9 @@ public class UIAnimationHandler : MonoBehaviour, IPointerEnterHandler, IPointerE
 
             if (glowCanvasGroup != null)
                 AnimateGlow(0f, glowFadeDuration);
+
+            if (foliageAnimator != null)
+                foliageAnimator.OnButtonHoverExit();
 
             AnimateIndicatorHide();
         }
