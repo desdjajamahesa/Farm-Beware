@@ -919,66 +919,11 @@ public class MainMenuController : MonoBehaviour
             return;
         }
 
-        // When starting from Main Menu: check if saved games exist
-        var saveMgr = FeaturesSaveSystem.SaveSystemManager.Instance;
-        var existingSaves = saveMgr != null ? saveMgr.GetSaveList() : null;
-
-        if (existingSaves != null && existingSaves.Count > 0)
-        {
-            // Player has existing saves! Open the Save/Load modal UI so they can either load a slot or click "+ New Game"
-            if (FeaturesSaveSystem.SaveSystemUI.Instance != null)
-            {
-                FeaturesSaveSystem.SaveSystemUI.Instance.Open();
-                return;
-            }
-        }
-
-        // No saves exist: proceed directly to fresh New Game session
-        if (saveMgr != null)
-        {
-            FeaturesSaveSystem.SaveSystemManager.PendingSaveIdToLoad = null;
-            Debug.Log("[MainMenuController] OnStartClicked: Starting a fresh New Game");
-        }
-
-        bool willLoadScene = loadSceneOnStart && !string.IsNullOrEmpty(targetSceneName);
-
-        if (willLoadScene)
-        {
-            hasStartedGame = true;
-            menuActive = false;
-            currentState = MenuState.Hidden;
-            SetMenuVisualsActive(false);
-
-            var cloudTransition = FeaturesCommon.CloudTransitionManager.EnsureInstance();
-            if (cloudTransition != null)
-            {
-                cloudTransition.TransitionToScene(targetSceneName);
-                return;
-            }
-
-            var fade = FarmBeware.Core.Runtime.ServiceLocator.Resolve<FarmBeware.Core.Runtime.IFadeService>() ?? (FarmBeware.Core.Runtime.IFadeService)FadeManager.Instance;
-            if (fade != null)
-            {
-                fade.FadeIn(0.4f, () => SceneManager.LoadScene(targetSceneName));
-            }
-            else
-            {
-                SceneManager.LoadScene(targetSceneName);
-            }
-            return;
-        }
-
-        hasStartedGame = true;
-        menuActive = false;
-        currentState = MenuState.FadingOut;
-        stateTimer = 0f;
-        stateDuration = 0.2f;
-
-        if (FadeManager.Instance != null && FadeManager.Instance.IsFading)
-        {
-            FadeManager.Instance.FadeOut(0.2f);
-        }
+        // When starting from Main Menu: directly launch a fresh New Game session
+        Debug.Log("[MainMenuController] OnStartClicked: Directly starting a fresh New Game");
+        ExecuteNewGame();
     }
+
 
     private void OnSettingsClicked()
     {

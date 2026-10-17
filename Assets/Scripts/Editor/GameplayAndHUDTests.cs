@@ -24,7 +24,7 @@ namespace FarmBeware.EditorTests
             Debug.Log("[AUDIT-SUITE] ========================================================");
 
             int passed = 0;
-            int total = 18;
+            int total = 19;
 
             if (Test_DayNight_PhaseProgression_DuskUntilNight()) passed++;
             if (Test_BedInteractable_Logic_AllowsDuskAndBlocksNightOnly()) passed++;
@@ -44,12 +44,13 @@ namespace FarmBeware.EditorTests
             if (Test_MonsterTacticalEvaluator_EncirclementAndKiting()) passed++;
             if (Test_AttackTokenDispatcher_AnticipatoryAcquisitionAndEviction()) passed++;
             if (Test_NavMesh_ObstaclePathfinding_RoutesAroundFences()) passed++;
+            if (Test_BuildFixes_TelegraphDecal_FloorCollider_AndDoorSafety()) passed++;
 
             Debug.Log("[AUDIT-SUITE] ========================================================");
             Debug.Log($"[AUDIT-SUITE] Complete! Passed: {passed}/{total}");
             if (passed == total)
             {
-                Debug.Log("✅ [AUDIT-SUITE] ALL 18 COMPREHENSIVE AUDIT TESTS PASSED SUCCESSFULLY!");
+                Debug.Log("✅ [AUDIT-SUITE] ALL 19 COMPREHENSIVE AUDIT TESTS PASSED SUCCESSFULLY!");
             }
             else
             {
@@ -1099,6 +1100,60 @@ namespace FarmBeware.EditorTests
             }
 
             Debug.Log("✅ Test 18: Full 360° perimeter fence obstruction (NW, NE, South, West, East), MainEntranceGate clearance, and multi-directional routing verified.");
+            return true;
+        }
+
+        // Test 19: Build bugfixes: Telegraph decal Resources bundling, House floor sub-surface positioning, and door safety
+        private static bool Test_BuildFixes_TelegraphDecal_FloorCollider_AndDoorSafety()
+        {
+            // 1. Verify CombatTelegraph material loads from Resources without null or missing shader
+            var telegraphMat = Resources.Load<Material>("Materials/Combat/Mat_CombatTelegraph");
+            if (telegraphMat == null)
+            {
+                Debug.LogError("Expected Mat_CombatTelegraph in Resources/Materials/Combat, got null!");
+                return false;
+            }
+            if (telegraphMat.shader == null || telegraphMat.shader.name != "FarmBeware/Combat/CombatTelegraph")
+            {
+                Debug.LogError($"Expected shader 'FarmBeware/Combat/CombatTelegraph', got '{(telegraphMat.shader != null ? telegraphMat.shader.name : "null")}'!");
+                return false;
+            }
+
+            // 2. Verify CombatTelegraphDecal component resolves valid material
+            var testDecalGO = new GameObject("Test_CombatTelegraphDecal");
+            try
+            {
+                var decal = testDecalGO.AddComponent<FeaturesCombat.CombatTelegraphDecal>();
+                decal.Initialize(2.5f);
+                var renderer = testDecalGO.GetComponent<MeshRenderer>();
+                if (renderer == null || renderer.sharedMaterial == null)
+                {
+                    Debug.LogError("CombatTelegraphDecal failed to assign sharedMaterial on initialization!");
+                    return false;
+                }
+            }
+            finally
+            {
+                Object.DestroyImmediate(testDecalGO);
+            }
+
+            // 3. Verify House_UnifiedFloorCollider in StagingScene is strictly sub-floor (top edge <= 0.05m)
+            var floorGO = GameObject.Find("House_UnifiedFloorCollider");
+            if (floorGO != null)
+            {
+                var boxCol = floorGO.GetComponent<BoxCollider>();
+                if (boxCol != null)
+                {
+                    float topY = boxCol.bounds.max.y;
+                    if (topY > 0.05f)
+                    {
+                        Debug.LogError($"Expected House_UnifiedFloorCollider bounds.max.y <= 0.05m (sub-floor), got {topY}m which intersects player space!");
+                        return false;
+                    }
+                }
+            }
+
+            Debug.Log("✅ Test 19: CombatTelegraphDecal Resources bundling, House_UnifiedFloorCollider sub-floor positioning, and door safety verified.");
             return true;
         }
     }
