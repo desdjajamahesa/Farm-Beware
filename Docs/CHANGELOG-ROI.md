@@ -2,6 +2,17 @@
 
 Semua perubahan penting pada proyek ini oleh M-Roihan (Roi) dari `branch-roi-1` dicatat di halaman ini.
 
+## - 2026-10-17
+
+### Ditambahkan (Added)
+- **Ekspansi Triple Clock Display Mode & Mode 15 Detik (`CombatPhaseTrackerUI.cs`)**:
+  - Menambahkan mode ketiga `QuarterStep15s` pada enum `ClockDisplayMode`:
+    - **Mode 1 (Full Step — 60s/40m)**: Pembaruan setiap 60 detik real time (+40 menit in-game: `06:00` -> `06:40` -> `07:20`...).
+    - **Mode 2 (Half Step — 30s/20m)**: Pembaruan setiap 30 detik real time (+20 menit in-game: `06:00` -> `06:20` -> `06:40`...).
+    - **Mode 3 (Quarter Step — 15s/10m)**: Pembaruan setiap 15 detik real time (+10 menit in-game: `06:00` -> `06:10` -> `06:20` -> `06:30`...).
+  - Memperbarui shortcut tombol **`T`** atau **`9` / `Numpad 9`** menjadi siklus 3 arah berurutan (`60s` -> `30s` -> `15s` -> `60s`) dengan notifikasi floating text Emerald (`#58F28C`) untuk mode 15s.
+  - Memperbarui unit test pada [`GameplayAndHUDTests.cs`](file:///f:/unity/Farm-Beware/Assets/Scripts/Editor/GameplayAndHUDTests.cs) untuk memvalidasi transisi siklus ketiga mode secara berurutan.
+
 ## - 2026-10-16
 
 ### Ditambahkan (Added)

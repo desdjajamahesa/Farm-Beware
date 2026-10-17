@@ -9,8 +9,9 @@ namespace FeaturesTime.UI
 {
     public enum ClockDisplayMode
     {
-        FullStep60s = 0, // 60 detik real = +40 menit game (Default)
-        HalfStep30s = 1  // 30 detik real = +20 menit game (Setengahnya)
+        FullStep60s = 0,    // 60 detik real = +40 menit game (Default)
+        HalfStep30s = 1,    // 30 detik real = +20 menit game (Setengahnya)
+        QuarterStep15s = 2  // 15 detik real = +10 menit game (Seperempatnya)
     }
 
     /// <summary>
@@ -258,20 +259,45 @@ namespace FeaturesTime.UI
         }
 
         /// <summary>
-        /// Mengatur mode tampilan jam digital (FullStep60s = 60s real/40m game, HalfStep30s = 30s real/20m game).
+        /// Mengatur mode tampilan jam digital (FullStep60s = 60s real/40m game, HalfStep30s = 30s real/20m game, QuarterStep15s = 15s real/10m game).
         /// </summary>
         public void SetClockMode(ClockDisplayMode newMode, bool showFeedback = true)
         {
             clockMode = newMode;
-            clockUpdateIntervalRealSeconds = (clockMode == ClockDisplayMode.HalfStep30s) ? 30f : 60f;
+            switch (clockMode)
+            {
+                case ClockDisplayMode.QuarterStep15s:
+                    clockUpdateIntervalRealSeconds = 15f;
+                    break;
+                case ClockDisplayMode.HalfStep30s:
+                    clockUpdateIntervalRealSeconds = 30f;
+                    break;
+                case ClockDisplayMode.FullStep60s:
+                default:
+                    clockUpdateIntervalRealSeconds = 60f;
+                    break;
+            }
 
             if (showFeedback)
             {
-                bool isHalf = (clockMode == ClockDisplayMode.HalfStep30s);
-                string msg = isHalf
-                    ? "⏱️ Clock Display: 30s Real = 20m Game (Half Step)"
-                    : "⏱️ Clock Display: 60s Real = 40m Game (Full Step)";
-                Color col = isHalf ? new Color(0.25f, 0.85f, 1f) : new Color(0.95f, 0.95f, 0.95f);
+                string msg;
+                Color col;
+                switch (clockMode)
+                {
+                    case ClockDisplayMode.QuarterStep15s:
+                        msg = "⏱️ Clock Display: 15s Real = 10m Game (Quarter Step)";
+                        col = new Color(0.35f, 0.95f, 0.55f); // Bright Emerald
+                        break;
+                    case ClockDisplayMode.HalfStep30s:
+                        msg = "⏱️ Clock Display: 30s Real = 20m Game (Half Step)";
+                        col = new Color(0.25f, 0.85f, 1f); // Cyan
+                        break;
+                    case ClockDisplayMode.FullStep60s:
+                    default:
+                        msg = "⏱️ Clock Display: 60s Real = 40m Game (Full Step)";
+                        col = new Color(0.95f, 0.95f, 0.95f); // Silver/White
+                        break;
+                }
 
                 var floatingText = FarmBeware.Core.Runtime.ServiceLocator.Resolve<FarmBeware.Core.Runtime.IFloatingTextService>();
                 var player = FarmBeware.Core.Runtime.ServiceLocator.Resolve<FarmBeware.Core.Runtime.IPlayerContext>();
@@ -291,13 +317,24 @@ namespace FeaturesTime.UI
         }
 
         /// <summary>
-        /// Beralih antara Mode 1 (Full Step: 60s real = 40m game) dan Mode 2 (Half Step: 30s real = 20m game).
+        /// Beralih berurutan antara Mode 1 (60s real = 40m game), Mode 2 (30s real = 20m game), dan Mode 3 (15s real = 10m game).
         /// </summary>
         public void ToggleClockMode()
         {
-            var nextMode = (clockMode == ClockDisplayMode.FullStep60s)
-                ? ClockDisplayMode.HalfStep30s
-                : ClockDisplayMode.FullStep60s;
+            ClockDisplayMode nextMode;
+            switch (clockMode)
+            {
+                case ClockDisplayMode.FullStep60s:
+                    nextMode = ClockDisplayMode.HalfStep30s;
+                    break;
+                case ClockDisplayMode.HalfStep30s:
+                    nextMode = ClockDisplayMode.QuarterStep15s;
+                    break;
+                case ClockDisplayMode.QuarterStep15s:
+                default:
+                    nextMode = ClockDisplayMode.FullStep60s;
+                    break;
+            }
             SetClockMode(nextMode, showFeedback: true);
         }
 
