@@ -27,6 +27,11 @@ namespace FeaturesCombat
 
         private Transform playerTransform;
         private InventoryComponent playerInventory;
+        public InventoryComponent TargetInventory
+        {
+            get => playerInventory;
+            set => playerInventory = value;
+        }
         private Camera mainCam;
         private bool isFlyingToPlayer = false;
         private bool isTossing = false;
@@ -175,6 +180,13 @@ namespace FeaturesCombat
             }
         }
 
+        public bool CanPlayerPickUp()
+        {
+            if (item == null || quantity <= 0) return false;
+            if (playerInventory == null) FindPlayer();
+            return playerInventory != null && playerInventory.HasSpaceFor(item, quantity);
+        }
+
         private void Update()
         {
             // Billboard ikon menghadap kamera
@@ -199,6 +211,14 @@ namespace FeaturesCombat
 
             if (isFlyingToPlayer)
             {
+                // Jika saat terbang inventori mendadak penuh, batalkan terbang agar item tidak hilang
+                if (!CanPlayerPickUp())
+                {
+                    isFlyingToPlayer = false;
+                    startPos = transform.position;
+                    return;
+                }
+
                 Vector3 targetPos = playerTransform.position + Vector3.up * 0.9f;
                 transform.position = Vector3.MoveTowards(transform.position, targetPos, flySpeed * Time.deltaTime);
 
@@ -213,7 +233,7 @@ namespace FeaturesCombat
                 float yOffset = Mathf.Sin(Time.time * bobSpeed) * bobHeight;
                 transform.position = startPos + new Vector3(0f, yOffset, 0f);
 
-                if (dist <= pickupRadius)
+                if (dist <= pickupRadius && CanPlayerPickUp())
                 {
                     isFlyingToPlayer = true;
                 }
@@ -226,14 +246,27 @@ namespace FeaturesCombat
 
             if (other.CompareTag("Player") || other.GetComponent<IPlayerContext>() != null)
             {
-                isFlyingToPlayer = true;
+                if (CanPlayerPickUp())
+                {
+                    isFlyingToPlayer = true;
+                }
             }
         }
 
         private void Collect()
         {
+            if (playerInventory == null) FindPlayer();
+
             if (playerInventory != null && item != null)
             {
+                // Proteksi inventori penuh: jangan hancurkan item bila inventori tidak memiliki ruang!
+                if (!playerInventory.HasSpaceFor(item, quantity))
+                {
+                    isFlyingToPlayer = false;
+                    startPos = transform.position;
+                    return;
+                }
+
                 bool added = playerInventory.AddItem(item, quantity);
                 if (added)
                 {
@@ -244,10 +277,14 @@ namespace FeaturesCombat
                             $"+{quantity} {item.itemName}",
                             new Color(0.95f, 0.85f, 0.25f));
                     }
+                    Destroy(gameObject);
+                }
+                else
+                {
+                    isFlyingToPlayer = false;
+                    startPos = transform.position;
                 }
             }
-
-            Destroy(gameObject);
         }
 
         /// <summary>

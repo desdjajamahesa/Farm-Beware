@@ -2,6 +2,7 @@
 
 Buffs: Quick energy: +5% stamina & +5% Hp Regen(30s)
 Cooking time: 1m30s
+Costs: 3k gold
 Hunger/Hyrdation: +10 Hunger & -5 Hydration
 Resource: 3 Taro
 

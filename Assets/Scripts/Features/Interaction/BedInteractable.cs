@@ -44,10 +44,13 @@ namespace FeaturesInteraction
 
         public void UpdateLabel()
         {
+            if (worldLabel == null)
+                worldLabel = GetComponent<WorldLabel>();
+
             if (worldLabel == null) return;
 
             var timeService = ServiceLocator.Resolve<ITimeService>();
-            if (timeService == null || timeService.CurrentPhase == DayPhase.Day)
+            if (timeService == null || timeService.CurrentPhase != DayPhase.Night)
             {
                 worldLabel.displayName = "Sleep (Start Night Phase)";
             }
@@ -72,20 +75,20 @@ namespace FeaturesInteraction
             var pc = interactor != null ? interactor.GetComponent<IPlayerContext>() : ServiceLocator.Resolve<IPlayerContext>();
             var floatingText = ServiceLocator.Resolve<IFloatingTextService>();
 
-            // 1. Interaksi di siang hari: memicu fase malam (Night Brawl)
-            if (timeService.CurrentPhase == DayPhase.Day)
+            // 1. Interaksi sebelum malam (Day / Dusk / Dawn): memicu fase malam (Night Brawl)
+            if (timeService.CurrentPhase != DayPhase.Night)
             {
-                timeService.StartNightPhase();
-
-                if (floatingText != null && interactor != null)
+                var farmingService = ServiceLocator.Resolve<IFarmingService>();
+                if (farmingService != null && farmingService.HasCropsAboutToRipen(180f, out string cropWarning))
                 {
-                    floatingText.SpawnText(
-                        transform.position + Vector3.up * 1.2f,
-                        "🌙 Nightfall begins! Prepare for battle!",
-                        new Color(1f, 0.45f, 0.45f));
+                    BedSleepConfirmationUI.Show(cropWarning, () =>
+                    {
+                        ExecuteDaytimeSleep(timeService, interactor);
+                    });
+                    return;
                 }
 
-                UpdateLabel();
+                ExecuteDaytimeSleep(timeService, interactor);
                 return;
             }
 
@@ -145,6 +148,22 @@ namespace FeaturesInteraction
                     pc.IsInputLocked = false;
                 UpdateLabel();
             }
+        }
+
+        private void ExecuteDaytimeSleep(ITimeService timeService, GameObject interactor)
+        {
+            timeService.StartNightPhase();
+
+            var floatingText = ServiceLocator.Resolve<IFloatingTextService>();
+            if (floatingText != null && interactor != null)
+            {
+                floatingText.SpawnText(
+                    transform.position + Vector3.up * 1.2f,
+                    "🌙 Nightfall begins! Prepare for battle!",
+                    new Color(1f, 0.45f, 0.45f));
+            }
+
+            UpdateLabel();
         }
     }
 }

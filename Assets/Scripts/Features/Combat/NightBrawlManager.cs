@@ -114,12 +114,20 @@ namespace FeaturesCombat
         [SerializeField] private int currentDay = 1;
         [SerializeField] private int currentWave = 0;
         [SerializeField] private int totalWaves = 1;
-        [SerializeField] private float waveIntermissionDelay = 4f;
+        [SerializeField] private float waveIntermissionDelay = 30f;
+
+        [Header("Staggered Spawning Settings")]
+        [Tooltip("Interval minimum (detik) antar kemunculan monster dalam satu wave (default: 15 detik).")]
+        [SerializeField] private float spawnIntervalMin = 15f;
+
+        [Tooltip("Interval maksimum (detik) antar kemunculan monster dalam satu wave (default: 20 detik).")]
+        [SerializeField] private float spawnIntervalMax = 20f;
 
         private readonly List<EnemyBase> activeEnemies = new List<EnemyBase>();
         private readonly Wave.WaveProgressionEngine waveEngine = new Wave.WaveProgressionEngine();
         private bool isWaveInProgress = false;
         private Coroutine intermissionCoroutine;
+        private Coroutine spawnCoroutine;
 
         public event System.Action<EnemyBase> OnEnemySpawned;
         public event System.Action<EnemyBase> OnEnemyDied;
@@ -168,6 +176,18 @@ namespace FeaturesCombat
             waveEngine.OnWaveCompleted -= HandleWaveCompleted;
             waveEngine.OnAllWavesCleared -= HandleAllWavesCleared;
             waveEngine.OnEnemiesRemainingChanged -= HandleEnemiesRemainingChanged;
+
+            if (spawnCoroutine != null)
+            {
+                StopCoroutine(spawnCoroutine);
+                spawnCoroutine = null;
+            }
+
+            if (intermissionCoroutine != null)
+            {
+                StopCoroutine(intermissionCoroutine);
+                intermissionCoroutine = null;
+            }
         }
 
         private void Start()
@@ -205,6 +225,7 @@ namespace FeaturesCombat
         {
             if (isWaveInProgress) return;
 
+            EnforceNightFoodLimit();
             EnsureHealthBarManagers();
 
             isWaveInProgress = true;
@@ -231,6 +252,94 @@ namespace FeaturesCombat
             intermissionCoroutine = StartCoroutine(RoutineInitialSuspenseDelay());
         }
 
+        /// <summary>
+        /// Enforces the design rule: only up to 3 food slots can be carried into the night.
+        /// Any excess food items in the player's inventory are automatically transferred to kitchen storage/refrigerator.
+        /// </summary>
+        private void EnforceNightFoodLimit()
+        {
+            var playerCtx = ServiceLocator.Resolve<IPlayerContext>();
+            var player = playerCtx != null && playerCtx.Transform != null ? playerCtx.Transform.gameObject : GameObject.FindWithTag("Player");
+            if (player == null) return;
+
+            var inv = player.GetComponent<InventoryComponent>();
+            if (inv == null || inv.slots == null) return;
+
+            int foodSlotsSeen = 0;
+            var excessIndices = new List<int>();
+
+            for (int i = 0; i < inv.slots.Count; i++)
+            {
+                var slot = inv.slots[i];
+                if (slot != null && !slot.IsEmpty && slot.item != null)
+                {
+                    if (slot.item is FoodItemData || slot.item.category == ItemCategory.Food)
+                    {
+                        foodSlotsSeen++;
+                        if (foodSlotsSeen > 3)
+                        {
+                            excessIndices.Add(i);
+                        }
+                    }
+                }
+            }
+
+            if (excessIndices.Count == 0) return;
+
+            // Find refrigerator or other storage in scene to hold excess food
+            InventoryComponent targetStorage = null;
+            var allInvs = Object.FindObjectsByType<InventoryComponent>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            foreach (var invComp in allInvs)
+            {
+                if (invComp != null && invComp != inv)
+                {
+                    string name = invComp.gameObject.name;
+                    if (name.IndexOf("Fridge", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
+                        name.IndexOf("Refrigerator", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
+                        name.IndexOf("Storage", System.StringComparison.OrdinalIgnoreCase) >= 0)
+                    {
+                        targetStorage = invComp;
+                        break;
+                    }
+                }
+            }
+
+            int movedCount = 0;
+            for (int k = excessIndices.Count - 1; k >= 0; k--)
+            {
+                int slotIdx = excessIndices[k];
+                var slot = inv.slots[slotIdx];
+                if (slot == null || slot.IsEmpty || slot.item == null) continue;
+
+                if (targetStorage != null)
+                {
+                    int qty = slot.quantity;
+                    inv.TransferItemTo(targetStorage, slotIdx);
+                    if (slot.IsEmpty || slot.quantity < qty)
+                    {
+                        movedCount++;
+                    }
+                }
+            }
+
+            var textService = ServiceLocator.Resolve<IFloatingTextService>();
+            Vector3 textPos = player.transform.position + Vector3.up * 2f;
+            if (movedCount > 0)
+            {
+                textService?.SpawnText(
+                    textPos,
+                    $"⚠️ Night Rule: Max 3 food slots allowed! {movedCount} excess food moved to Kitchen Storage.",
+                    new Color(1f, 0.75f, 0.25f));
+            }
+            else
+            {
+                textService?.SpawnText(
+                    textPos,
+                    "⚠️ Night Rule: Max 3 food slots carried into night!",
+                    new Color(1f, 0.65f, 0.2f));
+            }
+        }
+
         private IEnumerator RoutineInitialSuspenseDelay()
         {
             yield return new WaitForSeconds(2.5f);
@@ -244,8 +353,29 @@ namespace FeaturesCombat
             List<EnemyType> toSpawn = waveEngine.PrepareNextWave();
             currentWave = waveEngine.CurrentWaveIndex;
 
-            foreach (var type in toSpawn)
+            if (spawnCoroutine != null)
             {
+                StopCoroutine(spawnCoroutine);
+                spawnCoroutine = null;
+            }
+
+            spawnCoroutine = StartCoroutine(RoutineSpawnWaveStaggered(toSpawn));
+        }
+
+        private IEnumerator RoutineSpawnWaveStaggered(List<EnemyType> toSpawn)
+        {
+            if (toSpawn == null || toSpawn.Count == 0)
+            {
+                spawnCoroutine = null;
+                yield break;
+            }
+
+            int totalCount = toSpawn.Count;
+            for (int i = 0; i < totalCount; i++)
+            {
+                if (!isWaveInProgress) yield break;
+
+                EnemyType type = toSpawn[i];
                 Vector3 spawnPos = CalculateRandomSpawnPoint();
                 EnemyBase enemy = EnemyObjectPool.Instance != null
                     ? EnemyObjectPool.Instance.Spawn(type, spawnPos)
@@ -256,9 +386,17 @@ namespace FeaturesCombat
                     activeEnemies.Add(enemy);
                     OnEnemySpawned?.Invoke(enemy);
                 }
+
+                // If not the last enemy in wave, wait 15-20 seconds before spawning the next monster
+                if (i < totalCount - 1)
+                {
+                    float interval = UnityEngine.Random.Range(spawnIntervalMin, spawnIntervalMax);
+                    yield return new WaitForSeconds(interval);
+                }
             }
 
-            Debug.Log($"[NightBrawlManager] Day {currentDay} Wave {currentWave} spawned: {activeEnemies.Count} enemies.");
+            Debug.Log($"[NightBrawlManager] Day {currentDay} Wave {currentWave} completed staggered spawn: {activeEnemies.Count} enemies.");
+            spawnCoroutine = null;
         }
 
         private void HandleWaveStarted(int day, int wave)
@@ -297,7 +435,7 @@ namespace FeaturesCombat
                     Vector3 notifPos = player != null ? player.transform.position + Vector3.up * 2f : arenaCenter;
                     FloatingCombatTextManager.Instance.SpawnText(
                         notifPos,
-                        $"✨ Wave {wave} Cleared! Catch your breath...",
+                        $"✨ Wave {wave} Cleared! Next wave in {Mathf.RoundToInt(waveIntermissionDelay)}s ([Enter] to Skip)",
                         new Color(0.4f, 0.9f, 0.4f));
                 }
 
@@ -310,7 +448,68 @@ namespace FeaturesCombat
 
         private IEnumerator RoutineIntermissionCountdown()
         {
-            yield return new WaitForSeconds(waveIntermissionDelay);
+            float countdown = waveIntermissionDelay;
+            while (countdown > 0f)
+            {
+                if (CombatPhaseTrackerUI.Instance != null)
+                {
+                    CombatPhaseTrackerUI.Instance.SetIntermissionCountdown(Mathf.CeilToInt(countdown), currentWave + 1, totalWaves);
+                }
+
+                // Check for instant skip input ([Enter] or [N]) every frame - non-conflicting with movement, attack, or jump
+                float elapsed = 0f;
+                bool skipped = false;
+                while (elapsed < 1f)
+                {
+                    bool isModalOpen = FarmBeware.Core.Runtime.UIModalHelper.IsSaveUIOpen ||
+                                       (InventoryManagerUI.Instance != null && InventoryManagerUI.Instance.IsAnyInventoryUIRelatedOpen());
+
+                    if (!isModalOpen)
+                    {
+                        bool enterPressed = false;
+                        if (UnityEngine.InputSystem.Keyboard.current != null)
+                        {
+                            var kb = UnityEngine.InputSystem.Keyboard.current;
+                            enterPressed = kb.enterKey.wasPressedThisFrame ||
+                                           kb.numpadEnterKey.wasPressedThisFrame ||
+                                           kb.nKey.wasPressedThisFrame;
+                        }
+
+                        if (!enterPressed)
+                        {
+                            try
+                            {
+                                enterPressed = Input.GetKeyDown(KeyCode.Return) ||
+                                               Input.GetKeyDown(KeyCode.KeypadEnter) ||
+                                               Input.GetKeyDown(KeyCode.N);
+                            }
+                            catch { }
+                        }
+
+                        if (enterPressed)
+                        {
+                            skipped = true;
+                            break;
+                        }
+                    }
+
+                    elapsed += Time.deltaTime;
+                    yield return null;
+                }
+
+                if (skipped)
+                {
+                    break;
+                }
+
+                countdown -= 1f;
+            }
+
+            if (CombatPhaseTrackerUI.Instance != null)
+            {
+                CombatPhaseTrackerUI.Instance.ClearIntermissionCountdown();
+            }
+
             SpawnNextWave();
             intermissionCoroutine = null;
         }
@@ -467,6 +666,12 @@ namespace FeaturesCombat
             {
                 StopCoroutine(intermissionCoroutine);
                 intermissionCoroutine = null;
+            }
+
+            if (spawnCoroutine != null)
+            {
+                StopCoroutine(spawnCoroutine);
+                spawnCoroutine = null;
             }
 
             // Cleanup any existing active enemies
@@ -631,6 +836,12 @@ namespace FeaturesCombat
             {
                 StopCoroutine(intermissionCoroutine);
                 intermissionCoroutine = null;
+            }
+
+            if (spawnCoroutine != null)
+            {
+                StopCoroutine(spawnCoroutine);
+                spawnCoroutine = null;
             }
 
             isWaveInProgress = false;

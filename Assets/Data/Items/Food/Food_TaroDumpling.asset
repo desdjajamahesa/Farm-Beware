@@ -33,6 +33,6 @@ MonoBehaviour:
   buffEffects:
   - buffType: 2
     value: 4
-    duration: 10
+    duration: 240
     buffName: Warm Belly
     description: +4 HP regen per second

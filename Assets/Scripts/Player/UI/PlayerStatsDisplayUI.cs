@@ -185,7 +185,7 @@ namespace PlayerUI
             if (playerEquipment != null)
             {
                 if (txtAttackSpeed != null) txtAttackSpeed.text = $"{playerEquipment.AttackAnimationSpeed:0.0}x";
-                if (txtKickDamage != null) txtKickDamage.text = $"{playerEquipment.kickDamage} Dmg";
+                if (txtKickDamage != null) txtKickDamage.gameObject.SetActive(false);
                 if (txtSkillDamage != null) txtSkillDamage.text = $"{baseDmg * 2} Dmg (2.0x)";
             }
         }

@@ -77,8 +77,8 @@ public class DayTransitionUI : MonoBehaviour
 
         float half = Mathf.Max(fadeDuration / 2f, 0.05f);
 
-        // Fade in: alpha 0 -> 1.
-        for (float t = 0f; t < half; t += Time.deltaTime)
+        // Fade in: alpha 0 -> 1 using unscaled time (immune to timeScale pause)
+        for (float t = 0f; t < half; t += Time.unscaledDeltaTime)
         {
             transitionCanvasGroup.alpha = Mathf.Clamp01(t / half);
             yield return null;
@@ -86,10 +86,10 @@ public class DayTransitionUI : MonoBehaviour
         transitionCanvasGroup.alpha = 1f;
 
         // Tahan beberapa saat layar penuh.
-        yield return new WaitForSeconds(1.5f);
+        yield return new WaitForSecondsRealtime(1.5f);
 
-        // Fade out: alpha 1 -> 0.
-        for (float t = 0f; t < half; t += Time.deltaTime)
+        // Fade out: alpha 1 -> 0 using unscaled time.
+        for (float t = 0f; t < half; t += Time.unscaledDeltaTime)
         {
             transitionCanvasGroup.alpha = Mathf.Clamp01(1f - (t / half));
             yield return null;

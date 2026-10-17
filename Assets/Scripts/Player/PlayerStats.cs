@@ -27,12 +27,14 @@ public class PlayerStats : MonoBehaviour, FeaturesCombat.IDamageable, IPlayerDam
     [Header("Hunger")]
     public float maxHunger = 100f;
     public float currentHunger;
-    public float hungerDrainRate = 0.5f; // Pengurangan lapar per detik
+    [Tooltip("Pengurangan lapar per detik (0.20f = ~8.3 menit per 100 hunger, terkalibrasi dengan linimasa 18 menit).")]
+    public float hungerDrainRate = 0.20f;
 
     [Header("Thirst")]
     public float maxThirst = 100f;
     public float currentThirst;
-    public float thirstDrainRate = 0.8f; // Pengurangan haus per detik
+    [Tooltip("Pengurangan haus per detik (0.25f = ~6.6 menit per 100 thirst, terkalibrasi dengan kapasitas botol 4 sips).")]
+    public float thirstDrainRate = 0.25f;
 
     [Header("Starvation & Dehydration Damage")]
     public bool takeDamageWhenEmpty = true;
@@ -115,6 +117,10 @@ public class PlayerStats : MonoBehaviour, FeaturesCombat.IDamageable, IPlayerDam
 
     public void ApplyBuffModifiers(float healthModPercent, float staminaModPercent, float staminaRegenModPercent)
     {
+        if (baseMaxHealth <= 0) baseMaxHealth = maxHealth > 0 ? maxHealth : 100;
+        if (baseMaxStamina <= 0f) baseMaxStamina = maxStamina > 0f ? maxStamina : 120f;
+        if (baseStaminaRegenRate <= 0f) baseStaminaRegenRate = staminaRegenRate > 0f ? staminaRegenRate : 20f;
+
         int newMaxHealth = Mathf.Max(1, Mathf.RoundToInt(baseMaxHealth * (1f + healthModPercent)));
         float newMaxStamina = Mathf.Max(1f, baseMaxStamina * (1f + staminaModPercent));
         staminaRegenRate = baseStaminaRegenRate * (1f + staminaRegenModPercent);

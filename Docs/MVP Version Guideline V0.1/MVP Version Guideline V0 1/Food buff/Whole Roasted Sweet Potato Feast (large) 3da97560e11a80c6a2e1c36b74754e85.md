@@ -2,6 +2,7 @@
 
 Buffs: Traverler: +20% Movement spd & +10% Stamina Regen (2mins)                                    Power!: +10% ATK & ATK SPD
 Cooking time: 7m
+Costs: 18k gold
 Hunger/Hyrdation: +45 Hunger & +20 Hydration 
 Resource: 10 Sweet Potato + 5 Taro
 

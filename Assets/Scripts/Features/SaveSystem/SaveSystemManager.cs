@@ -326,8 +326,30 @@ namespace FeaturesSaveSystem
 
         public SaveMetadata GetMetadataById(string saveId)
         {
+            if (string.IsNullOrEmpty(saveId)) return null;
             if (!isManifestLoaded) LoadManifest();
-            return cachedManifest.slots.Find(s => s.saveId == saveId);
+
+            var meta = cachedManifest.slots.Find(s =>
+                s.saveId == saveId ||
+                (!string.IsNullOrEmpty(s.fileName) && s.fileName.Equals(saveId, StringComparison.OrdinalIgnoreCase)) ||
+                (!string.IsNullOrEmpty(s.fileName) && Path.GetFileNameWithoutExtension(s.fileName).Equals(saveId, StringComparison.OrdinalIgnoreCase))
+            );
+
+            if (meta == null)
+            {
+                // Try disk recovery if file exists directly
+                string candidate = Path.Combine(SavesDirectory, saveId.EndsWith(".json") ? saveId : $"{saveId}.json");
+                if (File.Exists(candidate))
+                {
+                    RebuildManifestFromDisk();
+                    meta = cachedManifest.slots.Find(s =>
+                        s.saveId == saveId ||
+                        (!string.IsNullOrEmpty(s.fileName) && s.fileName.Equals(Path.GetFileName(candidate), StringComparison.OrdinalIgnoreCase))
+                    );
+                }
+            }
+
+            return meta;
         }
 
         #endregion
@@ -486,6 +508,17 @@ namespace FeaturesSaveSystem
             var meta = GetMetadataById(saveId);
             if (meta == null)
             {
+                // Try finding save file directly on disk
+                string directFile = Path.Combine(SavesDirectory, saveId.EndsWith(".json") ? saveId : $"{saveId}.json");
+                if (File.Exists(directFile))
+                {
+                    RebuildManifestFromDisk();
+                    meta = GetMetadataById(saveId);
+                }
+            }
+
+            if (meta == null)
+            {
                 statusMessage = "Save slot record not found!";
                 ShowNotification("[Warning] Save slot record not found!", new Color(1f, 0.65f, 0.25f));
                 return false;
@@ -524,6 +557,9 @@ namespace FeaturesSaveSystem
                 }
 
                 ApplyLoadedGameState(data);
+
+                // Ensure normal time scale after loading (e.g. from pause or death screen)
+                Time.timeScale = 1f;
 
                 cachedManifest.lastPlayedSaveId = saveId;
                 SaveManifestToDisk();
@@ -583,6 +619,51 @@ namespace FeaturesSaveSystem
             }
         }
 
+        /// <summary>
+        /// Starts a fresh New Game session:
+        /// Resets PendingSaveIdToLoad, resets DailyEconomyManager stats,
+        /// restores normal timescale, unlocks input, and transitions to StagingScene.
+        /// </summary>
+        public void StartNewGame()
+        {
+            PendingSaveIdToLoad = null;
+            Time.timeScale = 1f;
+
+            if (DailyEconomyManager.Instance != null)
+            {
+                DailyEconomyManager.Instance.ResetEconomyState();
+            }
+
+            // Close any open modals
+            if (ModalStackManager.HasInstance && ModalStackManager.Instance != null)
+            {
+                ModalStackManager.Instance.CloseAll();
+            }
+
+            if (SaveSystemUI.HasInstance && SaveSystemUI.Instance != null)
+            {
+                SaveSystemUI.Instance.Close();
+            }
+
+            Cursor.visible = true;
+            Cursor.lockState = CursorLockMode.None;
+
+            Debug.Log("[SaveSystemManager] Starting fresh New Game, transitioning to StagingScene...");
+
+            var fade = ServiceLocator.Resolve<IFadeService>();
+            if (fade != null)
+            {
+                fade.FadeIn(0.4f, () =>
+                {
+                    UnityEngine.SceneManagement.SceneManager.LoadScene("StagingScene");
+                });
+            }
+            else
+            {
+                UnityEngine.SceneManagement.SceneManager.LoadScene("StagingScene");
+            }
+        }
+
         #endregion
 
         #region Game State Capture & Apply
@@ -606,10 +687,17 @@ namespace FeaturesSaveSystem
                 var playerCtx = ServiceLocator.Resolve<IPlayerContext>();
                 if (playerCtx != null)
                 {
-                    data.health = playerCtx.Health;
-                    data.stamina = playerCtx.Stamina;
-                    data.hunger = playerCtx.Hunger;
-                    data.thirst = playerCtx.Thirst;
+                    data.health = Mathf.Max(1, playerCtx.Health);
+                    data.stamina = Mathf.Max(10f, playerCtx.Stamina);
+                    data.hunger = Mathf.Max(10f, playerCtx.Hunger);
+                    data.thirst = Mathf.Max(10f, playerCtx.Thirst);
+                }
+                else
+                {
+                    data.health = 100;
+                    data.stamina = 100f;
+                    data.hunger = 100f;
+                    data.thirst = 100f;
                 }
 
                 var inv = player.GetComponent<InventoryComponent>();
@@ -643,7 +731,7 @@ namespace FeaturesSaveSystem
                 data.gold = PlayerWallet.Instance.CurrentGold;
             }
 
-            // 3. Water Bottle & Plant Waterer
+            // 3. Water Bottle, Plant Waterer & Garden Well
             if (PlayerWaterBottle.Instance != null)
             {
                 data.waterBottleAmount = PlayerWaterBottle.Instance.CurrentWater;
@@ -651,6 +739,15 @@ namespace FeaturesSaveSystem
             if (FeaturesFarming.PlantWaterer.Instance != null)
             {
                 data.plantWatererAmount = FeaturesFarming.PlantWaterer.Instance.CurrentWater;
+            }
+            if (FeaturesFarming.WaterWellInteractable.Instance != null)
+            {
+                var well = FeaturesFarming.WaterWellInteractable.Instance;
+                data.wellHasWaterer = well.HasWatererInWell;
+                data.wellWatererReady = well.IsWatererReadyToCollect;
+                data.wellWatererProgress = well.RefillWaterProgress;
+                data.wellWatererStartAmount = well.WatererStartAmount;
+                data.wellRefillsUsedToday = well.RefillsUsedToday;
             }
 
             // 4. Time System (24h continuous clock & phase)
@@ -771,6 +868,16 @@ namespace FeaturesSaveSystem
             if (player != null)
             {
                 Vector3 targetPos = new Vector3(data.playerPosX, data.playerPosY, data.playerPosZ);
+                // Void fallback: if coordinates are (0,0,0) or below ground
+                if (targetPos.sqrMagnitude < 0.01f || targetPos.y < -20f)
+                {
+                    targetPos = new Vector3(27.1f, 0.5f, 21.04f);
+                    var bed = FindFirstObjectByType<BedInteractable>(FindObjectsInactive.Include);
+                    if (bed != null)
+                    {
+                        targetPos = bed.transform.position + bed.transform.forward * 0.9f + Vector3.up * 0.5f;
+                    }
+                }
                 Quaternion targetRot = Quaternion.Euler(0f, data.playerRotY, 0f);
 
                 var playerCtx = ServiceLocator.Resolve<IPlayerContext>();
@@ -794,9 +901,16 @@ namespace FeaturesSaveSystem
                 }
 
                 // 2. Stats
+                int restoredHealth = Mathf.Max(1, data.health > 0 ? data.health : 100);
+                float restoredStamina = Mathf.Max(10f, data.stamina > 0f ? data.stamina : 100f);
+                float restoredHunger = Mathf.Max(10f, data.hunger > 0f ? data.hunger : 100f);
+                float restoredThirst = Mathf.Max(10f, data.thirst > 0f ? data.thirst : 100f);
+
                 if (playerCtx != null)
                 {
-                    playerCtx.RestoreStats(data.health, data.stamina, data.hunger, data.thirst);
+                    playerCtx.RestoreStats(restoredHealth, restoredStamina, restoredHunger, restoredThirst);
+                    playerCtx.IsInputLocked = false;
+                    playerCtx.SetControlLock(false);
                 }
 
                 // 3. Inventory & Hotbar Selection
@@ -842,16 +956,26 @@ namespace FeaturesSaveSystem
                 PlayerWallet.Instance.SetGold(data.gold);
             }
 
-            // 5. Water Bottle & Plant Waterer
+            // 5. Water Bottle, Plant Waterer & Garden Well
             if (PlayerWaterBottle.Instance != null)
             {
-                float bottleAmt = data.waterBottleAmount > 4f ? 4f : (data.waterBottleAmount > 0f ? data.waterBottleAmount : 4f);
+                float bottleAmt = data.waterBottleAmount >= 0f ? Mathf.Clamp(data.waterBottleAmount, 0f, 100f) : 100f;
                 PlayerWaterBottle.Instance.SetWater(bottleAmt);
             }
             if (FeaturesFarming.PlantWaterer.Instance != null)
             {
-                float plantAmt = data.plantWatererAmount > 0f ? data.plantWatererAmount : 100f;
+                float plantAmt = data.plantWatererAmount >= 0f ? data.plantWatererAmount : 100f;
                 FeaturesFarming.PlantWaterer.Instance.SetWater(plantAmt);
+            }
+            if (FeaturesFarming.WaterWellInteractable.Instance != null)
+            {
+                FeaturesFarming.WaterWellInteractable.Instance.RestoreWellState(
+                    data.wellHasWaterer,
+                    data.wellWatererReady,
+                    data.wellWatererProgress,
+                    data.wellWatererStartAmount,
+                    data.wellRefillsUsedToday
+                );
             }
 
             // 6. Weapon Upgrades
@@ -884,17 +1008,13 @@ namespace FeaturesSaveSystem
                     data.currentDay,
                     phase,
                     data.isNightEncounterCleared,
-                    notifyPhaseChanged: true
+                    notifyPhaseChanged: false
                 );
             }
 
             if (FeaturesTime.DayNightTimeManager.Instance != null)
             {
                 float targetHour = data.currentHour > 0f ? data.currentHour : (data.currentPhase == 1 ? 18.0f : 6.0f);
-                if (data.currentPhase == 0 && targetHour >= 6.99f && targetHour <= 7.25f)
-                {
-                    targetHour = 6.0f;
-                }
                 FeaturesTime.DayNightTimeManager.Instance.SetDayAndTime(data.currentDay, targetHour);
             }
 

@@ -117,6 +117,17 @@ namespace FeaturesCombat
         private bool hasValidNavPath = false;
         private Vector3 smoothedAvoidanceDir = Vector3.forward;
 
+        [Header("Tactical AI & Pack Dynamics")]
+        private FeaturesCombat.Core.PureLogic.MonsterTacticalEvaluator tacticalEvaluator;
+        public FeaturesCombat.Core.PureLogic.MonsterTacticalEvaluator TacticalEvaluator => tacticalEvaluator;
+        private FeaturesCombat.Core.PureLogic.MonsterTacticalState currentTacticalState = FeaturesCombat.Core.PureLogic.MonsterTacticalState.IdlePatrol;
+        public FeaturesCombat.Core.PureLogic.MonsterTacticalState CurrentTacticalState => currentTacticalState;
+        private float moraleSurgeTimer = 0f;
+        private float moraleSurgeSpeedMult = 1.0f;
+        private Vector3 spawnAnchorPosition;
+        private float nextAmbientWanderTime = 0f;
+        private Vector3 currentAmbientWanderTarget;
+
         [Header("Telegraph & Attack Visuals")]
         private CombatTelegraphDecal combatTelegraph;
         private LineRenderer laserSightLine;
@@ -148,6 +159,10 @@ namespace FeaturesCombat
             hitFeedback = GetComponent<FeaturesCombat.Adapters.HitFeedbackRenderer>() ?? gameObject.AddComponent<FeaturesCombat.Adapters.HitFeedbackRenderer>();
             airborneHazard = GetComponent<FeaturesCombat.Core.Physics.AirborneHazardEntity>() ?? gameObject.AddComponent<FeaturesCombat.Core.Physics.AirborneHazardEntity>();
 
+            tacticalEvaluator = new FeaturesCombat.Core.PureLogic.MonsterTacticalEvaluator();
+            spawnAnchorPosition = transform.position;
+            currentAmbientWanderTarget = transform.position;
+
             navMeshPath = new NavMeshPath();
             nextRepathTime = 0f;
         }
@@ -169,13 +184,22 @@ namespace FeaturesCombat
                 rb.angularVelocity = Vector3.zero;
             }
             Physics.SyncTransforms();
+
+            spawnAnchorPosition = transform.position;
+            currentAmbientWanderTarget = transform.position;
+            moraleSurgeTimer = 0f;
+            moraleSurgeSpeedMult = 1.0f;
+            OnAnyEnemyDied += HandlePackMemberDied;
         }
 
         private void OnDisable()
         {
+            OnAnyEnemyDied -= HandlePackMemberDied;
             if (combatTelegraph != null) combatTelegraph.Hide();
             if (laserSightLine != null) laserSightLine.enabled = false;
             isRetreatingAndHealing = false;
+            moraleSurgeTimer = 0f;
+            moraleSurgeSpeedMult = 1.0f;
 
             // Audit Hardening: Release from HitstopCoordinator to prevent dangling slot references in object pools
             FeaturesCombat.Adapters.HitstopCoordinator.Instance?.Unregister(gameObject, false);
@@ -387,6 +411,15 @@ namespace FeaturesCombat
 
             skillCooldownTimer += Time.deltaTime;
 
+            if (moraleSurgeTimer > 0f)
+            {
+                moraleSurgeTimer -= Time.deltaTime;
+                if (moraleSurgeTimer <= 0f)
+                {
+                    moraleSurgeSpeedMult = 1.0f;
+                }
+            }
+
             bool isPlayerInsideHouse = NightBrawlManager.IsInsideHouse(playerTarget.position);
             Vector3 effectiveTargetPos = isPlayerInsideHouse 
                 ? NightBrawlManager.GetNearestOutdoorPosition(playerTarget.position, 2.5f) 
@@ -413,56 +446,128 @@ namespace FeaturesCombat
                 // Cek behaviour kabur sejenak & heal saat HP sekarat untuk TuberMaw
                 if (enemyType == EnemyType.TuberMaw && currentHealth <= Mathf.RoundToInt(maxHealth * 0.25f) && !isRetreatingAndHealing && Time.time >= lastRetreatHealTime + retreatHealCooldown)
                 {
+                    currentTacticalState = FeaturesCombat.Core.PureLogic.MonsterTacticalState.RetreatHeal;
                     StartCoroutine(RoutineRetreatAndHeal());
                     return;
                 }
 
-                LookAtTarget(effectiveTargetPos);
+                bool isDirectPathBlocked = !isPlayerInsideHouse && NavMesh.Raycast(transform.position, effectiveTargetPos, out NavMeshHit navHit, NavMesh.AllAreas);
+                if (!isDirectPathBlocked)
+                {
+                    LookAtTarget(effectiveTargetPos);
+                }
 
                 // Cek eksekusi skill khusus jika cooldown siap (hanya jika pemain tidak berada aman di dalam rumah)
                 if (skillCooldownTimer >= GetSkillCooldown())
                 {
+                    currentTacticalState = FeaturesCombat.Core.PureLogic.MonsterTacticalState.TelegraphAttack;
                     TryExecuteSkill(distToPlayer);
                 }
-                else if (enemyType == EnemyType.CornMusketeer)
+                else
                 {
-                    // Taktik Kiting & Ranged untuk Corn Musketeer:
-                    if (!isPlayerInsideHouse && distToPlayer <= 3.8f)
+                    bool isRanged = (enemyType == EnemyType.CornMusketeer || enemyType == EnemyType.TheRanger);
+
+                    // Check if entity already holds an active unexpired attack token
+                    bool hasToken = (NightBrawlManager.Instance != null && NightBrawlManager.Instance.TokenDispatcher != null)
+                        ? NightBrawlManager.Instance.TokenDispatcher.HasToken(gameObject.GetInstanceID(), isRanged, Time.time)
+                        : true;
+
+                    // Anticipatory Token Acquisition:
+                    // If monster does not hold a token, its attack cooldown is ready, and it is within combat approach distance (<= 7.0m),
+                    // attempt to acquire an attack token so it charges directly into melee range rather than freezing in orbit!
+                    if (!hasToken && Time.time - lastAttackTime >= (1f / Mathf.Max(0.1f, attackRate)) && !isPerformingSkill && !isPlayerInsideHouse)
                     {
-                        // Pemain terlalu dekat: mundur menjaga jarak tembak ideal (kiting)
-                        Vector3 retreatPos = transform.position + (transform.position - effectiveTargetPos).normalized * 4.5f;
-                        ChaseTarget(retreatPos);
+                        if (distToPlayer <= 7.0f && NightBrawlManager.Instance?.TokenDispatcher != null)
+                        {
+                            var priority = isBoss ? FeaturesCombat.Core.PureLogic.AttackTokenPriority.Boss : FeaturesCombat.Core.PureLogic.AttackTokenPriority.Minion;
+                            hasToken = NightBrawlManager.Instance.TokenDispatcher.TryAcquireToken(gameObject.GetInstanceID(), isRanged, Time.time, 3.5f, priority);
+                        }
                     }
-                    else if (!isPlayerInsideHouse && distToPlayer <= attackRange)
+
+                    if (tacticalEvaluator == null)
                     {
-                        // Berada di jarak tembak: berhenti dan luncurkan tembakan terarah
+                        tacticalEvaluator = new FeaturesCombat.Core.PureLogic.MonsterTacticalEvaluator();
+                    }
+
+                    Vector3 tacticalDir = tacticalEvaluator.EvaluateMovement(
+                        transform.position,
+                        effectiveTargetPos,
+                        distToPlayer,
+                        hasToken,
+                        isRanged,
+                        gameObject.GetInstanceID(),
+                        attackRange,
+                        out currentTacticalState);
+
+                    // Obstacle Gating: If an obstacle (fence, wall, closed door) blocks the direct line
+                    // to the target on the NavMesh, do not orbit against the barrier. Pathfind directly around it!
+                    if (isDirectPathBlocked && currentTacticalState == FeaturesCombat.Core.PureLogic.MonsterTacticalState.FlankOrbit)
+                    {
+                        currentTacticalState = FeaturesCombat.Core.PureLogic.MonsterTacticalState.EngageDirect;
+                    }
+
+                    if (currentTacticalState == FeaturesCombat.Core.PureLogic.MonsterTacticalState.TangentialKite)
+                    {
+                        // Ranged unit evasive kiting: move along tangential evasive vector
+                        Vector3 retreatPos = transform.position + tacticalDir * 4.2f;
+                        ChaseTarget(retreatPos, 1.15f * moraleSurgeSpeedMult);
+                    }
+                    else if (!isPlayerInsideHouse && !isDirectPathBlocked && distToPlayer <= attackRange)
+                    {
                         TryPerformAttack();
+                        if (currentTacticalState == FeaturesCombat.Core.PureLogic.MonsterTacticalState.FlankOrbit && moveSpeed > 0f && !isBurrowed)
+                        {
+                            // Awaiting attack token in combat ring: actively orbit and flank instead of standing still
+                            Vector3 orbitTarget = transform.position + tacticalDir * 3.0f;
+                            ChaseTarget(orbitTarget, tacticalEvaluator.DefaultOrbitSpeedFactor * moraleSurgeSpeedMult);
+                        }
+                    }
+                    else if (currentTacticalState == FeaturesCombat.Core.PureLogic.MonsterTacticalState.FlankOrbit && moveSpeed > 0f && !isBurrowed)
+                    {
+                        // Flank and circle around player in combat ring awaiting attack opportunity
+                        Vector3 orbitTarget = transform.position + tacticalDir * 3.0f;
+                        ChaseTarget(orbitTarget, tacticalEvaluator.DefaultOrbitSpeedFactor * moraleSurgeSpeedMult);
                     }
                     else if (moveSpeed > 0f && !isBurrowed)
                     {
-                        ChaseTarget(effectiveTargetPos);
+                        ChaseTarget(effectiveTargetPos, moraleSurgeSpeedMult);
                     }
-                }
-                else if (!isPlayerInsideHouse && distToPlayer <= attackRange)
-                {
-                    TryPerformAttack();
-                }
-                else if (moveSpeed > 0f && !isBurrowed)
-                {
-                    ChaseTarget(effectiveTargetPos);
                 }
             }
             else
             {
-                // Diam atau patroli santai
-                if (rb != null)
+                // Ambient Idle Wander: patrol within anchor radius instead of freezing
+                currentTacticalState = FeaturesCombat.Core.PureLogic.MonsterTacticalState.IdlePatrol;
+                if (moveSpeed > 0f)
+                {
+                    if (Time.time >= nextAmbientWanderTime)
+                    {
+                        nextAmbientWanderTime = Time.time + UnityEngine.Random.Range(4f, 7.5f);
+                        float randomAngle = UnityEngine.Random.Range(0f, 360f);
+                        float randomDist = UnityEngine.Random.Range(0.2f, 1f);
+                        if (spawnAnchorPosition == Vector3.zero) spawnAnchorPosition = transform.position;
+                        currentAmbientWanderTarget = FeaturesCombat.Core.PureLogic.MonsterTacticalEvaluator.CalculateAmbientWanderTarget(
+                            spawnAnchorPosition, 3.5f, randomAngle, randomDist);
+                    }
+
+                    float distToWander = (currentAmbientWanderTarget - transform.position).magnitude;
+                    if (distToWander > 0.6f)
+                    {
+                        ChaseTarget(currentAmbientWanderTarget, 0.35f);
+                    }
+                    else if (rb != null)
+                    {
+                        rb.linearVelocity = new Vector3(0f, rb.linearVelocity.y, 0f);
+                    }
+                }
+                else if (rb != null)
                 {
                     rb.linearVelocity = new Vector3(0f, rb.linearVelocity.y, 0f);
                 }
             }
         }
 
-        private void ChaseTarget(Vector3 targetPos)
+        private void ChaseTarget(Vector3 targetPos, float speedMultiplier = 1.0f)
         {
             if (rb == null) return;
 
@@ -472,12 +577,25 @@ namespace FeaturesCombat
             if (Time.time >= nextRepathTime)
             {
                 nextRepathTime = Time.time + repathInterval;
-                hasValidNavPath = NavMesh.CalculatePath(transform.position, targetPos, NavMesh.AllAreas, navMeshPath);
+
+                Vector3 sampleStart = transform.position;
+                if (NavMesh.SamplePosition(transform.position, out NavMeshHit hitStart, 2.0f, NavMesh.AllAreas))
+                {
+                    sampleStart = hitStart.position;
+                }
+
+                Vector3 sampleTarget = targetPos;
+                if (NavMesh.SamplePosition(targetPos, out NavMeshHit hitTarget, 3.0f, NavMesh.AllAreas))
+                {
+                    sampleTarget = hitTarget.position;
+                }
+
+                hasValidNavPath = NavMesh.CalculatePath(sampleStart, sampleTarget, NavMesh.AllAreas, navMeshPath);
                 currentPathIndex = 1; // Indeks 0 adalah posisi awal monster saat ini
             }
 
             // 2. Telusuri waypoint sudut (corners) jika jalur valid
-            if (hasValidNavPath && navMeshPath != null && navMeshPath.corners.Length > 1)
+            if (hasValidNavPath && navMeshPath != null && navMeshPath.corners.Length > 1 && navMeshPath.status != NavMeshPathStatus.PathInvalid)
             {
                 while (currentPathIndex < navMeshPath.corners.Length - 1)
                 {
@@ -517,7 +635,8 @@ namespace FeaturesCombat
             // 3. Terapkan Dynamic Obstacle Avoidance (Whisker Sensors) agar monster tidak menabrak rintangan atau kawanan lain
             Vector3 finalMoveDir = ApplyObstacleAvoidance(desiredDir);
 
-            rb.linearVelocity = new Vector3(finalMoveDir.x * moveSpeed, rb.linearVelocity.y, finalMoveDir.z * moveSpeed);
+            float effectiveSpeed = moveSpeed * speedMultiplier;
+            rb.linearVelocity = new Vector3(finalMoveDir.x * effectiveSpeed, rb.linearVelocity.y, finalMoveDir.z * effectiveSpeed);
 
             // Putar hadap monster mengikuti arah gerak navigasi secara halus
             if (finalMoveDir.sqrMagnitude > 0.01f)
@@ -633,6 +752,7 @@ namespace FeaturesCombat
         private IEnumerator RoutineMeleeTelegraphedAttack()
         {
             isPerformingSkill = true;
+            currentTacticalState = FeaturesCombat.Core.PureLogic.MonsterTacticalState.TelegraphAttack;
             EnsureTelegraphElements();
 
             // 1. Wind-up Phase (0.35s): Berhenti sejenak, aktifkan indikator telegraf tanah, kedip oranye
@@ -720,6 +840,7 @@ namespace FeaturesCombat
         private IEnumerator RoutineCornMusketeerAttack()
         {
             isPerformingSkill = true;
+            currentTacticalState = FeaturesCombat.Core.PureLogic.MonsterTacticalState.TelegraphAttack;
             EnsureTelegraphElements();
 
             if (rb != null)
@@ -1280,11 +1401,24 @@ namespace FeaturesCombat
         {
             currentHealth = 0;
 
+            StopAllCoroutines();
+
+            // Immediately disable collider so dead monster doesn't block player or absorb subsequent attacks
+            var col = GetComponent<Collider>();
+            if (col != null) col.enabled = false;
+
             if (rb != null)
             {
+                rb.isKinematic = true;
                 rb.linearVelocity = Vector3.zero;
                 rb.angularVelocity = Vector3.zero;
             }
+
+            if (combatTelegraph != null) combatTelegraph.Hide();
+            if (laserSightLine != null) laserSightLine.enabled = false;
+
+            // Trigger visceral monster defeat sound & burst VFX
+            FeaturesCombat.Adapters.CombatHitVfxEngine.Instance?.TriggerMonsterDefeated(transform.position, Vector3.up);
 
             FeaturesCombat.Adapters.HitstopCoordinator.Instance?.Unregister(gameObject);
             if (airborneHazard != null) airborneHazard.DeactivateHazard();
@@ -1298,11 +1432,11 @@ namespace FeaturesCombat
 
             if (EnemyObjectPool.Instance != null)
             {
-                StartCoroutine(RoutineReturnToPool(0.12f));
+                StartCoroutine(RoutineReturnToPool(0.04f));
             }
             else
             {
-                Destroy(gameObject, 0.12f);
+                Destroy(gameObject, 0.04f);
             }
         }
 
@@ -1338,6 +1472,11 @@ namespace FeaturesCombat
             hasValidNavPath = false;
             nextRepathTime = 0f;
             smoothedAvoidanceDir = transform.forward;
+            spawnAnchorPosition = transform.position;
+            currentAmbientWanderTarget = transform.position;
+            moraleSurgeTimer = 0f;
+            moraleSurgeSpeedMult = 1.0f;
+            currentTacticalState = FeaturesCombat.Core.PureLogic.MonsterTacticalState.IdlePatrol;
             if (navMeshPath != null)
             {
                 navMeshPath.ClearCorners();
@@ -1345,8 +1484,12 @@ namespace FeaturesCombat
             StopAllCoroutines();
             OnHealthChanged?.Invoke(currentHealth, maxHealth);
 
+            var col = GetComponent<Collider>();
+            if (col != null) col.enabled = true;
+
             if (rb != null)
             {
+                rb.isKinematic = false;
                 rb.position = transform.position;
                 rb.rotation = transform.rotation;
                 rb.linearVelocity = Vector3.zero;
@@ -1390,6 +1533,7 @@ namespace FeaturesCombat
 
         private void OnDestroy()
         {
+            OnAnyEnemyDied -= HandlePackMemberDied;
             if (FeaturesCombat.UI.EnemyHealthBarManager.Instance != null)
             {
                 FeaturesCombat.UI.EnemyHealthBarManager.Instance.HandleEnemyDied(this);
@@ -1397,6 +1541,39 @@ namespace FeaturesCombat
             if (isBoss && FeaturesCombat.UI.BossHealthBarManager.Instance != null)
             {
                 FeaturesCombat.UI.BossHealthBarManager.Instance.HandleEnemyDied(this);
+            }
+        }
+
+        /// <summary>
+        /// Responds to the demise of a nearby pack member, triggering a brief adrenaline surge.
+        /// </summary>
+        private void HandlePackMemberDied(EnemyBase fallen)
+        {
+            if (fallen == null || fallen == this || IsDead) return;
+
+            float distSq = (fallen.transform.position - transform.position).sqrMagnitude;
+            if (distSq <= 64f) // Within 8.0m radius
+            {
+                TriggerMoraleSurge(2.5f, 1.15f);
+            }
+        }
+
+        /// <summary>
+        /// Activates a pack morale surge granting a temporary movement and reaction boost.
+        /// </summary>
+        public void TriggerMoraleSurge(float duration = 2.5f, float speedMultiplier = 1.15f)
+        {
+            if (IsDead) return;
+            moraleSurgeTimer = duration;
+            moraleSurgeSpeedMult = Mathf.Max(moraleSurgeSpeedMult, speedMultiplier);
+            nextRepathTime = 0f; // Immediate repath to re-engage aggressively
+
+            if (FloatingCombatTextManager.Instance != null && !isBoss)
+            {
+                FloatingCombatTextManager.Instance.SpawnText(
+                    transform.position + Vector3.up * 1.5f,
+                    "⚡ Surge!",
+                    new Color(1f, 0.45f, 0.15f, 0.9f));
             }
         }
     }

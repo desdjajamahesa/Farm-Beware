@@ -2,6 +2,7 @@
 
 Buffs: Vitality boost: +10% Max HP (1mins)
 Cooking time: 3m
+Costs: 6k gold
 Hunger/Hyrdation: +15 Hunger 
 Resource: 3 Taro + 1 Corn + 10 Water
 

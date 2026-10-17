@@ -25,20 +25,62 @@ public class PlayerBuffManager : MonoBehaviour
     [SerializeField] private List<ActiveBuff> activeBuffs = new List<ActiveBuff>();
 
     private PlayerStats playerStats;
+    public PlayerStats PlayerStatsRef => playerStats != null ? playerStats : (playerStats = GetComponent<PlayerStats>());
 
     public IReadOnlyList<ActiveBuff> ActiveBuffs => activeBuffs;
 
     private void Awake()
     {
-        playerStats = GetComponent<PlayerStats>();
+        if (playerStats == null)
+            playerStats = GetComponent<PlayerStats>();
+    }
+
+    [Header("Fast-Forward Time Integration")]
+    [Tooltip("Pengali waktu kustom untuk keperluan testing/override (nilai <= 0 mengabaikan override).")]
+    [SerializeField] private float timeMultiplierOverride = -1f;
+
+    public float TimeMultiplierOverride
+    {
+        get => timeMultiplierOverride;
+        set => timeMultiplierOverride = value;
+    }
+
+    /// <summary>
+    /// Mengambil pengali kecepatan waktu yang aktif (mis. mode x8 Fast-Forward via Shortcut 0).
+    /// </summary>
+    public float GetActiveTimeMultiplier()
+    {
+        if (timeMultiplierOverride > 0f)
+            return timeMultiplierOverride;
+
+        if (FeaturesTime.DayNightTimeManager.Instance != null)
+        {
+            return FeaturesTime.DayNightTimeManager.Instance.FastForwardMultiplier;
+        }
+
+        var dnt = FindFirstObjectByType<FeaturesTime.DayNightTimeManager>();
+        if (dnt != null)
+        {
+            return dnt.FastForwardMultiplier;
+        }
+
+        return 1.0f;
     }
 
     private void Update()
     {
+        TickBuffs(Time.deltaTime);
+    }
+
+    /// <summary>
+    /// Memperbarui durasi buff aktif berdasarkan deltaTime tertentu (mendukung percepatan waktu x8 dan pengujian unit).
+    /// </summary>
+    public void TickBuffs(float deltaSeconds)
+    {
         if (activeBuffs.Count == 0) return;
 
         bool changed = false;
-        float dt = Time.deltaTime;
+        float dt = deltaSeconds * GetActiveTimeMultiplier();
 
         for (int i = activeBuffs.Count - 1; i >= 0; i--)
         {
@@ -46,16 +88,17 @@ public class PlayerBuffManager : MonoBehaviour
             buff.remainingDuration -= dt;
 
             // Handle periodic tick (HealthRegenTick)
-            if (buff.data.buffType == BuffType.HealthRegenTick)
+            if (buff.data != null && buff.data.buffType == BuffType.HealthRegenTick)
             {
                 buff.tickIntervalTimer -= dt;
-                if (buff.tickIntervalTimer <= 0f)
+                while (buff.tickIntervalTimer <= 0f)
                 {
-                    buff.tickIntervalTimer = 1f;
-                    if (playerStats != null)
+                    buff.tickIntervalTimer += 1f;
+                    var ps = PlayerStatsRef;
+                    if (ps != null)
                     {
                         int healPerTick = Mathf.RoundToInt(buff.data.value);
-                        playerStats.Heal(healPerTick);
+                        ps.Heal(healPerTick);
                     }
                 }
             }
@@ -165,9 +208,10 @@ public class PlayerBuffManager : MonoBehaviour
 
     private void ApplyBuffModifiersToPlayer()
     {
-        if (playerStats != null)
+        var ps = PlayerStatsRef;
+        if (ps != null)
         {
-            playerStats.ApplyBuffModifiers(
+            ps.ApplyBuffModifiers(
                 GetTotalModifier(BuffType.MaxHealthPercent),
                 GetTotalModifier(BuffType.MaxStaminaPercent),
                 GetTotalModifier(BuffType.StaminaRegenPercent)

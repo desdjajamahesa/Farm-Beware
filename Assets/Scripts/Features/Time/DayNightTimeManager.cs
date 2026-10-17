@@ -54,13 +54,13 @@ namespace FeaturesTime
         #region Serialized Configuration
 
         [Header("1. Time Progression Settings")]
-        [Tooltip("Total durasi dunia nyata (dalam detik) untuk fase siang (06:00 s/d 18:00). Default 960 detik = 16 menit sesuai tabel linimasa.")]
-        [SerializeField] private float daytimeDurationRealSeconds = 960f;
+        [Tooltip("Total durasi dunia nyata (dalam detik) untuk fase siang (06:00 s/d 18:00). Default 1080 detik = 18 menit sesuai tabel linimasa.")]
+        [SerializeField] private float daytimeDurationRealSeconds = 1080f;
 
-        [Tooltip("Total durasi dunia nyata (dalam detik) untuk menyelesaikan 1 hari permainan (24 jam in-game). Default 1920 detik = 32 menit.")]
-        [SerializeField] private float realSecondsPerInGameDay = 1920f;
+        [Tooltip("Total durasi dunia nyata (dalam detik) untuk menyelesaikan 1 hari permainan (24 jam in-game). Default 2160 detik = 36 menit.")]
+        [SerializeField] private float realSecondsPerInGameDay = 2160f;
 
-        [Tooltip("Jika true, simulasi waktu berjalan secara realtime kontinu pada siang hari sesuai linimasa (16 menit real = 12 jam in-game).")]
+        [Tooltip("Jika true, simulasi waktu berjalan secara realtime kontinu pada siang hari sesuai linimasa (18 menit real = 12 jam in-game).")]
         [SerializeField] private bool useContinuousTime = true;
 
         [Tooltip("Jam awal saat game pertama kali dimulai (0.0f - 24.0f). Default 6.0f = 06:00.")]
@@ -83,30 +83,31 @@ namespace FeaturesTime
         [Range(0f, 24f)]
         [SerializeField] private float dayStartHour = 6.0f;
 
-        [Tooltip("Jam dimulainya Senja (Dusk / Dusk Bell). Default: 15.75 (15:45).")]
+        [Tooltip("Jam dimulainya Senja (Dusk / Dusk Bell). Default: 16.0 (16:00).")]
         [Range(0f, 24f)]
-        [SerializeField] private float duskStartHour = 15.75f;
+        [SerializeField] private float duskStartHour = 16.0f;
 
         [Tooltip("Jam dimulainya Malam / Auto-Sleep (Night). Default: 18.0 (18:00).")]
         [Range(0f, 24f)]
         [SerializeField] private float nightStartHour = 18.0f;
 
         [Header("3. Dusk Bell & Auto-Sleep Settings")]
-        [Tooltip("Jam dibunyikannya lonceng senja (Dusk Bell). Default: 15.75 (15:45 in-game / menit real 13:30).")]
+        [Tooltip("Jam dibunyikannya lonceng senja (Dusk Bell). Default: 16.0 (16:00 in-game / menit real 15:00).")]
         [Range(0f, 24f)]
-        [SerializeField] private float duskWarningHour = 15.75f;
+        [SerializeField] private float duskWarningHour = 16.0f;
 
-        [Tooltip("Jika true, saat waktu siang mencapai jam 18:00 (16:00 menit real), sistem otomatis memicu tidur dan memulai Night Brawl.")]
+        [Tooltip("Jika true, saat waktu siang mencapai jam 18:00 (18:00 menit real), sistem otomatis memicu tidur dan memulai Night Brawl.")]
         [SerializeField] private bool autoSleepAtNightfall = true;
 
         [Header("4. Integration Bridge")]
         [Tooltip("Jika true, menyinkronkan event fase dengan TimeManager legacy di project.")]
         [SerializeField] private bool syncWithLegacyTimeManager = true;
 
-        [Header("5. Fast-Forward Debug Settings (Shortcut Key: '0')")]
-        [Tooltip("Pengali kecepatan waktu saat mode cepat aktif (default 8x).")]
-        [SerializeField] private float fastForwardMultiplier = 8.0f;
-        [SerializeField] private bool isFastForwardActive = false;
+        [Header("5. Fast-Forward Debug Settings (Key '0': 8x Fast-Forward)")]
+        [Tooltip("Pengali kecepatan waktu saat mode cepat 8x aktif (Shortcut: '0').")]
+        [SerializeField] private float fastForwardMultiplier8x = 8.0f;
+
+        [SerializeField] private float currentSpeedMultiplier = 1.0f;
 
         /// <summary>
         /// Flag indicating if legacy time manager synchronization is enabled.
@@ -119,14 +120,19 @@ namespace FeaturesTime
         public float DayStartHour => dayStartHour;
 
         /// <summary>
-        /// Status apakah mode percepatan waktu (4x fast-forward) sedang aktif.
+        /// Status apakah mode percepatan waktu (> 1.0x) sedang aktif.
         /// </summary>
-        public bool IsFastForwardActive => isFastForwardActive;
+        public bool IsFastForwardActive => currentSpeedMultiplier > 1.01f;
 
         /// <summary>
-        /// Pengali percepatan waktu.
+        /// Pengali percepatan waktu yang sedang aktif.
         /// </summary>
-        public float FastForwardMultiplier => fastForwardMultiplier;
+        public float FastForwardMultiplier => currentSpeedMultiplier;
+
+        /// <summary>
+        /// Pengali mode cepat 8x.
+        /// </summary>
+        public float Multiplier8x => fastForwardMultiplier8x;
 
         #endregion
 
@@ -173,6 +179,7 @@ namespace FeaturesTime
         public int CurrentMinuteInt => Mathf.FloorToInt((currentHour - Mathf.Floor(currentHour)) * 60f) % 60;
         public int CurrentDay => currentDay;
         public EnvironmentPhase CurrentPhase => currentPhase;
+        public bool IsNight => currentPhase == EnvironmentPhase.Night;
         public float NormalizedTime => Mathf.Clamp01(currentHour / 24.0f);
         public bool IsPaused => isPaused;
         public bool UseContinuousTime
@@ -225,10 +232,19 @@ namespace FeaturesTime
             useContinuousTime = true;
             dayStartHour = 6.0f;
             nightStartHour = 18.0f;
-            duskStartHour = 15.75f;
-            duskWarningHour = 15.75f;
+            duskStartHour = 16.0f;
+            duskWarningHour = 16.0f;
 
-            if (currentHour < 6.0f || (currentHour >= 6.99f && currentHour <= 7.25f))
+            daytimeDurationRealSeconds = 1080f;
+            realSecondsPerInGameDay = 2160f;
+            currentSpeedMultiplier = 1.0f;
+
+            if (GetComponent<DayActivityTimelineManager>() == null)
+            {
+                gameObject.AddComponent<DayActivityTimelineManager>();
+            }
+
+            if (currentHour < 6.0f)
             {
                 currentHour = dayStartHour;
             }
@@ -250,8 +266,8 @@ namespace FeaturesTime
                 }
                 else
                 {
-                    // If currentHour is uninitialized or legacy 7.0f-7.25f, align to dayStartHour (06:00)
-                    if (currentHour < 6.0f || (currentHour >= 6.99f && currentHour <= 7.25f))
+                    // If currentHour is uninitialized, align to dayStartHour (06:00)
+                    if (currentHour < 6.0f)
                     {
                         SetTime(dayStartHour);
                     }
@@ -304,7 +320,7 @@ namespace FeaturesTime
         {
             if (phase == TimeManager.DayPhase.Night)
             {
-                isFastForwardActive = false;
+                currentSpeedMultiplier = 1.0f;
                 SetTime(nightStartHour);
             }
             else if (phase == TimeManager.DayPhase.Day)
@@ -330,28 +346,50 @@ namespace FeaturesTime
             if (Time.timeScale <= 0f || FarmBeware.Core.Runtime.UIModalHelper.IsSaveUIOpen)
                 return;
 
+            bool isDay = (TimeManager.Instance == null || TimeManager.Instance.currentPhase == TimeManager.DayPhase.Day) && currentPhase != EnvironmentPhase.Night;
+
+            // Shortcut keybinds:
+            // '0' -> Toggle mode 8x Fast-Forward (18 menit selesai dalam 2.25 menit) - Day Phase only
+            if (UnityEngine.InputSystem.Keyboard.current != null)
+            {
+                var kb = UnityEngine.InputSystem.Keyboard.current;
+                if (kb.digit0Key.wasPressedThisFrame || kb.numpad0Key.wasPressedThisFrame)
+                {
+                    if (isDay)
+                    {
+                        ToggleSpeedMode(fastForwardMultiplier8x, "Fast-Forward Mode");
+                    }
+                    else
+                    {
+                        var floatingText = FarmBeware.Core.Runtime.ServiceLocator.Resolve<FarmBeware.Core.Runtime.IFloatingTextService>();
+                        var player = FarmBeware.Core.Runtime.ServiceLocator.Resolve<FarmBeware.Core.Runtime.IPlayerContext>();
+                        if (floatingText != null && player != null && player.Transform != null)
+                        {
+                            floatingText.SpawnText(player.Transform.position + Vector3.up * 1.5f, "⚠️ Fast-forward is only available during the day!", new Color(1f, 0.45f, 0.45f));
+                        }
+                    }
+                }
+            }
 
             if (!useContinuousTime || isPaused)
                 return;
 
-            bool isDay = (TimeManager.Instance == null || TimeManager.Instance.currentPhase == TimeManager.DayPhase.Day);
-
             if (isDay)
             {
-                // Advance real daytime timer (dikalikan pengali fast-forward jika aktif)
-                float timeStep = Time.deltaTime * (isFastForwardActive ? fastForwardMultiplier : 1.0f);
+                // Advance real daytime timer dikalikan pengali kecepatan aktif
+                float timeStep = Time.deltaTime * currentSpeedMultiplier;
                 daytimeElapsedSeconds += timeStep;
                 float targetHour = EvaluateDaytimeHour(daytimeElapsedSeconds, daytimeDurationRealSeconds);
                 ApplyHourInternal(targetHour);
 
-                // 1. Dusk Bell Trigger (15:45 in-game / 13:30 real minutes / 810s default)
-                float duskTriggerSec = 810f * (daytimeDurationRealSeconds / 960f);
+                // 1. Dusk Bell Trigger (16:00 in-game / 15:00 real minutes / 900s default)
+                float duskTriggerSec = 900f * (daytimeDurationRealSeconds / 1080f);
                 if (!duskWarningTriggered && (daytimeElapsedSeconds >= duskTriggerSec || currentHour >= duskWarningHour))
                 {
                     TriggerDuskWarning();
                 }
 
-                // 2. Auto-Sleep Trigger (18:00 in-game / 16:00 real minutes / 960s default)
+                // 2. Auto-Sleep Trigger (18:00 in-game / 18:00 real minutes / 1080s default)
                 if (autoSleepAtNightfall && !autoSleepTriggered && (daytimeElapsedSeconds >= daytimeDurationRealSeconds || currentHour >= nightStartHour))
                 {
                     TriggerAutoSleep();
@@ -360,16 +398,31 @@ namespace FeaturesTime
         }
 
         /// <summary>
-        /// Menyalakan / mematikan mode percepatan waktu (4x Fast-Forward) pada siang hari.
+        /// Menyalakan / mematikan mode percepatan waktu (misalnya 8x Fast-Forward).
         /// </summary>
-        public void ToggleFastForward()
+        public void ToggleSpeedMode(float targetMultiplier, string modeName)
         {
-            isFastForwardActive = !isFastForwardActive;
+            if (currentPhase == EnvironmentPhase.Night || (TimeManager.Instance != null && TimeManager.Instance.currentPhase == TimeManager.DayPhase.Night))
+            {
+                currentSpeedMultiplier = 1.0f;
+                return;
+            }
 
-            string msg = isFastForwardActive
-                ? $"⏩ Time Speed: {fastForwardMultiplier:0.#}x (Fast-Forward)"
-                : "▶️ Time Speed: 1x (Normal)";
-            Color col = isFastForwardActive ? new Color(0.2f, 0.85f, 1f) : new Color(0.85f, 0.85f, 0.85f);
+            if (Mathf.Approximately(currentSpeedMultiplier, targetMultiplier))
+            {
+                // Jika mode yang sama sudah aktif, matikan kembali ke normal 1x
+                currentSpeedMultiplier = 1.0f;
+            }
+            else
+            {
+                currentSpeedMultiplier = targetMultiplier;
+            }
+
+            bool isActive = IsFastForwardActive;
+            string msg = isActive
+                ? $"⏩ Time Speed: {currentSpeedMultiplier:0.##}x ({modeName})"
+                : "▶️ Time Speed: 1x (Normal 18-Minute Day)";
+            Color col = isActive ? new Color(0.2f, 0.85f, 1f) : new Color(0.85f, 0.85f, 0.85f);
 
             var floatingText = FarmBeware.Core.Runtime.ServiceLocator.Resolve<FarmBeware.Core.Runtime.IFloatingTextService>();
             var player = FarmBeware.Core.Runtime.ServiceLocator.Resolve<FarmBeware.Core.Runtime.IPlayerContext>();
@@ -379,6 +432,14 @@ namespace FeaturesTime
             }
 
             Debug.Log($"[DayNightTimeManager] {msg}");
+        }
+
+        /// <summary>
+        /// Menyalakan / mematikan mode percepatan waktu 8x (backward-compatible helper).
+        /// </summary>
+        public void ToggleFastForward()
+        {
+            ToggleSpeedMode(fastForwardMultiplier8x, "Fast-Forward Mode");
         }
 
         private void TriggerDuskWarning()
@@ -393,16 +454,16 @@ namespace FeaturesTime
             {
                 floatingText.SpawnText(
                     player.Transform.position + Vector3.up * 1.5f,
-                    "🔔 Dusk Bell: 2.5 minutes until nightfall! Prepare for battle!",
+                    "🔔 Dusk Bell: 3 minutes until nightfall! Prepare for battle!",
                     new Color(1f, 0.70f, 0.25f));
             }
 
-            Debug.Log($"[DayNightTimeManager] 🔔 Dusk Bell triggered at {CurrentHourInt:D2}:{CurrentMinuteInt:D2} (2.5 minutes left until nightfall)");
+            Debug.Log($"[DayNightTimeManager] 🔔 Dusk Bell triggered at {CurrentHourInt:D2}:{CurrentMinuteInt:D2} (3 minutes left until nightfall)");
         }
 
         private void TriggerAutoSleep()
         {
-            isFastForwardActive = false;
+            currentSpeedMultiplier = 1.0f;
             autoSleepTriggered = true;
             OnAutoSleepTriggered?.Invoke();
 
@@ -456,16 +517,35 @@ namespace FeaturesTime
         #region Core Time Simulation Logic
 
         // Keyframe timeline table: Real Minutes (Seconds) vs In-Game 24h Clock
-        private static readonly float[] TimelineRealSeconds = { 0f, 60f, 240f, 660f, 810f, 960f };
-        private static readonly float[] TimelineInGameHours = { 6.00f, 6.75f, 9.00f, 14.00f, 15.75f, 18.00f };
+        // Aligned 100% with MVP Version Guideline V0.1 Section 2 (18 minutes = 1080 seconds):
+        // 0s (0:00) -> 06:00
+        // 60s (1:00) -> 06:40
+        // 180s (3:00) -> 08:00
+        // 360s (6:00) -> 10:00
+        // 390s (6:30) -> 10:20
+        // 450s (7:30) -> 11:00
+        // 720s (12:00) -> 14:00
+        // 750s (12:30) -> 14:20
+        // 810s (13:30) -> 15:00
+        // 900s (15:00) -> 16:00 (Dusk bell)
+        // 930s (15:30) -> 16:20
+        // 990s (16:30) -> 17:00
+        // 1080s (18:00) -> 18:00 (Nightfall)
+        private static readonly float[] TimelineRealSeconds = 
+        { 
+            0f, 60f, 180f, 360f, 390f, 450f, 720f, 750f, 810f, 900f, 930f, 990f, 1080f 
+        };
+        private static readonly float[] TimelineInGameHours = 
+        { 
+            6.00f, 6.6667f, 8.00f, 10.00f, 10.3333f, 11.00f, 14.00f, 14.3333f, 15.00f, 16.00f, 16.3333f, 17.00f, 18.00f 
+        };
 
         /// <summary>
-        /// Evaluates in-game hour monotonically across the 16-minute day phase timeline.
-        /// Matches: 0m -> 06:00, 1m -> 06:45, 4m -> 09:00, 11m -> 14:00, 13.5m -> 15:45, 16m -> 18:00.
+        /// Evaluates in-game hour monotonically across the 18-minute day phase timeline.
         /// </summary>
-        public static float EvaluateDaytimeHour(float elapsedSeconds, float totalDuration = 960f)
+        public static float EvaluateDaytimeHour(float elapsedSeconds, float totalDuration = 1080f)
         {
-            float scale = totalDuration / 960f;
+            float scale = totalDuration / 1080f;
             float clamped = Mathf.Clamp(elapsedSeconds, 0f, totalDuration);
 
             for (int i = 0; i < TimelineRealSeconds.Length - 1; i++)
@@ -481,9 +561,9 @@ namespace FeaturesTime
             return 18.0f;
         }
 
-        public static float EvaluateElapsedSecondsFromHour(float targetHour, float totalDuration = 960f)
+        public static float EvaluateElapsedSecondsFromHour(float targetHour, float totalDuration = 1080f)
         {
-            float scale = totalDuration / 960f;
+            float scale = totalDuration / 1080f;
             float clampedHour = Mathf.Clamp(targetHour, 6.00f, 18.00f);
 
             for (int i = 0; i < TimelineInGameHours.Length - 1; i++)

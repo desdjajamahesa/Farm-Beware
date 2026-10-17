@@ -642,38 +642,11 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
         bool rightClick = Mouse.current != null && Mouse.current.rightButton.wasPressedThisFrame && !isPointerOverUI;
         bool rKey = Keyboard.current != null && Keyboard.current.rKey.wasPressedThisFrame;
 
-        // 3. Skill Tendangan Spartan (Knockback Kick): Tombol Q
-        bool qKey = Keyboard.current != null && Keyboard.current.qKey.wasPressedThisFrame;
-
-        // 4. Selebrasi / Battlecry Emote: Tombol T
-        bool tKey = Keyboard.current != null && Keyboard.current.tKey.wasPressedThisFrame;
-
         if (playerEquipment == null)
             playerEquipment = GetComponent<PlayerEquipment>() ?? gameObject.AddComponent<PlayerEquipment>();
 
-        // Priority Special Actions (Kick, Leap, Taunt)
-        if (qKey && !isSkillLeaping)
-        {
-            isChargingAttack = false;
-            attackHoldDuration = 0f;
-            hasBufferedAttack = false;
-            if (playerEquipment != null && playerEquipment.TryPerformKick())
-            {
-                if (attackCoroutine != null) { StopCoroutine(attackCoroutine); attackCoroutine = null; }
-                StartCoroutine(RoutineKick());
-            }
-            return;
-        }
-        else if (tKey && !isAttacking)
-        {
-            if (animator != null && isGrounded)
-            {
-                animator.ResetTrigger("Taunt");
-                animator.SetTrigger("Taunt");
-            }
-            return;
-        }
-        else if ((rightClick || rKey) && !isSkillLeaping)
+        // Priority Special Actions (Leap Strike)
+        if ((rightClick || rKey) && !isSkillLeaping)
         {
             isChargingAttack = false;
             attackHoldDuration = 0f;
@@ -777,7 +750,8 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
                     // Released after charging -> Heavy Attack!
                     if (playerEquipment != null && playerEquipment.TryPerformHeavyAttack(playerEquipment.CombatStateMachine.ChargeRatio))
                     {
-                        StartCoroutine(RoutineHeavyAttack());
+                        if (attackCoroutine != null) { StopCoroutine(attackCoroutine); }
+                        attackCoroutine = StartCoroutine(RoutineHeavyAttack());
                     }
                 }
                 else
@@ -828,8 +802,8 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
 
         float atkSpeed = (playerEquipment != null) ? Mathf.Max(0.5f, playerEquipment.AttackAnimationSpeed) : 1f;
 
-        // Windup anticipation delay matching the 360 upward blade lift
-        float windupWait = 0.42f / atkSpeed;
+        // Windup anticipation delay matching the initial combo strike
+        float windupWait = 0.38f / atkSpeed;
         float elapsedWindup = 0f;
         while (elapsedWindup < windupWait)
         {
@@ -837,13 +811,13 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
             yield return null;
         }
 
-        // Forward impulse burst synchronized with active 360 blade release
+        // Forward impulse burst synchronized with active combo blade release
         if (rb != null)
         {
             rb.linearVelocity = transform.forward * 4.2f + Vector3.up * 0.1f;
         }
 
-        float maxLock = 0.82f / atkSpeed;
+        float maxLock = 1.5f / atkSpeed;
         float timer = elapsedWindup;
         while (timer < maxLock)
         {
@@ -852,6 +826,7 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
         }
 
         isAttacking = false;
+        attackCoroutine = null;
         if (animator != null)
             animator.SetBool("IsAttacking", false);
     }
@@ -919,42 +894,6 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
             animator.SetBool("IsAttacking", false);
     }
 
-    private IEnumerator RoutineKick()
-    {
-        isAttacking = true;
-        isLightAttacking = false;
-        hasBufferedAttack = false;
-        if (animator != null)
-            animator.SetBool("IsAttacking", true);
-
-        float atkSpeed = (playerEquipment != null) ? Mathf.Max(0.5f, playerEquipment.AttackAnimationSpeed) : 1.6f;
-
-        Vector3 forwardDir = transform.forward;
-        if (rb != null)
-        {
-            // Hentakan lunge maju seketika bersamaan dengan lesatan tendangan
-            rb.linearVelocity = forwardDir * 4.2f + Vector3.up * 0.1f;
-        }
-
-        float lockDuration = 0.38f / atkSpeed;
-        float elapsed = 0f;
-        while (elapsed < lockDuration)
-        {
-            elapsed += Time.deltaTime;
-            yield return null;
-        }
-
-        if (rb != null)
-        {
-            rb.linearVelocity = new Vector3(0f, rb.linearVelocity.y, 0f);
-        }
-
-        isAttacking = false;
-        isLightAttacking = false;
-        hasBufferedAttack = false;
-        if (animator != null)
-            animator.SetBool("IsAttacking", false);
-    }
 
     private IEnumerator RoutineSkillAttack()
     {
@@ -1031,8 +970,7 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
                info.IsName("Attack_Combo1") ||
                info.IsName("Attack_Combo2") ||
                info.IsName("Attack_Combo3") ||
-               info.IsName("Attack_Skill") ||
-               info.IsName("Attack_Kick");
+               info.IsName("Attack_Skill");
     }
 
 
@@ -1392,8 +1330,8 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
 
         if (animator != null)
         {
-            animator.ResetTrigger("Attack");
-            animator.SetTrigger("Attack");
+            animator.ResetTrigger("Parry");
+            animator.SetTrigger("Parry");
         }
 
         if (PlayerUI.FloatingCombatTextManager.Instance != null)

@@ -64,23 +64,10 @@ public class PlayerEquipment : MonoBehaviour
     [Tooltip("Durasi aktif putaran (detik) untuk Hit 3.")]
     [SerializeField] private float combo3SwingDuration = 0.38f;
 
-    [Tooltip("Delay windup (detik) untuk ayunan Heavy Attack (Charged 360 Spin) pada base speed.")]
-    [SerializeField] private float heavySwingDelay = 0.46f;
-    [Tooltip("Durasi aktif putaran (detik) untuk Heavy Attack.")]
-    [SerializeField] private float heavySwingDuration = 0.32f;
-
-    [Header("Pengaturan Skill Tendangan (Spartan Kick)")]
-    [Tooltip("Konsumsi stamina saat melancarkan tendangan (Kick).")]
-    public float kickStaminaCost = 15f;
-    [Tooltip("Damage dari tendangan (Kick).")]
-    public int kickDamage = 22;
-    [Tooltip("Kekuatan dorongan knockback tendangan menjauhkan musuh.")]
-    public float kickKnockback = 10.5f;
-    [Tooltip("Jangkauan jarak tendangan (meter).")]
-    public float kickHitRange = 2.0f;
-    [Tooltip("Waktu cooldown skill tendangan (detik).")]
-    public float kickCooldown = 1.8f;
-    private float lastKickTime = -10f;
+    [Tooltip("Windup delay (seconds) for Heavy Attack (Charged Combo Attack ver. 1) at base speed.")]
+    [SerializeField] private float heavySwingDelay = 0.38f;
+    [Tooltip("Active strike sweep duration (seconds) for Heavy Attack.")]
+    [SerializeField] private float heavySwingDuration = 0.65f;
 
     [Header("Pengaturan Jurus Spesial (Leap Strike)")]
     [Tooltip("Nama Trigger parameter di Animator untuk jurus spesial.")]
@@ -97,6 +84,18 @@ public class PlayerEquipment : MonoBehaviour
 
     [Tooltip("Kekuatan dorongan knockback jurus spesial.")]
     [SerializeField] private float skillKnockback = 8.0f;
+
+    [Header("Pengaturan Audio Serangan Senjata")]
+    [Tooltip("AudioSource khusus untuk memutar efek ayunan senjata pemain. Jika null, otomatis mengambil/membuat AudioSource di objek ini.")]
+    [SerializeField] private AudioSource weaponAudioSource;
+    [SerializeField] private AudioClip swingLightClip;
+    [SerializeField] private AudioClip swingMediumClip;
+    [SerializeField] private AudioClip swingHeavyClip;
+    [SerializeField] private AudioClip swingDashClip;
+    [SerializeField] private AudioClip swingSkillClip;
+    [SerializeField] private AudioClip swingPunchClip;
+    [Range(0f, 1f)]
+    [SerializeField] private float swingAudioVolume = 0.85f;
 
     private int currentComboIndex = 0;
     private float lastAttackTime = -999f;
@@ -357,14 +356,15 @@ public class PlayerEquipment : MonoBehaviour
         if (upgradeState != null && upgradeState.sweetPotatoPathUnlocked) atkSpdMultiplier *= 1.20f;
         atkSpdMultiplier *= attackAnimationSpeed;
 
-        currentComboIndex = 2;
+        currentComboIndex = 3;
 
         if (animator != null)
         {
             animator.speed = atkSpdMultiplier;
             animator.ResetTrigger(attackTriggerName);
-            animator.SetInteger("ComboIndex", 2);
-            animator.SetTrigger(attackTriggerName);
+            animator.ResetTrigger("HeavyAttack");
+            animator.SetInteger("ComboIndex", 3);
+            animator.SetTrigger("HeavyAttack");
         }
 
         lastAttackTime = Time.time;
@@ -449,89 +449,6 @@ public class PlayerEquipment : MonoBehaviour
         return true;
     }
 
-    public bool TryPerformKick()
-    {
-        if (Time.time - lastKickTime < kickCooldown)
-            return false;
-
-        if (playerStats != null && playerStats.currentStamina < kickStaminaCost)
-            return false;
-
-        if (playerStats != null)
-        {
-            playerStats.UseStamina(kickStaminaCost);
-        }
-
-        lastKickTime = Time.time;
-
-        if (animator != null)
-        {
-            animator.ResetTrigger("Kick");
-            animator.SetTrigger("Kick");
-        }
-
-        if (currentSwingCoroutine != null)
-        {
-            StopCoroutine(currentSwingCoroutine);
-        }
-
-        currentSwingCoroutine = StartCoroutine(RoutineKickHitbox());
-        return true;
-    }
-
-    private System.Collections.IEnumerator RoutineKickHitbox()
-    {
-        float speed = Mathf.Max(0.5f, AttackAnimationSpeed);
-        float impactDelay = 0.08f / speed;
-        yield return new WaitForSeconds(impactDelay);
-
-        Vector3 origin = transform.position + Vector3.up * 0.8f;
-        Vector3 forwardDir = transform.forward;
-        Vector3 sweepCenter = origin + forwardDir * (kickHitRange * 0.5f);
-
-        _damagedTargetsCount = 0;
-        int hitCount = Physics.OverlapSphereNonAlloc(sweepCenter, kickHitRange * 0.7f, _hitBuffer, ~0, QueryTriggerInteraction.Collide);
-
-        for (int i = 0; i < hitCount; i++)
-        {
-            Collider c = _hitBuffer[i];
-            if (c == null || c.gameObject == gameObject || c.transform.IsChildOf(transform)) continue;
-
-            Vector3 toTarget = c.transform.position - origin;
-            toTarget.y = 0f;
-            if (toTarget.sqrMagnitude > 0.04f && Vector3.Dot(forwardDir, toTarget.normalized) < 0.20f)
-                continue;
-
-            var target = c.GetComponent<FeaturesCombat.IDamageable>() ?? c.GetComponentInParent<FeaturesCombat.IDamageable>();
-            if (target != null && !target.IsDead && !HasTargetBeenHit(target))
-            {
-                RecordTargetHit(target);
-                Vector3 hitPoint = c.ClosestPoint(sweepCenter);
-                bool isGodMode = (playerStats != null && playerStats.isGodMode);
-                int effectiveKickDmg = isGodMode ? 99999 : kickDamage;
-                target.TakeDamage(effectiveKickDmg, hitPoint, forwardDir);
-
-                Rigidbody targetRb = c.GetComponent<Rigidbody>() ?? c.GetComponentInParent<Rigidbody>();
-                if (targetRb != null && !targetRb.isKinematic)
-                {
-                    Vector3 kbDir = (forwardDir + Vector3.up * 0.2f).normalized;
-                    targetRb.AddForce(kbDir * kickKnockback, ForceMode.Impulse);
-                }
-
-                if (PlayerUI.FloatingCombatTextManager.Instance != null)
-                {
-                    PlayerUI.FloatingCombatTextManager.Instance.SpawnEnemyDamage(
-                        hitPoint + Vector3.up * 0.8f,
-                        effectiveKickDmg,
-                        isCrit: true,
-                        isSkill: false);
-                }
-            }
-        }
-
-        yield return new WaitForSeconds(0.32f / speed);
-        currentSwingCoroutine = null;
-    }
 
     public bool TryPerformSkillAttack()
     {
@@ -677,6 +594,8 @@ public class PlayerEquipment : MonoBehaviour
             activeTrail.BeginTrail(currentComboIndex, isFinisher || is360, isHeavy);
         }
 
+        PlayAttackSwingSound(is360, isFinisher, isHeavy, isDash);
+
         if (hitbox != null && !is360 && !isHeavy && !isDash)
         {
             hitbox.ConfigureHitRange(activeRange);
@@ -735,6 +654,8 @@ public class PlayerEquipment : MonoBehaviour
 
         // Tunggu ancang-ancang windup selesai saat karakter melompat ke udara
         yield return new WaitForSeconds(launchDelay);
+
+        PlaySwingAudio(swingSkillClip != null ? swingSkillClip : swingHeavyClip);
 
         var activeSkillTrail = GetActiveTrail();
         if (activeSkillTrail != null)
@@ -1083,6 +1004,10 @@ public class PlayerEquipment : MonoBehaviour
             UpdateCircleGeometry();
             UpdateIndicatorVisual(isCurrentlyPulsing ? attackPulseColor : rangeIndicatorColor);
         }
+
+#if UNITY_EDITOR
+        AutoAssignCombatAudio();
+#endif
     }
 
     private void OnDrawGizmosSelected()
@@ -1295,4 +1220,86 @@ public class PlayerEquipment : MonoBehaviour
             }
         }
     }
+
+    #region Combat Audio Management
+
+    private void EnsureWeaponAudioSource()
+    {
+        if (weaponAudioSource == null)
+        {
+            weaponAudioSource = GetComponent<AudioSource>();
+            if (weaponAudioSource == null)
+            {
+                weaponAudioSource = gameObject.AddComponent<AudioSource>();
+            }
+            weaponAudioSource.playOnAwake = false;
+            weaponAudioSource.spatialBlend = 0.35f;
+        }
+
+#if UNITY_EDITOR
+        AutoAssignCombatAudio();
+#endif
+    }
+
+    private void PlaySwingAudio(AudioClip clip)
+    {
+        if (clip == null) return;
+        EnsureWeaponAudioSource();
+        if (weaponAudioSource != null)
+        {
+            weaponAudioSource.pitch = Random.Range(0.94f, 1.06f);
+            weaponAudioSource.PlayOneShot(clip, swingAudioVolume);
+        }
+    }
+
+    private void PlayAttackSwingSound(bool is360, bool isFinisher, bool isHeavy, bool isDash)
+    {
+        if (!IsHoldingWeapon)
+        {
+            PlaySwingAudio(swingPunchClip);
+            return;
+        }
+
+        if (isDash)
+        {
+            PlaySwingAudio(swingDashClip != null ? swingDashClip : swingLightClip);
+        }
+        else if (isHeavy)
+        {
+            PlaySwingAudio(swingHeavyClip);
+        }
+        else if (isFinisher || is360 || currentComboIndex == 2)
+        {
+            PlaySwingAudio(swingHeavyClip != null ? swingHeavyClip : swingMediumClip);
+        }
+        else if (currentComboIndex == 1)
+        {
+            PlaySwingAudio(swingMediumClip != null ? swingMediumClip : swingLightClip);
+        }
+        else
+        {
+            PlaySwingAudio(swingLightClip);
+        }
+    }
+
+#if UNITY_EDITOR
+
+    private void AutoAssignCombatAudio()
+    {
+        if (swingLightClip == null)
+            swingLightClip = UnityEditor.AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/SFX/Combat/SFX_Weapon_Swing_Light.wav");
+        if (swingMediumClip == null)
+            swingMediumClip = UnityEditor.AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/SFX/Combat/SFX_Weapon_Swing_Medium.wav");
+        if (swingHeavyClip == null)
+            swingHeavyClip = UnityEditor.AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/SFX/Combat/SFX_Weapon_Swing_Heavy.wav");
+        if (swingDashClip == null)
+            swingDashClip = UnityEditor.AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/SFX/Combat/SFX_Weapon_Swing_Dash.wav");
+        if (swingSkillClip == null)
+            swingSkillClip = UnityEditor.AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/SFX/Combat/SFX_Weapon_Swing_Skill.wav");
+        if (swingPunchClip == null)
+            swingPunchClip = UnityEditor.AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/SFX/Combat/SFX_Weapon_Swing_Punch.wav");
+    }
+#endif
+
+    #endregion
 }

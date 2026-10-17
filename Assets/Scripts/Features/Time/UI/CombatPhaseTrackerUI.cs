@@ -2,9 +2,17 @@ using System.Collections;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
+using FeaturesTime;
+using FeaturesRendering.Lighting;
 
 namespace FeaturesTime.UI
 {
+    public enum ClockDisplayMode
+    {
+        FullStep60s = 0, // 60 detik real = +40 menit game (Default)
+        HalfStep30s = 1  // 30 detik real = +20 menit game (Setengahnya)
+    }
+
     /// <summary>
     /// Menampilkan tracker fase waktu (Day/Night) dan gelombang tempur (Combat Wave) di pojok kanan atas HUD.
     /// Memberi peringatan visual saat malam tiba dan siap menerima data wave dari spawner monster.
@@ -19,9 +27,39 @@ namespace FeaturesTime.UI
         [SerializeField] private TextMeshProUGUI enemiesText;
         [SerializeField] private Image phaseBadgeBackground;
 
+        [Header("Day Activity Timeline UI")]
+        [SerializeField] private GameObject activityCardRoot;
+        [SerializeField] private TextMeshProUGUI activityHeaderBadgeText;
+        [SerializeField] private TextMeshProUGUI activityDetailText;
+
         [Header("Phase Colors")]
-        [SerializeField] private Color dayBadgeColor = new Color(0.95f, 0.70f, 0.20f, 0.85f); // Amber / Sun
-        [SerializeField] private Color nightBadgeColor = new Color(0.65f, 0.15f, 0.20f, 0.90f); // Blood / Crimson
+        [SerializeField] private Color dayBadgeColor = new Color(0.08f, 0.11f, 0.17f, 0.92f); // Deep Slate
+        [SerializeField] private Color nightBadgeColor = new Color(0.18f, 0.05f, 0.08f, 0.94f); // Deep Crimson
+
+        [Header("Clock Display Settings")]
+        [Tooltip("Mode tampilan interval jam digital (FullStep60s = 60s real / 40m game, HalfStep30s = 30s real / 20m game).")]
+        [SerializeField] private ClockDisplayMode clockMode = ClockDisplayMode.FullStep60s;
+
+        [Tooltip("Interval pembaruan tampilan jam digital dalam detik waktu nyata (default 60 detik / 1 menit real = 40 menit game). Jika > 0, jam digital memperbarui tampilannya tepat setiap interval detik ini.")]
+        [SerializeField] private float clockUpdateIntervalRealSeconds = 60f;
+
+        [Tooltip("Interval kelipatan menit in-game untuk tampilan jam digital jika clockUpdateIntervalRealSeconds <= 0 (default 15 menit: :00, :15, :30, :45).")]
+        [Range(1, 60)]
+        [SerializeField] private int clockMinuteStep = 15;
+
+        public ClockDisplayMode CurrentClockMode => clockMode;
+
+        public float ClockUpdateIntervalRealSeconds
+        {
+            get => clockUpdateIntervalRealSeconds;
+            set => clockUpdateIntervalRealSeconds = value;
+        }
+
+        public int ClockMinuteStep
+        {
+            get => clockMinuteStep;
+            set => clockMinuteStep = value;
+        }
 
         [Header("Wave Tracking State")]
         private int currentWave = 1;
@@ -29,6 +67,7 @@ namespace FeaturesTime.UI
         private int enemiesRemaining = 0;
 
         private Coroutine pulseCoroutine;
+        private bool isActivitySubscribed = false;
 
         private static CombatPhaseTrackerUI _instance;
         public static CombatPhaseTrackerUI Instance
@@ -73,11 +112,17 @@ namespace FeaturesTime.UI
 
             if (DayNightTimeManager.Instance != null)
             {
-                UpdateClockText(DayNightTimeManager.Instance.CurrentHourInt, DayNightTimeManager.Instance.CurrentMinuteInt);
+                GetDisplayTime(out int startH, out int startM);
+                UpdateClockText(startH, startM);
             }
             else
             {
                 UpdateClockText(6, 0);
+            }
+
+            if (DayActivityTimelineManager.Instance != null)
+            {
+                HandleActivityChanged(DayActivityTimelineManager.Instance.CurrentActivity);
             }
         }
 
@@ -94,6 +139,12 @@ namespace FeaturesTime.UI
                 DayNightTimeManager.Instance.OnMinuteChanged += HandleMinuteChanged;
                 DayNightTimeManager.Instance.OnHourChanged += HandleHourChanged;
             }
+
+            if (DayActivityTimelineManager.Instance != null && !isActivitySubscribed)
+            {
+                DayActivityTimelineManager.Instance.OnActivityChanged += HandleActivityChanged;
+                isActivitySubscribed = true;
+            }
         }
 
         private void OnDisable()
@@ -109,18 +160,65 @@ namespace FeaturesTime.UI
                 DayNightTimeManager.Instance.OnMinuteChanged -= HandleMinuteChanged;
                 DayNightTimeManager.Instance.OnHourChanged -= HandleHourChanged;
             }
+
+            if (DayActivityTimelineManager.Instance != null && isActivitySubscribed)
+            {
+                DayActivityTimelineManager.Instance.OnActivityChanged -= HandleActivityChanged;
+                isActivitySubscribed = false;
+            }
+        }
+
+        private void GetDisplayTime(out int hour, out int minute)
+        {
+            bool isNight = (TimeManager.Instance != null && TimeManager.Instance.currentPhase == TimeManager.DayPhase.Night)
+                || (DayNightTimeManager.Instance != null && DayNightTimeManager.Instance.CurrentPhase == EnvironmentPhase.Night);
+
+            if (DayNightTimeManager.Instance != null && !isNight && clockUpdateIntervalRealSeconds > 0f)
+            {
+                float elapsed = DayNightTimeManager.Instance.DaytimeElapsedSeconds;
+                float duration = DayNightTimeManager.Instance.DaytimeDurationRealSeconds;
+                float steppedElapsed = Mathf.Floor(elapsed / clockUpdateIntervalRealSeconds) * clockUpdateIntervalRealSeconds;
+                float steppedHourFloat = DayNightTimeManager.EvaluateDaytimeHour(steppedElapsed, duration);
+                hour = Mathf.FloorToInt(steppedHourFloat) % 24;
+                minute = Mathf.RoundToInt((steppedHourFloat - Mathf.Floor(steppedHourFloat)) * 60f);
+                if (minute >= 60)
+                {
+                    minute = 0;
+                    hour = (hour + 1) % 24;
+                }
+                return;
+            }
+
+            hour = DayNightTimeManager.Instance != null ? DayNightTimeManager.Instance.CurrentHourInt : 6;
+            minute = FormatSteppedMinute(DayNightTimeManager.Instance != null ? DayNightTimeManager.Instance.CurrentMinuteInt : 0);
+        }
+
+        private int FormatSteppedMinute(int minute)
+        {
+            if (clockMinuteStep <= 1) return minute;
+            return (minute / clockMinuteStep) * clockMinuteStep;
         }
 
         private void HandleMinuteChanged(int minute)
         {
-            int hour = DayNightTimeManager.Instance != null ? DayNightTimeManager.Instance.CurrentHourInt : 6;
-            UpdateClockText(hour, minute);
+            GetDisplayTime(out int h, out int m);
+            if (h != lastDisplayHour || m != lastDisplayMinute)
+            {
+                lastDisplayHour = h;
+                lastDisplayMinute = m;
+                UpdateClockText(h, m);
+            }
         }
 
         private void HandleHourChanged(int hour)
         {
-            int minute = DayNightTimeManager.Instance != null ? DayNightTimeManager.Instance.CurrentMinuteInt : 0;
-            UpdateClockText(hour, minute);
+            GetDisplayTime(out int h, out int m);
+            if (h != lastDisplayHour || m != lastDisplayMinute)
+            {
+                lastDisplayHour = h;
+                lastDisplayMinute = m;
+                UpdateClockText(h, m);
+            }
         }
 
         private int lastDisplayHour = -1;
@@ -129,10 +227,25 @@ namespace FeaturesTime.UI
 
         private void Update()
         {
+            if (UnityEngine.InputSystem.Keyboard.current != null && !FarmBeware.Core.Runtime.UIModalHelper.IsSaveUIOpen)
+            {
+                var kb = UnityEngine.InputSystem.Keyboard.current;
+                if (kb.tKey.wasPressedThisFrame || kb.digit9Key.wasPressedThisFrame || kb.numpad9Key.wasPressedThisFrame)
+                {
+                    ToggleClockMode();
+                }
+            }
+
+            if (!isActivitySubscribed && DayActivityTimelineManager.Instance != null)
+            {
+                DayActivityTimelineManager.Instance.OnActivityChanged += HandleActivityChanged;
+                HandleActivityChanged(DayActivityTimelineManager.Instance.CurrentActivity);
+                isActivitySubscribed = true;
+            }
+
             if (DayNightTimeManager.Instance != null && clockText != null)
             {
-                int h = DayNightTimeManager.Instance.CurrentHourInt;
-                int m = DayNightTimeManager.Instance.CurrentMinuteInt;
+                GetDisplayTime(out int h, out int m);
                 bool ff = DayNightTimeManager.Instance.IsFastForwardActive;
                 if (h != lastDisplayHour || m != lastDisplayMinute || ff != lastDisplayFastForward)
                 {
@@ -144,14 +257,71 @@ namespace FeaturesTime.UI
             }
         }
 
+        /// <summary>
+        /// Mengatur mode tampilan jam digital (FullStep60s = 60s real/40m game, HalfStep30s = 30s real/20m game).
+        /// </summary>
+        public void SetClockMode(ClockDisplayMode newMode, bool showFeedback = true)
+        {
+            clockMode = newMode;
+            clockUpdateIntervalRealSeconds = (clockMode == ClockDisplayMode.HalfStep30s) ? 30f : 60f;
+
+            if (showFeedback)
+            {
+                bool isHalf = (clockMode == ClockDisplayMode.HalfStep30s);
+                string msg = isHalf
+                    ? "⏱️ Clock Display: 30s Real = 20m Game (Half Step)"
+                    : "⏱️ Clock Display: 60s Real = 40m Game (Full Step)";
+                Color col = isHalf ? new Color(0.25f, 0.85f, 1f) : new Color(0.95f, 0.95f, 0.95f);
+
+                var floatingText = FarmBeware.Core.Runtime.ServiceLocator.Resolve<FarmBeware.Core.Runtime.IFloatingTextService>();
+                var player = FarmBeware.Core.Runtime.ServiceLocator.Resolve<FarmBeware.Core.Runtime.IPlayerContext>();
+                if (floatingText != null && player != null && player.Transform != null)
+                {
+                    floatingText.SpawnText(player.Transform.position + Vector3.up * 1.8f, msg, col);
+                }
+
+                Debug.Log($"[CombatPhaseTrackerUI] {msg}");
+            }
+
+            // Invalidate display cache for immediate visual update
+            lastDisplayHour = -1;
+            lastDisplayMinute = -1;
+            GetDisplayTime(out int h, out int m);
+            UpdateClockText(h, m);
+        }
+
+        /// <summary>
+        /// Beralih antara Mode 1 (Full Step: 60s real = 40m game) dan Mode 2 (Half Step: 30s real = 20m game).
+        /// </summary>
+        public void ToggleClockMode()
+        {
+            var nextMode = (clockMode == ClockDisplayMode.FullStep60s)
+                ? ClockDisplayMode.HalfStep30s
+                : ClockDisplayMode.FullStep60s;
+            SetClockMode(nextMode, showFeedback: true);
+        }
+
+        public void HandleActivityChanged(DayActivityEntry entry)
+        {
+            if (activityHeaderBadgeText != null)
+            {
+                activityHeaderBadgeText.text = $"📋 ACTIVITY • {entry.timeRangeText}";
+            }
+            if (activityDetailText != null)
+            {
+                activityDetailText.text = entry.activityDescription;
+            }
+        }
+
         public void UpdateClockText(int hour, int minute)
         {
             if (clockText != null)
             {
+                int displayMinute = clockUpdateIntervalRealSeconds > 0f ? minute : FormatSteppedMinute(minute);
                 string ffTag = (DayNightTimeManager.Instance != null && DayNightTimeManager.Instance.IsFastForwardActive)
-                    ? $" <size=70%><color=#38BDF8>▶▶ {DayNightTimeManager.Instance.FastForwardMultiplier:0.#}x</color></size>"
+                    ? $" <size=70%><color=#38BDF8>▶▶ {DayNightTimeManager.Instance.FastForwardMultiplier:0.##}x</color></size>"
                     : "";
-                clockText.text = $"{hour:D2}:{minute:D2}{ffTag}";
+                clockText.text = $"{hour:D2}:{displayMinute:D2}{ffTag}";
             }
         }
 
@@ -173,10 +343,10 @@ namespace FeaturesTime.UI
 
         private void UpdateDayText(int day)
         {
-            // Permintaan pengguna: tidak menampilkan informasi hari (DAY X / 5), cukup keterangan Siang / Malam.
             if (dayText != null)
             {
-                dayText.gameObject.SetActive(false);
+                dayText.gameObject.SetActive(true);
+                dayText.text = $"DAY {day}";
             }
         }
 
@@ -184,20 +354,28 @@ namespace FeaturesTime.UI
         {
             bool isNight = (phase == TimeManager.DayPhase.Night);
 
+            if (activityCardRoot != null)
+            {
+                activityCardRoot.SetActive(!isNight);
+            }
+
             if (dayText != null)
             {
-                dayText.gameObject.SetActive(false);
+                dayText.gameObject.SetActive(true);
+                int day = TimeManager.Instance != null ? TimeManager.Instance.currentDay : 1;
+                dayText.text = $"DAY {day}";
+                dayText.color = isNight ? new Color(1f, 0.55f, 0.55f) : new Color(1f, 0.84f, 0.25f);
             }
 
             if (phaseText != null)
             {
                 phaseText.text = isNight ? "🌙 NIGHT" : "☀️ DAY";
-                phaseText.color = isNight ? new Color(1f, 0.45f, 0.45f) : new Color(1f, 0.95f, 0.70f);
+                phaseText.color = isNight ? new Color(1f, 0.45f, 0.45f) : new Color(0.95f, 0.96f, 0.98f);
             }
 
             if (clockText != null)
             {
-                clockText.color = isNight ? new Color(1f, 0.65f, 0.65f) : new Color(1f, 0.95f, 0.70f);
+                clockText.color = isNight ? new Color(1f, 0.80f, 0.80f) : new Color(0.98f, 0.98f, 1f);
             }
 
             if (phaseBadgeBackground != null)
@@ -210,12 +388,14 @@ namespace FeaturesTime.UI
                 if (isNight)
                 {
                     waveText.gameObject.SetActive(true);
-                    waveText.text = totalWaves > 1 ? $"Wave: {currentWave} / {totalWaves}" : "Beware of Monsters!";
+                    waveText.text = totalWaves > 1 ? $"⚔️ Wave {currentWave} / {totalWaves}" : "⚔️ Beware of Monsters!";
+                    waveText.color = new Color(1f, 0.70f, 0.70f);
                 }
                 else
                 {
                     waveText.gameObject.SetActive(true);
-                    waveText.text = "Safe & Farming";
+                    waveText.text = "🛡️ Safe & Farming";
+                    waveText.color = new Color(0.70f, 0.92f, 0.75f);
                 }
             }
 
@@ -249,6 +429,30 @@ namespace FeaturesTime.UI
             enemiesRemaining = remaining;
 
             if (enemiesText != null && TimeManager.Instance != null && TimeManager.Instance.currentPhase == TimeManager.DayPhase.Night)
+            {
+                enemiesText.text = $"Enemies: {enemiesRemaining}";
+            }
+        }
+
+        public void SetIntermissionCountdown(int secondsRemaining, int nextWave, int maxWaves)
+        {
+            if (waveText != null)
+            {
+                waveText.text = $"Prep: {secondsRemaining}s (Next W{nextWave})";
+            }
+            if (enemiesText != null)
+            {
+                enemiesText.text = "Prep Time ([Enter] / [N] to Skip)";
+            }
+        }
+
+        public void ClearIntermissionCountdown()
+        {
+            if (waveText != null)
+            {
+                waveText.text = $"Wave: {currentWave} / {totalWaves}";
+            }
+            if (enemiesText != null)
             {
                 enemiesText.text = $"Enemies: {enemiesRemaining}";
             }
@@ -302,6 +506,75 @@ namespace FeaturesTime.UI
                     CreateProceduralClockText(parent);
                 }
             }
+
+            EnsureActivityUIReferences();
+        }
+
+        private void EnsureActivityUIReferences()
+        {
+            if (activityCardRoot == null || activityHeaderBadgeText == null || activityDetailText == null)
+            {
+                var tmps = GetComponentsInChildren<TextMeshProUGUI>(true);
+                foreach (var t in tmps)
+                {
+                    if (t.gameObject.name.Equals("ActivityHeader", System.StringComparison.OrdinalIgnoreCase)) activityHeaderBadgeText = t;
+                    else if (t.gameObject.name.Equals("ActivityDetail", System.StringComparison.OrdinalIgnoreCase)) activityDetailText = t;
+                }
+
+                Transform existingCard = transform.Find("ActivityCard");
+                if (existingCard != null)
+                {
+                    activityCardRoot = existingCard.gameObject;
+                }
+                else
+                {
+                    BuildProceduralActivityUI();
+                }
+            }
+        }
+
+        private void BuildProceduralActivityUI()
+        {
+            activityCardRoot = new GameObject("ActivityCard", typeof(RectTransform), typeof(Image));
+            activityCardRoot.transform.SetParent(transform, false);
+            RectTransform cardRt = activityCardRoot.GetComponent<RectTransform>();
+            cardRt.anchorMin = new Vector2(0f, 0f);
+            cardRt.anchorMax = new Vector2(1f, 0f);
+            cardRt.pivot = new Vector2(0.5f, 1f);
+            cardRt.anchoredPosition = new Vector2(0f, -8f);
+            cardRt.sizeDelta = new Vector2(0f, 72f);
+
+            Image bg = activityCardRoot.GetComponent<Image>();
+            bg.color = new Color(0.06f, 0.08f, 0.13f, 0.94f);
+
+            GameObject headerObj = new GameObject("ActivityHeader", typeof(RectTransform), typeof(TextMeshProUGUI));
+            headerObj.transform.SetParent(activityCardRoot.transform, false);
+            RectTransform headerRt = headerObj.GetComponent<RectTransform>();
+            headerRt.anchorMin = new Vector2(0.05f, 0.60f);
+            headerRt.anchorMax = new Vector2(0.95f, 0.94f);
+            headerRt.offsetMin = Vector2.zero;
+            headerRt.offsetMax = Vector2.zero;
+            activityHeaderBadgeText = headerObj.GetComponent<TextMeshProUGUI>();
+            activityHeaderBadgeText.fontSize = 12f;
+            activityHeaderBadgeText.fontStyle = FontStyles.Bold;
+            activityHeaderBadgeText.color = new Color(1f, 0.78f, 0.20f);
+            activityHeaderBadgeText.alignment = TextAlignmentOptions.Left;
+            activityHeaderBadgeText.text = "📋 ACTIVITY • 06:00 - 06:40";
+
+            GameObject detailObj = new GameObject("ActivityDetail", typeof(RectTransform), typeof(TextMeshProUGUI));
+            detailObj.transform.SetParent(activityCardRoot.transform, false);
+            RectTransform detailRt = detailObj.GetComponent<RectTransform>();
+            detailRt.anchorMin = new Vector2(0.05f, 0.08f);
+            detailRt.anchorMax = new Vector2(0.95f, 0.60f);
+            detailRt.offsetMin = Vector2.zero;
+            detailRt.offsetMax = Vector2.zero;
+            activityDetailText = detailObj.GetComponent<TextMeshProUGUI>();
+            activityDetailText.fontSize = 11.5f;
+            activityDetailText.color = new Color(0.95f, 0.96f, 0.98f);
+            activityDetailText.textWrappingMode = TextWrappingModes.Normal;
+            activityDetailText.overflowMode = TextOverflowModes.Ellipsis;
+            activityDetailText.alignment = TextAlignmentOptions.TopLeft;
+            activityDetailText.text = "Collect overnight harvest, sell, plant Taro/Corn + Sweet Potato";
         }
 
         private void CreateProceduralClockText(Transform parent)
@@ -309,15 +582,15 @@ namespace FeaturesTime.UI
             GameObject clockObj = new GameObject("ClockText", typeof(RectTransform), typeof(TextMeshProUGUI));
             clockObj.transform.SetParent(parent, false);
             RectTransform clockRt = clockObj.GetComponent<RectTransform>();
-            clockRt.anchorMin = new Vector2(0.50f, 0.45f);
-            clockRt.anchorMax = new Vector2(0.94f, 0.92f);
+            clockRt.anchorMin = new Vector2(0.58f, 0.50f);
+            clockRt.anchorMax = new Vector2(0.95f, 0.94f);
             clockRt.offsetMin = Vector2.zero;
             clockRt.offsetMax = Vector2.zero;
             clockText = clockObj.GetComponent<TextMeshProUGUI>();
-            clockText.fontSize = 15f;
+            clockText.fontSize = 18f;
             clockText.fontStyle = FontStyles.Bold;
             clockText.alignment = TextAlignmentOptions.Right;
-            clockText.color = new Color(1f, 0.95f, 0.70f);
+            clockText.color = new Color(0.98f, 0.98f, 1f);
             clockText.text = "06:00";
         }
 
@@ -327,9 +600,9 @@ namespace FeaturesTime.UI
             if (rootRt == null)
                 rootRt = gameObject.AddComponent<RectTransform>();
 
-            rootRt.sizeDelta = new Vector2(230f, 75f);
+            rootRt.sizeDelta = new Vector2(280f, 78f);
 
-            // Background Badge
+            // Background Badge (Deep Slate translucent container)
             GameObject badgeObj = new GameObject("TrackerBadge", typeof(RectTransform), typeof(Image));
             badgeObj.transform.SetParent(transform, false);
             RectTransform badgeRt = badgeObj.GetComponent<RectTransform>();
@@ -340,51 +613,65 @@ namespace FeaturesTime.UI
             phaseBadgeBackground = badgeObj.GetComponent<Image>();
             phaseBadgeBackground.color = dayBadgeColor;
 
-            // Day Text (Dinonaktifkan sesuai permintaan pengguna)
+            // Day Text (Pill / Tag di kiri atas)
             GameObject dayObj = new GameObject("DayText", typeof(RectTransform), typeof(TextMeshProUGUI));
             dayObj.transform.SetParent(badgeObj.transform, false);
-            dayObj.SetActive(false);
+            RectTransform dayRt = dayObj.GetComponent<RectTransform>();
+            dayRt.anchorMin = new Vector2(0.05f, 0.52f);
+            dayRt.anchorMax = new Vector2(0.32f, 0.92f);
+            dayRt.offsetMin = Vector2.zero;
+            dayRt.offsetMax = Vector2.zero;
             dayText = dayObj.GetComponent<TextMeshProUGUI>();
+            dayText.fontSize = 13.5f;
+            dayText.fontStyle = FontStyles.Bold;
+            dayText.alignment = TextAlignmentOptions.Left;
+            dayText.color = new Color(1f, 0.84f, 0.25f);
+            int initialDay = TimeManager.Instance != null ? TimeManager.Instance.currentDay : 1;
+            dayText.text = $"DAY {initialDay}";
+            dayObj.SetActive(true);
 
-            // Phase Text (Kiri Atas)
+            // Phase Text (Berdampingan dengan Day Text)
             GameObject phaseObj = new GameObject("PhaseText", typeof(RectTransform), typeof(TextMeshProUGUI));
             phaseObj.transform.SetParent(badgeObj.transform, false);
             RectTransform phaseRt = phaseObj.GetComponent<RectTransform>();
-            phaseRt.anchorMin = new Vector2(0.06f, 0.45f);
-            phaseRt.anchorMax = new Vector2(0.50f, 0.92f);
+            phaseRt.anchorMin = new Vector2(0.32f, 0.52f);
+            phaseRt.anchorMax = new Vector2(0.58f, 0.92f);
             phaseRt.offsetMin = Vector2.zero;
             phaseRt.offsetMax = Vector2.zero;
             phaseText = phaseObj.GetComponent<TextMeshProUGUI>();
-            phaseText.fontSize = 15f;
+            phaseText.fontSize = 13.5f;
             phaseText.fontStyle = FontStyles.Bold;
             phaseText.alignment = TextAlignmentOptions.Left;
+            phaseText.color = new Color(0.95f, 0.96f, 0.98f);
             phaseText.text = "☀️ DAY";
 
             // Clock Text (Kanan Atas: HH:mm)
             CreateProceduralClockText(badgeObj.transform);
 
-            // Wave & Enemies Row
+            // Wave & Status Row (Bawah)
             GameObject waveObj = new GameObject("WaveText", typeof(RectTransform), typeof(TextMeshProUGUI));
             waveObj.transform.SetParent(badgeObj.transform, false);
             RectTransform waveRt = waveObj.GetComponent<RectTransform>();
-            waveRt.anchorMin = new Vector2(0.06f, 0.05f);
-            waveRt.anchorMax = new Vector2(0.55f, 0.35f);
+            waveRt.anchorMin = new Vector2(0.05f, 0.08f);
+            waveRt.anchorMax = new Vector2(0.60f, 0.44f);
             waveRt.offsetMin = Vector2.zero;
             waveRt.offsetMax = Vector2.zero;
             waveText = waveObj.GetComponent<TextMeshProUGUI>();
-            waveText.fontSize = 10f;
+            waveText.fontSize = 11.5f;
+            waveText.color = new Color(0.70f, 0.92f, 0.75f);
             waveText.alignment = TextAlignmentOptions.Left;
-            waveText.text = "Safe Zone (Daytime)";
+            waveText.text = "🛡️ Safe & Farming";
 
             GameObject enemyObj = new GameObject("EnemyText", typeof(RectTransform), typeof(TextMeshProUGUI));
             enemyObj.transform.SetParent(badgeObj.transform, false);
             RectTransform enemyRt = enemyObj.GetComponent<RectTransform>();
-            enemyRt.anchorMin = new Vector2(0.55f, 0.05f);
-            enemyRt.anchorMax = new Vector2(0.94f, 0.35f);
+            enemyRt.anchorMin = new Vector2(0.60f, 0.08f);
+            enemyRt.anchorMax = new Vector2(0.95f, 0.44f);
             enemyRt.offsetMin = Vector2.zero;
             enemyRt.offsetMax = Vector2.zero;
             enemiesText = enemyObj.GetComponent<TextMeshProUGUI>();
-            enemiesText.fontSize = 10f;
+            enemiesText.fontSize = 11.5f;
+            enemiesText.color = new Color(1f, 0.45f, 0.45f);
             enemiesText.alignment = TextAlignmentOptions.Right;
             enemiesText.text = "";
         }

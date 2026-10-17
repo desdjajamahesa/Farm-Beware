@@ -177,9 +177,12 @@ public class StoveUIManager : MonoBehaviour, IModalWindow
             }
 
             // Real-time animation of burner countdowns and progress bars while panel is open
-            if (currentStove != null && currentStove.ActiveCookingCount > 0)
+            if (currentStove != null)
             {
-                UpdateAllBurnerTimers();
+                if (currentStove.ActiveCookingCount > 0)
+                    UpdateAllBurnerTimers();
+                else
+                    SyncCookingProgressBar();
             }
         }
     }
@@ -408,7 +411,7 @@ public class StoveUIManager : MonoBehaviour, IModalWindow
 
     private void HandleCookingProgress(float progress01, float remainingSeconds)
     {
-        // Smooth per-frame updates handled in UpdateAllBurnerTimers()
+        UpdateAllBurnerTimers();
     }
 
     private void HandleCookingCompleted(KitchenRecipe recipe)
@@ -417,6 +420,7 @@ public class StoveUIManager : MonoBehaviour, IModalWindow
         UpdateCookedSlotUI();
         UpdateCookButton();
         UpdateRecipeListVisuals();
+        SyncCookingProgressBar();
     }
 
     private void HandleCookingCancelled(KitchenRecipe recipe)
@@ -425,6 +429,7 @@ public class StoveUIManager : MonoBehaviour, IModalWindow
         UpdateCookedSlotUI();
         UpdateCookButton();
         UpdateRecipeListVisuals();
+        SyncCookingProgressBar();
     }
 
     private void HandleCookedOutputChanged(ItemData item, int count)
@@ -433,6 +438,7 @@ public class StoveUIManager : MonoBehaviour, IModalWindow
         UpdateCookedSlotUI();
         UpdateCookButton();
         UpdateRecipeListVisuals();
+        SyncCookingProgressBar();
     }
 
     private void HandleSlotCookingStarted(int slotIdx, KitchenRecipe recipe, float duration)
@@ -442,11 +448,12 @@ public class StoveUIManager : MonoBehaviour, IModalWindow
         if (selectedRecipe != null)
             UpdateIngredientDisplay(selectedRecipe);
         UpdateRecipeListVisuals();
+        SyncCookingProgressBar();
     }
 
     private void HandleSlotCookingProgress(int slotIdx, float progress01, float remaining)
     {
-        // Real-time animation handled in UpdateAllBurnerTimers()
+        UpdateAllBurnerTimers();
     }
 
     private void HandleSlotCookingCompleted(int slotIdx, KitchenRecipe recipe)
@@ -455,6 +462,7 @@ public class StoveUIManager : MonoBehaviour, IModalWindow
         UpdateCookedSlotUI();
         UpdateCookButton();
         UpdateRecipeListVisuals();
+        SyncCookingProgressBar();
     }
 
     private void HandleSlotCookingCancelled(int slotIdx, KitchenRecipe recipe)
@@ -463,6 +471,7 @@ public class StoveUIManager : MonoBehaviour, IModalWindow
         UpdateCookedSlotUI();
         UpdateCookButton();
         UpdateRecipeListVisuals();
+        SyncCookingProgressBar();
     }
 
     private void HandleSlotOutputChanged(int slotIdx, ItemData item, int count)
@@ -898,6 +907,7 @@ public class StoveUIManager : MonoBehaviour, IModalWindow
         barFillRect.offsetMax = Vector2.zero;
 
         var barFillImg = barFillGO.GetComponent<Image>();
+        barFillImg.sprite = GetWhiteSprite();
         barFillImg.color = new Color(0.96f, 0.62f, 0.04f, 1f);
         barFillImg.type = Image.Type.Filled;
         barFillImg.fillMethod = Image.FillMethod.Horizontal;
@@ -969,6 +979,14 @@ public class StoveUIManager : MonoBehaviour, IModalWindow
                 var statusTmp = card.Find("MidRow/StatusText")?.GetComponent<TextMeshProUGUI>();
                 var barRoot = card.Find("ProgressBar")?.gameObject;
                 var barFillImg = card.Find("ProgressBar/Fill")?.GetComponent<Image>();
+                if (barFillImg != null)
+                {
+                    if (barFillImg.sprite == null)
+                        barFillImg.sprite = GetWhiteSprite();
+                    barFillImg.type = Image.Type.Filled;
+                    barFillImg.fillMethod = Image.FillMethod.Horizontal;
+                    barFillImg.fillOrigin = (int)Image.OriginHorizontal.Left;
+                }
                 var btn = card.Find("ActionButton")?.GetComponent<Button>();
                 var btnImg = card.Find("ActionButton")?.GetComponent<Image>();
                 var btnLabelTmp = card.Find("ActionButton/Label")?.GetComponent<TextMeshProUGUI>();
@@ -1041,10 +1059,16 @@ public class StoveUIManager : MonoBehaviour, IModalWindow
                 }
 
                 ui.statusText.alignment = TextAlignmentOptions.MidlineLeft;
-                ui.statusText.text = $"<b>{dishName}</b>\n<color=#38BDF8>{FormatDuration(slot.remainingTime)}</color>";
+                float prog = Mathf.Clamp01(slot.Progress01);
+                ui.statusText.text = $"<b>{dishName}</b>\n<color=#38BDF8>{FormatDuration(slot.remainingTime)} ({Mathf.RoundToInt(prog * 100f)}%)</color>";
 
                 ui.progressBarRoot.SetActive(true);
-                ui.progressBarFill.fillAmount = slot.Progress01;
+                if (ui.progressBarFill != null)
+                {
+                    if (ui.progressBarFill.sprite == null)
+                        ui.progressBarFill.sprite = GetWhiteSprite();
+                    ui.progressBarFill.fillAmount = prog;
+                }
 
                 ui.actionButton.gameObject.SetActive(true);
                 ui.actionButtonImage.color = new Color(0.85f, 0.25f, 0.25f, 1f);
@@ -1083,6 +1107,8 @@ public class StoveUIManager : MonoBehaviour, IModalWindow
                 ui.background.color = new Color(0.10f, 0.18f, 0.15f, 0.98f);
             }
         }
+
+        SyncCookingProgressBar();
     }
 
     private void UpdateAllBurnerTimers()
@@ -1099,28 +1125,26 @@ public class StoveUIManager : MonoBehaviour, IModalWindow
                 ? slot.activeRecipe.output.itemName
                 : "Cooking";
 
-            ui.statusText.text = $"<b>{dishName}</b>\n<color=#38BDF8>{FormatDuration(slot.remainingTime)}</color>";
-            ui.progressBarFill.fillAmount = slot.Progress01;
+            float prog = Mathf.Clamp01(slot.Progress01);
+            ui.statusText.text = $"<b>{dishName}</b>\n<color=#38BDF8>{FormatDuration(slot.remainingTime)} ({Mathf.RoundToInt(prog * 100f)}%)</color>";
+            if (ui.progressBarFill != null)
+            {
+                if (ui.progressBarFill.sprite == null)
+                    ui.progressBarFill.sprite = GetWhiteSprite();
+                ui.progressBarFill.fillAmount = prog;
+            }
         }
 
-        if (cookingProgressBar != null)
+        SyncCookingProgressBar();
+    }
+
+    private void SyncCookingProgressBar()
+    {
+        // Legacy global cooking progress bar above 'Select a Recipe' removed per user request.
+        // Each burner slot (Burner 1, 2, 3) already has dedicated progress indicators.
+        if (cookingProgressBar != null && cookingProgressBar.gameObject.activeSelf)
         {
-            if (currentStove.ActiveCookingCount > 0)
-            {
-                cookingProgressBar.gameObject.SetActive(true);
-                float maxProg = 0f;
-                for (int i = 0; i < KitchenStove.MaxCookingSlots; i++)
-                {
-                    var s = currentStove.GetSlot(i);
-                    if (s != null && s.IsCooking && s.Progress01 > maxProg)
-                        maxProg = s.Progress01;
-                }
-                cookingProgressBar.value = maxProg;
-            }
-            else
-            {
-                cookingProgressBar.gameObject.SetActive(false);
-            }
+            cookingProgressBar.gameObject.SetActive(false);
         }
     }
 
@@ -1404,6 +1428,17 @@ public class StoveUIManager : MonoBehaviour, IModalWindow
         int m = totalSec / 60;
         int s = totalSec % 60;
         return s > 0 ? $"{m}m {s}s" : $"{m}m";
+    }
+
+    private static Sprite _whiteSprite;
+    public static Sprite GetWhiteSprite()
+    {
+        if (_whiteSprite == null)
+        {
+            var tex = Texture2D.whiteTexture;
+            _whiteSprite = Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.5f));
+        }
+        return _whiteSprite;
     }
 
     private static void SafeDestroy(GameObject go)

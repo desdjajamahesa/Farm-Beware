@@ -509,7 +509,10 @@ public class KitchenStove : MonoBehaviour, IInteractable
 
         while (elapsed < duration)
         {
-            elapsed += Time.deltaTime;
+            float timeMultiplier = FeaturesTime.DayNightTimeManager.Instance != null
+                ? FeaturesTime.DayNightTimeManager.Instance.FastForwardMultiplier
+                : 1f;
+            elapsed += Time.deltaTime * timeMultiplier;
             slot.remainingTime = Mathf.Max(0f, duration - elapsed);
             float progress01 = Mathf.Clamp01(elapsed / duration);
 
@@ -546,6 +549,7 @@ public class KitchenStove : MonoBehaviour, IInteractable
             OnCookedOutputChanged?.Invoke(slot.outputSlot.item, slot.outputSlot.quantity);
         }
 
+        slot.remainingTime = 0f;
         slot.coroutine = null;
         slot.state = CookingState.Completed;
 
@@ -610,6 +614,8 @@ public class KitchenStove : MonoBehaviour, IInteractable
         }
 
         slot.state = CookingState.Idle;
+        slot.remainingTime = 0f;
+        slot.totalDuration = 0f;
         slot.activeRecipe = null;
         slot.activeInventory = null;
 

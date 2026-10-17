@@ -26,4 +26,4 @@ MonoBehaviour:
     Stamina Regen for 2 minutes. (+45 Hunger, +10 Hydration)'
   output: {fileID: 11400000, guid: 94e04a066ceb6a949b7bbe14a0a12b2c, type: 2}
   outputCount: 1
-  processTime: 420
+  processTime: 45

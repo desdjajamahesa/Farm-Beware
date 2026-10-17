@@ -112,6 +112,7 @@ public class MainMenuController : MonoBehaviour
         if (startButton == null && mainMenuPanel != null)
         {
             var t = mainMenuPanel.transform.Find("StartButton");
+            if (t == null) t = mainMenuPanel.transform.Find("NewGameButton");
             if (t == null) t = mainMenuPanel.transform.Find("ContinueButton");
             if (t == null) t = mainMenuPanel.transform.Find("ResumeButton");
             if (t != null) startButton = t.GetComponent<Button>();
@@ -119,11 +120,11 @@ public class MainMenuController : MonoBehaviour
         if (settingsButton == null && mainMenuPanel != null)
         { var t = mainMenuPanel.transform.Find("SettingsButton"); if (t != null) settingsButton = t.GetComponent<Button>(); }
         if (checkpointButton == null && mainMenuPanel != null)
-        { var t = mainMenuPanel.transform.Find("CheckpointButton"); if (t != null) checkpointButton = t.GetComponent<Button>(); }
+        { var t = mainMenuPanel.transform.Find("CheckpointButton") ?? mainMenuPanel.transform.Find("NewGameButton"); if (t != null) checkpointButton = t.GetComponent<Button>(); }
         if (loadGameButton == null)
         {
-            var t = transform.Find("LoadGameButton");
-            if (t == null && mainMenuPanel != null) t = mainMenuPanel.transform.Find("LoadGameButton");
+            var t = mainMenuPanel != null ? mainMenuPanel.transform.Find("LoadGameButton") : null;
+            if (t == null) t = transform.Find("LoadGameButton");
             if (t == null)
             {
                 var buttons = GetComponentsInChildren<Button>(true);
@@ -141,6 +142,7 @@ public class MainMenuController : MonoBehaviour
         if (quitButton == null && mainMenuPanel != null)
         {
             var t = mainMenuPanel.transform.Find("QuitButton");
+            if (t == null) t = mainMenuPanel.transform.Find("ExitButton");
             if (t == null) t = mainMenuPanel.transform.Find("MainMenuButton");
             if (t != null) quitButton = t.GetComponent<Button>();
         }
@@ -223,14 +225,14 @@ public class MainMenuController : MonoBehaviour
     void Update()
     {
         bool escPressed = false;
-#if ENABLE_INPUT_SYSTEM
         if (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame)
+        {
             escPressed = true;
-#endif
-#if ENABLE_LEGACY_INPUT_MANAGER
-        if (Input.GetKeyDown(KeyCode.Escape))
-            escPressed = true;
-#endif
+        }
+        else
+        {
+            try { escPressed = Input.GetKeyDown(KeyCode.Escape); } catch { }
+        }
         if (escPressed)
         {
             HandleEscapeKey();
@@ -796,6 +798,16 @@ public class MainMenuController : MonoBehaviour
                 var txt = startButton.GetComponentInChildren<TextMeshProUGUI>();
                 if (txt != null && !useLegacyCodeStyling) txt.gameObject.SetActive(false);
             }
+            if (loadGameButton != null)
+            {
+                var loadTxt = loadGameButton.GetComponentInChildren<TextMeshProUGUI>();
+                if (loadTxt != null && !useLegacyCodeStyling) loadTxt.gameObject.SetActive(false);
+            }
+            if (settingsButton != null)
+            {
+                var setTxt = settingsButton.GetComponentInChildren<TextMeshProUGUI>();
+                if (setTxt != null && !useLegacyCodeStyling) setTxt.gameObject.SetActive(false);
+            }
             if (quitButton != null)
             {
                 var quitTxt = quitButton.GetComponentInChildren<TextMeshProUGUI>();
@@ -815,8 +827,18 @@ public class MainMenuController : MonoBehaviour
                 var txt = startButton.GetComponentInChildren<TextMeshProUGUI>();
                 if (txt != null)
                 {
-                    txt.gameObject.SetActive(true);
+                    txt.gameObject.SetActive(useLegacyCodeStyling);
                     txt.text = "RESUME";
+                }
+            }
+
+            if (checkpointButton != null)
+            {
+                var cpTxt = checkpointButton.GetComponentInChildren<TextMeshProUGUI>();
+                if (cpTxt != null)
+                {
+                    cpTxt.gameObject.SetActive(useLegacyCodeStyling);
+                    cpTxt.text = "NEW GAME";
                 }
             }
 
@@ -825,7 +847,7 @@ public class MainMenuController : MonoBehaviour
                 var setTxt = settingsButton.GetComponentInChildren<TextMeshProUGUI>();
                 if (setTxt != null)
                 {
-                    setTxt.gameObject.SetActive(true);
+                    setTxt.gameObject.SetActive(useLegacyCodeStyling);
                     setTxt.text = "SETTING";
                 }
             }
@@ -835,7 +857,7 @@ public class MainMenuController : MonoBehaviour
                 var quitTxt = quitButton.GetComponentInChildren<TextMeshProUGUI>();
                 if (quitTxt != null)
                 {
-                    quitTxt.gameObject.SetActive(true);
+                    quitTxt.gameObject.SetActive(useLegacyCodeStyling);
                     quitTxt.text = "MAIN MENU";
                 }
             }
@@ -845,7 +867,7 @@ public class MainMenuController : MonoBehaviour
                 var qdTxt = quitDesktopButton.GetComponentInChildren<TextMeshProUGUI>();
                 if (qdTxt != null)
                 {
-                    qdTxt.gameObject.SetActive(true);
+                    qdTxt.gameObject.SetActive(useLegacyCodeStyling);
                     qdTxt.text = "EXIT TO DESKTOP";
                 }
             }
@@ -897,12 +919,25 @@ public class MainMenuController : MonoBehaviour
             return;
         }
 
-        // When starting from Main Menu: automatically enter the last saved game if one exists!
-        if (FeaturesSaveSystem.SaveSystemManager.Instance != null)
+        // When starting from Main Menu: check if saved games exist
+        var saveMgr = FeaturesSaveSystem.SaveSystemManager.Instance;
+        var existingSaves = saveMgr != null ? saveMgr.GetSaveList() : null;
+
+        if (existingSaves != null && existingSaves.Count > 0)
         {
-            string lastSaveId = FeaturesSaveSystem.SaveSystemManager.Instance.GetLastPlayedSaveId();
-            FeaturesSaveSystem.SaveSystemManager.PendingSaveIdToLoad = lastSaveId;
-            Debug.Log($"[MainMenuController] OnStartClicked: Auto-loading last save '{lastSaveId}'");
+            // Player has existing saves! Open the Save/Load modal UI so they can either load a slot or click "+ New Game"
+            if (FeaturesSaveSystem.SaveSystemUI.Instance != null)
+            {
+                FeaturesSaveSystem.SaveSystemUI.Instance.Open();
+                return;
+            }
+        }
+
+        // No saves exist: proceed directly to fresh New Game session
+        if (saveMgr != null)
+        {
+            FeaturesSaveSystem.SaveSystemManager.PendingSaveIdToLoad = null;
+            Debug.Log("[MainMenuController] OnStartClicked: Starting a fresh New Game");
         }
 
         bool willLoadScene = loadSceneOnStart && !string.IsNullOrEmpty(targetSceneName);
@@ -989,20 +1024,61 @@ public class MainMenuController : MonoBehaviour
     private void OnCheckpointClicked()
     {
         if (!menuActive) return;
-        Debug.Log("[MainMenuController] Reloading scene / checkpoint.");
+        OnNewGameClicked();
+    }
+
+    /// <summary>
+    /// Starts a clean New Game. Prompts confirmation dialog if invoked during active gameplay.
+    /// </summary>
+    public void OnNewGameClicked()
+    {
+        bool isMainMenu = SceneManager.GetActiveScene().name == "MainMenuScene";
+
+        if (!isMainMenu)
+        {
+            // If in-game, confirm with player before starting New Game so unsaved work isn't lost
+            if (FeaturesSaveSystem.SaveSystemUI.Instance != null)
+            {
+                FeaturesSaveSystem.SaveSystemUI.Instance.ShowConfirmDialog(
+                    title: "START NEW GAME",
+                    message: "Are you sure you want to start a <color=#FBBF24>New Game</color>?\nAny unsaved progress in this session will be lost.",
+                    actionLabel: "START NEW GAME",
+                    actionColor: new Color(0.85f, 0.45f, 0.15f, 1f),
+                    onConfirm: () =>
+                    {
+                        ExecuteNewGame();
+                    }
+                );
+                return;
+            }
+        }
+
+        ExecuteNewGame();
+    }
+
+    private void ExecuteNewGame()
+    {
         Time.timeScale = 1f;
         LockPlayerInput(false);
+        menuActive = false;
+        currentState = MenuState.Hidden;
+        SetMenuVisualsActive(false);
 
-        if (FadeManager.Instance != null)
+        if (FeaturesSaveSystem.SaveSystemManager.Instance != null)
         {
-            FadeManager.Instance.FadeIn(0.3f, () =>
-            {
-                SceneManager.LoadScene(SceneManager.GetActiveScene().name);
-            });
+            FeaturesSaveSystem.SaveSystemManager.Instance.StartNewGame();
         }
         else
         {
-            SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+            FeaturesSaveSystem.SaveSystemManager.PendingSaveIdToLoad = null;
+            if (FeaturesCommon.CloudTransitionManager.Instance != null)
+            {
+                FeaturesCommon.CloudTransitionManager.Instance.TransitionToScene("StagingScene");
+            }
+            else
+            {
+                SceneManager.LoadScene("StagingScene");
+            }
         }
     }
 
@@ -1041,6 +1117,25 @@ public class MainMenuController : MonoBehaviour
         }
     }
 
+    [Header("Settings Menu Scale")]
+    [SerializeField] private float settingsMenuScale = 1.25f;
+
+    public float SettingsMenuScale
+    {
+        get => settingsMenuScale;
+        set => settingsMenuScale = value;
+    }
+
+    private Vector3 GetSettingsTargetScale()
+    {
+        var pauseAnimator = GetComponent<PauseMenuAnimator>();
+        if (pauseAnimator != null)
+        {
+            return Vector3.one * Mathf.Max(1.2f, pauseAnimator.MenuScale * 0.96f);
+        }
+        return Vector3.one * settingsMenuScale;
+    }
+
     private void UpdateSettingsOpening(float dt)
     {
         stateTimer += dt;
@@ -1076,13 +1171,16 @@ public class MainMenuController : MonoBehaviour
                 titleCG.interactable = false;
             }
 
+            Vector3 targetScale = GetSettingsTargetScale();
+            Vector3 startScale = targetScale * 0.9f;
+
             // Aktifkan SettingsPanel
             if (settingsPanel != null && !settingsPanel.activeSelf)
             {
                 settingsPanel.SetActive(true);
                 if (settingsCG == null)
                     settingsCG = settingsPanel.GetComponent<CanvasGroup>() ?? settingsPanel.AddComponent<CanvasGroup>();
-                settingsPanel.transform.localScale = Vector3.one * 0.9f;
+                settingsPanel.transform.localScale = startScale;
                 settingsCG.alpha = 0f;
             }
 
@@ -1097,13 +1195,13 @@ public class MainMenuController : MonoBehaviour
             }
 
             if (settingsPanel != null)
-                settingsPanel.transform.localScale = Vector3.Lerp(Vector3.one * 0.9f, Vector3.one, t);
+                settingsPanel.transform.localScale = Vector3.Lerp(startScale, targetScale, t);
 
             if (t >= 1f)
             {
                 currentState = MenuState.SettingsOpen;
                 if (settingsPanel != null)
-                    settingsPanel.transform.localScale = Vector3.one;
+                    settingsPanel.transform.localScale = targetScale;
 
                 if (settingsCG != null)
                 {
@@ -1121,6 +1219,8 @@ public class MainMenuController : MonoBehaviour
         float hideDur = 0.15f;
         float showDur = 0.20f;
 
+        Vector3 targetScale = GetSettingsTargetScale();
+
         if (stateTimer < hideDur)
         {
             float t = EaseOutCubic(Mathf.Clamp01(stateTimer / hideDur));
@@ -1130,7 +1230,7 @@ public class MainMenuController : MonoBehaviour
                 settingsCG.interactable = false;
             }
             if (settingsPanel != null)
-                settingsPanel.transform.localScale = Vector3.Lerp(Vector3.one, Vector3.one * 0.95f, t);
+                settingsPanel.transform.localScale = Vector3.Lerp(targetScale, targetScale * 0.95f, t);
         }
         else
         {

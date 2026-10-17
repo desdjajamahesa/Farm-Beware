@@ -199,10 +199,49 @@ namespace FeaturesEconomy
             int currentGold = PlayerWallet.Instance != null ? PlayerWallet.Instance.CurrentGold : 0;
             UpdateGoldDisplay(currentGold);
             SwitchTab(ShopTab.Buy);
+            ResetScrollPosition();
+        }
+
+        private Coroutine scrollSnapCoroutine;
+
+        /// <summary>
+        /// Mengembalikan posisi ScrollRect ke paling atas (1f) secara instan dan aman dari layout update.
+        /// </summary>
+        public void ResetScrollPosition()
+        {
+            if (scrollRect != null)
+            {
+                scrollRect.StopMovement();
+                scrollRect.verticalNormalizedPosition = 1f;
+            }
+
+            if (gameObject.activeInHierarchy)
+            {
+                if (scrollSnapCoroutine != null) StopCoroutine(scrollSnapCoroutine);
+                scrollSnapCoroutine = StartCoroutine(RoutineSnapScrollToTop());
+            }
+        }
+
+        private System.Collections.IEnumerator RoutineSnapScrollToTop()
+        {
+            Canvas.ForceUpdateCanvases();
+            yield return null;
+            if (scrollRect != null)
+            {
+                scrollRect.StopMovement();
+                scrollRect.verticalNormalizedPosition = 1f;
+            }
+            scrollSnapCoroutine = null;
         }
 
         public void CloseShop()
         {
+            if (scrollSnapCoroutine != null)
+            {
+                StopCoroutine(scrollSnapCoroutine);
+                scrollSnapCoroutine = null;
+            }
+
             isOpen = false;
             ModalStackManager.Instance?.PopSpecific(this);
             if (shopPanel != null)
@@ -247,6 +286,8 @@ namespace FeaturesEconomy
                 RefreshBuyList();
             else
                 RefreshSellList();
+
+            ResetScrollPosition();
         }
 
         private void UpdateGoldDisplay(int gold)

@@ -60,6 +60,27 @@ namespace FeaturesEconomy
             OnMarketPricesChanged?.Invoke();
         }
 
+        /// <summary>
+        /// Resets all economy states, daily statistics, and rolls fresh market prices for New Game.
+        /// </summary>
+        public void ResetEconomyState()
+        {
+            dailyCropsHarvested = 0;
+            dailyCropsSold = 0;
+            dailyGoldEarnedTrading = 0;
+            dailyMonstersSlain = 0;
+            dailyGoldEarnedCombat = 0;
+
+            lastDayMonstersSlain = 0;
+            lastDayGoldEarnedCombat = 0;
+            lastDayCropsHarvested = 0;
+            lastDayCropsSold = 0;
+            lastDayGoldEarnedTrading = 0;
+
+            RollDailyMarketPrices();
+            Debug.Log("[DailyEconomyManager] Economy state fully reset for New Game.");
+        }
+
         [Header("Daily Activity Statistics (Reset on New Day)")]
         public int dailyCropsHarvested = 0;
         public int dailyCropsSold = 0;

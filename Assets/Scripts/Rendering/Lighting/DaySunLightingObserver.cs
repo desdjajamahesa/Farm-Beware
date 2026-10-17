@@ -61,7 +61,7 @@ namespace FeaturesRendering.Lighting
 
         [Tooltip("Jam berakhirnya siang/senja (Matahari tenggelam di ufuk barat-daya).")]
         [Range(17f, 21f)]
-        [SerializeField] private float sunsetHour = 18.5f;
+        [SerializeField] private float sunsetHour = 18.0f;
 
         [Tooltip("Sudut Azimuth saat matahari terbit (derajat horizontal). Rekomendasi: 135° (Timur-Tenggara).")]
         [Range(0f, 360f)]
@@ -136,6 +136,8 @@ namespace FeaturesRendering.Lighting
 
         private void OnEnable()
         {
+            if (yieldToDirector) return;
+
             // Mendaftar sebagai Observer ke ITimeService
             var timeService = ServiceLocator.Resolve<ITimeService>();
             if (timeService != null)

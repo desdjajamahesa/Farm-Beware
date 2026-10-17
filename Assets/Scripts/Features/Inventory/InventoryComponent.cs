@@ -19,12 +19,23 @@ public class InventoryComponent : MonoBehaviour
 
     private void Awake()
     {
+        // Auto-detect player inventory agar hasHotbar aktif otomatis dan kapasitas 16 slot
+        if (CompareTag("Player") || GetComponent<IPlayerContext>() != null || blockTrophyItems)
+        {
+            hasHotbar = true;
+            if (maxCapacity < 16)
+            {
+                maxCapacity = 16;
+            }
+        }
+
         if (slots == null || slots.Count == 0)
         {
             ResetInventory(maxCapacity);
         }
         else
         {
+            EnsureSlotsAllocated();
             // Pastikan item yang sudah ada di inspector tidak memiliki quantity <= 0
             for (int i = 0; i < slots.Count; i++)
             {
@@ -33,12 +44,6 @@ public class InventoryComponent : MonoBehaviour
                     slots[i].quantity = 1;
                 }
             }
-        }
-
-        // Auto-detect player inventory agar hasHotbar aktif otomatis tanpa perlu konfigurasi inspector manual
-        if (CompareTag("Player") || GetComponent<IPlayerContext>() != null || blockTrophyItems)
-        {
-            hasHotbar = true;
         }
     }
 
@@ -435,12 +440,13 @@ public class InventoryComponent : MonoBehaviour
                         return;
                     }
 
-                    bottle.DrinkSip(1f);
+                    bottle.DrinkSip(25f);
                     if (textService != null)
                     {
+                        int chargesLeft = Mathf.FloorToInt(bottle.CurrentWater / 25f);
                         textService.SpawnText(
                             transform.position + Vector3.up * 1.5f,
-                            $"💧 Gulp! (+25 Hydration | {Mathf.FloorToInt(bottle.CurrentWater)}/4 Charges)",
+                            $"💧 Gulp! (+25 Hydration | {chargesLeft}/4 Charges)",
                             new Color(0.2f, 0.85f, 1f));
                     }
                     return;

@@ -27,7 +27,7 @@ MonoBehaviour:
   cleanVariant: {fileID: 0}
   foodTier: 0
   foodCategory: 5
-  healAmount: 0
+  healAmount: 50
   hungerRestore: 10
   hydrationRestore: 10
   buffEffects:

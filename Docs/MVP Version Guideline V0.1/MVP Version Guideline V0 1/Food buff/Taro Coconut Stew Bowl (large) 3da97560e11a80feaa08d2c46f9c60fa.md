@@ -2,6 +2,7 @@
 
 Buffs: Powerful: +12% ATK & ATK SPD (2mins)
 Cooking time: 5m
+Costs: 12k gold
 Hunger/Hyrdation: +20 Hunger & +10 Hydration
 Resource: 6 Taro + 20 Water
 

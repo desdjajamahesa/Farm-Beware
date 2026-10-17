@@ -26,4 +26,4 @@ MonoBehaviour:
     & +10% Move Speed for 30s. (+10 Hunger, -8 Hydration)'
   output: {fileID: 11400000, guid: ffe21e61d26c9414ba3b116428a5044e, type: 2}
   outputCount: 2
-  processTime: 90
+  processTime: 20

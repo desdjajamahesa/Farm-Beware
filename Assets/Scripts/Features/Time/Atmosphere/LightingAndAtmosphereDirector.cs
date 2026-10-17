@@ -482,6 +482,10 @@ namespace Features.Time.Atmosphere
                     );
                 }
             }
+            else if (registeredTimeService != null && registeredTimeService.UseContinuousTime)
+            {
+                EvaluateSunParameters(registeredTimeService.CurrentHour);
+            }
             else
             {
                 EnvironmentLightingTheme activeTheme = dayTheme;
@@ -543,6 +547,17 @@ namespace Features.Time.Atmosphere
         /// </summary>
         public void ApplyPresetInstant(TimeManager.DayPhase phase)
         {
+            if (registeredTimeService == null)
+            {
+                registeredTimeService = ServiceLocator.Resolve<ITimeService>();
+            }
+
+            if (registeredTimeService != null && registeredTimeService.UseContinuousTime && phase != TimeManager.DayPhase.Night)
+            {
+                ApplyPresetInstant(registeredTimeService.CurrentPhase);
+                return;
+            }
+
             ApplyPresetInstant(phase == TimeManager.DayPhase.Night ? DayPhase.Night : DayPhase.Day);
         }
 

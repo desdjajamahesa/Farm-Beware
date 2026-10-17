@@ -34,6 +34,8 @@ Execution instructions, keybindings, and scene configuration for **Farm-Beware**
 | `E` | Interact (Bed, Stove, Sink, Chest, Wardrobe) | Near interactable |
 | `Tab` or `I` | Toggle Inventory & Character Sheet | Free-roam |
 | `ESC` | Close Active Modal (Priority 1) / Pause Menu (Priority 2) | Any time |
+| `0` *(Debug)* | Toggle Fast-Forward (8x Speed) | Daytime exploration |
+| `T` or `9` | Toggle Clock Display Mode (60s/40m vs 30s/20m) | Free-roam / Daytime |
 | `N` *(Debug)* | Force Trigger Night Brawl Phase immediately | Testing combat |
 
 ---

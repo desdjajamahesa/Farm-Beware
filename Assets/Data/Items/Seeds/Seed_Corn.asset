@@ -28,4 +28,4 @@ MonoBehaviour:
   growthDuration: 900
   minYield: 1
   maxYield: 3
-  associatedMonster: 
+  associatedMonster: Corn Musketeer
