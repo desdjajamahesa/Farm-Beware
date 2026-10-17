@@ -111,12 +111,15 @@ namespace FeaturesInteraction
             // Kunci gerakan pemain selama proses tidur
             if (pc != null)
             {
-                pc.IsInputLocked = true;
+                pc.AddInputLock("BedSleep");
             }
 
-            // Malam selesai: pulihkan HP pemain bila komponen PlayerStats tersedia.
+            // Hapus seluruh food buff aktif saat pemain tidur (sehingga pagi hari bersih dari buff)
             if (interactor != null)
             {
+                interactor.SendMessage("ClearAllBuffs", SendMessageOptions.DontRequireReceiver);
+
+                // Malam selesai: pulihkan HP pemain bila komponen PlayerStats tersedia.
                 interactor.SendMessage("Heal", sleepHealAmount, SendMessageOptions.DontRequireReceiver);
             }
 
@@ -137,7 +140,7 @@ namespace FeaturesInteraction
                             new Color(1f, 0.9f, 0.3f));
                     }
                     if (pc != null)
-                        pc.IsInputLocked = false;
+                        pc.RemoveInputLock("BedSleep");
                     UpdateLabel();
                 });
             }
@@ -145,14 +148,25 @@ namespace FeaturesInteraction
             {
                 timeService.AdvanceToNextDay();
                 if (pc != null)
-                    pc.IsInputLocked = false;
+                    pc.RemoveInputLock("BedSleep");
                 UpdateLabel();
             }
         }
 
         private void ExecuteDaytimeSleep(ITimeService timeService, GameObject interactor)
         {
+            var pc = interactor != null ? interactor.GetComponent<IPlayerContext>() : ServiceLocator.Resolve<IPlayerContext>();
+            if (pc != null)
+            {
+                pc.AddInputLock("BedSleep");
+            }
+
             timeService.StartNightPhase();
+
+            if (pc != null)
+            {
+                pc.RemoveInputLock("BedSleep");
+            }
 
             var floatingText = ServiceLocator.Resolve<IFloatingTextService>();
             if (floatingText != null && interactor != null)

@@ -24,7 +24,7 @@ namespace FarmBeware.EditorTests
             Debug.Log("[AUDIT-SUITE] ========================================================");
 
             int passed = 0;
-            int total = 19;
+            int total = 22;
 
             if (Test_DayNight_PhaseProgression_DuskUntilNight()) passed++;
             if (Test_BedInteractable_Logic_AllowsDuskAndBlocksNightOnly()) passed++;
@@ -45,12 +45,15 @@ namespace FarmBeware.EditorTests
             if (Test_AttackTokenDispatcher_AnticipatoryAcquisitionAndEviction()) passed++;
             if (Test_NavMesh_ObstaclePathfinding_RoutesAroundFences()) passed++;
             if (Test_BuildFixes_TelegraphDecal_FloorCollider_AndDoorSafety()) passed++;
+            if (Test_PlayerBuff_ClearsOnSleepAndDayTransition()) passed++;
+            if (Test_DayTransitionUI_DayAndNightBannerAnimation()) passed++;
+            if (Test_MultiSourceInputLock_AndTransitionLeakPrevention()) passed++;
 
             Debug.Log("[AUDIT-SUITE] ========================================================");
             Debug.Log($"[AUDIT-SUITE] Complete! Passed: {passed}/{total}");
             if (passed == total)
             {
-                Debug.Log("✅ [AUDIT-SUITE] ALL 19 COMPREHENSIVE AUDIT TESTS PASSED SUCCESSFULLY!");
+                Debug.Log("✅ [AUDIT-SUITE] ALL 22 COMPREHENSIVE AUDIT TESTS PASSED SUCCESSFULLY!");
             }
             else
             {
@@ -1155,6 +1158,262 @@ namespace FarmBeware.EditorTests
 
             Debug.Log("✅ Test 19: CombatTelegraphDecal Resources bundling, House_UnifiedFloorCollider sub-floor positioning, and door safety verified.");
             return true;
+        }
+
+        // Test 20: Food buffs clear on sleep / day transition so morning starts completely fresh
+        private static bool Test_PlayerBuff_ClearsOnSleepAndDayTransition()
+        {
+            var go = new GameObject("Test_Player_BuffSleepPurge");
+            try
+            {
+                var stats = go.AddComponent<PlayerStats>();
+                stats.maxHealth = 100;
+                stats.currentHealth = 100;
+
+                var buffMgr = go.AddComponent<PlayerBuffManager>();
+
+                // 1. Apply multiple food buffs
+                var hpBuff = new BuffEffectData(BuffType.MaxHealthPercent, 0.20f, 600f, "Purple Taro Cake", "+20% Max HP", null);
+                var speedBuff = new BuffEffectData(BuffType.MoveSpeedPercent, 0.15f, 600f, "Roasted Sweet Potato", "+15% Move Speed", null);
+                var regenBuff = new BuffEffectData(BuffType.HealthRegenTick, 5f, 600f, "Corn Porridge", "5 HP/s Regen", null);
+
+                buffMgr.ApplyBuff(hpBuff);
+                buffMgr.ApplyBuff(speedBuff);
+                buffMgr.ApplyBuff(regenBuff);
+
+                // Verify pre-sleep state: buffs are active, stats modified
+                if (buffMgr.ActiveBuffs.Count != 3)
+                {
+                    Debug.LogError($"Expected 3 active buffs before sleep, got {buffMgr.ActiveBuffs.Count}!");
+                    return false;
+                }
+
+                if (stats.maxHealth != 120)
+                {
+                    Debug.LogError($"Expected 120 maxHealth with +20% HP buff, got {stats.maxHealth}!");
+                    return false;
+                }
+
+                if (Mathf.Abs(buffMgr.GetSpeedMultiplier() - 1.15f) > 0.01f)
+                {
+                    Debug.LogError($"Expected 1.15x speed multiplier, got {buffMgr.GetSpeedMultiplier()}!");
+                    return false;
+                }
+
+                bool eventFired = false;
+                buffMgr.OnBuffsChanged += () => eventFired = true;
+
+                // 2. Player sleeps in bed / advances to morning
+                buffMgr.ClearAllBuffs();
+
+                // Verify post-sleep state: 0 buffs remain, stats restored to baseline
+                if (buffMgr.ActiveBuffs.Count != 0)
+                {
+                    Debug.LogError($"Expected 0 active buffs after sleep, got {buffMgr.ActiveBuffs.Count}!");
+                    return false;
+                }
+
+                if (stats.maxHealth != 100)
+                {
+                    Debug.LogError($"Expected maxHealth restored to base 100 after sleep, got {stats.maxHealth}!");
+                    return false;
+                }
+
+                if (Mathf.Abs(buffMgr.GetSpeedMultiplier() - 1.0f) > 0.01f)
+                {
+                    Debug.LogError($"Expected 1.0x baseline speed multiplier after sleep, got {buffMgr.GetSpeedMultiplier()}!");
+                    return false;
+                }
+
+                if (!eventFired)
+                {
+                    Debug.LogError("Expected OnBuffsChanged to fire upon clearing buffs!");
+                    return false;
+                }
+
+                Debug.Log("✅ Test 20: Food buff sleep purge, baseline stat restoration, and HUD event notification verified.");
+                return true;
+            }
+            finally
+            {
+                Object.DestroyImmediate(go);
+            }
+        }
+
+        // Test 21: DayTransitionUI Day and Night animated banner configuration, text styling, and cancel integrity
+        private static bool Test_DayTransitionUI_DayAndNightBannerAnimation()
+        {
+            var go = new GameObject("Test_DayTransitionUI_Obj");
+            try
+            {
+                var transitionUI = go.AddComponent<DayTransitionUI>();
+                transitionUI.EnsureUIHierarchy();
+
+                if (transitionUI.CanvasGroupRef == null)
+                {
+                    Debug.LogError("DayTransitionUI failed to generate CanvasGroup!");
+                    return false;
+                }
+
+                // 1. Test Day Transition
+                transitionUI.PlayDayTransition(3);
+                if (transitionUI.TitleTextRef == null || !transitionUI.TitleTextRef.text.Contains("DAY 3"))
+                {
+                    Debug.LogError($"Expected Day banner title to contain 'DAY 3', got '{transitionUI.TitleTextRef?.text}'!");
+                    return false;
+                }
+                if (transitionUI.SubtitleTextRef == null || !transitionUI.SubtitleTextRef.text.Contains("dawn"))
+                {
+                    Debug.LogError($"Expected Day subtitle to mention 'dawn', got '{transitionUI.SubtitleTextRef?.text}'!");
+                    return false;
+                }
+
+                // 2. Test Night Transition
+                transitionUI.PlayNightTransition();
+                if (transitionUI.TitleTextRef == null || !transitionUI.TitleTextRef.text.Contains("NIGHTFALL"))
+                {
+                    Debug.LogError($"Expected Night banner title to be 'NIGHTFALL', got '{transitionUI.TitleTextRef?.text}'!");
+                    return false;
+                }
+                if (transitionUI.SubtitleTextRef == null || !transitionUI.SubtitleTextRef.text.Contains("homestead"))
+                {
+                    Debug.LogError($"Expected Night subtitle to mention 'homestead', got '{transitionUI.SubtitleTextRef?.text}'!");
+                    return false;
+                }
+
+                // 3. Test CancelTransition
+                transitionUI.CancelTransition();
+                if (transitionUI.CanvasGroupRef.alpha > 0.01f)
+                {
+                    Debug.LogError($"Expected CanvasGroup alpha to be 0 after CancelTransition, got {transitionUI.CanvasGroupRef.alpha}!");
+                    return false;
+                }
+
+                Debug.Log("✅ Test 21: DayTransitionUI Day/Night banner procedural generation, text styling, and cancel verified.");
+                return true;
+            }
+            finally
+            {
+                Object.DestroyImmediate(go);
+            }
+        }
+
+        // Test 22: Multi-source input lock hierarchy, DayTransitionUI raycast absorption, and leak prevention
+        private static bool Test_MultiSourceInputLock_AndTransitionLeakPrevention()
+        {
+            var playerGo = new GameObject("Test_Player_LockAudit");
+            var transitionGo = new GameObject("Test_DayTransition_LockAudit");
+
+            try
+            {
+                var playerControl = playerGo.AddComponent<PlayerControl>();
+                var playerCtx = (FarmBeware.Core.Runtime.IPlayerContext)playerControl;
+                FarmBeware.Core.Runtime.ServiceLocator.Register<FarmBeware.Core.Runtime.IPlayerContext>(playerControl);
+
+                // 1. Initial State: Unlocked
+                if (playerControl.isInputLocked)
+                {
+                    Debug.LogError("PlayerControl must initially have isInputLocked == false!");
+                    return false;
+                }
+
+                // 2. Add named lock for DayTransition
+                playerControl.AddInputLock("DayTransition");
+                if (!playerControl.isInputLocked || !playerControl.HasInputLock("DayTransition"))
+                {
+                    Debug.LogError("Expected isInputLocked == true and HasInputLock('DayTransition') == true!");
+                    return false;
+                }
+
+                // 3. Attempt premature legacy generic unlock (e.g. from dialog or save UI closing)
+                playerCtx.IsInputLocked = false;
+                if (!playerControl.isInputLocked)
+                {
+                    Debug.LogError("Input Lock Leak! Legacy generic unlock improperly cleared 'DayTransition' lock!");
+                    return false;
+                }
+
+                // 4. Overlapping lock sources: BedSleep + DayTransition
+                playerControl.AddInputLock("BedSleep");
+                playerControl.RemoveInputLock("DayTransition");
+                if (!playerControl.isInputLocked)
+                {
+                    Debug.LogError("Input Lock Leak! Releasing DayTransition improperly cleared BedSleep lock!");
+                    return false;
+                }
+
+                playerControl.RemoveInputLock("BedSleep");
+                if (playerControl.isInputLocked)
+                {
+                    Debug.LogError("PlayerControl must be unlocked after all lock sources are removed!");
+                    return false;
+                }
+
+                // 5. Test ClearAllInputLocks (e.g. for save file reload or scene reset)
+                playerControl.AddInputLock("Stun");
+                playerControl.AddInputLock("Respawn");
+                if (!playerControl.isInputLocked)
+                {
+                    Debug.LogError("PlayerControl must be locked after adding Stun and Respawn!");
+                    return false;
+                }
+                playerControl.ClearAllInputLocks();
+                if (playerControl.isInputLocked)
+                {
+                    Debug.LogError("ClearAllInputLocks failed to reset isInputLocked to false!");
+                    return false;
+                }
+
+                // 6. Test DayTransitionUI raycast blocking & auto-locking
+                var transitionUI = transitionGo.AddComponent<DayTransitionUI>();
+                transitionUI.EnsureUIHierarchy();
+                transitionUI.PlayNightTransition();
+
+                if (transitionUI.CanvasGroupRef == null || !transitionUI.CanvasGroupRef.blocksRaycasts)
+                {
+                    Debug.LogError("DayTransitionUI failed to set CanvasGroup.blocksRaycasts == true during active transition!");
+                    return false;
+                }
+
+                if (transitionUI.VignetteOverlayRef == null || !transitionUI.VignetteOverlayRef.raycastTarget)
+                {
+                    Debug.LogError("DayTransitionUI failed to set VignetteOverlay.raycastTarget == true during active transition!");
+                    return false;
+                }
+
+                if (!playerControl.isInputLocked)
+                {
+                    Debug.LogError("DayTransitionUI failed to automatically lock PlayerControl input upon playing transition!");
+                    return false;
+                }
+
+                // Cancel transition and verify raycast blocking and input lock are released cleanly
+                transitionUI.CancelTransition();
+                if (transitionUI.CanvasGroupRef.blocksRaycasts)
+                {
+                    Debug.LogError("DayTransitionUI failed to reset blocksRaycasts to false on CancelTransition!");
+                    return false;
+                }
+                if (transitionUI.VignetteOverlayRef.raycastTarget)
+                {
+                    Debug.LogError("DayTransitionUI failed to reset VignetteOverlay.raycastTarget to false on CancelTransition!");
+                    return false;
+                }
+                if (playerControl.isInputLocked)
+                {
+                    Debug.LogError("DayTransitionUI failed to release player input lock on CancelTransition!");
+                    return false;
+                }
+
+                Debug.Log("✅ Test 22: Multi-source input lock hierarchy, DayTransitionUI raycast absorption, and leak prevention verified.");
+                return true;
+            }
+            finally
+            {
+                FarmBeware.Core.Runtime.ServiceLocator.Unregister<FarmBeware.Core.Runtime.IPlayerContext>();
+                Object.DestroyImmediate(playerGo);
+                Object.DestroyImmediate(transitionGo);
+            }
         }
     }
 }

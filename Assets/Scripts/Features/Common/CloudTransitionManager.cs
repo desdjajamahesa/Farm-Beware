@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.SceneManagement;
+using FarmBeware.Core.Runtime;
 
 namespace FeaturesCommon
 {
@@ -155,6 +156,7 @@ namespace FeaturesCommon
 
         private void OnDestroy()
         {
+            UnlockPlayer();
             if (Instance == this)
             {
                 SceneManager.sceneLoaded -= HandleSceneLoaded;
@@ -511,9 +513,28 @@ namespace FeaturesCommon
 
         #region Coroutines
 
+        private void LockPlayer()
+        {
+            var player = ServiceLocator.Resolve<IPlayerContext>();
+            if (player != null)
+            {
+                player.AddInputLock("CloudTransition");
+            }
+        }
+
+        private void UnlockPlayer()
+        {
+            var player = ServiceLocator.Resolve<IPlayerContext>();
+            if (player != null)
+            {
+                player.RemoveInputLock("CloudTransition");
+            }
+        }
+
         private IEnumerator RoutinePlayCover(float duration, Action onComplete)
         {
             isTransitioning = true;
+            LockPlayer();
             canvasGroup.alpha = 1f;
             canvasGroup.blocksRaycasts = true;
 
@@ -564,6 +585,7 @@ namespace FeaturesCommon
             isCoveringScreen = false;
             isTransitioning = false;
             activeTransitionCoroutine = null;
+            UnlockPlayer();
 
             onComplete?.Invoke();
         }

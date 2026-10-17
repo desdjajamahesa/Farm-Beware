@@ -2,6 +2,21 @@
 
 Semua perubahan penting pada proyek ini oleh M-Roihan (Roi) dari `branch-roi-1` dicatat di halaman ini.
 
+## - 2026-10-17
+
+### Pemeliharaan Integrasi Stabil & Verifikasi Build Rilis (Stable Integration & Build Verification)
+- **Status Integrasi Branch**:
+  - Pada 17 Oktober 2026, tidak ada penambahan commit kode mandiri baru pada `origin/roi-branch`. Branch berada dalam status **pemeliharaan integrasi stabil** (*stable maintenance state*) setelah fitur audio tempur dan Dual Clock Display Mode berhasil digabungkan ke `Rafi-branch` via merge commit `e439c5b`.
+- **Verifikasi Audio Tempur & Visual Lighting pada Standalone Player Build**:
+  - Melakukan audit menyeluruh terhadap 7 aset audio SFX tebasan pedang (`SFX_Weapon_Swing_*.wav`, `SFX_Weapon_Hit_*.wav`) pada paket build final `Builds/StandaloneWindows64/Farm-Beware.exe`:
+    - Memverifikasi bahwa seluruh klip audio pada [`CombatHitVfxEngine.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Combat/Adapters/CombatHitVfxEngine.cs) dan [`PlayerEquipment.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Player/PlayerEquipment.cs) ter-bundle sempurna tanpa kehilangan referensi (*zero missing AudioClip references*).
+    - Memastikan volume dan kurva attenuation audio tempur terdengar reaktif dan tajam saat memukul target musuh.
+  - Memverifikasi sinkronisasi controller pencahayaan dan volume atmosfer ([`DayNightLightingController.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Time/Atmosphere/DayNightLightingController.cs), [`DaySunLightingObserver.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Rendering/Lighting/DaySunLightingObserver.cs)) berjalan mulus sepanjang siklus waktu siang hingga malam di standalone release build.
+- **Validasi Dual Clock Display Mode**:
+  - Memastikan toggle shortcut tombol **`T`** dan pembaruan jam digital pada [`CombatPhaseTrackerUI.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Time/UI/CombatPhaseTrackerUI.cs) (ritme 60 detik vs 30 detik) berfungsi responsif dan konsisten dengan hasil suite pengujian otomatis `GameplayAndHUDTests.RunAllTests()` (19/19 Passed).
+
+---
+
 ## - 2026-10-16
 
 ### Ditambahkan (Added)

@@ -105,11 +105,21 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
 
     // Kunci input global: saat true, pemain tidak bisa bergerak, membuka
     // inventori, melompat, dash, atau berinteraksi (dipakai mode Trophy, dst).
-    public bool isInputLocked = false;
+    private bool _isInputLocked = false;
+    public bool isInputLocked
+    {
+        get => _isInputLocked;
+        set => SetControlLock(value);
+    }
+    private readonly System.Collections.Generic.HashSet<string> _inputLockSources = new System.Collections.Generic.HashSet<string>();
 
     #region IPlayerContext Implementation
     public Transform Transform => transform;
-    bool IPlayerContext.IsInputLocked { get => isInputLocked; set => isInputLocked = value; }
+    bool IPlayerContext.IsInputLocked { get => isInputLocked; set => SetControlLock(value); }
+    void IPlayerContext.AddInputLock(string source) => AddInputLock(source);
+    void IPlayerContext.RemoveInputLock(string source) => RemoveInputLock(source);
+    void IPlayerContext.ClearAllInputLocks() => ClearAllInputLocks();
+    bool IPlayerContext.HasInputLock(string source) => HasInputLock(source);
     public bool IsGodMode => playerStats != null && playerStats.isGodMode;
     public void PlayAnimation(string triggerName)
     {
@@ -1475,8 +1485,7 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
 
     private System.Collections.IEnumerator RoutineStun(float duration)
     {
-        StopMovement();
-        isInputLocked = true;
+        AddInputLock("Stun");
 
         if (PlayerUI.FloatingCombatTextManager.Instance != null)
         {
@@ -1488,7 +1497,7 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
 
         yield return new WaitForSeconds(duration);
 
-        isInputLocked = false;
+        RemoveInputLock("Stun");
         stunCoroutine = null;
     }
 
@@ -1511,16 +1520,76 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
     {
         if (locked)
         {
-            StopMovement();
-            isInputLocked = true;
+            if (!_inputLockSources.Contains("LegacyGeneric"))
+                _inputLockSources.Add("LegacyGeneric");
+            ApplyLockState(true);
         }
         else
         {
-            isInputLocked = false;
-            if (stunCoroutine != null)
+            _inputLockSources.Remove("LegacyGeneric");
+            ApplyLockState(_inputLockSources.Count > 0);
+            if (_inputLockSources.Count == 0 && stunCoroutine != null)
             {
                 StopCoroutine(stunCoroutine);
                 stunCoroutine = null;
+            }
+        }
+    }
+
+    public void AddInputLock(string source)
+    {
+        if (string.IsNullOrEmpty(source)) source = "Generic";
+        _inputLockSources.Add(source);
+        ApplyLockState(true);
+    }
+
+    public void RemoveInputLock(string source)
+    {
+        if (string.IsNullOrEmpty(source)) source = "Generic";
+        _inputLockSources.Remove(source);
+        ApplyLockState(_inputLockSources.Count > 0);
+    }
+
+    public void ClearAllInputLocks()
+    {
+        _inputLockSources.Clear();
+        ApplyLockState(false);
+        if (stunCoroutine != null)
+        {
+            StopCoroutine(stunCoroutine);
+            stunCoroutine = null;
+        }
+    }
+
+    public bool HasInputLock(string source)
+    {
+        if (string.IsNullOrEmpty(source)) return _inputLockSources.Count > 0;
+        return _inputLockSources.Contains(source);
+    }
+
+    private void ApplyLockState(bool locked)
+    {
+        _isInputLocked = locked;
+        if (locked)
+        {
+            StopMovement();
+            isChargingAttack = false;
+            attackHoldDuration = 0f;
+            hasBufferedAttack = false;
+            isAttacking = false;
+            isLightAttacking = false;
+            if (attackCoroutine != null)
+            {
+                StopCoroutine(attackCoroutine);
+                attackCoroutine = null;
+            }
+            playerEquipment?.CombatStateMachine?.InterruptCombatSequence();
+            if (animator != null)
+            {
+                animator.SetFloat("Vel", 0f);
+                animator.SetBool("Idle", true);
+                animator.SetBool("Sprinting", false);
+                animator.SetBool("IsAttacking", false);
             }
         }
     }

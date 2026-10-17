@@ -128,3 +128,33 @@ Pengembangan sistem penanganan kematian pemain (*Death Scene & Respawn Lifecycle
 - [`MainMenuController.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/MainMenu/MainMenuController.cs):
   - Integrasi pemilihan slot penyimpanan langsung dari menu utama dengan pengecekan ketersediaan data simpanan sebelum memulai sesi permainan.
 
+---
+
+## 7. Main Menu Button Art Overhaul & Animated Corner Leaf/Rice Decoration (2026-10-17)
+
+Pembaruan grafis tombol menu utama dan pengayaan visual menggunakan ornamen tanaman padi dan daun beranimasi prosedural di sudut setiap tombol (`bas-branch`, diintegrasikan via commit `dec870e` & merge commit `8408d2c`).
+
+### Komponen & Arsitektur:
+- [`PadiDaunAnimator.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/MainMenu/PadiDaunAnimator.cs):
+  - Mengelola animasi bergoyang (*procedural sway & breathing motion*) untuk ornamen padi dan daun di sudut tombol menu utama.
+  - Memanfaatkan fungsi sinusoidal (`Mathf.Sin`), variasi rotasi sudut Z, dan interpolasi skala halus agar ornamen tampak hidup dan merespons angin latar.
+- [`UIAnimationHandler.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/MainMenu/UIAnimationHandler.cs):
+  - Event listener kustom untuk interaksi tombol UI, menangani event `OnPointerEnter`, `OnPointerExit`, `OnPointerDown`, dan `OnPointerUp`.
+  - Memberikan transisi pembesaran skala halus (*scale bounce feedback*) saat kursor mouse menyorot atau menekan tombol menu.
+
+### Aset Seni, Tekstur & Prefab:
+- **Koleksi Tekstur Sudut Dekoratif**:
+  - `Assets/Art/Textures/MainMenu/Btn_LeafRice_Corner.png`: Aset ornamen tangkai padi dan daun untuk sudut tombol.
+  - `Assets/Art/Textures/MainMenu/Padi_Daun_Decoration.png`: Aset ilustrasi tanaman padi beresolusi tinggi.
+- **Pembaruan Artwork Tombol Menu Utama**:
+  - `Assets/Art/Textures/MainMenu/Btn_NewGame.png`: Desain visual baru tombol New Game.
+  - `Assets/Art/Textures/MainMenu/Btn_LoadGame.png`: Desain visual baru tombol Load Game.
+  - `Assets/Art/Textures/MainMenu/Btn_Settings.png` & `Btn_Setting.png`: Desain visual baru tombol Pengaturan.
+  - `Assets/Art/Textures/MainMenu/Btn_Exit.png`: Desain visual baru tombol Keluar.
+  - `Assets/Art/Textures/MainMenu/Btn_Play.png`: Desain tombol cadangan/alternatif.
+- [`MainMenuUI.prefab`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Prefabs/UI/MainMenuUI.prefab):
+  - Rekonfigurasi hierarki layout canvas menu utama dengan ukuran tombol yang lebih proporsional, perataan anchor terpusat, dan penyematan GameObject dekorasi sudut beranimasi pada tiap tombol.
+- [`MainMenuScene.unity`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scenes/MainMenuScene.unity):
+  - Sinkronisasi instansiasi prefab UI dan event trigger pada scene menu utama.
+
+

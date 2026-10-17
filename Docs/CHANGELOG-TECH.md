@@ -12,6 +12,7 @@ Konsolidasi dokumentasi teknis dari seluruh kontributor tim pengembang (`Rafi`, 
 ---
 
 ## Daftar Isi Kronologis
+- [2026-10-17](#--2026-10-17)
 - [2026-10-16](#--2026-10-16)
 - [2026-10-15](#--2026-10-15)
 - [2026-10-14](#--2026-10-14)
@@ -22,6 +23,107 @@ Konsolidasi dokumentasi teknis dari seluruh kontributor tim pengembang (`Rafi`, 
 - [2026-10-02](#--2026-10-02)
 - [2026-10-01](#--2026-10-01)
 - [2026-09-30](#--2026-09-30)
+
+---
+
+## - 2026-10-17
+
+### Ditambahkan & Diintegrasikan (Added & Integrated)
+
+#### 1. Standalone Player Build Hardening & Zero-Missing-Shader Architecture `[Rafi]`
+- **Pre-Compiled Resources Material Bundling ([`Mat_CombatTelegraph.mat`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Resources/Materials/Combat/Mat_CombatTelegraph.mat) & [`CombatTelegraphDecal.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Combat/Enemy/CombatTelegraphDecal.cs))**:
+  - Pada executable rilis Unity Standalone Player, shader prosedural yang dimuat via `Shader.Find()` berisiko di-strip oleh compiler jika tidak terdaftar pada *Always Included Shaders*. Hal ini memicu rendering kotak magenta (*magenta box*) pada proyektor telegraf serangan musuh.
+  - Membangun aset material pre-compiled permanen di `Assets/Resources/Materials/Combat/Mat_CombatTelegraph.mat` (URP Decal/Unlit transparent).
+  - Menyusun arsitektur fallback bertingkat pada `CombatTelegraphDecal.EnsureResourcesMaterial()` yang menjamin 100% ketersediaan material di semua target platform (`Resources.Load` -> `URP/Decal` -> `URP/Unlit` -> Standard Alpha Transparent).
+
+#### 2. Precision Sub-Floor Collision & Teleport Elevation Safety Guard `[Rafi]`
+- **Penataan Kolisi Lantai & Elevasi Teleportasi ([`DoorInteractable.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Kitchen/DoorInteractable.cs) & [`StagingScene.unity`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scenes/StagingScene.unity))**:
+  - Mengatasi kendala fisika di mana pemain terperosok setengah badan ke lantai saat memasuki pintu rumah.
+  - Memposisikan `House_UnifiedFloorCollider` ke $Y = -0.50$ dengan dimensi box $(X=9.8, Y=1.0, Z=9.8)$ sehingga permukaan atas lantai solid tepat bersinggungan di $Y = 0.00$ tanpa menciptakan tumpang tindih (*interpenetration*) dengan kapsul `CharacterController` / `Rigidbody`.
+  - Menambahkan offset vertikal defensif $+0.04\text{m}$ pada target koordinat pendaratan pintu (`targetSpawnPoint.position + Vector3.up * 0.04f`), menjamin raycast grounder pemain langsung mendeteksi permukaan lantai tanpa tertanam di dalam collider.
+
+#### 3. Dynamic Combat Telegraph & Burrow Strike Anticipation Window `[Rafi]`
+- **Jendela Antisipasi Serangan Bawah Tanah ([`EnemyBase.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Combat/Enemy/EnemyBase.cs))**:
+  - Memperbaiki mekanika musuh subterranean (TuberMaw): saat keluar dari tanah (`isBurrowed = false`), sistem kini memberikan jendela telegraf aktif berdurasi **0.55 detik**.
+  - Menampilkan proyektor lingkaran telegraf merah di tanah dan teks indikator melayang `⚠️ Erupting!` sebelum damage ledakan area diaplikasikan, memberikan kesempatan taktis bagi pemain untuk melakukan aksi *dodge* atau *parry*.
+
+#### 4. Main Menu Flow Streamlining & Persistent Data Sanitization `[Rafi]`
+- **Alur Peluncuran New Game Langsung ([`MainMenuController.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/MainMenu/MainMenuController.cs))**:
+  - Memisahkan logika tombol New Game dari SaveSystemUI: menekan New Game kini langsung mengaktifkan transisi awan organik ([`CloudTransitionManager.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Common/CloudTransitionManager.cs)) dan memuat `StagingScene` secara mulus tanpa membuka pop-up menu slot penyimpanan.
+  - Membersihkan file simpanan pengujian (*testing save data*) dari `Application.persistentDataPath` untuk mencegah restorasi data debugging otomatis pada sesi permainan baru.
+
+#### 5. Penyelarasan Nerf & Buff Musuh dengan MVP Guideline V0.1 `[Rafi]`
+- **Penyelarasan Stat Roster Musuh ([`EnemyData.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Combat/Data/EnemyData.cs))**:
+  - Menyelaraskan seluruh ScriptableObject data musuh sesuai dokumen MVP Version Guideline V0.1:
+    - **The Ranger** ([`EnemyData_TheRanger.asset`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Data/Enemies/EnemyData_TheRanger.asset)): Max HP 250, Armor 25, Move Speed 0.0 (artillery siege turret), Attack Damage 20, Attack Interval 1.5s, Poise 60.
+    - **Taro Colossus** ([`EnemyData_TaroColossus.asset`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Data/Enemies/EnemyData_TaroColossus.asset)): Max HP 900, Armor 55, Move Speed 2.2, Poise 180, Attack Damage 45, Attack Interval 3.0s.
+    - **Corn Musketeer** ([`EnemyData_CornMusketeer.asset`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Data/Enemies/EnemyData_CornMusketeer.asset)): Max HP 85, Armor 10, Move Speed 3.8, Attack Damage 12, Attack Interval 2.2s.
+    - **TuberMaw** ([`EnemyData_TuberMaw.asset`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Data/Enemies/EnemyData_TuberMaw.asset)): Max HP 120, Armor 15, Move Speed 3.2, Poise 40.
+    - **PumpkinBrute** ([`EnemyData_PumpkinBrute.asset`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Data/Enemies/EnemyData_PumpkinBrute.asset)): Max HP 350, Armor 30, Move Speed 2.5, Attack Damage 35.
+- **Konsolidasi Hirarki Resep Memasak ([`Assets/Data/Recipes/Cooking/`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Data/Recipes/Cooking/))**:
+  - Memusatkan seluruh resep makanan ke folder kanonikal `Assets/Data/Recipes/Cooking/` (`Recipe_CornPorridge.asset` dan `Recipe_TaroCornStew.asset`) serta menyingkirkan duplikasi lama di `Assets/Data/Kitchen/Recipes/`.
+
+#### 6. Animated Corner Leaves & Rice Decoration on Main Menu `[Bhaskoro]`
+- **Dekorasi Sudut Tombol Menu Utama ([`PadiDaunAnimator.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/MainMenu/PadiDaunAnimator.cs) & [`UIAnimationHandler.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/MainMenu/UIAnimationHandler.cs))**:
+  - Mengintegrasikan artwork tombol menu baru beresolusi tinggi beserta ornamen tanaman padi dan daun beranimasi prosedural di sudut tombol menu utama (`bas-branch`, commit `dec870e`).
+  - Animasi menggunakan interpolasi sinusoidal dinamis pada sumbu rotasi Z dan skala pernapasan (*breathing scale*), memberikan responsivitas visual estetis saat disorot kursor mouse.
+
+#### 7. Standalone Production Build Verification & 19/19 Automated Test Suite `[Rafi]`
+- **Ekspansi Test Suite ([`GameplayAndHUDTests.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Editor/GameplayAndHUDTests.cs))**:
+  - Menambahkan **Test 19**: `Test_BuildBugfixes_IntegrityAudit` yang memvalidasi integritas material Resources telegraph, elevasi pendaratan pintu rumah, dan jendela waktu erupsi burrow.
+  - Seluruh 19 pengujian audit sistem lolos (19/19 Passed).
+- **Hasil Rilis Standalone Build Windows 64-bit**:
+  - Lokasi target: `Builds/StandaloneWindows64/Farm-Beware.exe`.
+  - Durasi kompilasi: 655 detik, Ukuran total: 312.74 MB, 0 error kompilasi, 0 warning shader.
+
+#### 8. Automated Food Buff Purge on Sleep & Day Transition (20/20 Audit Tests Passing) `[Rafi]`
+- **Siklus Pembersihan Food Buff Otomatis ([`PlayerBuffManager.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Player/PlayerBuffManager.cs), [`BedInteractable.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Interaction/BedInteractable.cs), [`PlayerRespawnController.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Player/PlayerRespawnController.cs))**:
+  - Menyelesaikan integrasi siklus tidur pemain: seluruh buff makanan (yang dikonsumsi sore hari untuk Night Brawl) secara otomatis dibersihkan saat pemain tidur di tempat tidur atau mengalami respawn kekalahan di pagi hari.
+  - Mengimplementasikan `ClearAllBuffs()` pada `PlayerBuffManager` dengan reset modifier status pemain (`ApplyBuffModifiers(0, 0, 0)`) dan pemicuan event `OnBuffsChanged` untuk mengosongkan antarmuka HUD.
+  - Mengintegrasikan penanganan decoupled via `interactor.SendMessage("ClearAllBuffs")` pada `BedInteractable` guna menghormati batasan isolasi assembly (`FarmBeware.Features.Interaction.asmdef`), serta integrasi langsung pada `PlayerRespawnController` dan `OnDayChanged`.
+- **Ekspansi Test Suite (20/20 Passing) ([`GameplayAndHUDTests.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Editor/GameplayAndHUDTests.cs))**:
+  - Menambahkan **Test 20**: `Test_PlayerBuff_ClearsOnSleepAndDayTransition` yang memvalidasi bahwa seluruh buff aktif terhapus saat tidur, status pemain kembali ke baseline, dan event HUD terpanggil. Seluruh 20 audit tests lolos (20/20 Passed).
+
+#### 9. Stylized Day-to-Night & Night-to-Day Transition Banner System (21/21 Audit Tests Passing) `[Rafi]`
+- **Arsitektur Banner Animasi Transisi Waktu ([`DayTransitionUI.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Time/UI/DayTransitionUI.cs))**:
+  - Mengembangkan sistem transisi visual waktu procedural glassmorphic berkecepatan tinggi tanpa memblokir pergerakan atau kontrol pemain.
+  - Membangun antarmuka secara mandiri (*auto-procedural UI hierarchy*):
+    - `Canvas` ber-layer `ScreenSpaceOverlay` dengan `sortingOrder = 92` dan `CanvasScaler` adaptif (referensi $1920 \times 1080$, match height $1.0$).
+    - `CanvasGroup` beranimasi transparansi alpha dan scale interpolator.
+    - Glassmorphic banner horizontal container dengan aksen garis berpedar (*glowing accent line*), typography TextMeshProUGUI bergradasi, dan ikon status.
+    - Soft vignette overlay tepi layar yang berdenyut lembut selama transisi berlangsung.
+  - **Dua Tema Palet Visual & Tipografi**:
+    - **Day ➔ Night**: Banner `🌙 NIGHTFALL` berlatar gelap pekat (`#14070A`), border merah menyala (`#E74C3C`), teks aksen crimson, dan subtitle `The shadows stir. Prepare your defenses.`
+    - **Night ➔ Day**: Banner `☀️ DAY X` berlatar hangat keemasan (`#1C1608`), border emas berpedar (`#F1C40F`), teks aksen kuning fajar, dan subtitle `The morning sun rises. Tend to your crops.`
+  - **Sintesis Audio Prosedural Mandiri (Zero External Asset Dependency)**:
+    - Menghasilkan audio chime secara prosedural via `AudioClip.Create`:
+      - *Nightfall*: Lonceng gong resonan 220Hz dengan peluruhan harmonik dan sub-osilasi misterius.
+      - *Daybreak*: Melodi akor pagi tiga nada cerah (C5 $523.25\text{Hz}$, E5 $659.25\text{Hz}$, G5 $783.99\text{Hz}$) dengan amplop eksponensial halus.
+  - **Koreografi Animasi Non-Blocking**:
+    - Masuk dengan kurva pegas (*spring curve*: $0.85 \rightarrow 1.02 \rightarrow 1.0$) selama 0.35 detik, mengapung selama 1.8 detik, lalu memudar halus selama 0.5 detik berbasis `Time.unscaledDeltaTime`.
+    - Terhubung secara aman ke event `TimeManager.Instance.OnPhaseChanged`, `OnDayChanged`, dan `DayNightTimeManager.Instance.OnTimePhaseChanged` dengan *duplicate-trigger guard* ($< 1.0\text{s}$).
+- **Ekspansi Test Suite (21/21 Passing) ([`GameplayAndHUDTests.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Editor/GameplayAndHUDTests.cs))**:
+  - Menambahkan **Test 21**: `Test_DayTransitionUI_DayAndNightBannerAnimation` yang memvalidasi pembentukan hierarki otomatis, palet warna dan teks Day/Night, serta pembatalan transisi seketika saat loading save file.
+  - Seluruh 21 uji audit kelayakan sistem lolos 100% (21/21 Passed).
+
+#### 10. Multi-Source Input Lock Architecture & Viewport Raycast Leak Prevention (22/22 Audit Tests Passing) `[Rafi]`
+- **Arsitektur Multi-Source Input Lock ([`IPlayerContext.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Core/Contracts/IPlayerContext.cs) & [`PlayerControl.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Player/PlayerControl.cs))**:
+  - Mengembangkan sistem pelacakan multi-source input lock berbasis koleksi `HashSet<string> _inputLockSources` di dalam `PlayerControl`.
+  - Memperluas antarmuka `IPlayerContext` dengan method kontraktual:
+    - `AddInputLock(string source)`: Menambahkan token pengunci unik (misal: `"DayTransition"`, `"CloudTransition"`, `"BedSleep"`, `"Respawn"`, `"Stun"`).
+    - `RemoveInputLock(string source)`: Melepaskan token pengunci spesifik tanpa membocorkan atau membatalkan kunci dari subsistem lain.
+    - `ClearAllInputLocks()`: Membersihkan seluruh token kunci seketika (digunakan untuk sanitasi saat pemuatan game/save atau reset scene).
+    - `HasInputLock(string source)`: Memeriksa keberadaan token pengunci tertentu secara deterministik.
+  - Menyelaraskan setter properti `IPlayerContext.IsInputLocked` dan `PlayerControl.isInputLocked`: panggilan generic legacy kini memetakan ke token `"LegacyGeneric"`, sehingga pemanggilan `IsInputLocked = false` dari dialog yang ditutup (misal `DailyReportModalUI`) tidak akan membatalkan kunci transisi fajar (`"DayTransition"`) yang sedang aktif.
+  - Memperkuat `PlayerControl.SetControlLock(true)`: saat penguncian aktif, sistem otomatis mereset `StopMovement()`, membatalkan serangan terisi (`isChargingAttack = false`, `attackHoldDuration = 0f`), membersihkan input buffer (`hasBufferedAttack = false`), menginterupsi sequence combo combat (`InterruptCombatSequence()`), dan memaksa animator ke pose Idle tanpa lag.
+- **Penyekatan Viewport Raycast & Eliminasi Kebocoran Mouse Click ([`DayTransitionUI.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Time/UI/DayTransitionUI.cs) & [`InventorySlotUI.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Inventory/UI/InventorySlotUI.cs))**:
+  - Mengaktifkan raycast blocking 100% viewport pada `DayTransitionUI`: selama animasi banner transisi aktif, `vignetteOverlay.raycastTarget = true` dan `transitionCanvasGroup.blocksRaycasts = true` menjamin tidak ada klik mouse yang dapat tembus ke elemen UI di bawahnya maupun objek dunia (*world objects*).
+  - Menambahkan guard clause pada `InventorySlotUI.OnPointerClick()`: klik mouse pada slot hotbar (0..3) atau double-click penggunaan item otomatis diabaikan jika `IPlayerContext.IsInputLocked == true`.
+- **Integrasi Cloud Screen Transition Lock ([`CloudTransitionManager.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Common/CloudTransitionManager.cs))**:
+  - Mengintegrasikan penguncian input otomatis via `AddInputLock("CloudTransition")` saat awan menutup layar dan melepaskannya (`RemoveInputLock("CloudTransition")`) saat transisi selesai terungkap, mengeliminasi kemampuan pemain bergerak di balik awan.
+- **Ekspansi Test Suite (22/22 Passing) ([`GameplayAndHUDTests.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Editor/GameplayAndHUDTests.cs))**:
+  - Menambahkan **Test 22**: `Test_MultiSourceInputLock_AndTransitionLeakPrevention` yang memvalidasi hirarki kunci multi-source, kekebalan terhadap generic premature unlock, penyerapan raycast `DayTransitionUI`, dan pencegahan kebocoran klik hotbar.
+  - Seluruh 22 uji audit kelayakan sistem lolos 100% (22/22 Passed).
 
 ---
 

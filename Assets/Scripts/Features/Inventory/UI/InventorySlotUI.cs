@@ -204,6 +204,11 @@ public class InventorySlotUI : MonoBehaviour, IDropHandler, IPointerClickHandler
         if (eventData.dragging)
             return;
 
+        // Abaikan klik slot jika kontrol pemain sedang terkunci (misal: selama transisi layar atau modal dialog)
+        var pc = ServiceLocator.Resolve<IPlayerContext>();
+        if (pc != null && pc.IsInputLocked)
+            return;
+
         // Seleksi Hotbar via klik mouse (Slot 0..3 pada inventory dengan Hotbar)
         bool isHotbarSlot = (ownerInventory != null && ownerInventory.HasHotbar && SlotIndex >= 0 && SlotIndex < 4);
         if (isHotbarSlot)
