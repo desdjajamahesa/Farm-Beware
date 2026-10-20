@@ -92,7 +92,7 @@ MeshRenderer:
   m_RenderingLayerMask: 3
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 0}
+  - {fileID: 2100000, guid: f85e2d3bab0765b4fb9cb2169d47cceb, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -159,6 +159,7 @@ MonoBehaviour:
   enemyData: {fileID: 11400000, guid: 83177a7d40c8fad478dca0d49745ae4c, type: 2}
   displayName: Cyclops Tuber Maw
   isBoss: 1
+  isSummonedMinion: 0
   maxHealth: 600
   currentHealth: 600
   armor: 40

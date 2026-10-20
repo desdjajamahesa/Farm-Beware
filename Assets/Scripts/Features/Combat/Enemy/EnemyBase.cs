@@ -23,6 +23,7 @@ namespace FeaturesCombat
         public FeaturesCombat.Data.EnemyData EnemyData => enemyData;
         public string displayName = "Tuber Maw";
         public bool isBoss = false;
+        public bool isSummonedMinion = false;
 
         public void SetEnemyData(FeaturesCombat.Data.EnemyData data)
         {
@@ -60,6 +61,7 @@ namespace FeaturesCombat
         public bool IsPerformingSkill { get => isPerformingSkill; set => isPerformingSkill = value; }
         public Transform PlayerTarget => playerTarget;
         public bool IsUnstaggerable { get; set; } = false;
+        public bool IsRootGuarded => isRootGuarded;
         private Transform playerTarget;
         private Rigidbody rb;
         private Renderer meshRenderer;
@@ -271,8 +273,21 @@ namespace FeaturesCombat
                 minGold = enemyData.minGold;
                 maxGold = enemyData.maxGold;
                 goldChance = enemyData.goldChance;
+
+                // Sanitize attack range for melee vs ranged
+                if (enemyType == EnemyType.TheRanger) attackRange = Mathf.Max(10f, attackRange);
+                else if (enemyType == EnemyType.CyclopsTuberMaw) attackRange = Mathf.Min(2.4f, attackRange);
+                else if (enemyType == EnemyType.TaroBrute) attackRange = Mathf.Min(1.8f, attackRange);
+                else if (enemyType == EnemyType.TaroColossus) attackRange = Mathf.Min(2.4f, attackRange);
+                else if (enemyType == EnemyType.TuberMaw) attackRange = Mathf.Min(1.5f, attackRange);
+
                 originalArmor = armor;
                 currentHealth = maxHealth;
+                if (tacticalEvaluator != null)
+                {
+                    tacticalEvaluator.OrbitMinRadius = Mathf.Max(1.4f, attackRange + 0.4f);
+                    tacticalEvaluator.OrbitMaxRadius = Mathf.Max(2.4f, attackRange + 1.4f);
+                }
                 return;
             }
 
@@ -287,7 +302,7 @@ namespace FeaturesCombat
                     moveSpeed = 3f;
                     contactDamage = 15;
                     attackRate = 0.4f;
-                    attackRange = 1.5f;
+                    attackRange = 1.4f;
                     aggroRange = 6f;
                     knockbackResistance = 0.20f;
                     isBoss = false;
@@ -303,7 +318,7 @@ namespace FeaturesCombat
                     moveSpeed = 3f;
                     contactDamage = 30;
                     attackRate = 0.4f;
-                    attackRange = 3.6f;
+                    attackRange = 2.4f;
                     aggroRange = 12f;
                     knockbackResistance = 0.35f;
                     isBoss = true;
@@ -319,7 +334,7 @@ namespace FeaturesCombat
                     moveSpeed = 1.5f;
                     contactDamage = 25;
                     attackRate = 0.5f;
-                    attackRange = 2.5f;
+                    attackRange = 1.8f;
                     aggroRange = 6f;
                     knockbackResistance = 0.80f;
                     isBoss = false;
@@ -335,7 +350,7 @@ namespace FeaturesCombat
                     moveSpeed = 2f;
                     contactDamage = 45;
                     attackRate = 0.5f;
-                    attackRange = 3.0f;
+                    attackRange = 2.4f;
                     aggroRange = 10f;
                     knockbackResistance = 1.0f; // Immune to knockback
                     isBoss = true;
@@ -367,7 +382,7 @@ namespace FeaturesCombat
                     moveSpeed = 0f; // Stationary turret
                     contactDamage = 60;
                     attackRate = 0.5f;
-                    attackRange = 6f;
+                    attackRange = 10f;
                     aggroRange = 15f;
                     knockbackResistance = 1.0f; // Immune
                     isBoss = true;
@@ -379,6 +394,11 @@ namespace FeaturesCombat
 
             originalArmor = armor;
             currentHealth = maxHealth;
+            if (tacticalEvaluator != null)
+            {
+                tacticalEvaluator.OrbitMinRadius = Mathf.Max(1.4f, attackRange + 0.4f);
+                tacticalEvaluator.OrbitMaxRadius = Mathf.Max(2.4f, attackRange + 1.4f);
+            }
         }
 
         private void Update()
@@ -458,7 +478,33 @@ namespace FeaturesCombat
                 }
 
                 // Cek eksekusi skill khusus jika cooldown siap (hanya jika pemain tidak berada aman di dalam rumah)
-                if (skillCooldownTimer >= GetSkillCooldown())
+                bool canExecuteSkill = false;
+                switch (enemyType)
+                {
+                    case EnemyType.TuberMaw:
+                        canExecuteSkill = distToPlayer >= 2.5f && distToPlayer <= 10.0f; // Gap closer
+                        break;
+                    case EnemyType.CyclopsTuberMaw:
+                        canExecuteSkill = distToPlayer <= 14.0f; // Tracking beam
+                        break;
+                    case EnemyType.TaroBrute:
+                        canExecuteSkill = distToPlayer <= 5.0f; // Root guard defensive
+                        break;
+                    case EnemyType.TaroColossus:
+                        canExecuteSkill = distToPlayer <= 7.0f; // Airborne slam
+                        break;
+                    case EnemyType.CornMusketeer:
+                        canExecuteSkill = distToPlayer >= 2.5f && distToPlayer <= 13.0f; // Kernel shot
+                        break;
+                    case EnemyType.TheRanger:
+                        canExecuteSkill = distToPlayer <= 16.0f; // Heavens fall
+                        break;
+                    default:
+                        canExecuteSkill = distToPlayer <= 10.0f;
+                        break;
+                }
+
+                if (canExecuteSkill && skillCooldownTimer >= GetSkillCooldown())
                 {
                     currentTacticalState = FeaturesCombat.Core.PureLogic.MonsterTacticalState.TelegraphAttack;
                     TryExecuteSkill(distToPlayer);
@@ -472,15 +518,19 @@ namespace FeaturesCombat
                         ? NightBrawlManager.Instance.TokenDispatcher.HasToken(gameObject.GetInstanceID(), isRanged, Time.time)
                         : true;
 
+                    bool isAttackReady = (Time.time - lastAttackTime >= (1f / Mathf.Max(0.1f, attackRate))) && !isPerformingSkill && !isPlayerInsideHouse;
+
                     // Anticipatory Token Acquisition:
-                    // If monster does not hold a token, its attack cooldown is ready, and it is within combat approach distance (<= 7.0m),
+                    // If monster does not hold a token, its attack cooldown is ready, and it is within immediate combat approach (attackRange + 1.4m),
                     // attempt to acquire an attack token so it charges directly into melee range rather than freezing in orbit!
-                    if (!hasToken && Time.time - lastAttackTime >= (1f / Mathf.Max(0.1f, attackRate)) && !isPerformingSkill && !isPlayerInsideHouse)
+                    float approachThreshold = Mathf.Max(2.4f, attackRange + 1.4f);
+                    if (!hasToken && isAttackReady)
                     {
-                        if (distToPlayer <= 7.0f && NightBrawlManager.Instance?.TokenDispatcher != null)
+                        if (distToPlayer <= approachThreshold && NightBrawlManager.Instance?.TokenDispatcher != null)
                         {
                             var priority = isBoss ? FeaturesCombat.Core.PureLogic.AttackTokenPriority.Boss : FeaturesCombat.Core.PureLogic.AttackTokenPriority.Minion;
-                            hasToken = NightBrawlManager.Instance.TokenDispatcher.TryAcquireToken(gameObject.GetInstanceID(), isRanged, Time.time, 3.5f, priority);
+                            hasToken = NightBrawlManager.Instance.TokenDispatcher.TryAcquireToken(
+                                gameObject.GetInstanceID(), isRanged, Time.time, 1.8f, priority, distToPlayer, isCommitted: false);
                         }
                     }
 
@@ -497,6 +547,7 @@ namespace FeaturesCombat
                         isRanged,
                         gameObject.GetInstanceID(),
                         attackRange,
+                        isAttackReady,
                         out currentTacticalState);
 
                     // Obstacle Gating: If an obstacle (fence, wall, closed door) blocks the direct line
@@ -514,7 +565,7 @@ namespace FeaturesCombat
                     }
                     else if (!isPlayerInsideHouse && !isDirectPathBlocked && distToPlayer <= attackRange)
                     {
-                        TryPerformAttack();
+                        TryPerformAttack(distToPlayer);
                         if (currentTacticalState == FeaturesCombat.Core.PureLogic.MonsterTacticalState.FlankOrbit && moveSpeed > 0f && !isBurrowed)
                         {
                             // Awaiting attack token in combat ring: actively orbit and flank instead of standing still
@@ -716,27 +767,38 @@ namespace FeaturesCombat
             }
         }
 
-        private void TryPerformAttack()
+        private void TryPerformAttack(float distToPlayer = -1f)
         {
             if (Time.time - lastAttackTime < (1f / Mathf.Max(0.1f, attackRate))) return;
             if (isPerformingSkill) return;
+
+            if (distToPlayer < 0f && playerTarget != null)
+            {
+                Vector3 toTarget = playerTarget.position - transform.position;
+                toTarget.y = 0f;
+                distToPlayer = toTarget.magnitude;
+            }
 
             // Attack token check: prevent uncoordinated horde dogpiling
             bool isRanged = (enemyType == EnemyType.CornMusketeer || enemyType == EnemyType.TheRanger);
             if (NightBrawlManager.Instance != null && NightBrawlManager.Instance.TokenDispatcher != null)
             {
                 var priority = isBoss ? FeaturesCombat.Core.PureLogic.AttackTokenPriority.Boss : FeaturesCombat.Core.PureLogic.AttackTokenPriority.Minion;
-                if (!NightBrawlManager.Instance.TokenDispatcher.TryAcquireToken(gameObject.GetInstanceID(), isRanged, Time.time, 2.8f, priority))
+                if (!NightBrawlManager.Instance.TokenDispatcher.TryAcquireToken(
+                    gameObject.GetInstanceID(), isRanged, Time.time, 2.8f, priority, distToPlayer, isCommitted: true))
                 {
                     return; // Denied, wait for token
                 }
             }
 
-            lastAttackTime = Time.time;
-
+            // Note: lastAttackTime is stamped upon completion of the attack routine to ensure full cooldown duration
             if (enemyType == EnemyType.CornMusketeer)
             {
                 StartCoroutine(RoutineCornMusketeerAttack());
+            }
+            else if (enemyType == EnemyType.TheRanger)
+            {
+                StartCoroutine(RoutineTheRangerAttack());
             }
             else
             {
@@ -762,9 +824,10 @@ namespace FeaturesCombat
             }
 
             float windupDuration = 0.35f;
+            float telegraphHitRange = attackRange + 0.55f;
             if (combatTelegraph != null)
             {
-                combatTelegraph.StartCharge(windupDuration, attackRange + 0.8f);
+                combatTelegraph.StartCharge(windupDuration, telegraphHitRange);
             }
 
             if (meshRenderer != null)
@@ -781,6 +844,17 @@ namespace FeaturesCombat
                     LookAtTarget(playerTarget.position);
                 }
                 yield return null;
+            }
+
+            // Climax Snap Rotation: firmly align to target vector before triggering hit calculation
+            if (playerTarget != null)
+            {
+                Vector3 snapDir = playerTarget.position - transform.position;
+                snapDir.y = 0f;
+                if (snapDir.sqrMagnitude > 0.001f)
+                {
+                    transform.rotation = Quaternion.LookRotation(snapDir.normalized);
+                }
             }
 
             if (meshRenderer != null)
@@ -804,8 +878,8 @@ namespace FeaturesCombat
                 forwardFlat.Normalize();
                 float dot = (currentDist > 0.01f) ? Vector3.Dot(forwardFlat, toPlayer.normalized) : 1f;
 
-                // Pemain terkena serangan jika berada di dalam jangkauan melee dan berada di depan atau menempel dekat monster
-                if (currentDist <= attackRange + 0.8f && (dot >= 0.10f || currentDist <= 2.2f))
+                // Pemain terkena serangan jika berada di dalam jangkauan melee dan berada di depan atau menempel sangat dekat dengan monster
+                if (currentDist <= telegraphHitRange && (dot >= 0.10f || currentDist <= 1.2f))
                 {
                     IDamageable playerDamageable = playerTarget.GetComponent<IDamageable>() ?? playerTarget.GetComponentInParent<IDamageable>();
                     if (playerDamageable != null && !playerDamageable.IsDead)
@@ -829,6 +903,8 @@ namespace FeaturesCombat
             // 3. Recovery Phase (0.18s)
             yield return new WaitForSeconds(0.18f);
             isPerformingSkill = false;
+            lastAttackTime = Time.time;
+            skillCooldownTimer = Mathf.Min(skillCooldownTimer, Mathf.Max(0f, GetSkillCooldown() - 1.2f));
             NightBrawlManager.Instance?.TokenDispatcher?.ReleaseToken(gameObject.GetInstanceID(), false);
         }
 
@@ -947,6 +1023,89 @@ namespace FeaturesCombat
             // 3. Recovery (0.2s)
             yield return new WaitForSeconds(0.2f);
             isPerformingSkill = false;
+            lastAttackTime = Time.time;
+            skillCooldownTimer = Mathf.Min(skillCooldownTimer, Mathf.Max(0f, GetSkillCooldown() - 1.2f));
+            NightBrawlManager.Instance?.TokenDispatcher?.ReleaseToken(gameObject.GetInstanceID(), true);
+        }
+
+        /// <summary>
+        /// Serangan proyektil artileri berat The Ranger (Boss Stationary Turret).
+        /// Membidik pemain dengan laser merah peringatan (0.45s telegraph) lalu menembakkan proyektil artileri mortar berdaya hancur tinggi.
+        /// </summary>
+        private IEnumerator RoutineTheRangerAttack()
+        {
+            isPerformingSkill = true;
+            currentTacticalState = FeaturesCombat.Core.PureLogic.MonsterTacticalState.TelegraphAttack;
+            EnsureTelegraphElements();
+
+            if (rb != null)
+            {
+                rb.linearVelocity = Vector3.zero;
+            }
+
+            // 1. Aiming Telegraph (0.45s)
+            if (laserSightLine != null)
+            {
+                laserSightLine.enabled = true;
+                Color aimColor = new Color(1f, 0.2f, 0.1f, 0.85f);
+                if (laserSightLine.material != null)
+                {
+                    laserSightLine.material.color = aimColor;
+                    if (laserSightLine.material.HasProperty("_BaseColor"))
+                        laserSightLine.material.SetColor("_BaseColor", aimColor);
+                }
+            }
+
+            Collider myCol = GetComponent<Collider>();
+            float feetY = myCol != null ? myCol.bounds.min.y : (transform.position.y - 1.4f);
+            Vector3 muzzlePos = transform.position + transform.forward * 0.8f;
+            muzzlePos.y = feetY + 1.2f;
+
+            Vector3 aimDir = transform.forward;
+            float aimTimer = 0f;
+            while (aimTimer < 0.45f)
+            {
+                aimTimer += Time.deltaTime;
+                if (playerTarget != null)
+                {
+                    LookAtTarget(playerTarget.position);
+
+                    Collider playerCol = playerTarget.GetComponent<Collider>();
+                    Vector3 targetPos = playerCol != null ? playerCol.bounds.center : (playerTarget.position + Vector3.up * 1.0f);
+                    Vector3 toTarget = targetPos - muzzlePos;
+                    if (toTarget.sqrMagnitude > 0.001f)
+                    {
+                        aimDir = toTarget.normalized;
+                    }
+
+                    if (laserSightLine != null)
+                    {
+                        laserSightLine.SetPosition(0, muzzlePos);
+                        laserSightLine.SetPosition(1, targetPos);
+                    }
+                }
+                yield return null;
+            }
+
+            if (laserSightLine != null)
+            {
+                laserSightLine.enabled = false;
+            }
+
+            // 2. Firing: Tembakkan artileri mortar jagung berkecepatan tinggi
+            FeaturesCombat.Projectiles.CombatProjectile.Spawn(
+                gameObject,
+                muzzlePos,
+                aimDir,
+                damageAmount: contactDamage,
+                projSpeed: 16.0f,
+                projectileColor: new Color(1f, 0.35f, 0.1f));
+
+            // 3. Recovery Phase (0.25s)
+            yield return new WaitForSeconds(0.25f);
+            isPerformingSkill = false;
+            lastAttackTime = Time.time;
+            skillCooldownTimer = Mathf.Min(skillCooldownTimer, Mathf.Max(0f, GetSkillCooldown() - 1.2f));
             NightBrawlManager.Instance?.TokenDispatcher?.ReleaseToken(gameObject.GetInstanceID(), true);
         }
 
@@ -1109,6 +1268,7 @@ namespace FeaturesCombat
             // 3. Selesai heal, langsung kembali agresif mengejar dan menyerang player lagi
             isRetreatingAndHealing = false;
             isPerformingSkill = false;
+            lastAttackTime = Time.time + 0.5f;
         }
 
         // --- SKILL ROUTINES ---
@@ -1123,9 +1283,9 @@ namespace FeaturesCombat
             Vector3 startScale = transform.localScale;
             transform.localScale = new Vector3(startScale.x, 0.1f, startScale.z);
 
-            // Phase 1: Track posisi pemain di bawah tanah (0.8 detik)
+            // Phase 1: Track posisi pemain di bawah tanah hingga mendekat (maksimal 1.2 detik)
             float timer = 0f;
-            while (timer < 0.8f)
+            while (timer < 1.2f)
             {
                 timer += Time.deltaTime;
                 if (playerTarget != null)
@@ -1135,7 +1295,14 @@ namespace FeaturesCombat
                     {
                         burrowDest = NightBrawlManager.GetNearestOutdoorPosition(burrowDest, 2.0f);
                     }
-                    transform.position = Vector3.MoveTowards(transform.position, burrowDest, (moveSpeed * 1.5f) * Time.deltaTime);
+                    transform.position = Vector3.MoveTowards(transform.position, burrowDest, (moveSpeed * 1.8f) * Time.deltaTime);
+
+                    Vector3 diff = burrowDest - transform.position;
+                    diff.y = 0f;
+                    if (diff.magnitude <= 1.2f)
+                    {
+                        break;
+                    }
                 }
                 yield return null;
             }
@@ -1148,7 +1315,7 @@ namespace FeaturesCombat
             }
 
             float telegraphDuration = 0.55f;
-            float eruptionRadius = 2.2f;
+            float eruptionRadius = 2.4f;
             if (combatTelegraph != null)
             {
                 combatTelegraph.StartCharge(telegraphDuration, eruptionRadius);
@@ -1193,6 +1360,7 @@ namespace FeaturesCombat
 
             yield return new WaitForSeconds(0.35f);
             isPerformingSkill = false;
+            lastAttackTime = Time.time + 0.6f;
         }
 
         private IEnumerator RoutineTrackingBeam()
@@ -1228,6 +1396,7 @@ namespace FeaturesCombat
 
             yield return new WaitForSeconds(0.5f);
             isPerformingSkill = false;
+            lastAttackTime = Time.time + 0.6f;
         }
 
         private IEnumerator RoutineRootGuard()
@@ -1249,6 +1418,7 @@ namespace FeaturesCombat
             armor = originalArmor;
             isRootGuarded = false;
             isPerformingSkill = false;
+            lastAttackTime = Time.time + 0.5f;
         }
 
         private IEnumerator RoutineAirborneSlam()
@@ -1283,6 +1453,7 @@ namespace FeaturesCombat
 
             yield return new WaitForSeconds(0.6f);
             isPerformingSkill = false;
+            lastAttackTime = Time.time + 0.8f;
         }
 
         private IEnumerator RoutineKernelShot()
@@ -1338,6 +1509,7 @@ namespace FeaturesCombat
 
             yield return new WaitForSeconds(0.3f);
             isPerformingSkill = false;
+            lastAttackTime = Time.time + 0.6f;
         }
 
         private IEnumerator RoutineCornHeavensFall()
@@ -1363,6 +1535,7 @@ namespace FeaturesCombat
 
             yield return new WaitForSeconds(0.5f);
             isPerformingSkill = false;
+            lastAttackTime = Time.time + 0.8f;
         }
 
         // --- IDAMAGEABLE IMPLEMENTATION ---
@@ -1498,6 +1671,7 @@ namespace FeaturesCombat
             IsUnstaggerable = false;
             isBurrowed = false;
             isRootGuarded = false;
+            isSummonedMinion = false;
             armor = originalArmor;
             skillCooldownTimer = 0f;
             lastAttackTime = 0f;

@@ -534,27 +534,57 @@ public class DayTransitionUI : MonoBehaviour
     /// </summary>
     public void EnsureUIHierarchy()
     {
+        // 1. Pastikan Canvas overlay jika tidak berada di dalam Canvas lain
+        var parentCanvas = transform.parent != null ? transform.parent.GetComponentInParent<Canvas>() : null;
+        if (parentCanvas == null)
+        {
+            var canvas = GetComponent<Canvas>();
+            if (canvas == null)
+                canvas = gameObject.AddComponent<Canvas>();
+
+            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            canvas.sortingOrder = 92;
+
+            var scaler = GetComponent<CanvasScaler>();
+            if (scaler == null)
+                scaler = gameObject.AddComponent<CanvasScaler>();
+
+            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            scaler.referenceResolution = new Vector2(1920f, 1080f);
+            scaler.matchWidthOrHeight = 0.5f;
+
+            if (GetComponent<GraphicRaycaster>() == null)
+                gameObject.AddComponent<GraphicRaycaster>();
+        }
+        else
+        {
+            // Sudah berada di dalam UI Canvas (misal UI_Canvas). Bersihkan sub-canvas & sub-scaler agar tidak membajak Canvas search.
+            var raycaster = GetComponent<GraphicRaycaster>();
+            if (raycaster != null)
+            {
+                if (Application.isPlaying) Destroy(raycaster);
+                else DestroyImmediate(raycaster);
+            }
+
+            var scaler = GetComponent<CanvasScaler>();
+            if (scaler != null)
+            {
+                if (Application.isPlaying) Destroy(scaler);
+                else DestroyImmediate(scaler);
+            }
+
+            var canvas = GetComponent<Canvas>();
+            if (canvas != null)
+            {
+                if (Application.isPlaying) Destroy(canvas);
+                else DestroyImmediate(canvas);
+            }
+
+            transform.SetAsLastSibling();
+        }
+
         if (transitionCanvasGroup != null && bannerRoot != null && titleText != null)
             return;
-
-        // 1. Pastikan Canvas overlay
-        var canvas = GetComponent<Canvas>();
-        if (canvas == null)
-            canvas = gameObject.AddComponent<Canvas>();
-
-        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-        canvas.sortingOrder = 92;
-
-        var scaler = GetComponent<CanvasScaler>();
-        if (scaler == null)
-            scaler = gameObject.AddComponent<CanvasScaler>();
-
-        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-        scaler.referenceResolution = new Vector2(1920f, 1080f);
-        scaler.matchWidthOrHeight = 0.5f;
-
-        if (GetComponent<GraphicRaycaster>() == null)
-            gameObject.AddComponent<GraphicRaycaster>();
 
         transitionCanvasGroup = GetComponent<CanvasGroup>();
         if (transitionCanvasGroup == null)

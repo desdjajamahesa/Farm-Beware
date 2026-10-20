@@ -406,7 +406,8 @@ namespace FeaturesFarming.Adapters
             {
                 if (PlayerInventory != null)
                 {
-                    PlayerInventory.RemoveItem(seedItem, 1);
+                    int hotbarIdx = PlayerInventory.selectedHotbarIndex;
+                    PlayerInventory.RemoveItem(seedItem, 1, preferredSlotIndex: hotbarIdx);
                 }
 
                 if (playerControl != null)
@@ -452,8 +453,8 @@ namespace FeaturesFarming.Adapters
 
             if (yieldItem == null)
             {
-                yieldItem = Resources.Load<ItemData>("Data/Items/Crops/Crop_SweetPotato_Dirty")
-                         ?? Resources.Load<ItemData>("Data/Items/Crops/Crop_SweetPotato");
+                var db = ItemDatabase.Instance;
+                yieldItem = db != null ? (db.GetItem("crop_sweetpotato_dirty") ?? db.GetItem("crop_sweetpotato")) : null;
             }
 
             if (yieldCount < 1) yieldCount = 1;

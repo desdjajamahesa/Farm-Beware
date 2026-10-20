@@ -319,7 +319,36 @@ public class InventoryComponent : MonoBehaviour
         return remaining <= 0;
     }
 
-    public bool RemoveItem(ItemData item, int amount)
+    /// <summary>
+    /// Menghapus sejumlah item langsung dari slot dengan indeks tertentu.
+    /// </summary>
+    public bool RemoveItemFromSlot(int slotIndex, int amount)
+    {
+        if (slotIndex < 0 || slotIndex >= slots.Count || amount <= 0)
+            return false;
+
+        InventorySlot slot = slots[slotIndex];
+        if (slot == null || slot.IsEmpty || slot.quantity < amount)
+            return false;
+
+        slot.quantity -= amount;
+        if (slot.quantity <= 0)
+        {
+            slot.item = null;
+            slot.quantity = 0;
+        }
+
+        OnInventoryChanged?.Invoke();
+        return true;
+    }
+
+    /// <summary>
+    /// Menghapus sejumlah item dari inventory.
+    /// Jika preferredSlotIndex ditentukan (atau jika hasHotbar aktif dan item yang dipilih pada hotbar cocok),
+    /// kuantitas akan dikurangkan dari slot tersebut terlebih dahulu sebelum mengambil dari slot lainnya.
+    /// Slot lainnya dikurangi dari belakang (indeks terbesar ke terkecil) agar slot depan/hotbar tetap rapi.
+    /// </summary>
+    public bool RemoveItem(ItemData item, int amount, int preferredSlotIndex = -1)
     {
         if (item == null || amount <= 0)
             return false;
@@ -329,11 +358,44 @@ public class InventoryComponent : MonoBehaviour
 
         int remaining = amount;
 
-        // Kurangi dari slot yang memiliki item (dari belakang agar rapi).
+        // Tentukan slot prioritas: jika tidak dispesifikasikan secara eksplisit,
+        // cek apakah hotbar aktif saat ini sedang memegang item yang sama.
+        int resolvedPreferredIndex = preferredSlotIndex;
+        if (resolvedPreferredIndex < 0 && hasHotbar && selectedHotbarIndex >= 0 && selectedHotbarIndex < Mathf.Min(4, slots.Count))
+        {
+            InventorySlot activeHotbarSlot = slots[selectedHotbarIndex];
+            if (activeHotbarSlot != null && !activeHotbarSlot.IsEmpty && activeHotbarSlot.item == item)
+            {
+                resolvedPreferredIndex = selectedHotbarIndex;
+            }
+        }
+
+        // 1. Kurangi dari slot prioritas terlebih dahulu jika ada
+        if (resolvedPreferredIndex >= 0 && resolvedPreferredIndex < slots.Count)
+        {
+            InventorySlot prefSlot = slots[resolvedPreferredIndex];
+            if (prefSlot != null && !prefSlot.IsEmpty && prefSlot.item == item)
+            {
+                int toRemove = Mathf.Min(prefSlot.quantity, remaining);
+                prefSlot.quantity -= toRemove;
+                remaining -= toRemove;
+
+                if (prefSlot.quantity <= 0)
+                {
+                    prefSlot.item = null;
+                    prefSlot.quantity = 0;
+                }
+            }
+        }
+
+        // 2. Kurangi sisa dari slot yang memiliki item (dari belakang agar rapi), lewati slot prioritas yang sudah dikurangi.
         for (int i = slots.Count - 1; i >= 0 && remaining > 0; i--)
         {
+            if (i == resolvedPreferredIndex)
+                continue;
+
             InventorySlot slot = slots[i];
-            if (slot.IsEmpty || slot.item != item)
+            if (slot == null || slot.IsEmpty || slot.item != item)
                 continue;
 
             int toRemove = Mathf.Min(slot.quantity, remaining);

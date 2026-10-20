@@ -92,7 +92,7 @@ MeshRenderer:
   m_RenderingLayerMask: 3
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 0}
+  - {fileID: 2100000, guid: 72c9d8dd3c929c34e9fd39e6b228cab1, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -159,6 +159,7 @@ MonoBehaviour:
   enemyData: {fileID: 0}
   displayName: Corn Musketeer
   isBoss: 0
+  isSummonedMinion: 0
   maxHealth: 85
   currentHealth: 85
   armor: 0

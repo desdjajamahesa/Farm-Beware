@@ -126,6 +126,7 @@ namespace FeaturesCombat
         private readonly List<EnemyBase> activeEnemies = new List<EnemyBase>();
         private readonly Wave.WaveProgressionEngine waveEngine = new Wave.WaveProgressionEngine();
         private bool isWaveInProgress = false;
+        private bool isSpawningWave = false;
         private Coroutine intermissionCoroutine;
         private Coroutine spawnCoroutine;
 
@@ -134,9 +135,20 @@ namespace FeaturesCombat
         public IReadOnlyList<EnemyBase> ActiveEnemies => activeEnemies;
         public int ActiveEnemiesCount => activeEnemies.Count;
         public bool IsNightBrawlActive => isWaveInProgress;
+        public bool IsSpawningWave => isSpawningWave;
         public Wave.WaveProgressionEngine WaveEngine => waveEngine;
         public int CurrentWave => currentWave;
         public int TotalWaves => totalWaves;
+
+        private void StopSpawnCoroutine()
+        {
+            if (spawnCoroutine != null)
+            {
+                StopCoroutine(spawnCoroutine);
+                spawnCoroutine = null;
+            }
+            isSpawningWave = false;
+        }
 
         private void Awake()
         {
@@ -177,11 +189,7 @@ namespace FeaturesCombat
             waveEngine.OnAllWavesCleared -= HandleAllWavesCleared;
             waveEngine.OnEnemiesRemainingChanged -= HandleEnemiesRemainingChanged;
 
-            if (spawnCoroutine != null)
-            {
-                StopCoroutine(spawnCoroutine);
-                spawnCoroutine = null;
-            }
+            StopSpawnCoroutine();
 
             if (intermissionCoroutine != null)
             {
@@ -353,11 +361,7 @@ namespace FeaturesCombat
             List<EnemyType> toSpawn = waveEngine.PrepareNextWave();
             currentWave = waveEngine.CurrentWaveIndex;
 
-            if (spawnCoroutine != null)
-            {
-                StopCoroutine(spawnCoroutine);
-                spawnCoroutine = null;
-            }
+            StopSpawnCoroutine();
 
             spawnCoroutine = StartCoroutine(RoutineSpawnWaveStaggered(toSpawn));
         }
@@ -366,14 +370,21 @@ namespace FeaturesCombat
         {
             if (toSpawn == null || toSpawn.Count == 0)
             {
+                isSpawningWave = false;
                 spawnCoroutine = null;
                 yield break;
             }
 
+            isSpawningWave = true;
             int totalCount = toSpawn.Count;
             for (int i = 0; i < totalCount; i++)
             {
-                if (!isWaveInProgress) yield break;
+                if (!isWaveInProgress)
+                {
+                    isSpawningWave = false;
+                    spawnCoroutine = null;
+                    yield break;
+                }
 
                 EnemyType type = toSpawn[i];
                 Vector3 spawnPos = CalculateRandomSpawnPoint();
@@ -383,6 +394,7 @@ namespace FeaturesCombat
 
                 if (enemy != null)
                 {
+                    enemy.isSummonedMinion = false;
                     activeEnemies.Add(enemy);
                     OnEnemySpawned?.Invoke(enemy);
                 }
@@ -396,6 +408,7 @@ namespace FeaturesCombat
             }
 
             Debug.Log($"[NightBrawlManager] Day {currentDay} Wave {currentWave} completed staggered spawn: {activeEnemies.Count} enemies.");
+            isSpawningWave = false;
             spawnCoroutine = null;
         }
 
@@ -427,6 +440,8 @@ namespace FeaturesCombat
 
         private void HandleWaveCompleted(int day, int wave)
         {
+            StopSpawnCoroutine();
+
             if (waveEngine.HasMoreWaves)
             {
                 if (FloatingCombatTextManager.Instance != null)
@@ -516,13 +531,14 @@ namespace FeaturesCombat
 
         /// <summary>
         /// Mendaftarkan musuh baru hasil pemanggilan (summon) bos ke dalam daftar musuh aktif wave saat ini.
+        /// Minion tidak menambah kuota waveEngine dan ditandai sebagai isSummonedMinion = true.
         /// </summary>
         public void RegisterDynamicEnemy(EnemyBase enemy)
         {
             if (enemy == null || activeEnemies.Contains(enemy)) return;
+            enemy.isSummonedMinion = true;
             activeEnemies.Add(enemy);
             OnEnemySpawned?.Invoke(enemy);
-            waveEngine.RegisterDynamicEnemy();
         }
 
         private List<EnemyType> GetEnemiesListForDayAndWave(int day, int wave)
@@ -627,11 +643,17 @@ namespace FeaturesCombat
         {
             activeEnemies.Remove(enemy);
             OnEnemyDied?.Invoke(enemy);
-            waveEngine.RecordEnemyDefeated();
+
+            // Minion hasil summon bos tidak boleh memajukan kuota atau progres waveEngine
+            if (enemy == null || !enemy.isSummonedMinion)
+            {
+                waveEngine.RecordEnemyDefeated();
+            }
         }
 
         private void HandleAllWavesCleared(int day)
         {
+            StopSpawnCoroutine();
             isWaveInProgress = false;
 
             if (TimeManager.Instance != null)
@@ -668,11 +690,7 @@ namespace FeaturesCombat
                 intermissionCoroutine = null;
             }
 
-            if (spawnCoroutine != null)
-            {
-                StopCoroutine(spawnCoroutine);
-                spawnCoroutine = null;
-            }
+            StopSpawnCoroutine();
 
             // Cleanup any existing active enemies
             foreach (var enemy in activeEnemies)
@@ -756,6 +774,7 @@ namespace FeaturesCombat
 
             // Scenario 2: It is Night and encounter is active/not cleared
             isWaveInProgress = false; // Reset lock so wave spawning is never blocked
+            EnsureHealthBarManagers();
 
             if (TimeManager.Instance != null)
             {
@@ -838,11 +857,7 @@ namespace FeaturesCombat
                 intermissionCoroutine = null;
             }
 
-            if (spawnCoroutine != null)
-            {
-                StopCoroutine(spawnCoroutine);
-                spawnCoroutine = null;
-            }
+            StopSpawnCoroutine();
 
             isWaveInProgress = false;
             waveEngine.EndNight();
@@ -878,24 +893,27 @@ namespace FeaturesCombat
 
         private void EnsureHealthBarManagers()
         {
+            var targetCanvas = FarmBeware.Core.Runtime.CanvasHelper.ResolveMainUICanvas();
+            if (targetCanvas == null) return;
+
             if (FeaturesCombat.UI.EnemyHealthBarManager.Instance == null)
             {
-                var canvas = FindFirstObjectByType<Canvas>();
-                if (canvas != null)
-                {
-                    var mgrObj = new GameObject("EnemyHealthBarManager", typeof(FeaturesCombat.UI.EnemyHealthBarManager));
-                    mgrObj.transform.SetParent(canvas.transform, false);
-                }
+                var mgrObj = new GameObject("EnemyHealthBarManager", typeof(FeaturesCombat.UI.EnemyHealthBarManager));
+                mgrObj.transform.SetParent(targetCanvas.transform, false);
+            }
+            else if (FeaturesCombat.UI.EnemyHealthBarManager.Instance.transform.parent != targetCanvas.transform)
+            {
+                FeaturesCombat.UI.EnemyHealthBarManager.Instance.transform.SetParent(targetCanvas.transform, false);
             }
 
             if (FeaturesCombat.UI.BossHealthBarManager.Instance == null)
             {
-                var canvas = FindFirstObjectByType<Canvas>();
-                if (canvas != null)
-                {
-                    var bossMgrObj = new GameObject("BossHealthBarManager", typeof(FeaturesCombat.UI.BossHealthBarManager));
-                    bossMgrObj.transform.SetParent(canvas.transform, false);
-                }
+                var bossMgrObj = new GameObject("BossHealthBarManager", typeof(FeaturesCombat.UI.BossHealthBarManager));
+                bossMgrObj.transform.SetParent(targetCanvas.transform, false);
+            }
+            else if (FeaturesCombat.UI.BossHealthBarManager.Instance.transform.parent != targetCanvas.transform)
+            {
+                FeaturesCombat.UI.BossHealthBarManager.Instance.transform.SetParent(targetCanvas.transform, false);
             }
         }
 

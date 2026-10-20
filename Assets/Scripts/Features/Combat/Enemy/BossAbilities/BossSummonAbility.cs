@@ -37,6 +37,15 @@ namespace FeaturesCombat
             bossEnemy = GetComponent<EnemyBase>();
         }
 
+        private void OnEnable()
+        {
+            if (bossEnemy != null)
+            {
+                bossEnemy.OnHealthChanged -= HandleBossHealthChanged;
+                bossEnemy.OnHealthChanged += HandleBossHealthChanged;
+            }
+        }
+
         private void Start()
         {
             lastSummonTime = Time.time - summonCooldown + initialDelay;
@@ -53,9 +62,42 @@ namespace FeaturesCombat
             lastSummonTime = Time.time - summonCooldown + initialDelay;
         }
 
+        private void HandleBossHealthChanged(int currentHp, int maxHp)
+        {
+            if (currentHp <= 0)
+            {
+                DismissAllMinions();
+            }
+        }
+
+        public void DismissAllMinions()
+        {
+            if (isSummoning)
+            {
+                StopAllCoroutines();
+                isSummoning = false;
+                if (bossEnemy != null)
+                {
+                    bossEnemy.IsPerformingSkill = false;
+                    bossEnemy.IsUnstaggerable = false;
+                }
+            }
+
+            for (int i = activeMinions.Count - 1; i >= 0; i--)
+            {
+                var minion = activeMinions[i];
+                if (minion != null && !minion.IsDead && minion.gameObject.activeInHierarchy)
+                {
+                    minion.TakeDamage(9999, minion.transform.position, Vector3.up);
+                }
+            }
+            activeMinions.Clear();
+        }
+
         private void Update()
         {
             if (bossEnemy == null || bossEnemy.IsDead || isSummoning) return;
+            if (NightBrawlManager.Instance != null && !NightBrawlManager.Instance.IsNightBrawlActive) return;
             if (bossEnemy.IsPerformingSkill) return;
             if (Time.time - lastSummonTime < summonCooldown) return;
             if (bossEnemy.PlayerTarget == null) return;
@@ -108,6 +150,21 @@ namespace FeaturesCombat
             float timer = 0f;
             while (timer < channelDuration)
             {
+                if (bossEnemy == null || bossEnemy.IsDead || (NightBrawlManager.Instance != null && !NightBrawlManager.Instance.IsNightBrawlActive))
+                {
+                    if (rend != null)
+                    {
+                        rend.GetPropertyBlock(_mpb);
+                        _mpb.SetColor("_BaseColor", originalCol);
+                        _mpb.SetColor("_Color", originalCol);
+                        rend.SetPropertyBlock(_mpb);
+                    }
+                    if (makeUnstaggerableDuringSummon && bossEnemy != null) bossEnemy.IsUnstaggerable = false;
+                    if (bossEnemy != null) bossEnemy.IsPerformingSkill = false;
+                    isSummoning = false;
+                    yield break;
+                }
+
                 timer += Time.deltaTime;
                 if (rend != null)
                 {
@@ -129,6 +186,14 @@ namespace FeaturesCombat
                 rend.SetPropertyBlock(_mpb);
             }
 
+            if (bossEnemy == null || bossEnemy.IsDead || (NightBrawlManager.Instance != null && !NightBrawlManager.Instance.IsNightBrawlActive))
+            {
+                if (makeUnstaggerableDuringSummon && bossEnemy != null) bossEnemy.IsUnstaggerable = false;
+                if (bossEnemy != null) bossEnemy.IsPerformingSkill = false;
+                isSummoning = false;
+                yield break;
+            }
+
             // Eksekusi pemanggilan minion
             int toSpawn = Mathf.Min(minionCount, maxActiveMinions - activeMinions.Count);
             for (int i = 0; i < toSpawn; i++)
@@ -140,6 +205,7 @@ namespace FeaturesCombat
                     EnemyBase minion = EnemyObjectPool.Instance.Spawn(minionType, spawnPos);
                     if (minion != null)
                     {
+                        minion.isSummonedMinion = true;
                         activeMinions.Add(minion);
                         if (NightBrawlManager.Instance != null)
                         {
@@ -153,6 +219,7 @@ namespace FeaturesCombat
                     var minion = minionObj.GetComponent<EnemyBase>();
                     if (minion != null)
                     {
+                        minion.isSummonedMinion = true;
                         activeMinions.Add(minion);
                         if (NightBrawlManager.Instance != null)
                         {
@@ -162,12 +229,15 @@ namespace FeaturesCombat
                 }
             }
 
-            if (makeUnstaggerableDuringSummon)
+            if (makeUnstaggerableDuringSummon && bossEnemy != null)
             {
                 bossEnemy.IsUnstaggerable = false;
             }
 
-            bossEnemy.IsPerformingSkill = false;
+            if (bossEnemy != null)
+            {
+                bossEnemy.IsPerformingSkill = false;
+            }
             isSummoning = false;
             lastSummonTime = Time.time;
         }
@@ -202,6 +272,11 @@ namespace FeaturesCombat
 
         private void OnDisable()
         {
+            if (bossEnemy != null)
+            {
+                bossEnemy.OnHealthChanged -= HandleBossHealthChanged;
+            }
+
             if (isSummoning && bossEnemy != null)
             {
                 bossEnemy.IsPerformingSkill = false;

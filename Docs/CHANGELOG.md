@@ -4,6 +4,28 @@ Welcome to the **Farm-Beware** patch notes! Here you'll find the latest updates,
 
 ---
 
+## 2026-10-20
+
+### Fixed
+* **Monster & Boss Health Bar Visibility During Night Brawl**: Fixed an issue where overhead health bars above common monsters and the boss health bar panel at the top of the screen disappeared during Night Brawl. All combat health bars are now strictly anchored to the main UI canvas with automated reparenting protection, and monster health bars are immediately visible above active enemies upon spawn.
+* **Buff Tooltip UI Canvas Resolution**: Resolved an issue where food and combat buff inspection tooltips could become misparented, guaranteeing tooltips render accurately across all display modes.
+* **Night Brawl Wave Spawning & Intermission Fix**: Fixed a bug where monsters continued spawning during the 30-second wave intermission even after all active enemies in the previous wave were defeated. Wave spawns are now immediately and cleanly terminated the moment a wave is cleared.
+* **Boss Minion Wave Progress Decoupling**: Fixed an issue where eliminating minions summoned by bosses prematurely filled the wave progress bar and triggered early wave completion. Minions are now treated as dynamic combat adds that do not inflate or corrupt wave milestone quotas. When a boss is defeated, any lingering summoned minions are automatically dispersed.
+* **Climax Boss Wave Order**: In boss waves (Day 3 Wave 3, Day 4 Wave 4, and Day 5 Wave 5), common monsters will now always spawn first to test your defenses, with the boss appearing strictly as the final, dramatic climax of the wave.
+* **Monster Attack Consistency & Fair Combat Timing**: Fixed three long-standing monster combat AI issues:
+  * **Phantom Long-Distance Melee Attacks**: Fixed an issue where *The Ranger* and heavy bosses swung from far across the arena. *The Ranger* now properly uses its dedicated long-range artillery mortar attacks with laser telegraphing, while melee attack ranges and hitbox buffers have been harmonized across all enemy types (*Cyclops Tuber Maw* 2.4m, *Taro Colossus* 2.4m, *Taro Brute* 1.8m, *Tuber Maw* 1.4m). Special skills now strictly validate engagement distance before firing.
+  * **Hesitation & Orbiting at Close Range**: Fixed an issue where monsters standing directly next to you circled in place instead of attacking. Distant monsters are no longer allowed to hoard attack permits from 7 meters away, and close-quarters combatants now preempt distant approaching monsters to strike without delay.
+  * **Continuous Attacks Without Cooldown**: Eliminated jarring back-to-back attack loops where monsters chained special skills and basic attacks instantaneously with zero recovery. Attack cooldown timers are now stamped strictly when animations finish, and a guaranteed recovery buffer is enforced between skills and standard strikes.
+* **Seed Planting Stack Consumption Priority**: Fixed an issue where planting seeds while holding a seed stack in the hotbar incorrectly consumed seeds from duplicate stacks in your main inventory backpack rather than the active hotbar stack in your hands. Active hotbar stacks are now strictly prioritized when planting, seamlessly falling back to backpack stacks only once the hotbar stack is fully depleted.
+* **Plant Waterer Visual Mount & 3D Tool Model**: Resolved an issue where equipping the watering can (`tool_plant_waterer`) showed empty player hands due to an unlinked visual prefab. Created and configured the official 3D `PlantWaterer.prefab` with bespoke cylinder body, spout, handle, URP `Mat_Metal_Dark` material, trigger hitbox, and weapon trail controller, fully linked to `Tool_PlantWaterer.asset`.
+* **Melee Combat AI Reachability & Strike Precision**: Eliminated the circular deadlock where melee monsters endlessly circled the player without attacking:
+  * **Deadlock Elimination**: Fixed an architectural mismatch where melee orbit boundaries were larger than token acquisition thresholds. Combat AI now dynamically sizes orbit rings according to weapon range, and monsters with attack cooldowns ready immediately break out of orbit to close the gap and strike.
+  * **Precision Strike Alignment & Zero Whiffing**: Fixed an issue where monsters missed attacks against stationary players due to sluggish rotation during windups. Monsters now snap rotation directly toward the target at the strike climax, expanding telegraph ground coverage and close-proximity hit registration.
+  * **Subterranean Burrow Proximity**: Adjusted subterranean burrow eruptions (Tuber Maw) to approach within 1.2m before detonating with an expanded 2.4m eruption radius, preventing misses from meters away.
+* **Production-Ready Standalone Windows Build & Material Hardening**: Successfully prepared and compiled the official 64-bit Standalone Windows release build (`Builds/Windows/Farm-Beware.exe`). Implemented dual-layer material and shader hardening: configured `GraphicsSettings.defaultRenderPipeline` to `PC_RPAsset` (preventing fallback to Built-in pipeline pink shaders), whitelisted all runtime shaders in `Always Included Shaders` to prevent shader stripping, bundled farming soil materials into `Assets/Resources/Materials/Farming/`, synchronized enemy prefab renderer material slots, and validated clean execution through an automated startup smoke test.
+
+---
+
 ## 2026-10-17
 
 ### Added

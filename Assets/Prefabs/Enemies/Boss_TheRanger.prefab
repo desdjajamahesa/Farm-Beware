@@ -92,7 +92,7 @@ MeshRenderer:
   m_RenderingLayerMask: 3
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 0}
+  - {fileID: 2100000, guid: 17ee9526610ab624b9d7686f91c5c1df, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -159,6 +159,7 @@ MonoBehaviour:
   enemyData: {fileID: 0}
   displayName: The Ranger
   isBoss: 1
+  isSummonedMinion: 0
   maxHealth: 750
   currentHealth: 750
   armor: 30

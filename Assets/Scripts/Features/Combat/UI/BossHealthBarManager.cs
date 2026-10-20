@@ -89,27 +89,41 @@ namespace FeaturesCombat.UI
 
         private void EnsureContainer()
         {
+            var targetCanvas = FarmBeware.Core.Runtime.CanvasHelper.ResolveMainUICanvas();
+            if (targetCanvas == null) return;
+
+            // Pastikan manager GameObject sendiri berada di bawah target canvas
+            if (transform.parent != targetCanvas.transform)
+            {
+                transform.SetParent(targetCanvas.transform, false);
+            }
+
             if (containerRect == null)
             {
-                containerRect = GetComponent<RectTransform>();
-                if (containerRect == null)
+                var existingPanel = targetCanvas.transform.Find("BossHealthBarPanel");
+                if (existingPanel != null)
                 {
-                    var canvas = FindFirstObjectByType<Canvas>();
-                    if (canvas != null)
-                    {
-                        var bossPanel = new GameObject("BossHealthBarPanel", typeof(RectTransform), typeof(CanvasGroup));
-                        bossPanel.transform.SetParent(canvas.transform, false);
-                        containerRect = bossPanel.GetComponent<RectTransform>();
-                        mainCanvasGroup = bossPanel.GetComponent<CanvasGroup>();
-
-                        // Posisikan di layar atas tengah, sedikit di bawah indikator wave tracker
-                        containerRect.anchorMin = new Vector2(0.5f, 1f);
-                        containerRect.anchorMax = new Vector2(0.5f, 1f);
-                        containerRect.pivot = new Vector2(0.5f, 1f);
-                        containerRect.anchoredPosition = new Vector2(0f, -55f);
-                        containerRect.sizeDelta = new Vector2(600f, 130f);
-                    }
+                    containerRect = existingPanel.GetComponent<RectTransform>();
+                    mainCanvasGroup = existingPanel.GetComponent<CanvasGroup>();
                 }
+                else
+                {
+                    var bossPanel = new GameObject("BossHealthBarPanel", typeof(RectTransform), typeof(CanvasGroup));
+                    bossPanel.transform.SetParent(targetCanvas.transform, false);
+                    containerRect = bossPanel.GetComponent<RectTransform>();
+                    mainCanvasGroup = bossPanel.GetComponent<CanvasGroup>();
+
+                    // Posisikan di layar atas tengah, sedikit di bawah indikator wave tracker
+                    containerRect.anchorMin = new Vector2(0.5f, 1f);
+                    containerRect.anchorMax = new Vector2(0.5f, 1f);
+                    containerRect.pivot = new Vector2(0.5f, 1f);
+                    containerRect.anchoredPosition = new Vector2(0f, -55f);
+                    containerRect.sizeDelta = new Vector2(600f, 130f);
+                }
+            }
+            else if (containerRect.parent != targetCanvas.transform)
+            {
+                containerRect.SetParent(targetCanvas.transform, false);
             }
 
             if (mainCanvasGroup == null && containerRect != null)

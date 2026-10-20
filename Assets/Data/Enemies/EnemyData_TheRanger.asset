@@ -21,7 +21,7 @@ MonoBehaviour:
   moveSpeed: 0
   contactDamage: 60
   attackRate: 0.5
-  attackRange: 5
+  attackRange: 10
   aggroRange: 14
   knockbackResistance: 1
   maxPoise: 100

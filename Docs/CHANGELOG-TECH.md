@@ -12,6 +12,7 @@ Konsolidasi dokumentasi teknis dari seluruh kontributor tim pengembang (`Rafi`, 
 ---
 
 ## Daftar Isi Kronologis
+- [2026-10-20](#--2026-10-20)
 - [2026-10-17](#--2026-10-17)
 - [2026-10-16](#--2026-10-16)
 - [2026-10-15](#--2026-10-15)
@@ -23,6 +24,125 @@ Konsolidasi dokumentasi teknis dari seluruh kontributor tim pengembang (`Rafi`, 
 - [2026-10-02](#--2026-10-02)
 - [2026-10-01](#--2026-10-01)
 - [2026-09-30](#--2026-09-30)
+
+---
+
+## - 2026-10-20
+
+### Diperbaiki & Dioptimalkan (Fixed & Optimized)
+
+#### 1. Monster Overhead & Boss Health Bar UI Canvas Resolution & Hierarchical Alpha Fix `[Rafi]`
+- **Akar Masalah (Root Cause Diagnostic)**:
+  - Pada rilis sebelumnya, pemanggilan `FindFirstObjectByType<Canvas>()` di dalam `NightBrawlManager.EnsureHealthBarManagers()`, `EnemyHealthBarManager.EnsureContainer()`, dan `BossHealthBarManager.EnsureContainer()` secara non-deterministik mengambil `DayTransition_Panel` (yang memiliki sub-canvas akibat auto-hierarchy di `DayTransitionUI.EnsureUIHierarchy()`).
+  - Karena `DayTransition_Panel` memiliki `CanvasGroup` dengan nilai `alpha = 0f` (di luar transisi fajar/senja), hierarki uGUI melakukan multiplikasi transparansi bertingkat (`effective_alpha = 0.0 * child_alpha = 0.0`). Akibatnya, `EnemyHealthBarContainer`, `EnemyHealthBarManager`, `BossHealthBarPanel`, dan seluruh overhead health bar monster menjadi 100% transparan dan tidak terlihat di layar game.
+  - Masalah serupa teridentifikasi pada `BuffTooltipUI.EnsureInstanceExists()`.
+- **Implementasi Solusi Arsitektural**:
+  - **`CanvasHelper.ResolveMainUICanvas()` ([`CanvasHelper.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Core/UI/CanvasHelper.cs))**: Membangun canonical utility resolver berkinerja tinggi yang memprioritaskan root GameObject `"UI_Canvas"`, menyaring sub-canvas dan panel transien, serta memvalidasi root canvas `ScreenSpaceOverlay`.
+  - **Auto-Reparenting Resilience ([`EnemyHealthBarManager.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Combat/UI/EnemyHealthBarManager.cs) & [`BossHealthBarManager.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Combat/UI/BossHealthBarManager.cs))**: Memastikan manager dan container mendeteksi jika salah diparenting di bawah panel lain dan secara otomatis mere-parent dirinya kembali ke target root canvas.
+  - **Sanitasi `DayTransitionUI` ([`DayTransitionUI.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Time/UI/DayTransitionUI.cs))**: Menghapus penambahan sub-canvas dan `CanvasScaler` redundan jika GameObject sudah berada di bawah root Canvas (`UI_Canvas`), serta memanggil `transform.SetAsLastSibling()` untuk mempertahankan urutan rendering teratas tanpa mengacaukan Canvas query engine.
+  - **Konfigurasi Visibilitas Anti-Clutter ([`EnemyOverheadBarUI.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Combat/UI/EnemyOverheadBarUI.cs))**: Menambahkan parameter `hideAtFullHealth` (default `false`) pada `Bind()` dan `EvaluateVisibility()` sehingga monster aktif saat Night Brawl langsung menampilkan bar darahnya di atas kepala tanpa harus menunggu menerima damage terlebih dahulu.
+  - **Automated Test Suite Expansion ([`GameplayAndHUDTests.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Editor/GameplayAndHUDTests.cs))**: Menambahkan **Test 23** (`Test_EnemyAndBossHealthBar_CanvasResolutionAndVisibilityAudit`) yang mengaudit Canvas resolution, auto-reparenting resilience dari panel ber-alpha 0, visibilitas bar darah, dan resolusi tooltip buff (23/23 audit tests lulus 100%).
+
+#### 2. Night Brawl Wave Spawn Leak Prevention, Boss Minion Decoupling, and Climax Boss Order `[Rafi]`
+- **Akar Masalah (Root Cause Diagnostic)**:
+  - **Monster Kelewat Spawn Setelah Wave Selesai**: `NightBrawlManager.SpawnNextWave()` menjalankan `spawnCoroutine = StartCoroutine(RoutineSpawnWaveStaggered(toSpawn))` dengan jeda spawn 15–20 detik. Saat monster di layar dihabisi pemain sebelum seluruh antrean monster selesai di-spawn, `HandleWaveCompleted()` memulai hitung mundur jeda antar-wave (`waveIntermissionDelay = 30s`) tanpa menghentikan `spawnCoroutine`. Akibatnya, monster wave lama terus bermunculan di tengah masa jeda (intermission).
+  - **Kematian Minion Merusak Progres Wave (Wave Meter Corruption)**: Saat bos memanggil minion (`BossSummonAbility`), minion didaftarkan via `RegisterDynamicEnemy()`, dan saat minion mati `HandleEnemyDied()` langsung memanggil `waveEngine.RecordEnemyDefeated()`. Hal ini mengurangi kuota `_activeEnemiesRemaining` dan menambah `_totalDefeatedEnemies` terhadap jadwal tetap wave, memicu penyelesaian wave prematur dan bar progres mencapai 100% saat bos atau monster utama masih hidup.
+  - **Urutan Spawn Bos di Awal/Tengah Wave**: Di `WaveProgressionEngine.GetEnemiesScheduleForDayAndWave()`, bos di wave klimaks (Day 3 W3 CyclopsTuberMaw, Day 4 W4 TaroColossus, Day 5 W5 TheRanger) tercantum di awal daftar (`index 0`), sehingga bos langsung muncul pertama kali sebelum anak buahnya.
+- **Implementasi Solusi Arsitektural**:
+  - **Siklus Hidup Coroutine & Penghentian Instan ([`NightBrawlManager.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Combat/NightBrawlManager.cs))**:
+    - Menambahkan pelacak status `isSpawningWave` dan helper `StopSpawnCoroutine()`.
+    - Mengintegrasikan `StopSpawnCoroutine()` ke dalam `HandleWaveCompleted()`, `HandleAllWavesCleared()`, `EndNightBrawl()`, `RestoreNightBrawlState()`, dan `OnDisable()`.
+    - Memastikan pembersihan coroutine dan penghentian spawn seketika saat wave berakhir atau malam diselesaikan.
+  - **Pemisahan Minion dari Kuota Wave ([`EnemyBase.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Combat/Enemy/EnemyBase.cs), [`NightBrawlManager.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Combat/NightBrawlManager.cs), [`BossSummonAbility.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Combat/Enemy/BossAbilities/BossSummonAbility.cs), [`WaveProgressionEngine.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Combat/Wave/WaveProgressionEngine.cs))**:
+    - Menambahkan flag `isSummonedMinion` pada `EnemyBase` (di-reset di `ResetEnemyState()` pada pool).
+    - Menandai minion bos sebagai `isSummonedMinion = true` pada saat spawn dan pendaftaran dynamic enemy.
+    - Mengisolasi penghitungan `waveEngine.RecordEnemyDefeated()` hanya untuk musuh reguler berjadwal (`!enemy.isSummonedMinion`), menjaga keakuratan absolut progress bar dan kuota wave.
+    - Menambahkan penghentian pemanggilan minion saat bos mati atau malam usai, serta mengeliminasi minion yang tersisa saat bos dikalahkan (`DismissAllMinions()`).
+  - **Urutan Klimaks Bos ([`WaveProgressionEngine.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Combat/Wave/WaveProgressionEngine.cs))**:
+    - Menyusun ulang daftar jadwal monster di Day 3 W3, Day 4 W4, dan Day 5 W5 sehingga seluruh monster reguler muncul lebih dulu dan bos berada di urutan paling akhir.
+    - Menerapkan programmatic sorting pada `PrepareNextWave()` yang menjamin tipe bos selalu diurutkan ke akhir daftar (`Sort((a,b) => IsBossType(a) ? 1 : -1)`).
+  - **Automated Test Suite Expansion ([`GameplayAndHUDTests.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Editor/GameplayAndHUDTests.cs))**:
+    - Menambahkan **Test 24** (`Test_NightBrawl_WaveSpawnLeakPrevention_MinionDecoupling_AndBossOrderAudit`) yang memvalidasi urutan bos di akhir wave, pemisahan kuota minion, pencegahan spawn leak pada wave completion, dan siklus hidup coroutine (24/24 audit tests lulus 100%).
+
+#### 3. Multi-Stack Seed Consumption Priority & In-Hand Hotbar Allocation Fix `[Rafi]`
+- **Akar Masalah (Root Cause Diagnostic)**:
+  - Ketika pemain memiliki lebih dari satu stack bibit di inventori (satu stack di hotbar slot 0–3 dan satu stack lainnya di tas utama slot 4–15), penanaman bibit melalui `FarmlandTile` memanggil `InventoryComponent.RemoveItem(seed, 1)`.
+  - Secara default, implementasi `RemoveItem()` mengiterasi slot dari belakang (`for int i = slots.Count - 1 down to 0`) agar susunan inventori depan tetap rapi. Akibatnya, stack yang pertama kali ditemukan dan dikurangi adalah stack di inventori utama (slot 4–15), sementara stack bibit yang sedang dipegang di tangan pemain pada hotbar (slot 0–3) tidak pernah berkurang.
+  - Selain itu, `FarmlandTile.RoutinePlantSeedToTile()` sebelumnya tidak meneruskan indeks hotbar aktif ke coroutine dan mengabaikan nilai return boolean `RemoveItem()`, yang berpotensi memicu bibit tertanam tanpa konsumsi jika terjadi defisit inventori.
+- **Implementasi Solusi Arsitektural**:
+  - **Dukungan `preferredSlotIndex` & Auto-Active Hotbar Resolution ([`InventoryComponent.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Inventory/InventoryComponent.cs))**:
+    - Memperbarui tanda tangan `public bool RemoveItem(ItemData item, int amount, int preferredSlotIndex = -1)`.
+    - Menambahkan resolusi otomatis: jika `preferredSlotIndex < 0`, inventori bertipe player (`hasHotbar == true`), dan `selectedHotbarIndex` memegang item target yang sama, sistem otomatis menetapkan `resolvedPreferredIndex = selectedHotbarIndex` sehingga item di tangan pemain diprioritaskan untuk dikonsumsi terlebih dahulu hingga habis.
+    - Sisa kebutuhan (`remaining > 0`) setelah slot prioritas habis tetap dikurangkan dari slot belakang inventori utama (`slots.Count - 1` ke 0, melewati `resolvedPreferredIndex`).
+    - Menambahkan helper direct-slot `public bool RemoveItemFromSlot(int slotIndex, int amount)`.
+  - **Penerusan Indeks Hotbar & Validasi Konsumsi Bibit ([`FarmlandTile.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Farming/FarmlandTile.cs) & [`PlayerFarmInteraction.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Farming/Adapters/PlayerFarmInteraction.cs))**:
+    - `FarmlandTile.TryPlantSeed()` meneruskan `hotbarIdx` ke `RoutinePlantSeedToTile()`.
+    - `RoutinePlantSeedToTile()` memanggil `inventory.RemoveItem(seed, 1, preferredSlotIndex: hotbarIdx)` dan memvalidasi `if (success)` sebelum mengubah status tanah menjadi `PlantedDry`.
+    - `PlayerFarmInteraction.ExecutePlant()` meneruskan `preferredSlotIndex: PlayerInventory.selectedHotbarIndex`.
+  - **Automated Test Suite Expansion ([`GameplayAndHUDTests.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Editor/GameplayAndHUDTests.cs))**:
+    - Menambahkan **Test 25** (`Test_PlayerInventory_MultiStack_PlantSeedHotbarConsumptionPriorityAudit`) yang mengaudit auto-resolusi hotbar aktif, deduksi prioritas eksplisit, penipisan stack hotbar hingga kosong, fallback otomatis ke tas saat hotbar habis, dan deduksi direct-slot (25/25 audit tests lulus 100%).
+
+#### 4. Monster Combat AI Attack Consistency, Distance Token Priority & Cooldown Decoupling `[Rafi]`
+- **Akar Masalah (Root Cause Diagnostic)**:
+  1. *Serangan Jarak Jauh Siluman*: `TheRanger` (Boss stationary turret) berstatus `isRanged = true`, namun pada `EnemyBase.TryPerformAttack()` dialihkan ke `else { StartCoroutine(RoutineMeleeTelegraphedAttack()); }` karena hanya `CornMusketeer` yang memiliki percabangan ranged. Dengan `attackRange = 6.0m`, telegraf dan hit check (`currentDist <= attackRange + 0.8f`) mengeksekusi telegraf melee raksasa seluas 6.8 meter yang mengenai pemain dari seberang arena. Selain itu, jangkauan serang melee boss/mob terinflasi (`CyclopsTuberMaw` 3.6m + 0.8m = 4.4m, `TaroColossus` 3.0m + 0.8m = 3.8m), dan skill khusus dieksekusi murni berdasarkan timer tanpa validasi jarak.
+  2. *Monster Dekat Membeku/Berputar Tanpa Menyerang*: Pada `EnemyBase.UpdateAI()`, monster dalam jarak hingga **7.0 meter** mengambil token melee selama **3.5 detik**. Dengan kuota 3 token melee, 3 monster lambat di kejauhan memborong seluruh token. Saat monster lain tiba di jarak 0.8m–1.2m tepat di depan pemain, `TryAcquireToken()` mengembalikan `false` dan `MonsterTacticalEvaluator` memaksanya masuk ke `FlankOrbit`, berputar-putar tanpa menyerang selama 3.5 detik. Selain itu, `TheRanger` mengambil token ranged tetapi merelease token melee (`ReleaseToken(id, false)`), menyebabkan kebocoran token ranged.
+  3. *Serangan Beruntun Tanpa Cooldown*: Timestamp `lastAttackTime = Time.time;` dicatat pada *awal* `TryPerformAttack()`. Animasi serang berdurasi 0.53s–0.8s menghabiskan sebagian besar interval cooldown saat animasi masih berjalan. Ditambah lagi, tidak ada sinkronisasi antara basic attack dan special skill; setelah skill berdurasi 2 detik selesai, `Time.time - lastAttackTime` sudah melampaui cooldown basic attack sehingga basic attack langsung ditembakkan di frame pertama (dan sebaliknya).
+- **Implementasi Solusi Arsitektural**:
+  - **Distance-Based Token Preemption ([`AttackTokenDispatcher.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Combat/Core/PureLogic/AttackTokenDispatcher.cs))**:
+    - Menambahkan array primitif Zero-GC `_meleeDistances`, `_rangedDistances`, `_meleeCommitted`, `_rangedCommitted`.
+    - `TryAcquireToken` kini mendukung parameter `float distanceToTarget` dan `bool isCommitted`.
+    - Aturan Preemption Berbasis Jarak: Combatant yang berada dalam jangkauan serang langsung (`distanceToTarget <= 2.2f`) dapat mem-preempt token anticipatory yang dipegang oleh unit berjarak jauh (`distance >= 2.8f`) asalkan unit jauh tersebut belum committed dalam ayunan serang aktif (`!committed[i]`).
+    - Menambahkan method query `IsCommitted(entityId, isRanged)`.
+  - **Attack Routing & Sanitasi Jangkauan Serang ([`EnemyBase.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Combat/Enemy/EnemyBase.cs))**:
+    - Menambahkan coroutine proyektil artileri berat khusus `RoutineTheRangerAttack()` dengan telegraf laser merah (0.45s) dan pelepasan token `ReleaseToken(id, isRanged: true)`.
+    - Menyelaraskan jangkauan serang visual melee: `CyclopsTuberMaw` (2.4m), `TaroColossus` (2.4m), `TaroBrute` (1.8m), `TuberMaw` (1.4m), dan `TheRanger` (10m turret). Padding hitbox telegraf melee dikurangi dari `+0.8f` menjadi `+0.35f`, dan deteksi belakang disaring (`dot >= 0.20f || currentDist <= 1.0f`).
+    - Menambahkan gating jarak efektif pada seluruh eksekusi skill khusus (`TuberMaw` Burrow: 2.5m–10m, `CyclopsTuberMaw` Beam: <=14m, `TaroBrute` RootGuard: <=5m, `TaroColossus` Slam: <=7m, `CornMusketeer` Kernel: 2.5m–13m, `TheRanger` HeavensFall: <=16m).
+    - Mempersempit threshold akuisisi token anticipatory dari 7.0m ke `Mathf.Max(2.2f, attackRange + 1.2f)` dan durasi dari 3.5s ke 1.6s.
+  - **Cooldown Stamping & Global Recovery Buffer ([`EnemyBase.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Combat/Enemy/EnemyBase.cs))**:
+    - Timestamp `lastAttackTime = Time.time;` kini dicatat tepat saat coroutine serangan dasar *selesai* (fase recovery), menjamin monster menunggu interval cooldown penuh sebelum serangan berikutnya.
+    - Setiap kali serangan dasar selesai, timer skill diberikan buffer jeda minimal 1.2 detik (`skillCooldownTimer = Mathf.Min(skillCooldownTimer, GetSkillCooldown() - 1.2f)`).
+    - Setiap kali special skill selesai (`RoutineRetreatAndHeal`, `RoutineBurrowStrike`, `RoutineTrackingBeam`, `RoutineRootGuard`, `RoutineAirborneSlam`, `RoutineKernelShot`, `RoutineCornHeavensFall`), sistem menetapkan `lastAttackTime = Time.time + 0.5f ~ 0.8f;` untuk mengeliminasi serangan basic attack instan pada frame pertama.
+  - **Automated Test Suite Expansion ([`GameplayAndHUDTests.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Editor/GameplayAndHUDTests.cs))**:
+    - Menambahkan **Test 26** (`Test_MonsterAttackConsistency_DistanceTokenPriority_TheRangerAndCooldownDecouplingAudit`) yang mengaudit preemption token berbasis jarak, proteksi unit committed mid-swing, siklus token ranged The Ranger tanpa kebocoran, dan sanitasi nilai attackRange seluruh monster (26/26 audit tests lulus 100%).
+
+#### 5. Standalone Windows Production Build & Dual-Layer Material/Shader Hardening `[Rafi]`
+- **Akar Masalah (Root Cause Diagnostic)**:
+  1. *Default Render Pipeline Kosong (`GraphicsSettings.defaultRenderPipeline == null`)*: Pada project settings sebelumnya, `QualitySettings` menunjuk ke `PC_RPAsset`, tetapi `GraphicsSettings.defaultRenderPipeline` berstatus `null`. Pada standalone player build, inisialisasi awal Unity sebelum `QualitySettings` aktif menyebabkan fallback ke Built-in Render Pipeline, merender seluruh material URP menjadi pink/magenta 100%.
+  2. *Shader Stripping pada Runtime Dynamic Shaders*: Seluruh shader yang dipanggil melalui `Shader.Find(...)` (`Universal Render Pipeline/Lit`, `Universal Render Pipeline/Unlit`, `Universal Render Pipeline/Particles/Unlit`, `UI/Grayscale`, `FarmBeware/Combat/CombatTelegraph`, `FarmBeware/Monster/MonsterFresnelLit`, dll.) tidak terdaftar dalam `Always Included Shaders`. Saat proses player compilation, shader stripping menghapus varian shader tersebut sehingga mengembalikan `null` di runtime standalone.
+  3. *Unbundled Soil Materials*: `FarmGridVisualizer.ResolveDefaultMaterials()` memanggil `Resources.Load<Material>("Materials/Farming/Mat_Soil_Untilled")`, namun folder `Assets/Resources/Materials/Farming/` belum ada (aset hanya berada di `Assets/Art/Materials/Farming/`).
+  4. *Null Material Slots pada Prefab Enemies*: Pada `Assets/Prefabs/Enemies/`, terdapat 6 prefab duplikat dengan slot material 0 berstatus `null`.
+- **Implementasi Solusi Arsitektural**:
+  - **URP Pipeline Hardening (`ProjectSettings/GraphicsSettings.asset`)**: Menetapkan `GraphicsSettings.defaultRenderPipeline` secara eksplisit ke `PC_RPAsset` (`Assets/Settings/PC_RPAsset.asset`), mengeliminasi kemungkinan fallback ke Built-in pipeline.
+  - **Always Included Shaders Whitelist**: Menambahkan 9 shader runtime penting ke dalam array `m_AlwaysIncludedShaders` (total 16 shader terproteksi) untuk menjamin Zero-Shader-Stripping pada kompilasi rilis.
+  - **Resources Material Bundling (`Assets/Resources/Materials/Farming/`)**: Menyalin 8 material farming tanah dan tanaman (`Mat_Soil_Untilled`, `Mat_Soil_Tilled_Dry`, `Mat_Soil_Tilled_Wet`, dan leaf/stem/root materials) ke dalam Resources sehingga `Resources.Load<Material>` ter-resolve secara instan di runtime.
+  - **Prefab Material Synchronization (`Assets/Prefabs/Enemies/`)**: Mensinkronisasi seluruh 6 enemy & boss prefab ke material resminya (`M_Enemy_TuberMaw`, `M_Boss_CyclopsTuberMaw`, `M_Enemy_TaroBrute`, `M_Boss_TaroColossus`, `M_Enemy_CornMusketeer`, `M_Boss_TheRanger`).
+  - **Yield Fallback Sanitization ([`PlayerFarmInteraction.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Farming/Adapters/PlayerFarmInteraction.cs))**: Mengganti dead string fallback `Resources.Load<ItemData>("Data/Items/Crops/...")` dengan query kanonikal ke `ItemDatabase.Instance.GetItem("crop_sweetpotato_dirty")`.
+  - **Build Execution & Smoke Test Validation**:
+    - Build target: `StandaloneWindows64`, Subtarget: `Player`, Scripting Backend: `mono`, Kompresi: `compress_lz4`, Mode: `strict_mode`.
+    - Executable terkompilasi: `Builds/Windows/Farm-Beware.exe` (667 KB), `UnityPlayer.dll` (36.5 MB), `Farm-Beware_Data/data.unity3d` (71.3 MB).
+    - Menjalankan smoke test otomatis: Executable berhasil berjalan di background tanpa crash, Direct3D 11 rendering aktif, PhysX dan Input System terinisialisasi bersih (exit code 0).
+
+#### 6. Plant Waterer Visual Mount & Melee AI Reachability Deadlock Elimination (27/27 Audit Tests Passing) `[Rafi]`
+- **Akar Masalah (Root Cause Diagnostic)**:
+  1. *Visual Model Kaleng Siram Hilang*: ScriptableObject `Tool_PlantWaterer.asset` memiliki serialized property `equipPrefab == null`, menyebabkan karakter memegang tangan kosong tanpa alat saat memilih watering can di hotbar.
+  2. *Deadlock Agresi Melee (Circling Tanpa Serangan)*: Pada `MonsterTacticalEvaluator`, unit melee tanpa attack token dipaksa melakukan `FlankOrbit` di dalam radius `OrbitMaxRadius = 4.8m`. Namun pada `EnemyBase.UpdateAI()`, akuisisi token dibatasi oleh `distToPlayer <= approachThreshold` (2.6m–3.0m). Karena $4.8\text{m} > 3.0\text{m}$, monster yang mendekati pemain terjebak di orbit ring pada jarak 3.2m–4.8m dan *tidak pernah* bisa memenuhi syarat jarak untuk meminta token, memicu perputaran melingkar abadi tanpa serangan.
+  3. *Serangan Meleset (Whiffing) Terhadap Target Diam*: Pada `RoutineMeleeTelegraphedAttack()`, monster menggunakan slerp rotasi lambat (`Time.deltaTime * 8f`) sehingga saat serangan diluncurkan, orientasi monster masih menyamping/tangensial dari posisi pemain. Dot product `Vector3.Dot(forward, dirToPlayer)` sering kali bernilai $< 0.20$, memicu deteksi meleset (*whiff*) bahkan saat pemain berdiri diam. Pada `RoutineBurrowStrike()`, erupsi bawah tanah meledak dari jarak 3 meter dengan radius sempit 1.6m.
+- **Implementasi Solusi Arsitektural**:
+  - **Pembuatan Prefab & Visual Mounting Plant Waterer ([`PlantWaterer.prefab`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Prefabs/Weapons/PlantWaterer.prefab) & [`Tool_PlantWaterer.asset`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Data/Items/Equipment/Tool_PlantWaterer.asset))**:
+    - Membangun prefab 3D resmi `PlantWaterer.prefab` lengkap dengan komponen badan silinder (`CanBody`), corong (`CanSpout`), pegangan (`CanHandle`), material URP `Mat_Metal_Dark` ber-shader `Universal Render Pipeline/Lit` (Zero-Error/Pink-Shader), `BoxCollider` trigger, `WeaponHitbox` (range 1.5), kinematic `Rigidbody`, dan `WeaponTrailController`.
+    - Menautkan GUID `f25e84560fcf3a644a476506d5820c3c` secara langsung ke properti `equipPrefab` di `Tool_PlantWaterer.asset`.
+  - **Eliminasi Deadlock Flank Orbit pada Pure Logic ([`MonsterTacticalEvaluator.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Combat/Core/PureLogic/MonsterTacticalEvaluator.cs))**:
+    - Menambahkan overload 9-parameter `EvaluateMovement(..., bool isAttackReady, out MonsterTacticalState calculatedState)`.
+    - Jika `hasAttackToken || isAttackReady`: monster langsung keluar dari orbit dan bertransisi ke `MonsterTacticalState.EngageDirect` lurus menuju pemain untuk mengambil token dan melancarkan tebasan.
+    - Menambahkan konfigurasi dinamis orbit radius pada `CalculateOrbitDirection(..., float minRadius, float maxRadius)`.
+  - **Penataan Jarak & Presisi Serangan Musuh ([`EnemyBase.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Combat/Enemy/EnemyBase.cs))**:
+    - Menghitung `isAttackReady` secara real-time berdasarkan sisa interval cooldown dan meneruskannya ke evaluator taktis.
+    - Menyelaraskan `approachThreshold = Mathf.Max(2.4f, attackRange + 1.4f)` dan mengonfigurasi `tacticalEvaluator.OrbitMinRadius` serta `OrbitMaxRadius` secara dinamis sesuai `attackRange`.
+    - Pada `RoutineMeleeTelegraphedAttack()`: melakukan direct rotation snap (`transform.rotation = Quaternion.LookRotation(toTarget)`) pada klimaks fase windup sebelum evaluasi damage, menyelaraskan radius telegraf tanah (`telegraphHitRange = attackRange + 0.55f`), dan memperluas kondisi hit menjadi `(dot >= 0.10f || currentDist <= 1.2f)`.
+    - Pada `RoutineBurrowStrike()`: fase subterranean kini mendekati pemain hingga `diff.magnitude <= 1.2f` (maksimal 1.2s) dan memperluas radius erupsi tanah menjadi `2.4m`, mengeliminasi telegraf palsu yang meledak dari kejauhan.
+  - **Automated Test Suite Expansion (27/27 Passing) ([`GameplayAndHUDTests.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Editor/GameplayAndHUDTests.cs))**:
+    - Menambahkan **Test 27** (`Test_PlantWatererVisualMount_AndMeleeCombatReachabilityAudit`) yang mengaudit integritas prefab `Tool_PlantWaterer`, eliminasi deadlock orbit saat `isAttackReady = true`, pendekatan ke dynamic orbit ring, akuisisi token anticipatory, dan registrasi serangan presisi terhadap target stasioner.
+    - Seluruh 27 tes audit otomatis lulus 100% (27/27 Passed, 0 Errors).
 
 ---
 

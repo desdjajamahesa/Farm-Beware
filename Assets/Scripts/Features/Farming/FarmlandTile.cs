@@ -220,10 +220,10 @@ namespace FeaturesFarming
                 return;
             }
 
-            StartCoroutine(RoutinePlantSeedToTile(inventory, seed, playerControl));
+            StartCoroutine(RoutinePlantSeedToTile(inventory, seed, hotbarIdx, playerControl));
         }
 
-        private IEnumerator RoutinePlantSeedToTile(InventoryComponent inventory, SeedItemData seed, IPlayerContext playerControl)
+        private IEnumerator RoutinePlantSeedToTile(InventoryComponent inventory, SeedItemData seed, int hotbarIdx, IPlayerContext playerControl)
         {
             isPlantingAction = true;
 
@@ -237,14 +237,21 @@ namespace FeaturesFarming
 
             if (inventory != null && seed != null)
             {
-                inventory.RemoveItem(seed, 1);
-                plantedSeed = seed;
-                growthDuration = seed.growthDuration > 0f ? seed.growthDuration : 30f;
-                currentTimer = 0f;
-                growthProgress = 0f;
+                bool success = inventory.RemoveItem(seed, 1, preferredSlotIndex: hotbarIdx);
+                if (success)
+                {
+                    plantedSeed = seed;
+                    growthDuration = seed.growthDuration > 0f ? seed.growthDuration : 30f;
+                    currentTimer = 0f;
+                    growthProgress = 0f;
 
-                SetState(TileState.PlantedDry);
-                Debug.Log($"[FarmlandTile] Successfully planted {seed.itemName}. Requires watering!");
+                    SetState(TileState.PlantedDry);
+                    Debug.Log($"[FarmlandTile] Successfully planted {seed.itemName}. Requires watering!");
+                }
+                else
+                {
+                    Debug.LogWarning($"[FarmlandTile] Aborting plant: insufficient {seed.itemName} in inventory!");
+                }
             }
 
             isPlantingAction = false;

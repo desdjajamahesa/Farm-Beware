@@ -40,6 +40,7 @@ namespace FeaturesCombat.UI
         private float currentFillRatio = 1f;
         private float targetFillRatio = 1f;
         private bool isBossBar = false;
+        private bool hideAtFullHealth = false;
 
         private static Sprite cachedBarSprite;
 
@@ -55,13 +56,14 @@ namespace FeaturesCombat.UI
             EnsureVisualElements();
         }
 
-        public void Bind(EnemyBase enemy)
+        public void Bind(EnemyBase enemy, bool hideAtFullHealth = false)
         {
             Unbind();
 
             if (enemy == null) return;
             boundEnemy = enemy;
             isBossBar = enemy.isBoss;
+            this.hideAtFullHealth = hideAtFullHealth;
 
             // Sesuaikan ukuran bar: Boss bar sedikit lebih lebar jika diaktifkan overhead
             float width = isBossBar ? 110f : 80f;
@@ -81,8 +83,8 @@ namespace FeaturesCombat.UI
 
             UpdateHpText(curHp, maxHp);
 
-            // Kondisi awal: sembunyikan jika HP masih penuh (anti-clutter), atau langsung tampil jika sudah terluka
-            if (curHp < maxHp)
+            // Kondisi awal: tampilkan jika hideAtFullHealth false atau sudah terluka
+            if (!this.hideAtFullHealth || curHp < maxHp)
             {
                 canvasGroup.alpha = 1f;
                 lastDamageTime = Time.time;
@@ -116,6 +118,7 @@ namespace FeaturesCombat.UI
             }
 
             if (canvasGroup != null) canvasGroup.alpha = 0f;
+            hideAtFullHealth = false;
         }
 
         private void HandleHealthChanged(int currentHp, int maxHp)
@@ -191,20 +194,28 @@ namespace FeaturesCombat.UI
                 return;
             }
 
-            // Jika HP penuh dan sudah melebihi durasi combat visible, fade out halus
-            if (targetFillRatio >= 0.999f && Time.time - lastDamageTime > combatVisibleDuration)
+            // Jika hideAtFullHealth diaktifkan: sembunyikan jika HP penuh dan sudah melebihi durasi combat visible
+            if (hideAtFullHealth && targetFillRatio >= 0.999f && Time.time - lastDamageTime > combatVisibleDuration)
             {
                 if (canvasGroup.alpha > 0f && fadeCoroutine == null)
                 {
                     FadeOut(fadeDuration);
                 }
             }
-            else if (targetFillRatio < 0.999f && Time.time - lastDamageTime > 5.0f)
+            else if (hideAtFullHealth && targetFillRatio < 0.999f && Time.time - lastDamageTime > 5.0f)
             {
                 // Jika musuh terluka tapi dianggurkan lebih dari 5 detik, fade out lembut agar layar tidak kotor
                 if (canvasGroup.alpha > 0.35f && fadeCoroutine == null)
                 {
                     fadeCoroutine = StartCoroutine(RoutineFadeAlpha(0.35f, fadeDuration));
+                }
+            }
+            else if (!hideAtFullHealth)
+            {
+                // Jika tidak menyembunyikan di full health, pastikan bar tetap terlihat selama musuh aktif & tampak di layar
+                if (canvasGroup.alpha < 1f && fadeCoroutine == null)
+                {
+                    canvasGroup.alpha = 1f;
                 }
             }
         }

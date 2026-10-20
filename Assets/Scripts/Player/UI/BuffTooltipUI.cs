@@ -1,6 +1,7 @@
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
+using FarmBeware.Core.Runtime;
 
 namespace PlayerUI
 {
@@ -179,7 +180,7 @@ namespace PlayerUI
         {
             if (Instance != null) return;
 
-            Canvas canvas = FindFirstObjectByType<Canvas>();
+            Canvas canvas = CanvasHelper.ResolveMainUICanvas();
             if (canvas == null) return;
 
             GameObject tooltipObj = new GameObject("HUD_BuffTooltip", typeof(RectTransform));

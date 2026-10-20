@@ -90,7 +90,7 @@ MeshRenderer:
   m_RenderingLayerMask: 3
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 0}
+  - {fileID: 2100000, guid: 2fda7039fd15d0442b6c8e71ed5fd9bc, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -157,6 +157,7 @@ MonoBehaviour:
   enemyData: {fileID: 0}
   displayName: Taro Colossus
   isBoss: 1
+  isSummonedMinion: 0
   maxHealth: 900
   currentHealth: 900
   armor: 55

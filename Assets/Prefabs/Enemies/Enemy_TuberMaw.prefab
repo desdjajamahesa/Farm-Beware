@@ -92,7 +92,7 @@ MeshRenderer:
   m_RenderingLayerMask: 3
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 0}
+  - {fileID: 2100000, guid: 9f898a8a553c2b24b8dd08a84d78e88e, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -159,6 +159,7 @@ MonoBehaviour:
   enemyData: {fileID: 0}
   displayName: Tuber Maw
   isBoss: 0
+  isSummonedMinion: 0
   maxHealth: 100
   currentHealth: 100
   armor: 20
