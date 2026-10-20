@@ -7,6 +7,7 @@ Welcome to the **Farm-Beware** patch notes! Here you'll find the latest updates,
 ## 2026-10-17
 
 ### Added
+* **Triple Clock Speed Display Mode**: You can now cycle through three distinct digital clock speeds on your HUD by pressing **T** or **9**! Choose between the classic 60-second full step (+40 in-game minutes), a brisk 30-second half step (+20 in-game minutes), or a new 15-second quarter step (+10 in-game minutes, highlighted with an Emerald badge) to follow your farm's schedule with precision.
 * **Charming Main Menu Animations**: Added adorable animated rice stalks and leaf decorations to the main menu buttons! They gently sway in the breeze, breathe with life, and react with a playful bounce whenever you hover over them.
 * **Burrow Attack Warning Indicator**: Subterranean enemies (like the pesky TuberMaw) now project a clear red danger circle on the ground and an **"⚠️ Erupting!"** alert right before they burst from the earth, giving you time to dodge or parry!
 * **Cinematic Day & Night Banners**: Shifting between peaceful farming days and tense night battles now feels much more atmospheric! Enjoy a radiant golden sunrise banner accompanied by a gentle morning chime (`☀️ DAY X — The morning sun rises. Tend to your crops.`), or brace yourself as the sky darkens into a crimson dusk with a resonant gong (`🌙 NIGHTFALL — The shadows stir. Prepare your defenses.`).

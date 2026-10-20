@@ -4,16 +4,25 @@ Semua perubahan penting pada proyek ini oleh M-Roihan (Roi) dari `branch-roi-1` 
 
 ## - 2026-10-17
 
+### Ditambahkan (Added)
+- **Ekspansi Triple Clock Display Mode & Mode 15 Detik (`CombatPhaseTrackerUI.cs`)**:
+  - Menambahkan mode ketiga `QuarterStep15s` pada enum `ClockDisplayMode`:
+    - **Mode 1 (Full Step — 60s/40m)**: Pembaruan setiap 60 detik real time (+40 menit in-game: `06:00` -> `06:40` -> `07:20`...).
+    - **Mode 2 (Half Step — 30s/20m)**: Pembaruan setiap 30 detik real time (+20 menit in-game: `06:00` -> `06:20` -> `06:40`...).
+    - **Mode 3 (Quarter Step — 15s/10m)**: Pembaruan setiap 15 detik real time (+10 menit in-game: `06:00` -> `06:10` -> `06:20` -> `06:30`...).
+  - Memperbarui shortcut tombol **`T`** atau **`9` / `Numpad 9`** menjadi siklus 3 arah berurutan (`60s` -> `30s` -> `15s` -> `60s`) dengan notifikasi floating text Emerald (`#58F28C`) untuk mode 15s.
+  - Memperbarui unit test pada [`GameplayAndHUDTests.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Editor/GameplayAndHUDTests.cs) untuk memvalidasi transisi siklus ketiga mode secara berurutan.
+
 ### Pemeliharaan Integrasi Stabil & Verifikasi Build Rilis (Stable Integration & Build Verification)
 - **Status Integrasi Branch**:
-  - Pada 17 Oktober 2026, tidak ada penambahan commit kode mandiri baru pada `origin/roi-branch`. Branch berada dalam status **pemeliharaan integrasi stabil** (*stable maintenance state*) setelah fitur audio tempur dan Dual Clock Display Mode berhasil digabungkan ke `Rafi-branch` via merge commit `e439c5b`.
+  - Integrasi fitur Triple Clock Display Mode dan pembaruan audio SFX dari `origin/roi-branch` digabungkan secara aman ke `Rafi-branch`.
 - **Verifikasi Audio Tempur & Visual Lighting pada Standalone Player Build**:
   - Melakukan audit menyeluruh terhadap 7 aset audio SFX tebasan pedang (`SFX_Weapon_Swing_*.wav`, `SFX_Weapon_Hit_*.wav`) pada paket build final `Builds/StandaloneWindows64/Farm-Beware.exe`:
     - Memverifikasi bahwa seluruh klip audio pada [`CombatHitVfxEngine.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Combat/Adapters/CombatHitVfxEngine.cs) dan [`PlayerEquipment.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Player/PlayerEquipment.cs) ter-bundle sempurna tanpa kehilangan referensi (*zero missing AudioClip references*).
     - Memastikan volume dan kurva attenuation audio tempur terdengar reaktif dan tajam saat memukul target musuh.
   - Memverifikasi sinkronisasi controller pencahayaan dan volume atmosfer ([`DayNightLightingController.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Time/Atmosphere/DayNightLightingController.cs), [`DaySunLightingObserver.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Rendering/Lighting/DaySunLightingObserver.cs)) berjalan mulus sepanjang siklus waktu siang hingga malam di standalone release build.
-- **Validasi Dual Clock Display Mode**:
-  - Memastikan toggle shortcut tombol **`T`** dan pembaruan jam digital pada [`CombatPhaseTrackerUI.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Time/UI/CombatPhaseTrackerUI.cs) (ritme 60 detik vs 30 detik) berfungsi responsif dan konsisten dengan hasil suite pengujian otomatis `GameplayAndHUDTests.RunAllTests()` (19/19 Passed).
+- **Validasi Triple Clock Display Mode**:
+  - Memastikan toggle shortcut tombol **`T`** dan pembaruan jam digital pada [`CombatPhaseTrackerUI.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Time/UI/CombatPhaseTrackerUI.cs) (ritme 60s, 30s, dan 15s) berfungsi responsif dan konsisten dengan hasil suite pengujian otomatis `GameplayAndHUDTests.RunAllTests()`.
 
 ---
 

@@ -125,6 +125,15 @@ Konsolidasi dokumentasi teknis dari seluruh kontributor tim pengembang (`Rafi`, 
   - Menambahkan **Test 22**: `Test_MultiSourceInputLock_AndTransitionLeakPrevention` yang memvalidasi hirarki kunci multi-source, kekebalan terhadap generic premature unlock, penyerapan raycast `DayTransitionUI`, dan pencegahan kebocoran klik hotbar.
   - Seluruh 22 uji audit kelayakan sistem lolos 100% (22/22 Passed).
 
+#### 11. Triple Clock Display Mode & 15s Quarter-Step Rhythm Integration `[Roi / Rafi]`
+- **Arsitektur Tiga Tingkat Ritme Jam Digital ([`CombatPhaseTrackerUI.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Time/UI/CombatPhaseTrackerUI.cs))**:
+  - Memperluas enum `ClockDisplayMode` dengan opsi ketiga `QuarterStep15s = 2`, melengkapi mode `FullStep60s` dan `HalfStep30s`.
+  - Mode 15s memperbarui tampilan jam digital setiap 15 detik waktu nyata (setara penambahan +10 menit in-game time), memberikan presisi tinggi bagi pemain yang memantau jendela interval panen dan kompor secara ketat tanpa mengubah durasi total siklus siang 18 menit (1080 detik).
+  - Mengonfigurasi notifikasi floating text di atas kepala pemain dengan warna Emerald (`#58F28C` / `new Color(0.35f, 0.95f, 0.55f)`) bertuliskan `⏱️ Clock Display: 15s Real = 10m Game (Quarter Step)`.
+  - Mengintegrasikan siklus 3 arah berurutan pada shortcut keyboard `T` atau `9` / `Numpad 9`: `60s -> 30s -> 15s -> 60s`.
+- **Ekspansi Test Suite Validasi Siklus Tiga Mode ([`GameplayAndHUDTests.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Editor/GameplayAndHUDTests.cs))**:
+  - Memperbarui pengujian **Test 7**: `Test07_ProceduralHUDDayAndClock` untuk memverifikasi transisi siklis ketiga mode tampilan jam digital secara berurutan beserta validasi toleransi interval pembaruan jam.
+
 ---
 
 ## - 2026-10-16
