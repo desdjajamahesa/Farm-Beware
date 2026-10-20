@@ -154,13 +154,20 @@ public class DoorInteractable : MonoBehaviour, IInteractable, IDynamicLabelProvi
 
     private void TeleportPlayer(IPlayerContext player, Vector3 targetPosition)
     {
+        Vector3 safePos = targetPosition;
+        if (safePos.y < 0.04f)
+        {
+            safePos.y = 0.04f;
+        }
+
         Rigidbody rb = player.Transform.GetComponent<Rigidbody>();
         if (rb != null)
         {
             rb.linearVelocity = Vector3.zero;
-            rb.position = targetPosition;
+            rb.angularVelocity = Vector3.zero;
+            rb.position = safePos;
         }
-        player.Transform.position = targetPosition;
+        player.Transform.position = safePos;
         Physics.SyncTransforms();
     }
 

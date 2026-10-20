@@ -83,13 +83,30 @@ namespace FeaturesCombat
                 _sharedQuadMesh.RecalculateBounds();
             }
 
-#if UNITY_EDITOR
             if (_sharedTelegraphMaterial == null)
             {
-                _sharedTelegraphMaterial = UnityEditor.AssetDatabase.LoadAssetAtPath<Material>(
-                    "Assets/Art/Materials/Combat/Mat_CombatTelegraph.mat");
-            }
+                // Primary: Load from Resources (bundled into standalone player build)
+                _sharedTelegraphMaterial = Resources.Load<Material>("Materials/Combat/Mat_CombatTelegraph");
+
+#if UNITY_EDITOR
+                if (_sharedTelegraphMaterial == null)
+                {
+                    _sharedTelegraphMaterial = UnityEditor.AssetDatabase.LoadAssetAtPath<Material>(
+                        "Assets/Art/Materials/Combat/Mat_CombatTelegraph.mat");
+                }
 #endif
+
+                // Dynamic Fallback: Instantiate runtime material with shader if asset load is missing
+                if (_sharedTelegraphMaterial == null)
+                {
+                    var shader = Shader.Find("FarmBeware/Combat/CombatTelegraph")
+                                 ?? Shader.Find("Universal Render Pipeline/Unlit");
+                    if (shader != null)
+                    {
+                        _sharedTelegraphMaterial = new Material(shader) { name = "Runtime_CombatTelegraph" };
+                    }
+                }
+            }
         }
 
         private void EnsureComponents()
@@ -150,8 +167,11 @@ namespace FeaturesCombat
         public void SetRadius(float radius)
         {
             _currentRadius = Mathf.Max(0.2f, radius);
-            // Quad unit mesh is 1x1 (-0.5 to +0.5). To cover radius R, diameter is 2*R.
-            transform.localScale = new Vector3(_currentRadius * 2f, 1f, _currentRadius * 2f);
+            Vector3 pScale = transform.parent != null ? transform.parent.lossyScale : Vector3.one;
+            float scaleX = pScale.x > 0.001f ? (_currentRadius * 2f) / pScale.x : (_currentRadius * 2f);
+            float scaleY = pScale.y > 0.001f ? 1f / pScale.y : 1f;
+            float scaleZ = pScale.z > 0.001f ? (_currentRadius * 2f) / pScale.z : (_currentRadius * 2f);
+            transform.localScale = new Vector3(scaleX, scaleY, scaleZ);
         }
 
         /// <summary>

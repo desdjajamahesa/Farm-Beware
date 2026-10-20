@@ -1117,14 +1117,15 @@ namespace FeaturesCombat
         {
             isPerformingSkill = true;
             isBurrowed = true;
+            EnsureTelegraphElements();
 
             // Sembunyi / masuk tanah
             Vector3 startScale = transform.localScale;
             transform.localScale = new Vector3(startScale.x, 0.1f, startScale.z);
 
-            // Track posisi pemain selama 1.2 detik (dibatasi di luar batas rumah jika pemain di dalam rumah)
+            // Phase 1: Track posisi pemain di bawah tanah (0.8 detik)
             float timer = 0f;
-            while (timer < 1.2f)
+            while (timer < 0.8f)
             {
                 timer += Time.deltaTime;
                 if (playerTarget != null)
@@ -1139,9 +1140,43 @@ namespace FeaturesCombat
                 yield return null;
             }
 
-            // Muncul mendadak dan hantam pemain jika pemain berada di luar rumah
+            // Phase 2: Hentikan gerak dan aktifkan telegraf bahaya (0.55s wind-up)
+            if (rb != null)
+            {
+                rb.position = transform.position;
+                rb.linearVelocity = Vector3.zero;
+            }
+
+            float telegraphDuration = 0.55f;
+            float eruptionRadius = 2.2f;
+            if (combatTelegraph != null)
+            {
+                combatTelegraph.StartCharge(telegraphDuration, eruptionRadius);
+            }
+
+            if (FloatingCombatTextManager.Instance != null && playerTarget != null && Vector3.Distance(transform.position, playerTarget.position) <= 4.0f)
+            {
+                FloatingCombatTextManager.Instance.SpawnText(
+                    transform.position + Vector3.up * 0.5f,
+                    "⚠️ Erupting!",
+                    new Color(1f, 0.35f, 0.1f));
+            }
+
+            float chargeTimer = 0f;
+            while (chargeTimer < telegraphDuration)
+            {
+                chargeTimer += Time.deltaTime;
+                yield return null;
+            }
+
+            // Phase 3: Erupsi muncul dan berikan damage area
             transform.localScale = startScale;
             isBurrowed = false;
+
+            if (combatTelegraph != null)
+            {
+                combatTelegraph.Hide();
+            }
 
             if (rb != null)
             {
@@ -1150,13 +1185,13 @@ namespace FeaturesCombat
             }
             Physics.SyncTransforms();
 
-            if (playerTarget != null && !NightBrawlManager.IsInsideHouse(playerTarget.position) && Vector3.Distance(transform.position, playerTarget.position) <= 2.2f)
+            if (playerTarget != null && !NightBrawlManager.IsInsideHouse(playerTarget.position) && Vector3.Distance(transform.position, playerTarget.position) <= eruptionRadius)
             {
                 var target = playerTarget.GetComponent<IDamageable>();
                 target?.TakeDamage(contactDamage + 10, playerTarget.position, Vector3.up);
             }
 
-            yield return new WaitForSeconds(0.4f);
+            yield return new WaitForSeconds(0.35f);
             isPerformingSkill = false;
         }
 

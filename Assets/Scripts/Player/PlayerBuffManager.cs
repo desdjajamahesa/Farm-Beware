@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using FarmBeware.Core.Runtime;
+using FeaturesTime;
 
 public class PlayerBuffManager : MonoBehaviour
 {
@@ -33,6 +35,77 @@ public class PlayerBuffManager : MonoBehaviour
     {
         if (playerStats == null)
             playerStats = GetComponent<PlayerStats>();
+    }
+
+    private void Start()
+    {
+        SubscribeTimeEvents();
+    }
+
+    private void OnEnable()
+    {
+        SubscribeTimeEvents();
+    }
+
+    private void OnDisable()
+    {
+        UnsubscribeTimeEvents();
+    }
+
+    private void SubscribeTimeEvents()
+    {
+        if (TimeManager.Instance != null)
+        {
+            TimeManager.Instance.OnDayChanged -= HandleDayChanged;
+            TimeManager.Instance.OnDayChanged += HandleDayChanged;
+        }
+        if (DayNightTimeManager.Instance != null)
+        {
+            DayNightTimeManager.Instance.OnDayChanged -= HandleDayChanged;
+            DayNightTimeManager.Instance.OnDayChanged += HandleDayChanged;
+        }
+        var timeService = ServiceLocator.Resolve<ITimeService>();
+        if (timeService != null)
+        {
+            timeService.OnDayChanged -= HandleDayChanged;
+            timeService.OnDayChanged += HandleDayChanged;
+        }
+    }
+
+    private void UnsubscribeTimeEvents()
+    {
+        if (TimeManager.Instance != null)
+        {
+            TimeManager.Instance.OnDayChanged -= HandleDayChanged;
+        }
+        if (DayNightTimeManager.Instance != null)
+        {
+            DayNightTimeManager.Instance.OnDayChanged -= HandleDayChanged;
+        }
+        var timeService = ServiceLocator.Resolve<ITimeService>();
+        if (timeService != null)
+        {
+            timeService.OnDayChanged -= HandleDayChanged;
+        }
+    }
+
+    private void HandleDayChanged(int newDay)
+    {
+        ClearAllBuffs();
+    }
+
+    /// <summary>
+    /// Menghapus seluruh buff aktif seketika saat pemain tidur atau pergantian hari,
+    /// mengembalikan modifier status player ke nilai dasar, dan mengosongkan HUD buff.
+    /// </summary>
+    public void ClearAllBuffs()
+    {
+        if (activeBuffs == null || activeBuffs.Count == 0) return;
+
+        activeBuffs.Clear();
+        ApplyBuffModifiersToPlayer();
+        OnBuffsChanged?.Invoke();
+        Debug.Log("[PlayerBuffManager] ☀️ All food buffs have been cleared upon sleeping. Player wakes up fresh!");
     }
 
     [Header("Fast-Forward Time Integration")]

@@ -15,6 +15,10 @@ namespace FarmBeware.Core.Runtime
         void ApplyKnockback(Vector3 direction, float force);
         void ApplyStun(float duration);
         void SetControlLock(bool locked);
+        void AddInputLock(string source);
+        void RemoveInputLock(string source);
+        void ClearAllInputLocks();
+        bool HasInputLock(string source);
         bool IsGodMode { get; }
         void StopMovement();
         void Teleport(Vector3 position, Quaternion rotation);

@@ -120,12 +120,12 @@ public class PlayerRespawnController : MonoBehaviour
         }
         if (playerControl != null)
         {
-            playerControl.SetInputActive(true);
+            playerControl.RemoveInputLock("Respawn");
         }
         else
         {
             playerControl = GetComponent<PlayerControl>() ?? FindFirstObjectByType<PlayerControl>();
-            playerControl?.SetInputActive(true);
+            playerControl?.RemoveInputLock("Respawn");
         }
     }
 
@@ -137,7 +137,7 @@ public class PlayerRespawnController : MonoBehaviour
         // 1. Kunci input pergerakan & aksi pemain
         if (playerControl != null)
         {
-            playerControl.SetInputActive(false);
+            playerControl.AddInputLock("Respawn");
         }
 
         if (playerRb != null)
@@ -183,7 +183,7 @@ public class PlayerRespawnController : MonoBehaviour
         // Kunci input kontrol pemain selama transisi respawn
         if (playerControl != null)
         {
-            playerControl.SetInputActive(false);
+            playerControl.AddInputLock("Respawn");
         }
 
         // Tutup Death Screen jika masih terbuka
@@ -233,6 +233,13 @@ public class PlayerRespawnController : MonoBehaviour
                 playerStats.maxStamina,
                 playerStats.maxHunger,
                 playerStats.maxThirst);
+        }
+
+        // Bersihkan seluruh food buff aktif agar pemain terbangun di pagi hari tanpa sisa buff
+        var buffMgr = GetComponent<PlayerBuffManager>() ?? FindFirstObjectByType<PlayerBuffManager>();
+        if (buffMgr != null)
+        {
+            buffMgr.ClearAllBuffs();
         }
 
         // 6. Teleportasikan karakter pemain ke kasur kamar tidur secara aman
@@ -285,7 +292,7 @@ public class PlayerRespawnController : MonoBehaviour
         // 8. Buka kembali kunci kontrol pemain & beri pesan informatif
         if (playerControl != null)
         {
-            playerControl.SetInputActive(true);
+            playerControl.RemoveInputLock("Respawn");
         }
 
         var floatingText = ServiceLocator.Resolve<IFloatingTextService>();
