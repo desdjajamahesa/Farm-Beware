@@ -15,6 +15,8 @@ using FeaturesEconomy;
 using UnityEngine.EventSystems;
 using FarmBeware.Core.Runtime;
 using PlayerUI;
+using FeaturesStoryline;
+using FeaturesStoryline.Data;
 
 namespace FarmBeware.EditorTests
 {
@@ -28,7 +30,7 @@ namespace FarmBeware.EditorTests
             Debug.Log("[AUDIT-SUITE] ========================================================");
 
             int passed = 0;
-            int total = 27;
+            int total = 30;
 
             if (Test_DayNight_PhaseProgression_DuskUntilNight()) passed++;
             if (Test_BedInteractable_Logic_AllowsDuskAndBlocksNightOnly()) passed++;
@@ -57,12 +59,15 @@ namespace FarmBeware.EditorTests
             if (Test_PlayerInventory_MultiStack_PlantSeedHotbarConsumptionPriorityAudit()) passed++;
             if (Test_MonsterAttackConsistency_DistanceTokenPriority_TheRangerAndCooldownDecouplingAudit()) passed++;
             if (Test_PlantWatererVisualMount_AndMeleeCombatReachabilityAudit()) passed++;
+            if (Test_Storyline_Subsystem_Engine_Progression_And_Persistence()) passed++;
+            if (Test_CropDataCorn_AssetIntegrity_And_DualLookup_Audit()) passed++;
+            if (Test_ModalStack_CentralizedInputLock_PlayerControl_Audit()) passed++;
 
             Debug.Log("[AUDIT-SUITE] ========================================================");
             Debug.Log($"[AUDIT-SUITE] Complete! Passed: {passed}/{total}");
             if (passed == total)
             {
-                Debug.Log("✅ [AUDIT-SUITE] ALL 27 COMPREHENSIVE AUDIT TESTS PASSED SUCCESSFULLY!");
+                Debug.Log("✅ [AUDIT-SUITE] ALL 30 COMPREHENSIVE AUDIT TESTS PASSED SUCCESSFULLY!");
             }
             else
             {
@@ -2181,6 +2186,389 @@ namespace FarmBeware.EditorTests
                     {
                         Object.DestroyImmediate(cleanupList[i]);
                     }
+                }
+            }
+        }
+
+        // Test 28: Storyline Subsystem pure logic state machine, beat conditions, journal catalog, and save/load persistence
+        private static bool Test_Storyline_Subsystem_Engine_Progression_And_Persistence()
+        {
+            var cleanupList = new List<Object>();
+            try
+            {
+                // 1. Verify StoryDatabase completeness (25 beats, 8 journal entries)
+                var defaultJournals = StoryDatabase.CreateDefaultJournalEntries();
+                if (defaultJournals == null || defaultJournals.Count < 8)
+                {
+                    Debug.LogError($"[Test 28] StoryDatabase default journals incomplete! Expected >= 8, got {defaultJournals?.Count ?? 0}");
+                    return false;
+                }
+
+                var defaultBeats = StoryDatabase.CreateDefaultStoryBeats(defaultJournals);
+                if (defaultBeats == null || defaultBeats.Count < 24)
+                {
+                    Debug.LogError($"[Test 28] StoryDatabase default beats incomplete! Expected >= 24, got {defaultBeats?.Count ?? 0}");
+                    return false;
+                }
+
+                // Verify every journal has valid content and ID
+                for (int i = 0; i < defaultJournals.Count; i++)
+                {
+                    var j = defaultJournals[i];
+                    cleanupList.Add(j);
+                    if (string.IsNullOrEmpty(j.entryId) || string.IsNullOrEmpty(j.title) || string.IsNullOrEmpty(j.content))
+                    {
+                        Debug.LogError($"[Test 28] Journal entry at index {i} has missing ID, title, or content!");
+                        return false;
+                    }
+                }
+
+                // Verify every beat has valid ID, title, narrative text, and valid journal reference if unlocksJournalEntry is true
+                for (int i = 0; i < defaultBeats.Count; i++)
+                {
+                    var b = defaultBeats[i];
+                    cleanupList.Add(b);
+                    if (string.IsNullOrEmpty(b.beatId) || string.IsNullOrEmpty(b.title) || string.IsNullOrEmpty(b.narrativeText))
+                    {
+                        Debug.LogError($"[Test 28] Story beat at index {i} has missing ID, title, or text!");
+                        return false;
+                    }
+
+                    if (b.unlocksJournalEntry && b.journalEntry == null)
+                    {
+                        Debug.LogError($"[Test 28] Story beat '{b.beatId}' specifies unlocksJournalEntry but has null journalEntry!");
+                        return false;
+                    }
+                }
+
+                // 2. Pure Logic Engine State Machine Tests
+                var engine = new StorylineEngine();
+                if (engine.CurrentChapter != 1 || engine.IsStoryComplete || engine.UnlockedJournalCount != 0 || engine.TriggeredBeatCount != 0)
+                {
+                    Debug.LogError("[Test 28] StorylineEngine initial state invalid!");
+                    return false;
+                }
+
+                // Beat prerequisites and trigger evaluation
+                var testJournal = JournalEntryData.CreateRuntimeInstance("TEST_J1", 1, "Test Journal", "Author", "Lore");
+                cleanupList.Add(testJournal);
+
+                var beat1 = StoryBeatData.CreateRuntimeInstance("BEAT_1", 1, StoryTriggerType.Dawn, StoryDeliveryType.HudBanner, "B1", "T1", day: 1, journal: testJournal);
+                cleanupList.Add(beat1);
+
+                var beat2 = StoryBeatData.CreateRuntimeInstance("BEAT_2", 1, StoryTriggerType.WaveCleared, StoryDeliveryType.HudBanner, "B2", "T2", day: 1);
+                beat2.prerequisiteBeatIds = new[] { "BEAT_1" };
+                cleanupList.Add(beat2);
+
+                // BEAT_2 should not trigger before BEAT_1
+                if (engine.CanTrigger(beat2, StoryTriggerType.WaveCleared, 1))
+                {
+                    Debug.LogError("[Test 28] BEAT_2 satisfied CanTrigger before prerequisite BEAT_1 was met!");
+                    return false;
+                }
+
+                // BEAT_1 wrong trigger type should fail
+                if (engine.CanTrigger(beat1, StoryTriggerType.Dusk, 1))
+                {
+                    Debug.LogError("[Test 28] BEAT_1 satisfied CanTrigger with mismatched trigger type Dusk!");
+                    return false;
+                }
+
+                // BEAT_1 correct trigger type and day satisfies
+                if (!engine.CanTrigger(beat1, StoryTriggerType.Dawn, 1))
+                {
+                    Debug.LogError("[Test 28] BEAT_1 failed CanTrigger with matching Dawn and Day 1!");
+                    return false;
+                }
+
+                // Record BEAT_1: must trigger beat and unlock associated journal
+                bool recorded = engine.RecordBeatTriggered(beat1);
+                if (!recorded || !engine.HasTriggered("BEAT_1") || !engine.HasJournalEntry("TEST_J1") || engine.UnlockedJournalCount != 1)
+                {
+                    Debug.LogError("[Test 28] Failed to record BEAT_1 or unlock TEST_J1 in engine!");
+                    return false;
+                }
+
+                // BEAT_1 cannot trigger twice
+                if (engine.CanTrigger(beat1, StoryTriggerType.Dawn, 1))
+                {
+                    Debug.LogError("[Test 28] BEAT_1 allowed duplicate triggering!");
+                    return false;
+                }
+
+                // Now BEAT_2 prerequisite is met
+                if (!engine.CanTrigger(beat2, StoryTriggerType.WaveCleared, 1))
+                {
+                    Debug.LogError("[Test 28] BEAT_2 prerequisite failed to satisfy after BEAT_1 recorded!");
+                    return false;
+                }
+
+                engine.RecordBeatTriggered(beat2);
+                if (!engine.HasTriggered("BEAT_2"))
+                {
+                    Debug.LogError("[Test 28] BEAT_2 failed to record!");
+                    return false;
+                }
+
+                // Boss archetype filtering test
+                var bossBeat = StoryBeatData.CreateRuntimeInstance("BOSS_BEAT", 3, StoryTriggerType.BossSpawn, StoryDeliveryType.BossIntro, "Boss Intro", "Desc", day: 3, wave: 3, bossType: EnemyType.CyclopsTuberMaw);
+                cleanupList.Add(bossBeat);
+
+                engine.SetChapter(3);
+                if (engine.CanTrigger(bossBeat, StoryTriggerType.BossSpawn, 3, 3, EnemyType.TuberMaw))
+                {
+                    Debug.LogError("[Test 28] Boss beat allowed trigger for wrong EnemyType TuberMaw!");
+                    return false;
+                }
+                if (!engine.CanTrigger(bossBeat, StoryTriggerType.BossSpawn, 3, 3, EnemyType.CyclopsTuberMaw))
+                {
+                    Debug.LogError("[Test 28] Boss beat failed to satisfy CanTrigger with matching CyclopsTuberMaw!");
+                    return false;
+                }
+
+                // 3. Save / Load State Payload Round-Trip Test
+                var exportedPayload = engine.ExportState();
+                if (exportedPayload.chapter != 3 || exportedPayload.triggeredBeats.Count != 2 || exportedPayload.unlockedJournals.Count != 1)
+                {
+                    Debug.LogError("[Test 28] Exported payload state corrupted!");
+                    return false;
+                }
+
+                var freshEngine = new StorylineEngine();
+                freshEngine.ImportState(exportedPayload);
+                if (freshEngine.CurrentChapter != 3 || !freshEngine.HasTriggered("BEAT_1") || !freshEngine.HasTriggered("BEAT_2") || !freshEngine.HasJournalEntry("TEST_J1"))
+                {
+                    Debug.LogError("[Test 28] Restored engine state mismatch after payload import!");
+                    return false;
+                }
+
+                // Epilogue completion
+                freshEngine.CompleteStory();
+                if (!freshEngine.IsStoryComplete)
+                {
+                    Debug.LogError("[Test 28] CompleteStory failed to set IsStoryComplete!");
+                    return false;
+                }
+
+                // 4. StorylineManager MonoBehaviour Adapter & Service Registration
+                var managerGO = new GameObject("Test_StorylineManager", typeof(StorylineManager));
+                cleanupList.Add(managerGO);
+                var manager = managerGO.GetComponent<StorylineManager>();
+                manager.Initialize();
+
+                var resolvedService = ServiceLocator.Resolve<IStorylineService>();
+                if (resolvedService == null || !ReferenceEquals(resolvedService, manager))
+                {
+                    Debug.LogError("[Test 28] StorylineManager failed to register as IStorylineService in ServiceLocator!");
+                    return false;
+                }
+
+                // Verify triggering beat through service
+                bool triggerResult = resolvedService.TriggerBeat("PROLOGUE");
+                if (!triggerResult || !resolvedService.HasTriggered("PROLOGUE"))
+                {
+                    Debug.LogError("[Test 28] IStorylineService.TriggerBeat('PROLOGUE') failed!");
+                    return false;
+                }
+
+                // Verify Save System serialization round-trip with GameSaveData
+                var saveData = new FeaturesSaveSystem.GameSaveData();
+                saveData.storyChapter = resolvedService.CurrentChapter;
+                saveData.triggeredStoryBeats = new List<string>(resolvedService.TriggeredBeatIds);
+                saveData.unlockedJournalEntries = new List<string>(resolvedService.UnlockedJournalIds);
+                saveData.isStoryComplete = resolvedService.IsStoryComplete;
+
+                if (!saveData.triggeredStoryBeats.Contains("PROLOGUE"))
+                {
+                    Debug.LogError("[Test 28] GameSaveData did not serialize triggered beat 'PROLOGUE'!");
+                    return false;
+                }
+
+                // 5. Dynamic Extensibility Check: runtime beat registration and chapter expansion
+                var dynamicBeat = StoryBeatData.CreateRuntimeInstance("DYNAMIC_EXT_BEAT", 6, StoryTriggerType.Custom, StoryDeliveryType.HudBanner, "Ext Title", "Ext Desc", day: 6);
+                cleanupList.Add(dynamicBeat);
+                manager.RegisterStoryBeat(dynamicBeat);
+                bool containsDynamic = false;
+                for (int i = 0; i < manager.AllStoryBeats.Count; i++)
+                {
+                    if (manager.AllStoryBeats[i] == dynamicBeat)
+                    {
+                        containsDynamic = true;
+                        break;
+                    }
+                }
+                if (!containsDynamic)
+                {
+                    Debug.LogError("[Test 28] StorylineManager failed to dynamically register story beat at runtime!");
+                    return false;
+                }
+
+                // Verify engine dynamic MaxChapter expansion
+                engine.MaxChapter = 14;
+                engine.SetChapter(7);
+                if (engine.CurrentChapter != 7)
+                {
+                    Debug.LogError($"[Test 28] Failed to dynamically set chapter 7 with MaxChapter 14! Got {engine.CurrentChapter}");
+                    return false;
+                }
+
+                Debug.Log("✅ Test 28: Storyline subsystem pure logic state machine, beat conditions, journal catalog, and save/load persistence verified.");
+                return true;
+            }
+            finally
+            {
+                ServiceLocator.Unregister<IStorylineService>();
+                for (int i = cleanupList.Count - 1; i >= 0; i--)
+                {
+                    if (cleanupList[i] != null)
+                    {
+                        Object.DestroyImmediate(cleanupList[i]);
+                    }
+                }
+            }
+        }
+
+        // Test 29: CropData_Corn ScriptableObject asset integrity, 3-day maturity, yields, and FarmGridManager dual-lookup alias
+        private static bool Test_CropDataCorn_AssetIntegrity_And_DualLookup_Audit()
+        {
+            var cleanupList = new List<Object>();
+            try
+            {
+                var cornAsset = AssetDatabase.LoadAssetAtPath<FeaturesFarming.Data.CropData>("Assets/Data/Items/Crops/CropData_Corn.asset");
+                if (cornAsset == null)
+                {
+                    Debug.LogError("[Test 29] Assets/Data/Items/Crops/CropData_Corn.asset does not exist or failed to load!");
+                    return false;
+                }
+
+                if (cornAsset.cropId != "Crop_Corn")
+                {
+                    Debug.LogError($"[Test 29] CropData_Corn.cropId mismatch! Expected 'Crop_Corn', got '{cornAsset.cropId}'");
+                    return false;
+                }
+
+                if (cornAsset.totalDaysToHarvest != 3)
+                {
+                    Debug.LogError($"[Test 29] CropData_Corn.totalDaysToHarvest mismatch! Expected 3, got {cornAsset.totalDaysToHarvest}");
+                    return false;
+                }
+
+                if (cornAsset.cleanYieldItem == null || cornAsset.dirtyYieldItem == null || cornAsset.returnedSeedItem == null)
+                {
+                    Debug.LogError("[Test 29] CropData_Corn missing item references (cleanYieldItem, dirtyYieldItem, or returnedSeedItem)!");
+                    return false;
+                }
+
+                // Verify FarmGridManager dual lookup (Crop_Corn and seed_corn)
+                var gridManagerGO = new GameObject("Test_FarmGridManager_Corn");
+                cleanupList.Add(gridManagerGO);
+                var gridManager = gridManagerGO.AddComponent<FeaturesFarming.Adapters.FarmGridManager>();
+                gridManager.RegisterCropData(cornAsset);
+
+                var lookupByCropId = gridManager.GetCropData("Crop_Corn");
+                var lookupBySeedId = gridManager.GetCropData("seed_corn");
+
+                if (lookupByCropId == null || lookupByCropId != cornAsset)
+                {
+                    Debug.LogError("[Test 29] FarmGridManager.GetCropData('Crop_Corn') failed to resolve registered CropData_Corn!");
+                    return false;
+                }
+
+                if (lookupBySeedId == null || lookupBySeedId != cornAsset)
+                {
+                    Debug.LogError("[Test 29] FarmGridManager.GetCropData('seed_corn') alias failed to resolve registered CropData_Corn!");
+                    return false;
+                }
+
+                Debug.Log("✅ Test 29: CropData_Corn ScriptableObject asset integrity, 3-day growth cycle, clean/dirty yields, and FarmGridManager dual lookup verified.");
+                return true;
+            }
+            finally
+            {
+                for (int i = cleanupList.Count - 1; i >= 0; i--)
+                {
+                    if (cleanupList[i] != null) Object.DestroyImmediate(cleanupList[i]);
+                }
+            }
+        }
+
+        // Dummy modal class for Test 30
+        private class TestAuditModal : IModalWindow
+        {
+            public bool IsOpen { get; set; } = true;
+            public void OpenModal() { IsOpen = true; }
+            public void CloseModal() { IsOpen = false; }
+        }
+
+        // Test 30: ModalStackManager centralized input gating into PlayerControl.isInputLocked
+        private static bool Test_ModalStack_CentralizedInputLock_PlayerControl_Audit()
+        {
+            var cleanupList = new List<Object>();
+            try
+            {
+                var playerGO = new GameObject("Test_Player_ModalAudit", typeof(Rigidbody), typeof(CapsuleCollider), typeof(PlayerControl));
+                cleanupList.Add(playerGO);
+                var player = playerGO.GetComponent<PlayerControl>();
+
+                var modalStack = ModalStackManager.Instance;
+                if (modalStack == null)
+                {
+                    Debug.LogError("[Test 30] ModalStackManager.Instance is null!");
+                    return false;
+                }
+
+                // Initially no modals open
+                modalStack.CloseAll();
+                if (player.isInputLocked)
+                {
+                    Debug.LogError("[Test 30] PlayerControl.isInputLocked should be false with no active modals!");
+                    return false;
+                }
+
+                // Push modal
+                var dummyModal = new TestAuditModal();
+                modalStack.Push(dummyModal);
+
+                if (!modalStack.HasActiveModal)
+                {
+                    Debug.LogError("[Test 30] ModalStackManager.HasActiveModal should be true after push!");
+                    return false;
+                }
+
+                if (!player.isInputLocked)
+                {
+                    Debug.LogError("[Test 30] PlayerControl.isInputLocked did not automatically become true when ModalStackManager had an active modal!");
+                    return false;
+                }
+
+                // Pop modal
+                modalStack.PopSpecific(dummyModal);
+                dummyModal.IsOpen = false;
+
+                if (modalStack.HasActiveModal)
+                {
+                    Debug.LogError("[Test 30] ModalStackManager.HasActiveModal should be false after pop!");
+                    return false;
+                }
+
+                if (player.isInputLocked)
+                {
+                    Debug.LogError("[Test 30] PlayerControl.isInputLocked failed to release back to false after modal pop!");
+                    return false;
+                }
+
+                Debug.Log("✅ Test 30: ModalStackManager centralized input gating into PlayerControl.isInputLocked verified.");
+                return true;
+            }
+            finally
+            {
+                if (ModalStackManager.HasInstance && ModalStackManager.Instance != null)
+                {
+                    ModalStackManager.Instance.CloseAll();
+                }
+                for (int i = cleanupList.Count - 1; i >= 0; i--)
+                {
+                    if (cleanupList[i] != null) Object.DestroyImmediate(cleanupList[i]);
                 }
             }
         }

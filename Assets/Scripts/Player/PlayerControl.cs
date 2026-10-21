@@ -103,12 +103,12 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
     private float lastWallContactTime = -10f;
     private float sprintDuration = 0f;
 
-    // Kunci input global: saat true, pemain tidak bisa bergerak, membuka
-    // inventori, melompat, dash, atau berinteraksi (dipakai mode Trophy, dst).
+    // Global input lock: when true, player cannot move, open inventory, jump, dash, or attack.
+    // Centrally queries ModalStackManager so that any open modal window halts player input automatically.
     private bool _isInputLocked = false;
     public bool isInputLocked
     {
-        get => _isInputLocked;
+        get => _isInputLocked || (FarmBeware.Core.Runtime.ModalStackManager.HasInstance && FarmBeware.Core.Runtime.ModalStackManager.Instance.HasActiveModal);
         set => SetControlLock(value);
     }
     private readonly System.Collections.Generic.HashSet<string> _inputLockSources = new System.Collections.Generic.HashSet<string>();

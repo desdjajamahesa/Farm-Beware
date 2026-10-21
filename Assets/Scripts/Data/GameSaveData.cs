@@ -107,6 +107,12 @@ namespace FeaturesSaveSystem
         public int nightTotalWaves;
         public bool isNightBrawlActive;
         public List<SavedEnemyData> activeEnemies = new List<SavedEnemyData>();
+
+        // Storyline Progression
+        public int storyChapter = 1;
+        public List<string> triggeredStoryBeats = new List<string>();
+        public List<string> unlockedJournalEntries = new List<string>();
+        public bool isStoryComplete = false;
     }
 
     [Serializable]

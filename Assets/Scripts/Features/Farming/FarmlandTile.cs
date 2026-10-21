@@ -24,6 +24,9 @@ namespace FeaturesFarming
     [RequireComponent(typeof(Highlightable))]
     public class FarmlandTile : MonoBehaviour, IInteractable, FarmBeware.Core.Runtime.IDynamicLabelProvider
     {
+        public static event System.Action<FarmlandTile, SeedItemData> OnAnyCropPlanted;
+        public static event System.Action<FarmlandTile, ItemData, int> OnAnyCropHarvested;
+
         [Header("State Petak Tanah")]
         [SerializeField] private TileState currentState = TileState.Untilled;
         public TileState CurrentState => currentState;
@@ -246,6 +249,7 @@ namespace FeaturesFarming
                     growthProgress = 0f;
 
                     SetState(TileState.PlantedDry);
+                    OnAnyCropPlanted?.Invoke(this, seed);
                     Debug.Log($"[FarmlandTile] Successfully planted {seed.itemName}. Requires watering!");
                 }
                 else
@@ -383,6 +387,7 @@ namespace FeaturesFarming
                     }
 
                     Debug.Log($"[FarmlandTile] Harvest completed: {yieldCount}x {dropItem.itemName} (in inventory: {fruitAdded}), {seedBonusCount}x seeds (in inventory: {seedAdded})");
+                    OnAnyCropHarvested?.Invoke(this, dropItem, yieldCount);
                     if (playerControl != null)
                     {
                         ServiceLocator.Resolve<IFloatingTextService>()?.SpawnText(

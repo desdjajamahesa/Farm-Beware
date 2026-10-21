@@ -8,6 +8,8 @@ namespace FeaturesInteraction
     // sistem lain (mis. SleepScreen di masa depan).
     public class BedInteractable : MonoBehaviour, IInteractable, IBedInteractable
     {
+        public static event System.Action OnBedSleepExecuted;
+
         // Jumlah HP yang dipulihkan saat pemain tidur.
         [SerializeField] private int sleepHealAmount = 100;
 
@@ -124,6 +126,7 @@ namespace FeaturesInteraction
             }
 
             int completedDay = timeService.CurrentDay;
+            OnBedSleepExecuted?.Invoke();
 
             // Tampilkan laporan pagi operasi perkebunan & hasil Night Brawl sebelum transisi hari baru
             var dailyReport = ServiceLocator.Resolve<IDailyReportService>();
@@ -161,6 +164,7 @@ namespace FeaturesInteraction
                 pc.AddInputLock("BedSleep");
             }
 
+            OnBedSleepExecuted?.Invoke();
             timeService.StartNightPhase();
 
             if (pc != null)

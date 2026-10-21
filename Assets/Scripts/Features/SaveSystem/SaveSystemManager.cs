@@ -858,6 +858,16 @@ namespace FeaturesSaveSystem
                 }
             }
 
+            // 10. Storyline Progression
+            var storyService = FarmBeware.Core.Runtime.ServiceLocator.Resolve<FarmBeware.Core.Runtime.IStorylineService>();
+            if (storyService != null)
+            {
+                data.storyChapter = storyService.CurrentChapter;
+                data.triggeredStoryBeats = new List<string>(storyService.TriggeredBeatIds);
+                data.unlockedJournalEntries = new List<string>(storyService.UnlockedJournalIds);
+                data.isStoryComplete = storyService.IsStoryComplete;
+            }
+
             return data;
         }
 
@@ -1138,6 +1148,13 @@ namespace FeaturesSaveSystem
                     data.dailyMonstersSlain,
                     data.dailyGoldEarnedCombat
                 );
+            }
+
+            // 16. Storyline Progression
+            var loadedStoryService = FarmBeware.Core.Runtime.ServiceLocator.Resolve<FarmBeware.Core.Runtime.IStorylineService>();
+            if (loadedStoryService != null && data.triggeredStoryBeats != null)
+            {
+                loadedStoryService.RestoreState(data.storyChapter, data.triggeredStoryBeats, data.unlockedJournalEntries, data.isStoryComplete);
             }
         }
 
