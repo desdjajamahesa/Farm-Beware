@@ -371,6 +371,10 @@ namespace FeaturesFarming.Adapters
             {
                 if (grid.TryWater(coord))
                 {
+                    if (playerControl != null)
+                    {
+                        playerControl.TriggerWaterAnimation();
+                    }
                     ShowFeedbackText(worldPos, $"💧 Watered (-{waterAmountPerIrrigation:F0}L Water | {Mathf.FloorToInt(waterer.CurrentWater)}/100L)", new Color(0.35f, 0.75f, 1f));
                     return true;
                 }

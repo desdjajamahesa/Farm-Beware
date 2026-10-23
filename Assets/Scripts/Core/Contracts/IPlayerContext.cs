@@ -11,6 +11,7 @@ namespace FarmBeware.Core.Runtime
         bool IsInputLocked { get; set; }
         void PlayAnimation(string triggerName);
         void TriggerPlantAnimation();
+        void TriggerWaterAnimation();
         void TriggerHarvestAnimation();
         void ApplyKnockback(Vector3 direction, float force);
         void ApplyStun(float duration);

@@ -14,7 +14,7 @@ namespace FarmBeware.Core.Runtime
         private static bool _isApplicationQuitting = false;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        private static void ResetStaticState()
+        public static void ResetStaticState()
         {
             _isApplicationQuitting = false;
             _instance = null;
@@ -24,7 +24,8 @@ namespace FarmBeware.Core.Runtime
         {
             get
             {
-                if (_isApplicationQuitting) return null;
+                if (_isApplicationQuitting && Application.isPlaying) return null;
+                _isApplicationQuitting = false;
 
                 if (_instance == null)
                 {

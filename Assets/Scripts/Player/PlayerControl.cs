@@ -1045,6 +1045,56 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
         isPlanting = false;
     }
 
+    /// <summary>
+    /// Memanggil animasi menyiram tanaman secara kontekstual (mis. saat menyiram FarmlandTile).
+    /// </summary>
+    public void TriggerWaterAnimation()
+    {
+        if (isPlanting || isAttacking) return;
+        StartCoroutine(RoutineWaterCrop());
+    }
+
+    private IEnumerator RoutineWaterCrop()
+    {
+        isPlanting = true;
+        inputVector = Vector3.zero;
+
+        if (rb != null)
+        {
+            rb.linearVelocity = new Vector3(0f, rb.linearVelocity.y, 0f);
+            rb.angularVelocity = Vector3.zero;
+        }
+
+        if (animator != null)
+        {
+            animator.SetTrigger("Watering");
+            animator.SetFloat("Vel", 0f);
+            animator.SetBool("Idle", true);
+            animator.SetBool("Sprinting", false);
+        }
+
+        yield return null;
+
+        float timer = 0f;
+        while (timer < 1.4f)
+        {
+            timer += Time.deltaTime;
+
+            if (timer > 0.4f && animator != null)
+            {
+                var stateInfo = animator.GetCurrentAnimatorStateInfo(0);
+                if (!stateInfo.IsName("Watering") && !animator.GetNextAnimatorStateInfo(0).IsName("Watering"))
+                {
+                    break;
+                }
+            }
+
+            yield return null;
+        }
+
+        isPlanting = false;
+    }
+
     // Tombol Tab / I membuka-menutup panel pemain. Jika storage terbuka, tutup semua.
     private void HandleInventoryInput()
     {
