@@ -57,6 +57,7 @@ namespace FeaturesFarming
 
         private bool isPlantingAction = false;
         private bool isHarvestingAction = false;
+        private bool isWateringAction = false;
 
         private void Awake()
         {
@@ -188,7 +189,7 @@ namespace FeaturesFarming
                     break;
 
                 case TileState.PlantedDry:
-                    TryWaterCrop(interactor);
+                    TryWaterCrop(interactor, playerControl);
                     break;
 
                 case TileState.PlantedWatered:
@@ -235,8 +236,8 @@ namespace FeaturesFarming
                 playerControl.TriggerPlantAnimation();
             }
 
-            // Sinkronkan pemunculan bibit saat tangan pemain membungkuk ke tanah (~0.5s)
-            yield return new WaitForSeconds(0.5f);
+            // Sinkronkan pemunculan bibit saat tangan pemain membungkuk ke tanah (2x lebih cepat: ~0.25s)
+            yield return new WaitForSeconds(0.25f);
 
             if (inventory != null && seed != null)
             {
@@ -261,8 +262,10 @@ namespace FeaturesFarming
             isPlantingAction = false;
         }
 
-        private void TryWaterCrop(GameObject interactor)
+        private void TryWaterCrop(GameObject interactor, IPlayerContext playerControl)
         {
+            if (isWateringAction) return;
+
             const float waterRequired = 10f;
 
             if (!IsHoldingPlantWaterer(interactor))
@@ -276,13 +279,9 @@ namespace FeaturesFarming
             }
 
             var waterer = PlantWaterer.Instance;
-            if (waterer != null && waterer.ConsumeWater(waterRequired))
+            if (waterer != null && waterer.CurrentWater >= waterRequired)
             {
-                WaterCrop();
-                ServiceLocator.Resolve<IFloatingTextService>()?.SpawnText(
-                    transform.position + Vector3.up * 1.2f,
-                    $"💧 Watered (-{waterRequired:F0}L Water | {Mathf.FloorToInt(waterer.CurrentWater)}/100L)",
-                    new Color(0.35f, 0.75f, 1f));
+                StartCoroutine(RoutineWaterCrop(interactor, playerControl, waterer, waterRequired));
                 return;
             }
 
@@ -292,6 +291,39 @@ namespace FeaturesFarming
                 $"Need {waterRequired:F0}L Water! Refill at Garden Well.",
                 new Color(1f, 0.5f, 0.2f));
             Debug.LogWarning("[FarmlandTile] Cannot water crop: Plant Waterer is empty or has less than 10L! Refill at Garden Well.");
+        }
+
+        private IEnumerator RoutineWaterCrop(GameObject interactor, IPlayerContext playerControl, PlantWaterer waterer, float waterRequired)
+        {
+            isWateringAction = true;
+
+            if (playerControl != null && playerControl.Transform != null)
+            {
+                // Hadapkan pemain ke arah bedengan tanah secara halus
+                Vector3 toTile = (transform.position - playerControl.Transform.position);
+                toTile.y = 0f;
+                if (toTile.sqrMagnitude > 0.01f)
+                {
+                    playerControl.Transform.forward = toTile.normalized;
+                }
+                playerControl.PlayAnimation("Watering");
+            }
+
+            // Sinkronkan titik air menyiram dari kaleng siram (2x lebih cepat: ~0.22s)
+            yield return new WaitForSeconds(0.22f);
+
+            if (waterer != null && waterer.ConsumeWater(waterRequired))
+            {
+                WaterCrop();
+                ServiceLocator.Resolve<IFloatingTextService>()?.SpawnText(
+                    transform.position + Vector3.up * 1.2f,
+                    $"💧 Watered (-{waterRequired:F0}L Water | {Mathf.FloorToInt(waterer.CurrentWater)}/100L)",
+                    new Color(0.35f, 0.75f, 1f));
+            }
+
+            // Tunggu hingga animasi menyiram selesai kembali berdiri tegak (2x lebih cepat: ~0.3f)
+            yield return new WaitForSeconds(0.3f);
+            isWateringAction = false;
         }
 
         private void WaterCrop()

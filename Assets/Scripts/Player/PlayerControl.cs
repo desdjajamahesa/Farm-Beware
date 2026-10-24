@@ -13,20 +13,18 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
     public float turnSpeed = 15f;
 
     [Header("Pengaturan Aksi")]
-    public float jumpForce = 5f;
+    public float jumpForce = 4.3f;
     [Tooltip("Durasi penguncian pergerakan saat menanam benih (detik).")]
-    public float plantDuration = 1.56f;
+    public float plantDuration = 0.78f;
     private bool isPlanting = false;
 
     [Tooltip("Durasi karakter diam di tempat saat mengayunkan serangan pedang (detik).")]
     public float attackLockDuration = 1.1f;
     private bool isAttacking = false;
-    private bool isSkillLeaping = false;
     private bool isLightAttacking = false;
     private bool hasBufferedAttack = false;
     private float bufferedAttackTime = 0f;
     private Coroutine attackCoroutine = null;
-    private float idleFidgetTimer = 0f;
     public bool IsAttacking => isAttacking;
 
     [Header("Pengaturan Pergerakan Saat Menyerang")]
@@ -38,20 +36,13 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
     [Range(5f, 30f)]
     public float attackTurnSpeed = 18f;
 
-    [Header("Pengaturan Jurus Spesial (Leap Momentum)")]
-    [Tooltip("Dorongan momentum maju saat melompat menerjang.")]
-    public float leapForwardImpulse = 6.5f;
-
-    [Tooltip("Dorongan momentum ke atas saat melompat menerjang.")]
-    public float leapUpwardImpulse = 2.5f;
-
     [Header("Pengaturan Menghindar & Tangkisan (Dodge & Deflect)")]
     [Tooltip("Kecepatan meluncur saat melakukan dodge roll.")]
     public float dodgeSpeed = 10f;
     [Tooltip("Durasi gerakan dodge roll (detik).")]
-    public float dodgeDuration = 0.35f;
+    public float dodgeDuration = 0.55f;
     [Tooltip("Durasi frame kekebalan (i-frames) selama dodge roll (detik).")]
-    public float dodgeIFrameDuration = 0.30f;
+    public float dodgeIFrameDuration = 0.45f;
     [Tooltip("Durasi window tangkisan parry (detik). Standar 0.35s = 350ms agar timing terasa pas dan adil.")]
     public float parryWindow = 0.35f;
     [Tooltip("Konsumsi stamina saat dodge roll.")]
@@ -123,6 +114,16 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
     public bool IsGodMode => playerStats != null && playerStats.isGodMode;
     public void PlayAnimation(string triggerName)
     {
+        if (triggerName == "Watering")
+        {
+            TriggerWaterAnimation();
+            return;
+        }
+        if (triggerName == "PlantSeed")
+        {
+            TriggerPlantAnimation();
+            return;
+        }
         if (animator != null && !string.IsNullOrEmpty(triggerName))
             animator.SetTrigger(triggerName);
     }
@@ -347,24 +348,6 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
                 // Sinkronisasi status memegang senjata
                 bool hasWeapon = (playerEquipment != null && playerEquipment.IsHoldingWeapon);
                 animator.SetBool("HasWeapon", hasWeapon);
-
-                // Idle fidget: HANYA jika sedang memegang senjata dan diam lebih dari 9 detik
-                if (isIdleNow && hasWeapon)
-                {
-                    idleFidgetTimer += Time.fixedDeltaTime;
-                    if (idleFidgetTimer > 9.0f)
-                    {
-                        idleFidgetTimer = 0f;
-                        if (isGrounded && !isAttacking)
-                        {
-                            animator.SetTrigger("LookAround");
-                        }
-                    }
-                }
-                else
-                {
-                    idleFidgetTimer = 0f;
-                }
                 animator.SetBool("Sprinting", isRunning && currentSpeed > walkSpeed * 0.8f);
             }
         }
@@ -430,12 +413,6 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
         {
             isTouchingWall = false;
             contactWallNormal = Vector3.zero;
-        }
-
-        // Saat jurus lompat menerjang (skill leap), biarkan momentum fisika menggerakkan tubuh maju
-        if (isSkillLeaping)
-        {
-            return;
         }
 
         // Pertahankan komponen kecepatan vertikal (gravitasi/lompatan)
@@ -648,28 +625,10 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
         bool fReleased = Keyboard.current != null && Keyboard.current.fKey.wasReleasedThisFrame;
         bool attackReleased = leftReleased || fReleased;
 
-        // 2. Jurus Spesial (Leap Strike): Right Click atau Tombol R
-        bool rightClick = Mouse.current != null && Mouse.current.rightButton.wasPressedThisFrame && !isPointerOverUI;
-        bool rKey = Keyboard.current != null && Keyboard.current.rKey.wasPressedThisFrame;
-
         if (playerEquipment == null)
             playerEquipment = GetComponent<PlayerEquipment>() ?? gameObject.AddComponent<PlayerEquipment>();
 
-        // Priority Special Actions (Leap Strike)
-        if ((rightClick || rKey) && !isSkillLeaping)
-        {
-            isChargingAttack = false;
-            attackHoldDuration = 0f;
-            hasBufferedAttack = false;
-            if (playerEquipment != null && playerEquipment.TryPerformSkillAttack())
-            {
-                if (attackCoroutine != null) { StopCoroutine(attackCoroutine); attackCoroutine = null; }
-                StartCoroutine(RoutineSkillAttack());
-            }
-            return;
-        }
-
-        // If performing heavy attack, kick, skill leap, or dash attack, block light attacks
+        // If performing heavy attack, kick, or dash attack, block light attacks
         if (isAttacking && !isLightAttacking)
         {
             isChargingAttack = false;
@@ -905,82 +864,12 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
     }
 
 
-    private IEnumerator RoutineSkillAttack()
-    {
-        isAttacking = true;
-        isLightAttacking = false;
-        hasBufferedAttack = false;
-        isSkillLeaping = true;
-        if (animator != null)
-            animator.SetBool("IsAttacking", true);
-
-        float atkSpeed = (playerEquipment != null) ? Mathf.Max(0.5f, playerEquipment.AttackAnimationSpeed) : 1.6f;
-
-        Vector3 forwardDir = transform.forward;
-
-        // Fase 1: Windup / ancang-ancang melompat (~0.25s / atkSpeed)
-        float windupDuration = 0.25f / atkSpeed;
-        float elapsed = 0f;
-        while (elapsed < windupDuration)
-        {
-            elapsed += Time.deltaTime;
-            yield return null;
-        }
-
-        // Berikan dorongan awal melompat ke udara
-        if (rb != null)
-        {
-            rb.linearVelocity = forwardDir * leapForwardImpulse + Vector3.up * leapUpwardImpulse;
-        }
-
-        // Fase 2: Meluncur maju di udara hingga pedang menghantam tanah (~1.14s total / atkSpeed)
-        float impactTime = 1.14f / atkSpeed;
-        while (elapsed < impactTime)
-        {
-            elapsed += Time.deltaTime;
-            if (rb != null)
-            {
-                rb.linearVelocity = new Vector3(forwardDir.x * leapForwardImpulse, rb.linearVelocity.y, forwardDir.z * leapForwardImpulse);
-            }
-            yield return new WaitForFixedUpdate();
-        }
-
-        // Fase 3: Mendarat & hantaman tanah (hentikan laju horizontal agar mendarat kokoh di titik hantaman)
-        isSkillLeaping = false;
-        if (rb != null)
-        {
-            rb.linearVelocity = new Vector3(0f, rb.linearVelocity.y, 0f);
-        }
-
-        // Fase 4: Recovery pasca hantaman dan transisi kembali ke Idle/Moving (~1.35s / atkSpeed)
-        float totalLock = 1.35f / atkSpeed;
-        while (elapsed < totalLock)
-        {
-            elapsed += Time.deltaTime;
-            if (animator != null)
-            {
-                var curr = animator.GetCurrentAnimatorStateInfo(0);
-                var next = animator.GetNextAnimatorStateInfo(0);
-                if (!IsAttackState(curr) && !IsAttackState(next))
-                {
-                    break;
-                }
-            }
-            yield return null;
-        }
-
-        isAttacking = false;
-        if (animator != null)
-            animator.SetBool("IsAttacking", false);
-    }
-
     private bool IsAttackState(AnimatorStateInfo info)
     {
         return info.IsName("attack") ||
                info.IsName("Attack_Combo1") ||
                info.IsName("Attack_Combo2") ||
-               info.IsName("Attack_Combo3") ||
-               info.IsName("Attack_Skill");
+               info.IsName("Attack_Combo3");
     }
 
 
@@ -1029,8 +918,8 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
         {
             timer += Time.deltaTime;
 
-            // Jika animasi sudah selesai dan bertransisi kembali ke Idle/Moving setelah minimal 0.5 detik
-            if (timer > 0.5f && animator != null)
+            // Jika animasi sudah selesai dan bertransisi kembali ke Idle/Moving setelah minimal 0.25 detik (kecepatan 2x)
+            if (timer > 0.25f && animator != null)
             {
                 var stateInfo = animator.GetCurrentAnimatorStateInfo(0);
                 if (!stateInfo.IsName("PlantSeed") && !animator.GetNextAnimatorStateInfo(0).IsName("PlantSeed"))
@@ -1076,11 +965,11 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
         yield return null;
 
         float timer = 0f;
-        while (timer < 1.4f)
+        while (timer < 0.7f)
         {
             timer += Time.deltaTime;
 
-            if (timer > 0.4f && animator != null)
+            if (timer > 0.2f && animator != null)
             {
                 var stateInfo = animator.GetCurrentAnimatorStateInfo(0);
                 if (!stateInfo.IsName("Watering") && !animator.GetNextAnimatorStateInfo(0).IsName("Watering"))
@@ -1155,7 +1044,11 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
             isGrounded = false;
             isJumping = true;
             groundBufferTimer = 0f;
-            if (animator != null) animator.SetBool("Grounded", false);
+            if (animator != null)
+            {
+                animator.SetBool("Grounded", false);
+                animator.Play("AirBorn", 0, 0f);
+            }
 
             // Reset kecepatan Y agar lompatan konsisten, lalu dorong ke atas
             rb.linearVelocity = new Vector3(rb.linearVelocity.x, 0f, rb.linearVelocity.z);

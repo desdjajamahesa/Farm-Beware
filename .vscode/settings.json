@@ -70,5 +70,30 @@
     "dotnet.defaultSolution": "Farm-Beware.slnx",
     "csharp-dev-tools.solutionViewer.selectedWorkspaceSolutions": [
         "Farm-Beware.slnx"
-    ]
+    ],
+    "files.watcherExclude": {
+        "**/.git/objects/**": true,
+        "**/.git/subtree-cache/**": true,
+        "**/.vs/**": true,
+        "**/node_modules/**": true,
+        "**/Library/**": true,
+        "**/library/**": true,
+        "**/Temp/**": true,
+        "**/temp/**": true,
+        "**/obj/**": true,
+        "**/Obj/**": true,
+        "**/Build/**": true,
+        "**/build/**": true,
+        "**/Builds/**": true,
+        "**/Logs/**": true,
+        "**/logs/**": true,
+        "**/UserSettings/**": true,
+        "**/*.slnx": true
+    },
+    "dotnet.backgroundAnalysis.analyzerDiagnosticsScope": "openFiles",
+    "dotnet.backgroundAnalysis.compilerDiagnosticsScope": "openFiles",
+    "csharp.backgroundAnalysis.analyzerDiagnosticsScope": "openFiles",
+    "csharp.backgroundAnalysis.compilerDiagnosticsScope": "openFiles",
+    "csharp.suppressDotnetRestoreNotification": true,
+    "csharp.maxProjectFileCountForDiagnosticAnalysis": 5
 }

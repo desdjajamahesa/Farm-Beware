@@ -204,8 +204,7 @@ public class PlayerEquipment : MonoBehaviour
         return state.IsName("attack") ||
                state.IsName("Attack_Combo1") ||
                state.IsName("Attack_Combo2") ||
-               state.IsName("Attack_Combo3") ||
-               state.IsName("Attack_Skill");
+               state.IsName("Attack_Combo3");
     }
 
     public bool TryPerformAttack()
@@ -1006,7 +1005,12 @@ public class PlayerEquipment : MonoBehaviour
         }
 
 #if UNITY_EDITOR
-        AutoAssignCombatAudio();
+        if (swingLightClip == null || swingMediumClip == null || swingHeavyClip == null ||
+            swingDashClip == null || swingSkillClip == null || swingPunchClip == null)
+        {
+            UnityEditor.EditorApplication.delayCall -= AutoAssignCombatAudio;
+            UnityEditor.EditorApplication.delayCall += AutoAssignCombatAudio;
+        }
 #endif
     }
 
@@ -1093,7 +1097,16 @@ public class PlayerEquipment : MonoBehaviour
         spawned.transform.localPosition = Vector3.zero;
         spawned.transform.localRotation = Quaternion.identity;
         currentWeaponModel = spawned;
-        currentWeaponModel.transform.localScale = tool.equipPrefab.transform.localScale;
+
+        // Kompensasi skala hierarki bone (misal root model 100x) agar ukuran visual tool di dunia nyata sesuai equipPrefab
+        Vector3 prefabScale = tool.equipPrefab.transform.localScale;
+        Vector3 parentLossy = handSocket.lossyScale;
+        Vector3 resolvedScale = new Vector3(
+            Mathf.Abs(parentLossy.x) > 0.0001f ? prefabScale.x / parentLossy.x : prefabScale.x,
+            Mathf.Abs(parentLossy.y) > 0.0001f ? prefabScale.y / parentLossy.y : prefabScale.y,
+            Mathf.Abs(parentLossy.z) > 0.0001f ? prefabScale.z / parentLossy.z : prefabScale.z
+        );
+        currentWeaponModel.transform.localScale = resolvedScale;
 
         // Pastikan model senjata yang di-spawn memiliki WeaponHitbox, trigger collider, dan kinematic Rigidbody
         var hitbox = currentWeaponModel.GetComponentInChildren<FeaturesCombat.WeaponHitbox>();
@@ -1127,22 +1140,40 @@ public class PlayerEquipment : MonoBehaviour
 
     private void FindHandSocketIfNeeded()
     {
-        if (handSocket != null) return;
-
-        foreach (var t in GetComponentsInChildren<Transform>(true))
+        if (handSocket == null)
         {
-            if (t.name.Equals("HandSocket", System.StringComparison.OrdinalIgnoreCase))
+            foreach (var t in GetComponentsInChildren<Transform>(true))
             {
-                handSocket = t;
-                return;
+                if (t.name.Equals("HandSocket", System.StringComparison.OrdinalIgnoreCase))
+                {
+                    handSocket = t;
+                    break;
+                }
+            }
+            if (handSocket == null)
+            {
+                foreach (var t in GetComponentsInChildren<Transform>(true))
+                {
+                    if (t.name.Equals("hand_r", System.StringComparison.OrdinalIgnoreCase) ||
+                        t.name.EndsWith("RightHand", System.StringComparison.OrdinalIgnoreCase))
+                    {
+                        handSocket = t;
+                        break;
+                    }
+                }
             }
         }
-        foreach (var t in GetComponentsInChildren<Transform>(true))
+
+        // Auto-normalisasi jika posisi HandSocket di-setting dengan satuan meter (misal y = 0.08f) pada rig bone 100x
+        if (handSocket != null && handSocket.parent != null && handSocket.parent.lossyScale.x > 10f)
         {
-            if (t.name.EndsWith("RightHand", System.StringComparison.OrdinalIgnoreCase))
+            if (Mathf.Abs(handSocket.localPosition.y) > 0.01f)
             {
-                handSocket = t;
-                return;
+                handSocket.localPosition = new Vector3(
+                    handSocket.localPosition.x * 0.01f,
+                    handSocket.localPosition.y * 0.01f,
+                    handSocket.localPosition.z * 0.01f
+                );
             }
         }
     }
@@ -1283,9 +1314,14 @@ public class PlayerEquipment : MonoBehaviour
     }
 
 #if UNITY_EDITOR
+    private void Reset()
+    {
+        AutoAssignCombatAudio();
+    }
 
     private void AutoAssignCombatAudio()
     {
+        if (this == null) return;
         if (swingLightClip == null)
             swingLightClip = UnityEditor.AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/SFX/Combat/SFX_Weapon_Swing_Light.wav");
         if (swingMediumClip == null)
