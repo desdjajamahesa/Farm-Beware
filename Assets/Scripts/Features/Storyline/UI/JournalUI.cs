@@ -16,7 +16,23 @@ namespace FeaturesStoryline.UI
     [DisallowMultipleComponent]
     public class JournalUI : MonoBehaviour, IModalWindow
     {
-        public static JournalUI Instance { get; private set; }
+        private static JournalUI _instance;
+        public static JournalUI Instance
+        {
+            get
+            {
+                if (_instance == null)
+                {
+                    _instance = FindFirstObjectByType<JournalUI>(FindObjectsInactive.Include);
+                }
+                if (_instance != null && !_instance.gameObject.activeInHierarchy)
+                {
+                    _instance.gameObject.SetActive(true);
+                }
+                return _instance;
+            }
+            private set => _instance = value;
+        }
 
         void IModalWindow.OpenModal() => OpenJournal();
         void IModalWindow.CloseModal() => CloseJournal();
@@ -58,18 +74,38 @@ namespace FeaturesStoryline.UI
             EnsureUIHierarchy();
         }
 
+        private void OnDestroy()
+        {
+            if (Instance == this)
+            {
+                Instance = null;
+            }
+        }
+
         private void Update()
         {
-            if (UnityEngine.InputSystem.Keyboard.current != null)
+            if (UnityEngine.InputSystem.Keyboard.current == null) return;
+
+            if (UnityEngine.InputSystem.Keyboard.current.jKey.wasPressedThisFrame)
             {
-                if (UnityEngine.InputSystem.Keyboard.current.jKey.wasPressedThisFrame)
+                if (!IsOpen)
                 {
-                    ToggleJournal();
+                    var player = ServiceLocator.Resolve<IPlayerContext>();
+                    if (player != null && player.IsInputLocked) return;
+
+                    var modalStack = ServiceLocator.Resolve<IModalStackService>();
+                    if (modalStack != null && modalStack.HasActiveModal) return;
+
+                    OpenJournal();
                 }
-                else if (IsOpen && UnityEngine.InputSystem.Keyboard.current.escapeKey.wasPressedThisFrame)
+                else
                 {
                     CloseJournal();
                 }
+            }
+            else if (IsOpen && UnityEngine.InputSystem.Keyboard.current.escapeKey.wasPressedThisFrame)
+            {
+                CloseJournal();
             }
         }
 

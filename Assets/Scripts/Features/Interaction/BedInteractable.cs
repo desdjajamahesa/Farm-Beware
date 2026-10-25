@@ -52,7 +52,13 @@ namespace FeaturesInteraction
             if (worldLabel == null) return;
 
             var timeService = ServiceLocator.Resolve<ITimeService>();
-            if (timeService == null || timeService.CurrentPhase != DayPhase.Night)
+            if (timeService == null) return;
+
+            if (timeService.CurrentDay == 0)
+            {
+                worldLabel.displayName = "Sleep (Begin Day 1)";
+            }
+            else if (timeService.CurrentPhase != DayPhase.Night)
             {
                 worldLabel.displayName = "Sleep (Start Night Phase)";
             }
@@ -76,6 +82,13 @@ namespace FeaturesInteraction
 
             var pc = interactor != null ? interactor.GetComponent<IPlayerContext>() : ServiceLocator.Resolve<IPlayerContext>();
             var floatingText = ServiceLocator.Resolve<IFloatingTextService>();
+
+            // 0. Interaksi di Day 0 (Hari Kedatangan): Langsung tidur memajukan hari ke Day 1 tanpa Night Brawl
+            if (timeService.CurrentDay == 0)
+            {
+                ExecuteDay0Sleep(timeService, interactor);
+                return;
+            }
 
             // 1. Interaksi sebelum malam (Day / Dusk / Dawn): memicu fase malam (Night Brawl)
             if (timeService.CurrentPhase != DayPhase.Night)
@@ -154,6 +167,55 @@ namespace FeaturesInteraction
                     pc.RemoveInputLock("BedSleep");
                 UpdateLabel();
             }
+        }
+
+        private void ExecuteDay0Sleep(ITimeService timeService, GameObject interactor)
+        {
+            var pc = interactor != null ? interactor.GetComponent<IPlayerContext>() : ServiceLocator.Resolve<IPlayerContext>();
+            if (pc != null)
+            {
+                pc.AddInputLock("BedSleep");
+            }
+
+            OnBedSleepExecuted?.Invoke();
+
+            if (interactor != null)
+            {
+                interactor.SendMessage("ClearAllBuffs", SendMessageOptions.DontRequireReceiver);
+                interactor.SendMessage("Heal", sleepHealAmount, SendMessageOptions.DontRequireReceiver);
+            }
+
+            timeService.AdvanceToNextDay();
+
+            // Guarantee starter items populated upon waking on Day 1
+            if (interactor != null)
+            {
+                interactor.SendMessage("EnsureStarterKit", SendMessageOptions.DontRequireReceiver);
+            }
+            else
+            {
+                var playerObj = GameObject.FindWithTag("Player");
+                if (playerObj != null)
+                {
+                    playerObj.SendMessage("EnsureStarterKit", SendMessageOptions.DontRequireReceiver);
+                }
+            }
+
+            var floatingText = ServiceLocator.Resolve<IFloatingTextService>();
+            if (floatingText != null && interactor != null)
+            {
+                floatingText.SpawnText(
+                    transform.position + Vector3.up * 1.2f,
+                    "☀️ Day 1 begins! Tend to the homestead.",
+                    new Color(1f, 0.9f, 0.3f));
+            }
+
+            if (pc != null)
+            {
+                pc.RemoveInputLock("BedSleep");
+            }
+
+            UpdateLabel();
         }
 
         private void ExecuteDaytimeSleep(ITimeService timeService, GameObject interactor)

@@ -14,7 +14,23 @@ namespace FeaturesStoryline.UI
     [DisallowMultipleComponent]
     public class BossIntroSequence : MonoBehaviour
     {
-        public static BossIntroSequence Instance { get; private set; }
+        private static BossIntroSequence _instance;
+        public static BossIntroSequence Instance
+        {
+            get
+            {
+                if (_instance == null)
+                {
+                    _instance = FindFirstObjectByType<BossIntroSequence>(FindObjectsInactive.Include);
+                }
+                if (_instance != null && !_instance.gameObject.activeInHierarchy)
+                {
+                    _instance.gameObject.SetActive(true);
+                }
+                return _instance;
+            }
+            private set => _instance = value;
+        }
 
         [Header("UI Canvas & Elements")]
         [SerializeField] private Canvas targetCanvas;
@@ -38,6 +54,14 @@ namespace FeaturesStoryline.UI
             EnsureUIHierarchy();
         }
 
+        private void OnDestroy()
+        {
+            if (Instance == this)
+            {
+                Instance = null;
+            }
+        }
+
         public void PlayBossIntro(string bossTitle, string subtitle, string loreText, Vector3? focusWorldPosition = null, float duration = 3.5f, Action onComplete = null)
         {
             EnsureUIHierarchy();
@@ -47,6 +71,17 @@ namespace FeaturesStoryline.UI
 
         private IEnumerator RoutineBossIntro(string title, string subtitle, string lore, Vector3? focusPos, float duration, Action onComplete)
         {
+            Transform prevCamTarget = null;
+            GameObject tempCamTarget = null;
+            var isoCam = FeaturesCamera.IsometricCameraController.Instance;
+            if (focusPos.HasValue && isoCam != null)
+            {
+                prevCamTarget = isoCam.target;
+                tempCamTarget = new GameObject("BossCamFocusTarget");
+                tempCamTarget.transform.position = focusPos.Value;
+                isoCam.target = tempCamTarget.transform;
+            }
+
             if (bossTitleText != null) bossTitleText.text = title;
             if (bossSubtitleText != null) bossSubtitleText.text = subtitle;
             if (bossLoreText != null) bossLoreText.text = lore;
@@ -80,6 +115,16 @@ namespace FeaturesStoryline.UI
             }
 
             if (bossCardPanel != null) bossCardPanel.SetActive(false);
+
+            if (tempCamTarget != null)
+            {
+                if (isoCam != null && prevCamTarget != null)
+                {
+                    isoCam.target = prevCamTarget;
+                }
+                Destroy(tempCamTarget);
+            }
+
             _activeIntroRoutine = null;
 
             onComplete?.Invoke();

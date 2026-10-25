@@ -27,6 +27,11 @@ namespace FarmBeware.Core.Runtime
             {
                 if (_services.TryGetValue(typeof(T), out var service))
                 {
+                    if (service is UnityEngine.Object uObj && uObj == null)
+                    {
+                        _services.Remove(typeof(T));
+                        return null;
+                    }
                     return (T)service;
                 }
                 return null;

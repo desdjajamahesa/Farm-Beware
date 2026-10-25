@@ -1,12 +1,15 @@
 using System;
 using UnityEngine;
 using FeaturesCombat;
+using FarmBeware.Core.Runtime;
 
 namespace FeaturesStoryline.Data
 {
     /// <summary>
-    /// ScriptableObject defining an atomic narrative beat or story milestone.
-    /// Specifies when the beat activates, how it presents, and what lore it unlocks.
+    /// ScriptableObject defining an atomic narrative beat or storylet rule.
+    /// Operates as a discrete card in the Salience-Based Quality-Based Narrative (QBN) engine,
+    /// defining activation preconditions against the Zero-GC Narrative Fact Blackboard,
+    /// delivery presentation style, world state mutations, and archival unlocks.
     /// </summary>
     [CreateAssetMenu(fileName = "StoryBeat_New", menuName = "Farm-Beware/Storyline/Story Beat")]
     public class StoryBeatData : ScriptableObject
@@ -22,7 +25,7 @@ namespace FeaturesStoryline.Data
         [Tooltip("Optional tags for narrative categorization and filtering.")]
         public string[] tags = Array.Empty<string>();
 
-        [Header("Trigger Conditions")]
+        [Header("Trigger & Contextual Conditions")]
         [Tooltip("Lifecycle or gameplay event that fires this beat.")]
         public StoryTriggerType triggerType = StoryTriggerType.Dawn;
 
@@ -38,6 +41,23 @@ namespace FeaturesStoryline.Data
         [Tooltip("Optional list of prerequisite beat IDs that must already be triggered.")]
         public string[] prerequisiteBeatIds = Array.Empty<string>();
 
+        [Header("Zero-GC Blackboard Preconditions & Scoring")]
+        [Tooltip("Preconditions evaluated against the INarrativeFactBoard. Specificity scores sum up matching condition weights.")]
+        public NarrativeFactCondition[] criteria = Array.Empty<NarrativeFactCondition>();
+
+        [Tooltip("World state mutations applied to the INarrativeFactBoard once this storylet executes.")]
+        public NarrativeFactMutation[] mutations = Array.Empty<NarrativeFactMutation>();
+
+        [Tooltip("Consumption policy regulating repeatable execution.")]
+        public RepeatPolicy repeatPolicy = RepeatPolicy.MatchOnce;
+
+        [Tooltip("Base priority multiplier for salience scoring: S(R_i) = saliencePriority * 100 + specificityScore.")]
+        [Range(1, 10)]
+        public int saliencePriority = 1;
+
+        [Tooltip("Minimum number of in-game days that must elapse before re-triggering if repeatPolicy is CooldownDays.")]
+        public int cooldownDays = 0;
+
         [Header("Delivery & Content")]
         [Tooltip("How this story beat is visually delivered to the player.")]
         public StoryDeliveryType deliveryType = StoryDeliveryType.HudBanner;
@@ -49,7 +69,7 @@ namespace FeaturesStoryline.Data
         public string speakerName;
 
         [TextArea(3, 8)]
-        [Tooltip("Main narrative prose or dialogue text.")]
+        [Tooltip("Main narrative prose or dialogue text. Supports tokens: {PlayerName}, {WaterLiters}, {TruthLevel}.")]
         public string narrativeText;
 
         [TextArea(1, 3)]
@@ -87,8 +107,46 @@ namespace FeaturesStoryline.Data
         [Tooltip("Whether this beat signals an atmospheric change (e.g. red sky on Day 5).")]
         public bool triggersAtmosphericChange = false;
 
+        [Header("Timeline Cinematic")]
+        [Tooltip("Unity Timeline PlayableAsset played if deliveryType is TimelineCutscene.")]
+        public UnityEngine.Playables.PlayableAsset timelineAsset;
+
         /// <summary>
-        /// Factory method for creating runtime or mock story beats.
+        /// Formats dynamic token replacements into the narrative text without heap allocation when tokens are absent.
+        /// </summary>
+        public string FormatNarrativeText(INarrativeFactBoard facts, string playerName = "Asep")
+        {
+            return FormatTokenString(narrativeText, facts, playerName);
+        }
+
+        /// <summary>
+        /// Formats dynamic token replacements into the HUD banner text without heap allocation when tokens are absent.
+        /// </summary>
+        public string FormatHudBannerText(INarrativeFactBoard facts, string playerName = "Asep")
+        {
+            string source = !string.IsNullOrEmpty(hudBannerText) ? hudBannerText : narrativeText;
+            return FormatTokenString(source, facts, playerName);
+        }
+
+        private static string FormatTokenString(string text, INarrativeFactBoard facts, string playerName)
+        {
+            if (string.IsNullOrEmpty(text)) return string.Empty;
+            if (!text.Contains("{")) return text;
+
+            string formatted = text.Replace("{PlayerName}", playerName);
+            if (facts != null)
+            {
+                formatted = formatted.Replace("{DayCount}", facts.GetFact(NarrativeFactKey.CurrentDay).ToString());
+                formatted = formatted.Replace("{CorruptionLevel}", facts.GetFact(NarrativeFactKey.NexaPhytoCorruptionLevel).ToString());
+                formatted = formatted.Replace("{TruthLevel}", facts.GetFact(NarrativeFactKey.NexaPhytoTruthLevel).ToString());
+                formatted = formatted.Replace("{DeadCropCount}", facts.GetFact(NarrativeFactKey.DeadCropsCount).ToString());
+                formatted = formatted.Replace("{WaterLiters}", facts.GetFact(NarrativeFactKey.TotalWellWaterDrawnLiters).ToString());
+            }
+            return formatted;
+        }
+
+        /// <summary>
+        /// Factory method for creating runtime or mock story beats. Preserves backward compatibility.
         /// </summary>
         public static StoryBeatData CreateRuntimeInstance(
             string id,
@@ -100,7 +158,12 @@ namespace FeaturesStoryline.Data
             int day = 0,
             int wave = 0,
             EnemyType bossType = EnemyType.TuberMaw,
-            JournalEntryData journal = null)
+            JournalEntryData journal = null,
+            NarrativeFactCondition[] criteria = null,
+            NarrativeFactMutation[] mutations = null,
+            RepeatPolicy repeatPolicy = RepeatPolicy.MatchOnce,
+            int saliencePriority = 1,
+            UnityEngine.Playables.PlayableAsset timeline = null)
         {
             var beat = CreateInstance<StoryBeatData>();
             beat.beatId = id;
@@ -115,6 +178,11 @@ namespace FeaturesStoryline.Data
             beat.triggerBossType = bossType;
             beat.unlocksJournalEntry = journal != null;
             beat.journalEntry = journal;
+            beat.criteria = criteria ?? Array.Empty<NarrativeFactCondition>();
+            beat.mutations = mutations ?? Array.Empty<NarrativeFactMutation>();
+            beat.repeatPolicy = repeatPolicy;
+            beat.saliencePriority = Math.Max(1, saliencePriority);
+            beat.timelineAsset = timeline;
             return beat;
         }
     }

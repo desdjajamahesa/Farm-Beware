@@ -134,36 +134,21 @@ namespace FeaturesRendering.Lighting
             EnforceShadowSettings();
         }
 
+        private bool isSubscribed = false;
+
         private void OnEnable()
         {
             if (yieldToDirector) return;
-
-            // Mendaftar sebagai Observer ke ITimeService
-            var timeService = ServiceLocator.Resolve<ITimeService>();
-            if (timeService != null)
-            {
-                timeService.OnMinuteChanged += HandleMinuteChanged;
-                timeService.OnPhaseChanged += HandlePhaseChanged;
-
-                // Evaluasi awal saat komponen aktif
-                EvaluateSunParameters(timeService.CurrentHour);
-            }
-        }
-
-        private void OnDisable()
-        {
-            // Pelepasan pendaftaran bersih untuk mencegah memory leak / dangling delegate
-            var timeService = ServiceLocator.Resolve<ITimeService>();
-            if (timeService != null)
-            {
-                timeService.OnMinuteChanged -= HandleMinuteChanged;
-                timeService.OnPhaseChanged -= HandlePhaseChanged;
-            }
+            TrySubscribeTimeService();
         }
 
         private void Start()
         {
             if (yieldToDirector) return;
+            if (!isSubscribed)
+            {
+                TrySubscribeTimeService();
+            }
 
             // Defensive resolution jika ITimeService belum siap di Awake/OnEnable
             var timeService = ServiceLocator.Resolve<ITimeService>();
@@ -181,9 +166,41 @@ namespace FeaturesRendering.Lighting
                     EvaluateSunParameters(timeService.CurrentHour);
                 }
             }
-            else
+        }
+
+        private void Update()
+        {
+            if (yieldToDirector) return;
+            if (!isSubscribed)
             {
-                ApplyDayLighting();
+                TrySubscribeTimeService();
+            }
+        }
+
+        private void TrySubscribeTimeService()
+        {
+            if (isSubscribed) return;
+            var timeService = ServiceLocator.Resolve<ITimeService>();
+            if (timeService != null)
+            {
+                timeService.OnMinuteChanged += HandleMinuteChanged;
+                timeService.OnPhaseChanged += HandlePhaseChanged;
+                EvaluateSunParameters(timeService.CurrentHour);
+                isSubscribed = true;
+            }
+        }
+
+        private void OnDisable()
+        {
+            if (isSubscribed)
+            {
+                var timeService = ServiceLocator.Resolve<ITimeService>();
+                if (timeService != null)
+                {
+                    timeService.OnMinuteChanged -= HandleMinuteChanged;
+                    timeService.OnPhaseChanged -= HandlePhaseChanged;
+                }
+                isSubscribed = false;
             }
         }
 

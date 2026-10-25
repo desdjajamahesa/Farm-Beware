@@ -62,6 +62,11 @@ namespace FeaturesSaveSystem
         private SaveManifest cachedManifest = new SaveManifest();
         private bool isManifestLoaded = false;
         public static string PendingSaveIdToLoad { get; set; } = null;
+        public static bool IsPendingNewGameIntroCutscene
+        {
+            get => GameSessionState.IsPendingNewGameIntroCutscene;
+            set => GameSessionState.IsPendingNewGameIntroCutscene = value;
+        }
 
         private void OnEnable()
         {
@@ -81,7 +86,23 @@ namespace FeaturesSaveSystem
                 {
                     string saveToLoad = PendingSaveIdToLoad;
                     PendingSaveIdToLoad = null;
+                    IsPendingNewGameIntroCutscene = false;
                     StartCoroutine(RoutineApplyPendingLoad(saveToLoad));
+                }
+                else if (IsPendingNewGameIntroCutscene)
+                {
+                    // Synchronously set Day 0 BEFORE Start() runs on any scene components
+                    if (FeaturesTime.DayNightTimeManager.Instance != null)
+                    {
+                        FeaturesTime.DayNightTimeManager.Instance.SetDayAndTime(0, 16.0f);
+                        FeaturesTime.DayNightTimeManager.Instance.SetPaused(true);
+                    }
+                    if (TimeManager.Instance != null)
+                    {
+                        TimeManager.Instance.SetTimeState(0, TimeManager.DayPhase.Day, false, notifyPhaseChanged: false, notifyDayChanged: false);
+                    }
+
+                    StartCoroutine(RoutineApplyNewGameInitialization());
                 }
             }
         }
@@ -91,6 +112,78 @@ namespace FeaturesSaveSystem
             yield return new WaitForEndOfFrame();
             bool success = LoadSave(saveId, out string msg);
             Debug.Log($"[SaveSystemManager] Auto-applied pending save on scene start: '{saveId}' - Success: {success}, {msg}");
+        }
+
+        private System.Collections.IEnumerator RoutineApplyNewGameInitialization()
+        {
+            yield return new WaitForEndOfFrame();
+
+            // 1. Confirm Day 0 (Arrival Day)
+            if (FeaturesTime.DayNightTimeManager.Instance != null)
+            {
+                FeaturesTime.DayNightTimeManager.Instance.SetDayAndTime(0, 16.0f);
+                FeaturesTime.DayNightTimeManager.Instance.SetPaused(true);
+            }
+            if (TimeManager.Instance != null)
+            {
+                TimeManager.Instance.SetTimeState(0, TimeManager.DayPhase.Day, false, notifyPhaseChanged: false, notifyDayChanged: false);
+            }
+
+            // 2. Play Opening Cutscene or Fallback Position
+            var cutscene = ServiceLocator.Resolve<ICutsceneService>();
+            if (cutscene == null)
+            {
+                foreach (var mb in FindObjectsByType<MonoBehaviour>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+                {
+                    if (mb is ICutsceneService cs)
+                    {
+                        cutscene = cs;
+                        break;
+                    }
+                }
+            }
+
+            if (cutscene != null)
+            {
+                if (!cutscene.IsCutscenePlaying)
+                {
+                    cutscene.PlayOpeningCutscene();
+                }
+            }
+            else
+            {
+                // Fallback: If no cutscene service exists, teleport player outside gate facing south
+                Vector3 gateSpawn = new Vector3(20.40f, 0.04f, 52.00f);
+                Quaternion gateRot = Quaternion.Euler(0f, 180f, 0f);
+
+                var playerCtx = ServiceLocator.Resolve<IPlayerContext>();
+                if (playerCtx != null)
+                {
+                    playerCtx.Teleport(gateSpawn, gateRot);
+                }
+                else
+                {
+                    var player = GameObject.FindWithTag("Player") ?? GameObject.Find("Player");
+                    if (player != null)
+                    {
+                        var rb = player.GetComponent<Rigidbody>();
+                        if (rb != null)
+                        {
+                            rb.linearVelocity = Vector3.zero;
+                            rb.angularVelocity = Vector3.zero;
+                            rb.position = gateSpawn;
+                            rb.rotation = gateRot;
+                        }
+                        player.transform.position = gateSpawn;
+                        player.transform.rotation = gateRot;
+                        Physics.SyncTransforms();
+                    }
+                }
+                Debug.LogWarning("[SaveSystemManager] ICutsceneService not found in scene. Opening cutscene skipped, player spawned at gate.");
+            }
+
+            IsPendingNewGameIntroCutscene = false;
+            Debug.Log("[SaveSystemManager] Initialized fresh New Game session on Day 0 outside homestead gate.");
         }
 
         private void Awake()
@@ -627,6 +720,7 @@ namespace FeaturesSaveSystem
         public void StartNewGame()
         {
             PendingSaveIdToLoad = null;
+            IsPendingNewGameIntroCutscene = true;
             Time.timeScale = 1f;
 
             if (DailyEconomyManager.Instance != null)
@@ -647,6 +741,12 @@ namespace FeaturesSaveSystem
 
             Cursor.visible = true;
             Cursor.lockState = CursorLockMode.None;
+
+            if (UnityEngine.SceneManagement.SceneManager.GetActiveScene().name == "StagingScene")
+            {
+                StartCoroutine(RoutineApplyNewGameInitialization());
+                return;
+            }
 
             Debug.Log("[SaveSystemManager] Starting fresh New Game, transitioning to StagingScene...");
 
@@ -866,6 +966,14 @@ namespace FeaturesSaveSystem
                 data.triggeredStoryBeats = new List<string>(storyService.TriggeredBeatIds);
                 data.unlockedJournalEntries = new List<string>(storyService.UnlockedJournalIds);
                 data.isStoryComplete = storyService.IsStoryComplete;
+
+                if (storyService.FactBoard != null)
+                {
+                    data.narrativeFacts = new int[(int)FarmBeware.Core.Runtime.NarrativeFactKey.MaxCount];
+                    storyService.FactBoard.CopyRawFacts(data.narrativeFacts);
+                }
+
+                storyService.ExportCooldowns(out data.lastPlayedBeatKeys, out data.lastPlayedDays);
             }
 
             return data;
@@ -1154,7 +1262,15 @@ namespace FeaturesSaveSystem
             var loadedStoryService = FarmBeware.Core.Runtime.ServiceLocator.Resolve<FarmBeware.Core.Runtime.IStorylineService>();
             if (loadedStoryService != null && data.triggeredStoryBeats != null)
             {
-                loadedStoryService.RestoreState(data.storyChapter, data.triggeredStoryBeats, data.unlockedJournalEntries, data.isStoryComplete);
+                loadedStoryService.RestoreState(
+                    data.storyChapter,
+                    data.triggeredStoryBeats,
+                    data.unlockedJournalEntries,
+                    data.isStoryComplete,
+                    data.narrativeFacts,
+                    data.lastPlayedBeatKeys,
+                    data.lastPlayedDays
+                );
             }
         }
 

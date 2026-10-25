@@ -832,6 +832,11 @@ public class PlayerEquipment : MonoBehaviour
             inventory.OnInventoryChanged -= RefreshCurrentEquipment;
             inventory.OnHotbarSelected -= OnHotbarSlotChanged;
         }
+        if (rangeIndicatorObj == null)
+        {
+            var found = transform.Find("AttackRangeIndicator");
+            if (found != null) rangeIndicatorObj = found.gameObject;
+        }
         if (rangeIndicatorObj != null)
         {
             rangeIndicatorObj.SetActive(false);

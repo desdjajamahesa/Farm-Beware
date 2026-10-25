@@ -43,8 +43,17 @@ namespace FarmBeware.Core.Runtime
         /// <summary>Returns readonly list of all unlocked journal entry IDs.</summary>
         IReadOnlyCollection<string> UnlockedJournalIds { get; }
 
+        /// <summary>Fact blackboard associated with the narrative state.</summary>
+        INarrativeFactBoard FactBoard { get; }
+
         /// <summary>Restores story state during save game load.</summary>
         void RestoreState(int chapter, IEnumerable<string> beats, IEnumerable<string> journals, bool isComplete);
+
+        /// <summary>Restores extended narrative state with facts and last-played maps.</summary>
+        void RestoreState(int chapter, IEnumerable<string> beats, IEnumerable<string> journals, bool isComplete, int[] rawFacts, IList<string> lastPlayedKeys, IList<int> lastPlayedDays);
+
+        /// <summary>Exports cooldown and repeat maps for persistence.</summary>
+        void ExportCooldowns(out List<string> keys, out List<int> days);
 
         /// <summary>Fired when a story beat is triggered.</summary>
         event Action<string> OnStoryBeatTriggered;

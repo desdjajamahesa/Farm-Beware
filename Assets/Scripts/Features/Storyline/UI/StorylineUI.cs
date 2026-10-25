@@ -20,7 +20,23 @@ namespace FeaturesStoryline.UI
     [DisallowMultipleComponent]
     public class StorylineUI : MonoBehaviour, IModalWindow
     {
-        public static StorylineUI Instance { get; private set; }
+        private static StorylineUI _instance;
+        public static StorylineUI Instance
+        {
+            get
+            {
+                if (_instance == null)
+                {
+                    _instance = FindFirstObjectByType<StorylineUI>(FindObjectsInactive.Include);
+                }
+                if (_instance != null && !_instance.gameObject.activeInHierarchy)
+                {
+                    _instance.gameObject.SetActive(true);
+                }
+                return _instance;
+            }
+            private set => _instance = value;
+        }
 
         bool IModalWindow.IsOpen => (dialoguePanel != null && dialoguePanel.activeSelf) || (overlayPanel != null && overlayPanel.activeSelf);
         void IModalWindow.OpenModal() {}
@@ -63,6 +79,7 @@ namespace FeaturesStoryline.UI
         private Coroutine _activeOverlayRoutine;
         private Coroutine _activeDreamRoutine;
         private Action _onDialogueDismissed;
+        private Action _onOverlayDismissed;
 
         private void Awake()
         {
@@ -76,31 +93,59 @@ namespace FeaturesStoryline.UI
             EnsureUIHierarchy();
         }
 
+        private void OnDestroy()
+        {
+            if (Instance == this)
+            {
+                Instance = null;
+            }
+        }
+
         private void Update()
         {
-            // Allow Space or Enter to advance dialogue if open
+            // Allow Space, Enter, or Click to advance dialogue if open
             if (dialoguePanel != null && dialoguePanel.activeSelf)
             {
+                bool advanceDialogue = false;
                 if (UnityEngine.InputSystem.Keyboard.current != null)
                 {
                     if (UnityEngine.InputSystem.Keyboard.current.spaceKey.wasPressedThisFrame ||
                         UnityEngine.InputSystem.Keyboard.current.enterKey.wasPressedThisFrame)
                     {
-                        DismissDialogue();
+                        advanceDialogue = true;
                     }
+                }
+                if (UnityEngine.InputSystem.Mouse.current != null && UnityEngine.InputSystem.Mouse.current.leftButton.wasPressedThisFrame)
+                {
+                    advanceDialogue = true;
+                }
+
+                if (advanceDialogue)
+                {
+                    DismissDialogue();
                 }
             }
 
-            // Allow Space or Enter to advance overlay if open
+            // Allow Space, Enter, or Click to advance overlay if open
             if (overlayPanel != null && overlayPanel.activeSelf && overlayCanvasGroup != null && overlayCanvasGroup.alpha >= 0.95f)
             {
+                bool advanceOverlay = false;
                 if (UnityEngine.InputSystem.Keyboard.current != null)
                 {
                     if (UnityEngine.InputSystem.Keyboard.current.spaceKey.wasPressedThisFrame ||
                         UnityEngine.InputSystem.Keyboard.current.enterKey.wasPressedThisFrame)
                     {
-                        DismissOverlay();
+                        advanceOverlay = true;
                     }
+                }
+                if (UnityEngine.InputSystem.Mouse.current != null && UnityEngine.InputSystem.Mouse.current.leftButton.wasPressedThisFrame)
+                {
+                    advanceOverlay = true;
+                }
+
+                if (advanceOverlay)
+                {
+                    DismissOverlay();
                 }
             }
         }
@@ -112,6 +157,11 @@ namespace FeaturesStoryline.UI
                 onComplete?.Invoke();
                 return;
             }
+
+            var facts = StorylineManager.Instance != null ? StorylineManager.Instance.FactBoard : ServiceLocator.Resolve<INarrativeFactBoard>();
+            string formattedTitle = beat.title;
+            string formattedText = beat.FormatNarrativeText(facts);
+            string formattedHudText = !string.IsNullOrEmpty(beat.hudBannerText) ? beat.FormatHudBannerText(facts) : formattedText;
 
             // Trigger screen shake if requested
             if (beat.triggersScreenShake)
@@ -130,32 +180,32 @@ namespace FeaturesStoryline.UI
             switch (beat.deliveryType)
             {
                 case StoryDeliveryType.HudBanner:
-                    ShowBanner(beat.title, string.IsNullOrEmpty(beat.hudBannerText) ? beat.narrativeText : beat.hudBannerText, beat.displayDuration, onComplete);
+                    ShowBanner(formattedTitle, formattedHudText, beat.displayDuration, onComplete);
                     break;
 
                 case StoryDeliveryType.DialogueBox:
-                    ShowDialogue(beat.speakerName, beat.narrativeText, onComplete);
+                    ShowDialogue(beat.speakerName, formattedText, onComplete);
                     break;
 
                 case StoryDeliveryType.FullScreenOverlay:
-                    ShowOverlay(beat.title, beat.narrativeText, beat.displayDuration, onComplete);
+                    ShowOverlay(formattedTitle, formattedText, beat.displayDuration, onComplete);
                     break;
 
                 case StoryDeliveryType.DreamSequence:
-                    ShowDream(beat.narrativeText, beat.displayDuration, onComplete);
+                    ShowDream(formattedText, beat.displayDuration, onComplete);
                     break;
 
                 case StoryDeliveryType.FloatingWorldText:
-                    ShowFloatingText(beat.narrativeText);
+                    ShowFloatingText(formattedText);
                     onComplete?.Invoke();
                     break;
 
                 case StoryDeliveryType.JournalPage:
-                    ShowBanner("Journal Updated", $"Unlocked: {beat.title}", 4f, onComplete);
+                    ShowBanner("Journal Updated", $"Unlocked: {formattedTitle}", 4f, onComplete);
                     break;
 
                 default:
-                    ShowBanner(beat.title, beat.narrativeText, beat.displayDuration, onComplete);
+                    ShowBanner(formattedTitle, formattedText, beat.displayDuration, onComplete);
                     break;
             }
         }
@@ -180,6 +230,8 @@ namespace FeaturesStoryline.UI
 
             bannerPanel.SetActive(true);
             bannerCanvasGroup.alpha = 0f;
+            bannerCanvasGroup.blocksRaycasts = false;
+            bannerCanvasGroup.interactable = false;
 
             // Fade in
             float t = 0f;
@@ -255,14 +307,16 @@ namespace FeaturesStoryline.UI
 
             if (_activeOverlayRoutine != null) StopCoroutine(_activeOverlayRoutine);
 
+            _onOverlayDismissed = onComplete;
+
             // Notify modal stack for input gating
             var modalStack = ServiceLocator.Resolve<IModalStackService>();
             modalStack?.Push(this);
 
-            _activeOverlayRoutine = StartCoroutine(RoutineOverlay(title, message, minDuration, onComplete));
+            _activeOverlayRoutine = StartCoroutine(RoutineOverlay(title, message, minDuration));
         }
 
-        private IEnumerator RoutineOverlay(string title, string message, float minDuration, Action onComplete)
+        private IEnumerator RoutineOverlay(string title, string message, float minDuration)
         {
             if (overlayTitleText != null) overlayTitleText.text = title;
             if (overlayBodyText != null) overlayBodyText.text = message;
@@ -281,7 +335,7 @@ namespace FeaturesStoryline.UI
             }
             overlayCanvasGroup.alpha = 1f;
 
-            // Wait for user interaction or minimum duration
+            // Wait for display duration if minDuration is specified
             float elapsed = 0f;
             while (elapsed < minDuration)
             {
@@ -290,12 +344,18 @@ namespace FeaturesStoryline.UI
             }
 
             _activeOverlayRoutine = null;
-            onComplete?.Invoke();
         }
 
         public void DismissOverlay()
         {
             if (overlayPanel == null || !overlayPanel.activeSelf) return;
+
+            if (_activeOverlayRoutine != null)
+            {
+                StopCoroutine(_activeOverlayRoutine);
+                _activeOverlayRoutine = null;
+            }
+
             StartCoroutine(RoutineDismissOverlay());
         }
 
@@ -304,10 +364,10 @@ namespace FeaturesStoryline.UI
             if (overlayCanvasGroup != null)
             {
                 float t = 0f;
-                while (t < 0.5f)
+                while (t < 0.35f)
                 {
                     t += Time.unscaledDeltaTime;
-                    overlayCanvasGroup.alpha = 1f - Mathf.Clamp01(t / 0.5f);
+                    overlayCanvasGroup.alpha = 1f - Mathf.Clamp01(t / 0.35f);
                     yield return null;
                 }
                 overlayCanvasGroup.alpha = 0f;
@@ -316,6 +376,10 @@ namespace FeaturesStoryline.UI
 
             var modalStack = ServiceLocator.Resolve<IModalStackService>();
             modalStack?.PopSpecific(this);
+
+            var cb = _onOverlayDismissed;
+            _onOverlayDismissed = null;
+            cb?.Invoke();
         }
 
         public void ShowDream(string message, float duration = 4f, Action onComplete = null)
@@ -379,6 +443,12 @@ namespace FeaturesStoryline.UI
 
         public void TriggerScreenShake(float intensity, float duration)
         {
+            if (FeaturesCamera.IsometricCameraController.Instance != null)
+            {
+                FeaturesCamera.IsometricCameraController.Instance.TriggerShake(duration, intensity);
+                return;
+            }
+
             var cam = UnityEngine.Camera.main;
             if (cam != null)
             {
@@ -431,6 +501,10 @@ namespace FeaturesStoryline.UI
                 {
                     bannerPanel = existingBanner.gameObject;
                     bannerCanvasGroup = bannerPanel.GetComponent<CanvasGroup>();
+                    var tTitle = bannerPanel.transform.Find("BannerTitle");
+                    if (tTitle != null) bannerTitleText = tTitle.GetComponent<TextMeshProUGUI>();
+                    var tBody = bannerPanel.transform.Find("BannerBody");
+                    if (tBody != null) bannerBodyText = tBody.GetComponent<TextMeshProUGUI>();
                 }
                 else
                 {
@@ -477,9 +551,11 @@ namespace FeaturesStoryline.UI
                     bannerBodyText.color = Color.white;
                     bannerBodyText.alignment = TextAlignmentOptions.Center;
                     bannerBodyText.textWrappingMode = TextWrappingModes.Normal;
-
-                    bannerPanel.SetActive(false);
                 }
+            }
+            if (bannerPanel != null)
+            {
+                bannerPanel.SetActive(false);
             }
 
             // 2. Procedural Dialogue Panel
@@ -489,6 +565,17 @@ namespace FeaturesStoryline.UI
                 if (existingDlg != null)
                 {
                     dialoguePanel = existingDlg.gameObject;
+                    var tSpk = dialoguePanel.transform.Find("DialogueSpeaker");
+                    if (tSpk != null) dialogueSpeakerText = tSpk.GetComponent<TextMeshProUGUI>();
+                    var tBody = dialoguePanel.transform.Find("DialogueBody");
+                    if (tBody != null) dialogueBodyText = tBody.GetComponent<TextMeshProUGUI>();
+                    var tBtn = dialoguePanel.transform.Find("DialogueButton");
+                    if (tBtn != null)
+                    {
+                        dialogueContinueButton = tBtn.GetComponent<Button>();
+                        dialogueContinueButton.onClick.RemoveListener(DismissDialogue);
+                        dialogueContinueButton.onClick.AddListener(DismissDialogue);
+                    }
                 }
                 else
                 {
@@ -551,9 +638,11 @@ namespace FeaturesStoryline.UI
                     btxt.fontSize = 14;
                     btxt.alignment = TextAlignmentOptions.Center;
                     btxt.color = Color.white;
-
-                    dialoguePanel.SetActive(false);
                 }
+            }
+            if (dialoguePanel != null)
+            {
+                dialoguePanel.SetActive(false);
             }
 
             // 3. Procedural Overlay Panel (Prologue/Epilogue)
@@ -564,6 +653,12 @@ namespace FeaturesStoryline.UI
                 {
                     overlayPanel = existingOverlay.gameObject;
                     overlayCanvasGroup = overlayPanel.GetComponent<CanvasGroup>();
+                    var tTitle = overlayPanel.transform.Find("OverlayTitle");
+                    if (tTitle != null) overlayTitleText = tTitle.GetComponent<TextMeshProUGUI>();
+                    var tBody = overlayPanel.transform.Find("OverlayBody");
+                    if (tBody != null) overlayBodyText = tBody.GetComponent<TextMeshProUGUI>();
+                    var tPrompt = overlayPanel.transform.Find("OverlayPrompt");
+                    if (tPrompt != null) overlayPromptText = tPrompt.GetComponent<TextMeshProUGUI>();
                 }
                 else
                 {
@@ -621,9 +716,11 @@ namespace FeaturesStoryline.UI
                     overlayPromptText.fontSize = 15;
                     overlayPromptText.color = new Color(0.6f, 0.6f, 0.6f);
                     overlayPromptText.alignment = TextAlignmentOptions.Center;
-
-                    overlayPanel.SetActive(false);
                 }
+            }
+            if (overlayPanel != null)
+            {
+                overlayPanel.SetActive(false);
             }
 
             // 4. Procedural Dream Panel
@@ -634,6 +731,8 @@ namespace FeaturesStoryline.UI
                 {
                     dreamPanel = existingDream.gameObject;
                     dreamCanvasGroup = dreamPanel.GetComponent<CanvasGroup>();
+                    var tBody = dreamPanel.transform.Find("DreamBody");
+                    if (tBody != null) dreamBodyText = tBody.GetComponent<TextMeshProUGUI>();
                 }
                 else
                 {
@@ -664,9 +763,11 @@ namespace FeaturesStoryline.UI
                     dreamBodyText.color = new Color(0.85f, 0.7f, 1f);
                     dreamBodyText.alignment = TextAlignmentOptions.Center;
                     dreamBodyText.textWrappingMode = TextWrappingModes.Normal;
-
-                    dreamPanel.SetActive(false);
                 }
+            }
+            if (dreamPanel != null)
+            {
+                dreamPanel.SetActive(false);
             }
         }
     }

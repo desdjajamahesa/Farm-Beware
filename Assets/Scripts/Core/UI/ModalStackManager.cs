@@ -24,12 +24,12 @@ namespace FarmBeware.Core.Runtime
         {
             get
             {
-                if (_isApplicationQuitting) return null;
+                if (_isApplicationQuitting && Application.isPlaying) return null;
 
                 if (_instance == null)
                 {
                     _instance = FindFirstObjectByType<ModalStackManager>(FindObjectsInactive.Include);
-                    if (_instance == null && !_isApplicationQuitting)
+                    if (_instance == null && (!_isApplicationQuitting || !Application.isPlaying))
                     {
                         var go = new GameObject("ModalStackManager");
                         _instance = go.AddComponent<ModalStackManager>();

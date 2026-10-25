@@ -199,6 +199,10 @@ public class PlayerStats : MonoBehaviour, FeaturesCombat.IDamageable, IPlayerDam
 
     private void DrainHungerAndThirst(float deltaTime)
     {
+        var timeService = ServiceLocator.Resolve<ITimeService>();
+        if (timeService != null && timeService.CurrentDay == 0) return;
+        if (FeaturesTime.DayNightTimeManager.Instance != null && FeaturesTime.DayNightTimeManager.Instance.CurrentDay == 0) return;
+
         if (isGodMode)
         {
             currentHunger = maxHunger;
@@ -228,6 +232,10 @@ public class PlayerStats : MonoBehaviour, FeaturesCombat.IDamageable, IPlayerDam
 
     private void HandleEmptyPenalty()
     {
+        var timeService = ServiceLocator.Resolve<ITimeService>();
+        if (timeService != null && timeService.CurrentDay == 0) return;
+        if (FeaturesTime.DayNightTimeManager.Instance != null && FeaturesTime.DayNightTimeManager.Instance.CurrentDay == 0) return;
+
         if (takeDamageWhenEmpty && (IsStarving || IsDehydrated))
         {
             if (Time.time >= nextDamageTime)

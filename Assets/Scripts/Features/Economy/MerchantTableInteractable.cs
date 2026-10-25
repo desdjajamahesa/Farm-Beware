@@ -53,6 +53,17 @@ namespace FeaturesEconomy
 
         public void Interact(GameObject interactor)
         {
+            var timeService = FarmBeware.Core.Runtime.ServiceLocator.Resolve<FarmBeware.Core.Runtime.ITimeService>();
+            int currentDay = timeService != null ? timeService.CurrentDay : 1;
+            if (currentDay == 0)
+            {
+                FarmBeware.Core.Runtime.ServiceLocator.Resolve<FarmBeware.Core.Runtime.IFloatingTextService>()?.SpawnText(
+                    transform.position + Vector3.up * 1.5f,
+                    "Rest first. The harvest begins tomorrow.",
+                    new Color(1f, 0.8f, 0.4f));
+                return;
+            }
+
             if (MerchantShopUI.Instance == null)
             {
                 // Search for existing panel in scene first

@@ -132,6 +132,7 @@ namespace FeaturesWorkbench
                 }
 
                 OnUpgradesChanged?.Invoke();
+                FarmBeware.Core.Runtime.NarrativeTelemetry.ReportWeaponUpgraded(weaponLevel, sweetPotatoPathUnlocked, taroPathUnlocked, cornPathUnlocked);
                 return true;
             }
 
@@ -186,6 +187,7 @@ namespace FeaturesWorkbench
             }
 
             OnUpgradesChanged?.Invoke();
+            FarmBeware.Core.Runtime.NarrativeTelemetry.ReportWeaponUpgraded(weaponLevel, sweetPotatoPathUnlocked, taroPathUnlocked, cornPathUnlocked);
             return true;
         }
     }

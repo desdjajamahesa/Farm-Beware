@@ -154,6 +154,18 @@ namespace FeaturesFarming
         {
             if (interactor == null) return;
 
+            int currentDay = FeaturesTime.DayNightTimeManager.Instance != null 
+                ? FeaturesTime.DayNightTimeManager.Instance.CurrentDay 
+                : (TimeManager.Instance != null ? TimeManager.Instance.currentDay : 1);
+            if (currentDay == 0)
+            {
+                ServiceLocator.Resolve<IFloatingTextService>()?.SpawnText(
+                    transform.position + Vector3.up * 1.2f,
+                    "Rest first. The harvest begins tomorrow.",
+                    new Color(1f, 0.8f, 0.4f));
+                return;
+            }
+
             // Gameplay rule: Farming is only allowed during the daytime (Day Phase).
             if (TimeManager.Instance != null && TimeManager.Instance.currentPhase == TimeManager.DayPhase.Night)
             {
@@ -541,7 +553,17 @@ namespace FeaturesFarming
 
         public void UpdateLabelText(GameObject interactor)
         {
+            if (worldLabel == null) worldLabel = GetComponent<WorldLabel>();
             if (worldLabel == null) return;
+
+            int currentDay = FeaturesTime.DayNightTimeManager.Instance != null 
+                ? FeaturesTime.DayNightTimeManager.Instance.CurrentDay 
+                : (TimeManager.Instance != null ? TimeManager.Instance.currentDay : 1);
+            if (currentDay == 0)
+            {
+                worldLabel.displayName = "Farmland (Rest First)";
+                return;
+            }
 
             // At night, display that farming activities are only permitted during daytime
             if (TimeManager.Instance != null && TimeManager.Instance.currentPhase == TimeManager.DayPhase.Night)

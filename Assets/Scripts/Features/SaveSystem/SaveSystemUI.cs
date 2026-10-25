@@ -197,7 +197,7 @@ namespace FeaturesSaveSystem
             if (playerCtx != null)
             {
                 playerCtx.StopMovement();
-                playerCtx.IsInputLocked = true;
+                playerCtx.AddInputLock("SaveSystemUI");
             }
 
             Cursor.visible = true;
@@ -276,7 +276,7 @@ namespace FeaturesSaveSystem
             var closePlayerCtx = FarmBeware.Core.Runtime.ServiceLocator.Resolve<FarmBeware.Core.Runtime.IPlayerContext>();
             if (closePlayerCtx != null)
             {
-                closePlayerCtx.IsInputLocked = false;
+                closePlayerCtx.RemoveInputLock("SaveSystemUI");
             }
 
             Cursor.visible = true;

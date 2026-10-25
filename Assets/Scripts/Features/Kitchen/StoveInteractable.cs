@@ -49,6 +49,17 @@ public class StoveInteractable : KitchenStation, IInteractable
 
     public void Interact(GameObject interactor)
     {
+        var timeService = FarmBeware.Core.Runtime.ServiceLocator.Resolve<FarmBeware.Core.Runtime.ITimeService>();
+        int currentDay = timeService != null ? timeService.CurrentDay : (FeaturesTime.DayNightTimeManager.Instance != null ? FeaturesTime.DayNightTimeManager.Instance.CurrentDay : 1);
+        if (currentDay == 0)
+        {
+            FarmBeware.Core.Runtime.ServiceLocator.Resolve<FarmBeware.Core.Runtime.IFloatingTextService>()?.SpawnText(
+                transform.position + Vector3.up * 1.2f,
+                "Rest first. The harvest begins tomorrow.",
+                new Color(1f, 0.8f, 0.4f));
+            return;
+        }
+
         if (InventoryManagerUI.Instance != null && StationInventory != null)
             InventoryManagerUI.Instance.OpenStorageUI(StationInventory, "Stove");
     }

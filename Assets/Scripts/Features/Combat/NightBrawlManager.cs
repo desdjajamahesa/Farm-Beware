@@ -233,6 +233,21 @@ namespace FeaturesCombat
         {
             if (isWaveInProgress) return;
 
+            if (FarmBeware.Core.Runtime.ServiceLocator.TryResolve<FarmBeware.Core.Runtime.ITimeService>(out var timeService) && timeService != null)
+            {
+                currentDay = timeService.CurrentDay;
+            }
+            else if (TimeManager.Instance != null)
+            {
+                currentDay = TimeManager.Instance.currentDay;
+            }
+
+            if (currentDay <= 0)
+            {
+                Debug.Log("[NightBrawlManager] Day 0 is arrival day. Night Brawl is suspended until Day 1.");
+                return;
+            }
+
             EnforceNightFoodLimit();
             EnsureHealthBarManagers();
 

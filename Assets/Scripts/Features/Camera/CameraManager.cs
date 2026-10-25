@@ -31,7 +31,8 @@ namespace FeaturesCamera
         {
             Gameplay,      // IsometricCameraController follows player
             TrophyMode,    // First-person trophy arrangement
-            WardrobeMode   // Side view of player at mirror
+            WardrobeMode,  // Side view of player at mirror
+            Cinematic      // Timeline / PlayableDirector cinematic sequence
         }
 
         [Header("Camera References")]
@@ -168,6 +169,9 @@ namespace FeaturesCamera
                 case CameraMode.WardrobeMode:
                     SetupWardrobeMode(contextRoot);
                     break;
+                case CameraMode.Cinematic:
+                    SetupCinematicMode();
+                    break;
             }
 
             OnCameraModeChanged?.Invoke(mode);
@@ -175,23 +179,52 @@ namespace FeaturesCamera
 
         private bool IsValidTransition(CameraMode from, CameraMode to)
         {
-            // Can always return to Gameplay
-            if (to == CameraMode.Gameplay)
+            // Can always return to Gameplay or enter Cinematic
+            if (to == CameraMode.Gameplay || to == CameraMode.Cinematic)
                 return true;
 
-            // Can only enter Trophy/Wardrobe from Gameplay
+            // Can enter Trophy/Wardrobe from Gameplay
             if (from == CameraMode.Gameplay && (to == CameraMode.TrophyMode || to == CameraMode.WardrobeMode))
                 return true;
 
-            // Trophy → Wardrobe or Wardrobe → Trophy is invalid
             return false;
+        }
+
+        private void SetupCinematicMode()
+        {
+            if (isometricCameraController != null)
+                isometricCameraController.enabled = false;
+
+            if (mainCamera != null)
+                mainCamera.enabled = true;
+
+            if (trophyCamera != null)
+            {
+                trophyCamera.enabled = false;
+                trophyCamera.gameObject.SetActive(false);
+            }
+            if (wardrobeCamera != null)
+            {
+                wardrobeCamera.enabled = false;
+                wardrobeCamera.gameObject.SetActive(false);
+            }
         }
 
         private void SetupGameplayMode()
         {
             // Enable main camera + isometric controller
             if (mainCamera != null)
+            {
                 mainCamera.enabled = true;
+                if (isometricCameraController != null)
+                {
+                    mainCamera.orthographic = isometricCameraController.isOrthographic;
+                    if (isometricCameraController.orthographicSize > 0f)
+                    {
+                        mainCamera.orthographicSize = isometricCameraController.orthographicSize;
+                    }
+                }
+            }
 
             if (isometricCameraController != null)
                 isometricCameraController.enabled = true;

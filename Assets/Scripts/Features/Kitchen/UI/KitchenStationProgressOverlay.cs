@@ -235,7 +235,7 @@ public class KitchenStationProgressOverlay : MonoBehaviour
             mesh.motionVectorGenerationMode = MotionVectorGenerationMode.ForceNoMotion;
             if (overlayMaterial != null) { mesh.material = overlayMaterial; mesh.material.renderQueue = 4000; } else if (!warnedMissing)
             {
-                Debug.LogWarning("[KitchenStationProgressOverlay] overlayMaterial kosong di '" + gameObject.name + "'. Veil tampil apa adanya.", this);
+                Debug.LogWarning("[KitchenStationProgressOverlay] overlayMaterial is null on '" + gameObject.name + "'. Rendering fallback veil.", this);
                 warnedMissing = true;
             }
             Color color = (overlayMaterial != null) ? overlayColor : Color.white;

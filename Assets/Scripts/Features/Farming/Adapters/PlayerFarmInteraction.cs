@@ -218,7 +218,16 @@ namespace FeaturesFarming.Adapters
         /// </summary>
         public bool HandleFarmAction(Vector2Int coord, Vector3 worldPos, bool isInteractOnly = false)
         {
-            // CONSTRAINT: Prevent all farming actions if Night phase
+            // CONSTRAINT: Prevent all farming actions if Day 0 or Night phase
+            int currentDay = FeaturesTime.DayNightTimeManager.Instance != null 
+                ? FeaturesTime.DayNightTimeManager.Instance.CurrentDay 
+                : (TimeManager.Instance != null ? TimeManager.Instance.currentDay : 1);
+            if (currentDay == 0)
+            {
+                ShowFeedbackText(worldPos, "Rest first. The harvest begins tomorrow.", new Color(1f, 0.8f, 0.4f));
+                return false;
+            }
+
             if (TimeManager.Instance != null && TimeManager.Instance.currentPhase == TimeManager.DayPhase.Night)
             {
                 Debug.LogWarning("[PlayerFarmInteraction] Farming is only allowed during the day!");

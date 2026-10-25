@@ -12,7 +12,8 @@
         "FarmBeware.Features.Camera",
         "FarmBeware.Rendering.Runtime",
         "Unity.TextMeshPro",
-        "Unity.InputSystem"
+        "Unity.InputSystem",
+        "Unity.Timeline"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

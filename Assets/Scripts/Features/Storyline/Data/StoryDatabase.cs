@@ -2,24 +2,30 @@ using System.Collections.Generic;
 using UnityEngine;
 using FeaturesStoryline.Data;
 using FeaturesCombat;
+using FarmBeware.Core.Runtime;
 
 namespace FeaturesStoryline
 {
     /// <summary>
-    /// Narrative database and factory providing complete story beats and archival research logs
-    /// for the "NexaPhyto Bio-Hazard" campaign.
+    /// Narrative database and factory providing complete story beats, archival research logs,
+    /// and pre-allocated trigger bucket caches for the "NexaPhyto Bio-Hazard" campaign.
     /// Fully aligned with the official canon: abandoned research facility, chemical leakage in soil,
     /// mutated crop flora, daytime farming & defense preparation, and nighttime survival defense.
-    /// Easily editable and extensible without modifying underlying systems.
+    /// Supports Quality-Based Narrative (QBN) criteria, specificity scoring, and Zero-GC pre-baked lookups.
     /// </summary>
     public static class StoryDatabase
     {
+        private static Dictionary<StoryTriggerType, List<StoryBeatData>> _triggerBuckets;
+        private static List<StoryBeatData> _cachedBeats;
+        private static List<JournalEntryData> _cachedJournals;
+
         public static List<JournalEntryData> CreateDefaultJournalEntries()
         {
             var entries = new List<JournalEntryData>
             {
+                // Canonical Dossier 1: Purchase Deed & Environmental Waiver Clause 14
                 JournalEntryData.CreateRuntimeInstance(
-                    "LOG_NEXAPHYTO_01",
+                    "JOURNAL_01_WAIVER",
                     1,
                     "Deed of Sale & Environmental Waiver",
                     "Municipal Land Registry",
@@ -30,91 +36,90 @@ namespace FeaturesStoryline
                     "unsealed drainage conduits, or ecological anomalies. The buyer assumes sole responsibility for soil remediation.",
                     1
                 ),
+                // Canonical Dossier 2: Chemical Reagent 7 Research Memo
                 JournalEntryData.CreateRuntimeInstance(
-                    "LOG_NEXAPHYTO_02",
-                    1,
-                    "Incident Report #042: Tank Rupture",
-                    "Chief Safety Inspector Dr. V. Aris",
-                    "URGENT MEMORANDUM — FACILITY EVACUATION\n\n" +
-                    "Subterranean Storage Tank 04 has suffered catastrophic structural compromise. Approximately 10,000 liters " +
-                    "of experimental mutagenic growth catalyst 'Phyto-Toxin Reagent 7' have escaped into the secondary drainage basin.\n\n" +
-                    "The compound binds aggressively to organic plant matter, accelerating cellular division tenfold. Immediate quarantine ordered.",
+                    "JOURNAL_02_REAGENT7",
+                    2,
+                    "Memo: Phyto-Toxin Reagent 7 Properties",
+                    "Dr. Elena Vance, Lead Biochemist",
+                    "INTERNAL RESEARCH MEMO — CLASSIFIED\n\n" +
+                    "Compound: Phyto-Toxin Reagent 7 (Experimental Growth Catalyst).\n\n" +
+                    "Mechanism: Binds aggressively to organic vascular plant tissue, accelerating cell division 400-fold upon darkness exposure.\n" +
+                    "Side Effects: Severe mineral absorption in root systems, producing chitinous bark armor and aggressive territorial reflex.",
                     2
                 ),
+                // Canonical Dossier 3: Tank 04 Rupture Emergency Report
                 JournalEntryData.CreateRuntimeInstance(
-                    "LOG_NEXAPHYTO_03",
-                    2,
-                    "Bio-Study: Specimen T-Maw & Taro",
-                    "Senior Bio-Engineer Dr. K. Vance",
-                    "FIELD RESEARCH REPORT: REAGENT 7 ON VEGETATION\n\n" +
-                    "1. Sweet Potato: High carbohydrate content rapidly metabolizes the mutagen into predatory jaws and subterranean burrowing musculature (Specimen: Tuber Maw).\n" +
-                    "2. Taro: Thick fibrous root jackets absorb mineralized leachate, producing impenetrable armored bark (Specimen: Taro Brute). Avoid melee trades without dodge stamina.",
+                    "JOURNAL_03_INCIDENT042",
+                    3,
+                    "Incident Report #042: Tank 04 Rupture",
+                    "Chief Safety Inspector Dr. V. Aris",
+                    "URGENT MEMORANDUM — FACILITY EVACUATION\n\n" +
+                    "Subterranean Storage Tank 04 has suffered catastrophic structural failure. Over 10,000 liters " +
+                    "of experimental mutagenic growth catalyst 'Phyto-Toxin Reagent 7' have escaped into the secondary drainage basin.\n\n" +
+                    "The spill sits directly beneath Lot 417-B. Management ordered concrete bulkhead sealing instead of decontamination.",
                     3
                 ),
+                // Canonical Dossier 4: Military Apex Bio-Sentinel Dossier
                 JournalEntryData.CreateRuntimeInstance(
-                    "LOG_NEXAPHYTO_04",
-                    3,
-                    "Specimen C-1: The Cyclopean Neural Node",
-                    "Dr. K. Vance",
-                    "BIO-OBSERVATION LOG #109\n\n" +
-                    "As chemical concentration peaks in the central drainage basin, adjacent root clusters fuse into a singular apex entity.\n\n" +
-                    "Specimen C-1 (The Cyclops) develops a centralized sensory organ that coordinates nearby roots. Its ground-pound shockwaves " +
-                    "threaten our perimeter barriers. Heavy poise damage is mandatory to stagger the subject.",
+                    "JOURNAL_04_APEX_BIO",
+                    4,
+                    "Military Specimen Dossier: C-1 & Apex Sentinel",
+                    "Col. R. Darmawan, Bio-Defense Project",
+                    "SPECIMEN CLASSIFICATION REPORT\n\n" +
+                    "1. Specimen C-1 (Cyclops Tuber Maw): Multi-root colony fusion forming a centralized photoreceptive ocular neural node.\n" +
+                    "2. Specimen T-Colossus: Multi-ton subterranean root anchor absorbing bedrock silicate for seismic slam resilience.\n" +
+                    "3. Specimen Apex (The Ranger): Stationary arboreal bio-sentinel with pressurized ballistic seed chambers guarding the effluent conduits.",
                     4
                 ),
+                // Canonical Dossier 5: Automated Emergency Relief Valve Blueprint
                 JournalEntryData.CreateRuntimeInstance(
-                    "LOG_NEXAPHYTO_05",
-                    4,
-                    "Facility Sub-Floor Drainage Schematics",
-                    "Facility Engineering Team",
-                    "INFRASTRUCTURE ANALYSIS\n\n" +
-                    "The old homestead was constructed directly above the facility's main chemical effluent junction. " +
-                    "Every time the farmer tills and waters the topsoil, moisture carries dormant chemical crystals into the corroded pipes below, " +
-                    "triggering a violent biochemical reaction in the roots.",
+                    "JOURNAL_05_FAILSAFE",
+                    5,
+                    "Automated Emergency Relief Valve Blueprint",
+                    "Dr. Elena Vance, Final Evacuation Note",
+                    "FACILITY COUNTERMEASURE BLUEPRINT\n\n" +
+                    "The automated emergency relief valve contains pressurized phosphate-alkali neutralizing vapor.\n\n" +
+                    "If hydrostatic pressure peaks, the valve will automatically discharge, neutralizing all Reagent 7 into inert agricultural fertilizer.\n" +
+                    "However, the valve is physically obstructed by the root core of The Ranger. Eliminating the Sentinel releases the release latch.",
                     5
                 ),
+                // Retained backward-compatible legacy aliases
                 JournalEntryData.CreateRuntimeInstance(
-                    "LOG_NEXAPHYTO_06",
-                    4,
-                    "Specimen T-Colossus: Structural Chitin",
-                    "Dr. K. Vance",
-                    "CRITICAL HAZARD CLASSIFICATION\n\n" +
-                    "Taro roots exposed to prolonged chemical sludge form massive multi-ton subterranean anchors. " +
-                    "The resulting abomination — The Colossus — possesses bone-crushing strength and near-impenetrable fibrous armor. " +
-                    "Only high-tier upgraded weaponry can pierce its outer bark.",
-                    6
+                    "LOG_NEXAPHYTO_01", 1, "Deed of Sale & Environmental Waiver", "Municipal Land Registry",
+                    "PARCEL ACQUISITION RECORD — LOT 417-B\nAcquired 'as-is' following 1989 NexaPhyto liquidation. Clause 14 environmental waiver active.", 1
                 ),
                 JournalEntryData.CreateRuntimeInstance(
-                    "LOG_NEXAPHYTO_07",
-                    5,
-                    "Emergency Neutralization Protocol",
-                    "Facility Director M. Sterling",
-                    "CONTINGENCY PROCEDURES\n\n" +
-                    "In the event of total bio-containment failure, the automated emergency flush system can be triggered at the main drainage vent.\n\n" +
-                    "Neutralizing reagent will flood the underground conduits, crystallizing all mutagenic sludge into inert fertilizer. " +
-                    "However, the facility vent is fiercely guarded by our runaway genetic sentinel. The sentinel must be eliminated first.",
-                    7
+                    "LOG_NEXAPHYTO_02", 1, "Incident Report #042: Tank Rupture", "Dr. V. Aris",
+                    "Over 10,000 liters of Phyto-Toxin Reagent 7 escaped into the secondary drainage basin directly beneath Lot 417-B.", 2
                 ),
                 JournalEntryData.CreateRuntimeInstance(
-                    "LOG_NEXAPHYTO_08",
-                    5,
-                    "Specimen Apex: The Ranger",
-                    "Classified NexaPhyto Dossier",
-                    "APEX BIO-SENTINEL DOSSIER\n\n" +
-                    "The Ranger: An arboreal bio-engineered crop hybrid combining flexible corn stalk sinew with deadly toxic thorn projectiles. " +
-                    "It defends the chemical breach with relentless speed and ranged suppression. Defeating it will trigger the automated purge valve.",
-                    8
+                    "LOG_NEXAPHYTO_03", 2, "Bio-Study: Specimen T-Maw & Taro", "Dr. K. Vance",
+                    "Sweet potatoes metabolize mutagen into burrowing Tuber Maws. Taro roots absorb leachate into armored bark.", 3
                 ),
                 JournalEntryData.CreateRuntimeInstance(
-                    "LOG_FARMER_PURGE",
-                    5,
-                    "The Soil Purified: Farmer's Diary",
-                    "The Farmer",
-                    "FINAL DIARY ENTRY\n\n" +
-                    "The Ranger has fallen. As it collapsed across the fence, the automated emergency valve engaged with a deafening hiss.\n\n" +
-                    "Golden neutralizing vapor surged through the corroded pipes, neutralizing the chemical seepage. The mutated roots withered away into rich, dark loam.\n\n" +
-                    "The morning air is crisp and pure. The nightmare is over. This land is finally my true home.",
-                    9
+                    "LOG_NEXAPHYTO_04", 3, "Specimen C-1: The Cyclopean Neural Node", "Dr. K. Vance",
+                    "Adjacent roots fuse into Specimen C-1, coordinating horde swarms with ground-pound shockwaves.", 4
+                ),
+                JournalEntryData.CreateRuntimeInstance(
+                    "LOG_NEXAPHYTO_05", 4, "Facility Sub-Floor Drainage Schematics", "Engineering Team",
+                    "The homestead was built over the main chemical effluent pipe. Watering crops leaches dormant crystals into roots below.", 5
+                ),
+                JournalEntryData.CreateRuntimeInstance(
+                    "LOG_NEXAPHYTO_06", 4, "Specimen T-Colossus: Structural Chitin", "Dr. K. Vance",
+                    "Prolonged chemical exposure forms multi-ton anchors. The Colossus possesses bone-crushing strength.", 6
+                ),
+                JournalEntryData.CreateRuntimeInstance(
+                    "LOG_NEXAPHYTO_07", 5, "Emergency Neutralization Protocol", "Facility Director M. Sterling",
+                    "Neutralizing reagent will flood conduits upon defeating the runaway Sentinel guarding the vent.", 7
+                ),
+                JournalEntryData.CreateRuntimeInstance(
+                    "LOG_NEXAPHYTO_08", 5, "Specimen Apex: The Ranger", "Classified Dossier",
+                    "The Ranger: Arboreal hybrid combining flexible corn stalk sinew with deadly thorn projectiles.", 8
+                ),
+                JournalEntryData.CreateRuntimeInstance(
+                    "LOG_FARMER_PURGE", 5, "The Soil Purified: Farmer's Diary", "The Farmer",
+                    "The Ranger has fallen. The automated purge valve engaged, neutralizing the soil into rich loam. The farm is saved.", 9
                 )
             };
 
@@ -146,12 +151,17 @@ namespace FeaturesStoryline
                 "PROLOGUE",
                 1,
                 StoryTriggerType.GameStart,
-                StoryDeliveryType.FullScreenOverlay,
+                StoryDeliveryType.TimelineCutscene,
                 "A Fresh Start",
                 "You pooled your savings to buy a remote plot of land far from the city...\n" +
                 "Yet the air smells faintly of sulfur and rusted iron. A weathered sign hangs on the front gate:\n" +
                 "'NEXAPHYTO BIO-AGROCHEMICALS — RESTRICTED RESEARCH FACILITY'.",
-                day: 1
+                day: 0,
+                mutations: new[] {
+                    new NarrativeFactMutation(NarrativeFactKey.NexaPhytoTruthLevel, FactMutationOp.Set, 1),
+                    new NarrativeFactMutation(NarrativeFactKey.IntroCutsceneCompleted, FactMutationOp.Set, 1)
+                },
+                saliencePriority: 5
             ));
 
             beats.Add(StoryBeatData.CreateRuntimeInstance(
@@ -160,9 +170,28 @@ namespace FeaturesStoryline
                 StoryTriggerType.GameStart,
                 StoryDeliveryType.JournalPage,
                 "Purchase Deed & Waiver",
-                "You find the old municipal transfer deed. NexaPhyto abandoned this site after a catastrophic incident.",
+                "You find the old municipal transfer deed. NexaPhyto abandoned this site after a catastrophic incident in 1989.",
                 day: 1,
-                journal: GetJournal("LOG_NEXAPHYTO_01")
+                criteria: new[] {
+                    new NarrativeFactCondition(NarrativeFactKey.CurrentDay, FactOperator.GreaterOrEqual, 1, 10),
+                    new NarrativeFactCondition(NarrativeFactKey.IntroCutsceneCompleted, FactOperator.Equal, 1, 10)
+                },
+                journal: GetJournal("JOURNAL_01_WAIVER") ?? GetJournal("LOG_NEXAPHYTO_01"),
+                saliencePriority: 2
+            ));
+
+            // Reactive Storylet: First well water draw
+            beats.Add(StoryBeatData.CreateRuntimeInstance(
+                "D1_WELL_WATER_100",
+                1,
+                StoryTriggerType.WellWaterRefilled,
+                StoryDeliveryType.HudBanner,
+                "Chilled Well Water",
+                "The well water is ice-cold, carrying a faint sweet chemical scent like ancient agricultural pesticide.",
+                day: 1,
+                criteria: new[] { new NarrativeFactCondition(NarrativeFactKey.TotalWellWaterDrawnLiters, FactOperator.GreaterOrEqual, 100, 20) },
+                mutations: new[] { new NarrativeFactMutation(NarrativeFactKey.NexaPhytoTruthLevel, FactMutationOp.Max, 2) },
+                saliencePriority: 2
             ));
 
             beats.Add(StoryBeatData.CreateRuntimeInstance(
@@ -204,11 +233,26 @@ namespace FeaturesStoryline
                 "Chemical Residue",
                 "The creatures dissolved into dark chemical sludge. An old incident report is unearthed from the mud.",
                 day: 1,
-                journal: GetJournal("LOG_NEXAPHYTO_02")
+                journal: GetJournal("JOURNAL_02_REAGENT7") ?? GetJournal("LOG_NEXAPHYTO_02"),
+                mutations: new[] { new NarrativeFactMutation(NarrativeFactKey.NexaPhytoTruthLevel, FactMutationOp.Set, 3) },
+                saliencePriority: 3
+            ));
+
+            // Dream Sequence 1: Well Roots Nightmare
+            beats.Add(StoryBeatData.CreateRuntimeInstance(
+                "DREAM_01_WELL",
+                1,
+                StoryTriggerType.Sleep,
+                StoryDeliveryType.DreamSequence,
+                "Nightmare of the Well",
+                "In your sleep, you pull the heavy rope from the stone well. As the bucket surfaces, " +
+                "it overflows not with water, but with thousands of whispering sweet potato vines mimicking the creak of the pulley...",
+                day: 1,
+                saliencePriority: 3
             ));
 
             // ==========================================
-            // DAY 2: CORRODED RUNOFF
+            // DAY 2: CORRODED RUNOFF & TARO HARDENING
             // ==========================================
             beats.Add(StoryBeatData.CreateRuntimeInstance(
                 "D2_DAWN_PIPES",
@@ -218,6 +262,23 @@ namespace FeaturesStoryline
                 "Corroded Drainage",
                 "Rusted industrial drainage pipes protrude from the ditch near your farmland.",
                 day: 2
+            ));
+
+            // Reactive Storylet: Washing Taro in Sink
+            beats.Add(StoryBeatData.CreateRuntimeInstance(
+                "D2_SINK_WASH_TARO",
+                2,
+                StoryTriggerType.CropWashedInSink,
+                StoryDeliveryType.HudBanner,
+                "Mineralized Taro Bark",
+                "As tap water washes over the taro roots, the skins harden like riverstone... Dull clinks echo in the sink basin.",
+                day: 2,
+                criteria: new[] {
+                    new NarrativeFactCondition(NarrativeFactKey.CurrentDay, FactOperator.Equal, 2, 10),
+                    new NarrativeFactCondition(NarrativeFactKey.PlantedCount_Taro, FactOperator.GreaterOrEqual, 1, 20)
+                },
+                mutations: new[] { new NarrativeFactMutation(NarrativeFactKey.NexaPhytoTruthLevel, FactMutationOp.Max, 4) },
+                saliencePriority: 3
             ));
 
             beats.Add(StoryBeatData.CreateRuntimeInstance(
@@ -249,11 +310,24 @@ namespace FeaturesStoryline
                 "Specimen Notes Unlocked",
                 "You find Dr. Vance's lab notes explaining how Reagent 7 hardens root cell walls into armor.",
                 day: 2,
-                journal: GetJournal("LOG_NEXAPHYTO_03")
+                journal: GetJournal("JOURNAL_03_INCIDENT042") ?? GetJournal("LOG_NEXAPHYTO_03")
+            ));
+
+            // Dream Sequence 2: Petrified Skin
+            beats.Add(StoryBeatData.CreateRuntimeInstance(
+                "DREAM_02_SINK",
+                2,
+                StoryTriggerType.Sleep,
+                StoryDeliveryType.DreamSequence,
+                "Nightmare of the Sink",
+                "You dream you are washing soil from your hands at the kitchen sink, but your forearms harden into thick taro bark, " +
+                "while the faucet pours thick, iridescent cyan runoff...",
+                day: 2,
+                saliencePriority: 3
             ));
 
             // ==========================================
-            // DAY 3: THE TOXIC NODE
+            // DAY 3: THE TOXIC NODE & CORN CROSSFIRE
             // ==========================================
             var d3Dawn = StoryBeatData.CreateRuntimeInstance(
                 "D3_DAWN_PULSE",
@@ -268,14 +342,17 @@ namespace FeaturesStoryline
             d3Dawn.screenShakeIntensity = 0.4f;
             beats.Add(d3Dawn);
 
+            // Reactive Storylet: Workbench Weapon Upgrade
             beats.Add(StoryBeatData.CreateRuntimeInstance(
-                "D3_SLEEP_DREAM",
+                "D3_WORKBENCH_UPGRADE",
                 3,
-                StoryTriggerType.Sleep,
-                StoryDeliveryType.DreamSequence,
-                "Toxic Vision",
-                "In fitful sleep, you see ruptured chemical storage vats and a massive single eye opening in the subterranean sludge.",
-                day: 3
+                StoryTriggerType.WeaponUpgradedAtBench,
+                StoryDeliveryType.HudBanner,
+                "Bio-Mechanical Weaponry",
+                "Mutated fibrous sinew bonds into the weapon hilt, pulsing with bio-luminescent chemical energy.",
+                day: 3,
+                mutations: new[] { new NarrativeFactMutation(NarrativeFactKey.NexaPhytoTruthLevel, FactMutationOp.Max, 6) },
+                saliencePriority: 2
             ));
 
             beats.Add(StoryBeatData.CreateRuntimeInstance(
@@ -287,7 +364,8 @@ namespace FeaturesStoryline
                 "Concentrated chemical mutagen has merged a dozen root clusters into a single-eyed predator!",
                 day: 3,
                 wave: 3,
-                bossType: EnemyType.CyclopsTuberMaw
+                bossType: EnemyType.CyclopsTuberMaw,
+                saliencePriority: 4
             ));
 
             beats.Add(StoryBeatData.CreateRuntimeInstance(
@@ -298,11 +376,25 @@ namespace FeaturesStoryline
                 "Apex Neural Node",
                 "The Cyclops core shatters into crystallized chemical residue. Facility report C-1 recovered.",
                 day: 3,
-                journal: GetJournal("LOG_NEXAPHYTO_04")
+                journal: GetJournal("JOURNAL_04_APEX_BIO") ?? GetJournal("LOG_NEXAPHYTO_04"),
+                mutations: new[] { new NarrativeFactMutation(NarrativeFactKey.NexaPhytoTruthLevel, FactMutationOp.Set, 7) }
+            ));
+
+            // Dream Sequence 3: Conduits Under the Bedroom
+            beats.Add(StoryBeatData.CreateRuntimeInstance(
+                "DREAM_03_PIPES",
+                3,
+                StoryTriggerType.Sleep,
+                StoryDeliveryType.DreamSequence,
+                "Vision of the Catacombs",
+                "Your perspective sinks through the bedroom floorboards, revealing the corroded drainage pipes of Tank 04 " +
+                "coiled around the house foundations like petrified serpents...",
+                day: 3,
+                saliencePriority: 3
             ));
 
             // ==========================================
-            // DAY 4: GROUNDWATER SATURATION
+            // DAY 4: GROUNDWATER SATURATION & COLOSSUS
             // ==========================================
             var d4Dawn = StoryBeatData.CreateRuntimeInstance(
                 "D4_DAWN_TREMORS",
@@ -336,7 +428,9 @@ namespace FeaturesStoryline
                 "An ancient subterranean growth, bloated with decades of chemical sludge, erupts from the earth!",
                 day: 4,
                 wave: 4,
-                bossType: EnemyType.TaroColossus
+                bossType: EnemyType.TaroColossus,
+                journal: GetJournal("LOG_NEXAPHYTO_06"),
+                saliencePriority: 4
             ));
 
             beats.Add(StoryBeatData.CreateRuntimeInstance(
@@ -347,11 +441,25 @@ namespace FeaturesStoryline
                 "Drainage Blueprint Found",
                 "You discover the facility drainage schematics and Colossus hazard dossier.",
                 day: 4,
-                journal: GetJournal("LOG_NEXAPHYTO_05")
+                journal: GetJournal("JOURNAL_05_FAILSAFE") ?? GetJournal("LOG_NEXAPHYTO_05"),
+                mutations: new[] { new NarrativeFactMutation(NarrativeFactKey.NexaPhytoTruthLevel, FactMutationOp.Set, 9) }
+            ));
+
+            // Dream Sequence 4: The Ocular Reflection
+            beats.Add(StoryBeatData.CreateRuntimeInstance(
+                "DREAM_04_OCULAR",
+                4,
+                StoryTriggerType.Sleep,
+                StoryDeliveryType.DreamSequence,
+                "The Mirror's Gaze",
+                "You stand before the wardrobe mirror in your bedroom. In place of your reflection, " +
+                "a massive bio-luminescent ocular stalk stares back, bathing the room in pulsing crimson...",
+                day: 4,
+                saliencePriority: 3
             ));
 
             // ==========================================
-            // DAY 5: THE FINAL CONTAINMENT
+            // DAY 5: THE FINAL CONTAINMENT & RESOLUTION
             // ==========================================
             var d5Dawn = StoryBeatData.CreateRuntimeInstance(
                 "D5_DAWN_REDSKY",
@@ -372,7 +480,8 @@ namespace FeaturesStoryline
                 StoryDeliveryType.HudBanner,
                 "Emergency Alarm",
                 "The facility siren distorts into a continuous alarm. Maximum containment breach in progress!",
-                day: 5
+                day: 5,
+                journal: GetJournal("LOG_NEXAPHYTO_07")
             ));
 
             beats.Add(StoryBeatData.CreateRuntimeInstance(
@@ -384,7 +493,8 @@ namespace FeaturesStoryline
                 "The Colossus rises anew, empowered by the facility's core chemical discharge!",
                 day: 5,
                 wave: 4,
-                bossType: EnemyType.TaroColossus
+                bossType: EnemyType.TaroColossus,
+                saliencePriority: 4
             ));
 
             beats.Add(StoryBeatData.CreateRuntimeInstance(
@@ -396,7 +506,9 @@ namespace FeaturesStoryline
                 "NexaPhyto's runaway genetic sentinel manifests! Slay it to trigger the automated neutralization purge!",
                 day: 5,
                 wave: 5,
-                bossType: EnemyType.TheRanger
+                bossType: EnemyType.TheRanger,
+                journal: GetJournal("LOG_NEXAPHYTO_08"),
+                saliencePriority: 5
             ));
 
             beats.Add(StoryBeatData.CreateRuntimeInstance(
@@ -410,7 +522,9 @@ namespace FeaturesStoryline
                 "The air clears. The farm is safe at last.",
                 day: 5,
                 bossType: EnemyType.TheRanger,
-                journal: GetJournal("LOG_FARMER_PURGE")
+                journal: GetJournal("LOG_FARMER_PURGE"),
+                mutations: new[] { new NarrativeFactMutation(NarrativeFactKey.NexaPhytoTruthLevel, FactMutationOp.Set, 10) },
+                saliencePriority: 6
             ));
 
             beats.Add(StoryBeatData.CreateRuntimeInstance(
@@ -421,11 +535,62 @@ namespace FeaturesStoryline
                 "The Reclaimed Homestead",
                 "You have survived the toxic siege of NexaPhyto Facility.\n" +
                 "Through resilience, farming, and fierce defense, you have reclaimed your new life.",
-                day: 5,
-                journal: GetJournal("LOG_NEXAPHYTO_07")
+                day: 5
             ));
 
+            // Dream Sequence 5: Purified Soil
+            beats.Add(StoryBeatData.CreateRuntimeInstance(
+                "DREAM_05_DAWN",
+                5,
+                StoryTriggerType.Sleep,
+                StoryDeliveryType.DreamSequence,
+                "Dawn of the Purified Soil",
+                "The low rumble in the pipes ceases forever. Pure morning dew gathers on peaceful sweet potato and taro leaves. " +
+                "Lot 417-B is finally your true home.",
+                day: 5,
+                saliencePriority: 3
+            ));
+
+            // Populate pre-baked trigger buckets cache
+            BakeTriggerBuckets(beats);
+
             return beats;
+        }
+
+        public static void BakeTriggerBuckets(List<StoryBeatData> beats)
+        {
+            _cachedBeats = beats;
+            _triggerBuckets = new Dictionary<StoryTriggerType, List<StoryBeatData>>();
+
+            if (beats == null) return;
+
+            for (int i = 0; i < beats.Count; i++)
+            {
+                var b = beats[i];
+                if (b == null) continue;
+
+                if (!_triggerBuckets.TryGetValue(b.triggerType, out var list))
+                {
+                    list = new List<StoryBeatData>();
+                    _triggerBuckets[b.triggerType] = list;
+                }
+                list.Add(b);
+            }
+        }
+
+        public static IReadOnlyList<StoryBeatData> GetBeatsForTrigger(StoryTriggerType trigger)
+        {
+            if (_triggerBuckets == null)
+            {
+                CreateDefaultStoryBeats();
+            }
+
+            if (_triggerBuckets.TryGetValue(trigger, out var list))
+            {
+                return list;
+            }
+
+            return System.Array.Empty<StoryBeatData>();
         }
     }
 }

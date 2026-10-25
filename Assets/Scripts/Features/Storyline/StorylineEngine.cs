@@ -2,13 +2,15 @@ using System;
 using System.Collections.Generic;
 using FeaturesStoryline.Data;
 using FeaturesCombat;
+using FarmBeware.Core.Runtime;
 
 namespace FeaturesStoryline
 {
     /// <summary>
-    /// Pure C# POCO class governing story progression, beat condition evaluation,
-    /// journal catalog state, and chapter transitions.
+    /// Pure C# POCO class governing story progression, salience-based rule evaluation,
+    /// journal catalog state, and modal queue safety.
     /// Operates with ZERO Unity lifecycle dependencies and ZERO garbage collection on hot paths.
+    /// Synthesizes Valve's Response System (Elan Ruskin) and Quality-Based Narrative (Emily Short).
     /// </summary>
     public class StorylineEngine
     {
@@ -16,6 +18,8 @@ namespace FeaturesStoryline
         private int _maxChapter = 10;
         private readonly HashSet<string> _triggeredBeats = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         private readonly HashSet<string> _unlockedJournals = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, int> _lastPlayedDayMap = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        private readonly Queue<StoryBeatData> _pendingModalBeats = new Queue<StoryBeatData>();
         private bool _isStoryComplete = false;
 
         public int CurrentChapter => _currentChapter;
@@ -27,9 +31,12 @@ namespace FeaturesStoryline
         public bool IsStoryComplete => _isStoryComplete;
         public int UnlockedJournalCount => _unlockedJournals.Count;
         public int TriggeredBeatCount => _triggeredBeats.Count;
+        public int PendingModalCount => _pendingModalBeats.Count;
+        public bool HasPendingModalBeats => _pendingModalBeats.Count > 0;
 
         public IReadOnlyCollection<string> TriggeredBeatIds => _triggeredBeats;
         public IReadOnlyCollection<string> UnlockedJournalIds => _unlockedJournals;
+        public IReadOnlyDictionary<string, int> LastPlayedDayMap => _lastPlayedDayMap;
 
         public event Action<string> OnBeatTriggered;
         public event Action<string> OnJournalUnlocked;
@@ -49,36 +56,154 @@ namespace FeaturesStoryline
         }
 
         /// <summary>
-        /// Evaluates whether a story beat satisfies all trigger conditions.
-        /// Pure logic: zero allocations, early guard returns.
+        /// Evaluates all candidate story beats against the current world state on INarrativeFactBoard
+        /// using specificity scoring: S(R_i) = P_base * 100 + specificityScore.
+        /// Returns the most specific matching rule with zero allocations, applying mutations if matched.
+        /// </summary>
+        public StoryBeatData EvaluateTrigger(
+            StoryTriggerType triggerType,
+            INarrativeFactBoard facts,
+            IReadOnlyList<StoryBeatData> candidates,
+            int currentDay,
+            int wave = 0,
+            EnemyType? bossType = null)
+        {
+            if (candidates == null || candidates.Count == 0) return null;
+
+            StoryBeatData bestBeat = null;
+            int bestScore = int.MinValue;
+
+            for (int i = 0; i < candidates.Count; i++)
+            {
+                var beat = candidates[i];
+                if (beat == null || string.IsNullOrEmpty(beat.beatId)) continue;
+
+                // 1. Trigger type match
+                if (beat.triggerType != triggerType) continue;
+
+                // 2. RepeatPolicy gate
+                switch (beat.repeatPolicy)
+                {
+                    case RepeatPolicy.MatchOnce:
+                        if (_triggeredBeats.Contains(beat.beatId)) continue;
+                        break;
+                    case RepeatPolicy.OncePerDay:
+                        if (_lastPlayedDayMap.TryGetValue(beat.beatId, out int lastDay) && lastDay == currentDay) continue;
+                        break;
+                    case RepeatPolicy.CooldownDays:
+                        if (_lastPlayedDayMap.TryGetValue(beat.beatId, out int cooldownDay) && (currentDay - cooldownDay < beat.cooldownDays)) continue;
+                        break;
+                    case RepeatPolicy.AlwaysRepeatable:
+                        break;
+                }
+
+                // 3. Chapter matching
+                if (beat.chapter > _currentChapter) continue;
+
+                // 4. Day matching if specified
+                if (beat.triggerDay > 0 && beat.triggerDay != currentDay) continue;
+
+                // 5. Wave matching if specified
+                if (beat.triggerWave > 0 && beat.triggerWave != wave) continue;
+
+                // 6. Boss archetype matching if evaluated
+                if ((triggerType == StoryTriggerType.BossSpawn || triggerType == StoryTriggerType.BossDeath) && bossType.HasValue)
+                {
+                    if (beat.triggerBossType != bossType.Value) continue;
+                }
+
+                // 7. Prerequisite beats check
+                if (beat.prerequisiteBeatIds != null && beat.prerequisiteBeatIds.Length > 0)
+                {
+                    bool prereqsMet = true;
+                    for (int p = 0; p < beat.prerequisiteBeatIds.Length; p++)
+                    {
+                        string prereq = beat.prerequisiteBeatIds[p];
+                        if (!string.IsNullOrEmpty(prereq) && !_triggeredBeats.Contains(prereq))
+                        {
+                            prereqsMet = false;
+                            break;
+                        }
+                    }
+                    if (!prereqsMet) continue;
+                }
+
+                // 8. Zero-GC Narrative Fact Blackboard Preconditions evaluation
+                int conditionScore = 0;
+                if (facts != null && beat.criteria != null && beat.criteria.Length > 0)
+                {
+                    if (!facts.EvaluateConditions(beat.criteria, out conditionScore))
+                    {
+                        continue;
+                    }
+                }
+
+                // 9. Specificity Scoring: S(R_i) = P_base * 100 + conditionScore
+                int totalScore = (beat.saliencePriority * 100) + conditionScore;
+                if (totalScore > bestScore)
+                {
+                    bestScore = totalScore;
+                    bestBeat = beat;
+                }
+            }
+
+            // If a rule won the evaluation, execute state transitions and mutations
+            if (bestBeat != null)
+            {
+                _lastPlayedDayMap[bestBeat.beatId] = currentDay;
+                _triggeredBeats.Add(bestBeat.beatId);
+
+                // Apply fact mutations to blackboard
+                if (facts != null && bestBeat.mutations != null && bestBeat.mutations.Length > 0)
+                {
+                    for (int m = 0; m < bestBeat.mutations.Length; m++)
+                    {
+                        facts.ApplyMutation(bestBeat.mutations[m]);
+                    }
+                }
+
+                if (bestBeat.unlocksJournalEntry && bestBeat.journalEntry != null)
+                {
+                    UnlockJournal(bestBeat.journalEntry.entryId);
+                }
+
+                OnBeatTriggered?.Invoke(bestBeat.beatId);
+            }
+
+            return bestBeat;
+        }
+
+        /// <summary>
+        /// Legacy boolean evaluation preserved for backward compatibility.
         /// </summary>
         public bool CanTrigger(StoryBeatData beat, StoryTriggerType triggerType, int day, int wave = 0, EnemyType? bossType = null)
         {
-            if (beat == null) return false;
-            if (string.IsNullOrEmpty(beat.beatId)) return false;
-
-            // 1. Already triggered check
-            if (_triggeredBeats.Contains(beat.beatId)) return false;
-
-            // 2. Trigger type match
+            if (beat == null || string.IsNullOrEmpty(beat.beatId)) return false;
             if (beat.triggerType != triggerType) return false;
-
-            // 3. Chapter matching (beat chapter must match or beat chapter <= current chapter)
             if (beat.chapter > _currentChapter) return false;
-
-            // 4. Day matching if specified
             if (beat.triggerDay > 0 && beat.triggerDay != day) return false;
-
-            // 5. Wave matching if specified
             if (beat.triggerWave > 0 && beat.triggerWave != wave) return false;
 
-            // 6. Boss archetype matching if evaluated
+            switch (beat.repeatPolicy)
+            {
+                case RepeatPolicy.MatchOnce:
+                    if (_triggeredBeats.Contains(beat.beatId)) return false;
+                    break;
+                case RepeatPolicy.OncePerDay:
+                    if (_lastPlayedDayMap.TryGetValue(beat.beatId, out int lastDay) && lastDay == day) return false;
+                    break;
+                case RepeatPolicy.CooldownDays:
+                    if (_lastPlayedDayMap.TryGetValue(beat.beatId, out int cooldownDay) && (day - cooldownDay < beat.cooldownDays)) return false;
+                    break;
+                case RepeatPolicy.AlwaysRepeatable:
+                    break;
+            }
+
             if ((triggerType == StoryTriggerType.BossSpawn || triggerType == StoryTriggerType.BossDeath) && bossType.HasValue)
             {
                 if (beat.triggerBossType != bossType.Value) return false;
             }
 
-            // 7. Prerequisite beats check
             if (beat.prerequisiteBeatIds != null && beat.prerequisiteBeatIds.Length > 0)
             {
                 for (int i = 0; i < beat.prerequisiteBeatIds.Length; i++)
@@ -94,10 +219,6 @@ namespace FeaturesStoryline
             return true;
         }
 
-        /// <summary>
-        /// Records the completion of a story beat and unlocks any associated journal entry.
-        /// Returns true if successfully triggered, false if already executed.
-        /// </summary>
         public bool RecordBeatTriggered(StoryBeatData beat)
         {
             if (beat == null || string.IsNullOrEmpty(beat.beatId)) return false;
@@ -114,9 +235,6 @@ namespace FeaturesStoryline
             return true;
         }
 
-        /// <summary>
-        /// Directly records a beat ID as triggered.
-        /// </summary>
         public bool RecordBeatTriggered(string beatId)
         {
             if (string.IsNullOrEmpty(beatId)) return false;
@@ -127,9 +245,6 @@ namespace FeaturesStoryline
             return true;
         }
 
-        /// <summary>
-        /// Unlocks a journal entry by ID.
-        /// </summary>
         public bool UnlockJournal(string entryId)
         {
             if (string.IsNullOrEmpty(entryId)) return false;
@@ -140,9 +255,6 @@ namespace FeaturesStoryline
             return true;
         }
 
-        /// <summary>
-        /// Sets the current story chapter.
-        /// </summary>
         public void SetChapter(int chapter)
         {
             int clamped = Math.Max(1, Math.Min(_maxChapter, chapter));
@@ -150,53 +262,87 @@ namespace FeaturesStoryline
 
             _currentChapter = clamped;
             OnChapterChanged?.Invoke(_currentChapter);
+
+            if (_currentChapter >= 5 && !_isStoryComplete)
+            {
+                // Completed story threshold
+            }
         }
 
-        /// <summary>
-        /// Advances the current chapter by 1 (up to MaxChapter).
-        /// </summary>
         public void AdvanceChapter()
         {
             if (_currentChapter < _maxChapter)
             {
-                _currentChapter++;
-                OnChapterChanged?.Invoke(_currentChapter);
+                SetChapter(_currentChapter + 1);
             }
         }
 
-        /// <summary>
-        /// Marks the entire storyline as completed (post-epilogue).
-        /// </summary>
-        public void CompleteStory()
+        public void MarkStoryComplete()
         {
             if (_isStoryComplete) return;
             _isStoryComplete = true;
             OnStoryCompleted?.Invoke();
         }
 
-        /// <summary>
-        /// Exports state into a pure DTO for persistence.
-        /// </summary>
-        public StorylineSavePayload ExportState()
+        // Modal Queue Management (Hard Safety Invariant)
+        public void EnqueuePendingModalBeat(StoryBeatData beat)
         {
-            return new StorylineSavePayload(_currentChapter, _triggeredBeats, _unlockedJournals, _isStoryComplete);
+            if (beat == null || string.IsNullOrEmpty(beat.beatId)) return;
+            foreach (var existing in _pendingModalBeats)
+            {
+                if (existing != null && string.Equals(existing.beatId, beat.beatId, StringComparison.OrdinalIgnoreCase))
+                    return; // Prevent duplicate modal queue entries
+            }
+            _pendingModalBeats.Enqueue(beat);
         }
 
-        /// <summary>
-        /// Restores state from a persistent DTO.
-        /// </summary>
-        public void ImportState(StorylineSavePayload payload)
+        public StoryBeatData DequeuePendingModalBeat()
+        {
+            if (_pendingModalBeats.Count == 0) return null;
+            return _pendingModalBeats.Dequeue();
+        }
+
+        public void ClearPendingModalBeats()
+        {
+            _pendingModalBeats.Clear();
+        }
+
+        public StorylineSavePayload CreateSavePayload(INarrativeFactBoard facts = null)
+        {
+            int[] rawFacts = new int[(int)NarrativeFactKey.MaxCount];
+            facts?.CopyRawFacts(rawFacts);
+
+            var pendingIds = new List<string>(_pendingModalBeats.Count);
+            foreach (var b in _pendingModalBeats)
+            {
+                if (b != null && !string.IsNullOrEmpty(b.beatId))
+                    pendingIds.Add(b.beatId);
+            }
+
+            return new StorylineSavePayload(
+                _currentChapter,
+                _triggeredBeats,
+                _unlockedJournals,
+                _isStoryComplete,
+                rawFacts,
+                _lastPlayedDayMap,
+                pendingIds
+            );
+        }
+
+        public void RestoreState(StorylineSavePayload payload, INarrativeFactBoard facts = null, IReadOnlyList<StoryBeatData> beatCatalog = null)
         {
             if (payload == null) return;
 
-            _currentChapter = Math.Max(1, Math.Min(_maxChapter, payload.chapter));
+            _currentChapter = Math.Max(1, payload.chapter);
+            _isStoryComplete = payload.isComplete;
+
             _triggeredBeats.Clear();
             if (payload.triggeredBeats != null)
             {
                 for (int i = 0; i < payload.triggeredBeats.Count; i++)
                 {
-                    if (!string.IsNullOrEmpty(payload.triggeredBeats[i]))
-                        _triggeredBeats.Add(payload.triggeredBeats[i]);
+                    _triggeredBeats.Add(payload.triggeredBeats[i]);
                 }
             }
 
@@ -205,23 +351,63 @@ namespace FeaturesStoryline
             {
                 for (int i = 0; i < payload.unlockedJournals.Count; i++)
                 {
-                    if (!string.IsNullOrEmpty(payload.unlockedJournals[i]))
-                        _unlockedJournals.Add(payload.unlockedJournals[i]);
+                    _unlockedJournals.Add(payload.unlockedJournals[i]);
                 }
             }
 
-            _isStoryComplete = payload.isComplete;
+            _lastPlayedDayMap.Clear();
+            if (payload.lastPlayedBeatKeys != null && payload.lastPlayedDays != null)
+            {
+                int count = Math.Min(payload.lastPlayedBeatKeys.Count, payload.lastPlayedDays.Count);
+                for (int i = 0; i < count; i++)
+                {
+                    _lastPlayedDayMap[payload.lastPlayedBeatKeys[i]] = payload.lastPlayedDays[i];
+                }
+            }
+
+            _pendingModalBeats.Clear();
+            if (payload.pendingModalBeatIds != null && beatCatalog != null)
+            {
+                for (int p = 0; p < payload.pendingModalBeatIds.Count; p++)
+                {
+                    string id = payload.pendingModalBeatIds[p];
+                    for (int c = 0; c < beatCatalog.Count; c++)
+                    {
+                        var candidate = beatCatalog[c];
+                        if (candidate != null && string.Equals(candidate.beatId, id, StringComparison.OrdinalIgnoreCase))
+                        {
+                            EnqueuePendingModalBeat(candidate);
+                            break;
+                        }
+                    }
+                }
+            }
+
+            if (facts != null && payload.rawFacts != null && payload.rawFacts.Length > 0)
+            {
+                facts.LoadRawFacts(payload.rawFacts);
+            }
         }
 
-        /// <summary>
-        /// Clears all story progress (for new game reset).
-        /// </summary>
-        public void ResetProgress()
+        public void ImportState(StorylineSavePayload payload)
+        {
+            RestoreState(payload, null);
+        }
+
+        /// <summary>Backward compatible alias for CreateSavePayload.</summary>
+        public StorylineSavePayload ExportState(INarrativeFactBoard facts = null) => CreateSavePayload(facts);
+
+        /// <summary>Backward compatible alias for MarkStoryComplete.</summary>
+        public void CompleteStory() => MarkStoryComplete();
+
+        public void Reset()
         {
             _currentChapter = 1;
+            _isStoryComplete = false;
             _triggeredBeats.Clear();
             _unlockedJournals.Clear();
-            _isStoryComplete = false;
+            _lastPlayedDayMap.Clear();
+            _pendingModalBeats.Clear();
         }
     }
 }

@@ -36,7 +36,27 @@ namespace Player
 
         private void Start()
         {
+            if (ServiceLocator.TryResolve<ITimeService>(out var timeService) && timeService != null)
+            {
+                timeService.OnDayChanged += HandleDayChanged;
+            }
             EnsureStarterKit();
+        }
+
+        private void OnDestroy()
+        {
+            if (ServiceLocator.TryResolve<ITimeService>(out var timeService) && timeService != null)
+            {
+                timeService.OnDayChanged -= HandleDayChanged;
+            }
+        }
+
+        private void HandleDayChanged(int newDay)
+        {
+            if (newDay >= 1)
+            {
+                EnsureStarterKit();
+            }
         }
 
         public void EnsureStarterKit()
@@ -45,6 +65,37 @@ namespace Player
             if (inv == null) return;
 
             ResolveItemReferences();
+
+            if (inv.maxCapacity < 16) inv.maxCapacity = 16;
+            inv.EnsureSlotsAllocated();
+
+            int currentDay = 0;
+            if (ServiceLocator.TryResolve<ITimeService>(out var timeService) && timeService != null)
+            {
+                currentDay = timeService.CurrentDay;
+            }
+            else if (FeaturesTime.DayNightTimeManager.Instance != null)
+            {
+                currentDay = FeaturesTime.DayNightTimeManager.Instance.CurrentDay;
+            }
+            else if (TimeManager.Instance != null)
+            {
+                currentDay = TimeManager.Instance.currentDay;
+            }
+
+            // On Day 0: Player arrives with completely empty pockets per narrative design.
+            if (currentDay == 0)
+            {
+                if (inv.slots != null)
+                {
+                    for (int i = 0; i < inv.slots.Count; i++)
+                    {
+                        inv.slots[i] = new InventorySlot();
+                    }
+                }
+                inv.OnInventoryChanged?.Invoke();
+                return;
+            }
 
             // Cleanse any accidental Mat_MutatedRoot
             var db = Resources.Load<ItemDatabase>("Database/ItemDatabase");
@@ -93,6 +144,8 @@ namespace Player
             {
                 PlayerWaterBottle.Instance.RefillWater(-1f);
             }
+
+            inv.OnInventoryChanged?.Invoke();
         }
 
         private void PopulateFreshSlots(InventoryComponent inv)

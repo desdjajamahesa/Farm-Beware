@@ -44,9 +44,20 @@ namespace FeaturesTime
                         }
                     }
                 }
+                if (_instance != null)
+                {
+                    FarmBeware.Core.Runtime.ServiceLocator.Register<FarmBeware.Core.Runtime.ITimeService>(_instance);
+                }
                 return _instance;
             }
-            private set => _instance = value;
+            set
+            {
+                _instance = value;
+                if (_instance != null)
+                {
+                    FarmBeware.Core.Runtime.ServiceLocator.Register<FarmBeware.Core.Runtime.ITimeService>(_instance);
+                }
+            }
         }
 
         #endregion
@@ -207,8 +218,6 @@ namespace FeaturesTime
 
         void FarmBeware.Core.Runtime.ITimeService.AdvanceToNextDay()
         {
-            if (TimeManager.Instance != null)
-                TimeManager.Instance.AdvanceToNextDay();
             AdvanceToNextDay();
         }
 
@@ -249,7 +258,15 @@ namespace FeaturesTime
                 currentHour = dayStartHour;
             }
 
-            currentDay = initialDay;
+            if (FarmBeware.Core.Runtime.GameSessionState.IsPendingNewGameIntroCutscene)
+            {
+                initialDay = 0;
+                currentDay = 0;
+            }
+            else
+            {
+                currentDay = initialDay;
+            }
             isPaused = !autoStart;
             daytimeElapsedSeconds = EvaluateElapsedSecondsFromHour(currentHour, daytimeDurationRealSeconds);
             currentPhase = EvaluatePhase(currentHour);
@@ -296,6 +313,12 @@ namespace FeaturesTime
             _corePhaseChanged?.Invoke(currentDay, (FarmBeware.Core.Runtime.DayPhase)currentPhase);
             OnDayChanged?.Invoke(currentDay);
             OnNormalizedTimeChanged?.Invoke(NormalizedTime);
+
+            if (currentDay == 0)
+            {
+                isPaused = true;
+                SetGameplayHUDState(false);
+            }
         }
 
         private void OnEnable()
@@ -355,7 +378,16 @@ namespace FeaturesTime
                 var kb = UnityEngine.InputSystem.Keyboard.current;
                 if (kb.digit0Key.wasPressedThisFrame || kb.numpad0Key.wasPressedThisFrame)
                 {
-                    if (isDay)
+                    if (currentDay == 0)
+                    {
+                        var floatingText = FarmBeware.Core.Runtime.ServiceLocator.Resolve<FarmBeware.Core.Runtime.IFloatingTextService>();
+                        var player = FarmBeware.Core.Runtime.ServiceLocator.Resolve<FarmBeware.Core.Runtime.IPlayerContext>();
+                        if (floatingText != null && player != null && player.Transform != null)
+                        {
+                            floatingText.SpawnText(player.Transform.position + Vector3.up * 1.5f, "⚠️ Rest first. The harvest begins tomorrow.", new Color(1f, 0.8f, 0.4f));
+                        }
+                    }
+                    else if (isDay)
                     {
                         ToggleSpeedMode(fastForwardMultiplier8x, "Fast-Forward Mode");
                     }
@@ -371,7 +403,7 @@ namespace FeaturesTime
                 }
             }
 
-            if (!useContinuousTime || isPaused)
+            if (currentDay == 0 || !useContinuousTime || isPaused)
                 return;
 
             if (isDay)
@@ -669,8 +701,14 @@ namespace FeaturesTime
 
         public void SetDayAndTime(int day, float targetHour)
         {
-            currentDay = Mathf.Max(1, day);
+            currentDay = Mathf.Max(0, day);
+            if (TimeManager.Instance != null)
+            {
+                TimeManager.Instance.SetTimeState(currentDay, targetHour >= nightStartHour ? TimeManager.DayPhase.Night : TimeManager.DayPhase.Day, false, notifyPhaseChanged: false, notifyDayChanged: false);
+            }
             SetTime(targetHour);
+            OnDayChanged?.Invoke(currentDay);
+            _corePhaseChanged?.Invoke(currentDay, (FarmBeware.Core.Runtime.DayPhase)currentPhase);
         }
 
         public void SetPaused(bool paused)
@@ -688,14 +726,12 @@ namespace FeaturesTime
             daytimeElapsedSeconds = 0f;
             duskWarningTriggered = false;
             autoSleepTriggered = false;
+            isPaused = false;
 
             currentHour = dayStartHour;
             if (TimeManager.Instance != null)
             {
-                if (TimeManager.Instance.currentPhase != TimeManager.DayPhase.Day)
-                {
-                    TimeManager.Instance.SetTimeState(TimeManager.Instance.currentDay + 1, TimeManager.DayPhase.Day, false, notifyPhaseChanged: true);
-                }
+                TimeManager.Instance.AdvanceToNextDay();
                 currentDay = TimeManager.Instance.currentDay;
             }
             else
@@ -714,6 +750,36 @@ namespace FeaturesTime
             OnMinuteChanged?.Invoke(lastEmittedMinute);
             OnTimePhaseChanged?.Invoke(currentPhase);
             _corePhaseChanged?.Invoke(currentDay, (FarmBeware.Core.Runtime.DayPhase)currentPhase);
+
+            // If transitioning to Day 1+, reveal gameplay HUD!
+            if (currentDay >= 1)
+            {
+                SetGameplayHUDState(true);
+            }
+        }
+
+        public void SetGameplayHUDState(bool visible)
+        {
+            var canvas = GameObject.Find("UI_Canvas");
+            if (canvas == null) return;
+
+            string[] hudPanelNames = {
+                "HUD_HotbarPanel",
+                "HUD_Hotbar",
+                "HUD_CombatPhaseTracker",
+                "HUD_BuffBar",
+                "HUD_PlayerStatsPanel",
+                "HUD_EnemyIndicators"
+            };
+
+            foreach (var name in hudPanelNames)
+            {
+                var t = canvas.transform.Find(name);
+                if (t != null)
+                {
+                    t.gameObject.SetActive(visible);
+                }
+            }
         }
 
         public void SkipToNight()

@@ -40,6 +40,7 @@ public class KitchenSinkInteractable : KitchenStation, IInteractable, IModalWind
 
     // ── Public Accessors (for SinkManager UI sync) ──
     public static KitchenSinkInteractable Instance { get; private set; }
+    public static event System.Action<ItemData, int> OnCropWashed;
     public bool IsPanelOpen => panelSink != null && panelSink.activeSelf;
     public bool IsOpen => IsPanelOpen;
     public void OpenModal() => Interact(null);
@@ -127,6 +128,17 @@ public class KitchenSinkInteractable : KitchenStation, IInteractable, IModalWind
 
     public void Interact(GameObject interactor)
     {
+        var timeService = FarmBeware.Core.Runtime.ServiceLocator.Resolve<FarmBeware.Core.Runtime.ITimeService>();
+        int currentDay = timeService != null ? timeService.CurrentDay : (FeaturesTime.DayNightTimeManager.Instance != null ? FeaturesTime.DayNightTimeManager.Instance.CurrentDay : 1);
+        if (currentDay == 0)
+        {
+            FarmBeware.Core.Runtime.ServiceLocator.Resolve<FarmBeware.Core.Runtime.IFloatingTextService>()?.SpawnText(
+                transform.position + Vector3.up * 1.2f,
+                "Rest first. The harvest begins tomorrow.",
+                new Color(1f, 0.8f, 0.4f));
+            return;
+        }
+
         if (panelSink == null) return;
 
         var sinkMgr = panelSink.GetComponent<SinkManager>();
@@ -261,6 +273,9 @@ public class KitchenSinkInteractable : KitchenStation, IInteractable, IModalWind
         {
             outputSlot.quantity++;
         }
+
+        OnCropWashed?.Invoke(cleanVariant, 1);
+        FarmBeware.Core.Runtime.NarrativeTelemetry.ReportCropWashed(cleanVariant?.itemName ?? "", 1);
     }
 
     /// <summary>

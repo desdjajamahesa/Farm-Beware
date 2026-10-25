@@ -139,7 +139,7 @@ namespace FeaturesKitchen
             float thirstRestored = volumeToConsume;
 
             var player = ServiceLocator.Resolve<IPlayerContext>();
-            if (player != null)
+            if (player != null && player.Transform != null)
             {
                 player.Transform.SendMessage("Drink", thirstRestored, SendMessageOptions.DontRequireReceiver);
             }

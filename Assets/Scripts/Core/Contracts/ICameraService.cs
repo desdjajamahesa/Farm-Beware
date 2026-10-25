@@ -6,7 +6,8 @@ namespace FarmBeware.Core.Runtime
     {
         Gameplay,
         TrophyMode,
-        WardrobeMode
+        WardrobeMode,
+        Cinematic
     }
 
     /// <summary>

@@ -192,6 +192,11 @@ namespace FeaturesEnvironment
 
         private void Update()
         {
+            if (!isSubscribed)
+            {
+                EnsureSubscriptions();
+            }
+
             if (fireLight == null || !isNightActive) return;
 
             float noise = Mathf.PerlinNoise(Time.time * flickerSpeed, noiseOffset);

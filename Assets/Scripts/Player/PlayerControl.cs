@@ -114,7 +114,7 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
     private readonly System.Collections.Generic.HashSet<string> _inputLockSources = new System.Collections.Generic.HashSet<string>();
 
     #region IPlayerContext Implementation
-    public Transform Transform => transform;
+    public Transform Transform => this != null ? transform : null;
     bool IPlayerContext.IsInputLocked { get => isInputLocked; set => SetControlLock(value); }
     void IPlayerContext.AddInputLock(string source) => AddInputLock(source);
     void IPlayerContext.RemoveInputLock(string source) => RemoveInputLock(source);
@@ -205,6 +205,11 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
         inputActions.Player.Disable();
     }
 
+    private void OnDestroy()
+    {
+        ServiceLocator.Unregister<IPlayerContext>();
+    }
+
     private void OnJumpPerformed(UnityEngine.InputSystem.InputAction.CallbackContext ctx) => ExecuteJump();
 
     void Update()
@@ -215,7 +220,7 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
             // Pastikan velocity benar-benar nol dan animasi idle saat UI terbuka
             inputVector = Vector3.zero;
             isRunning = false;
-            if (rb != null)
+            if (rb != null && !rb.isKinematic)
                 rb.linearVelocity = new Vector3(0f, rb.linearVelocity.y, 0f);
             if (animator != null)
             {
@@ -410,7 +415,7 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
         // Kunci input: hentikan fisika pergerakan saat terkunci atau sedang menanam benih
         if (isInputLocked || isPlanting)
         {
-            if (rb != null)
+            if (rb != null && !rb.isKinematic)
                 rb.linearVelocity = new Vector3(0f, rb.linearVelocity.y, 0f);
             return;
         }
@@ -1363,7 +1368,7 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
     {
         inputVector = Vector3.zero;
         isRunning = false;
-        if (rb != null)
+        if (rb != null && !rb.isKinematic)
             rb.linearVelocity = new Vector3(0f, rb.linearVelocity.y, 0f);
         if (animator != null)
         {
@@ -1610,8 +1615,11 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
         StopMovement();
         if (rb != null)
         {
-            rb.linearVelocity = Vector3.zero;
-            rb.angularVelocity = Vector3.zero;
+            if (!rb.isKinematic)
+            {
+                rb.linearVelocity = Vector3.zero;
+                rb.angularVelocity = Vector3.zero;
+            }
             rb.position = position;
             rb.rotation = rotation;
         }
@@ -1640,10 +1648,5 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
         {
             equip.UpdateEquipmentVisual(slotIndex);
         }
-    }
-
-    private void OnDestroy()
-    {
-        ServiceLocator.Unregister<IPlayerContext>();
     }
 }

@@ -143,9 +143,14 @@ public class DayTransitionUI : MonoBehaviour
         }
     }
 
+    private int lastTransitionFrame = -1;
+
     private void HandleDayChanged(int newDay)
     {
-        PlayDayTransition(newDay);
+        if (newDay > 0)
+        {
+            PlayDayTransition(newDay);
+        }
     }
 
     private void HandlePhaseChanged(TimeManager.DayPhase phase)
@@ -156,8 +161,11 @@ public class DayTransitionUI : MonoBehaviour
         }
         else if (phase == TimeManager.DayPhase.Day)
         {
-            int currentDay = TimeManager.Instance != null ? TimeManager.Instance.currentDay : 1;
-            PlayDayTransition(currentDay);
+            int currentDay = DayNightTimeManager.Instance != null ? DayNightTimeManager.Instance.CurrentDay : (TimeManager.Instance != null ? TimeManager.Instance.currentDay : 0);
+            if (currentDay > 0)
+            {
+                PlayDayTransition(currentDay);
+            }
         }
     }
 
@@ -169,8 +177,11 @@ public class DayTransitionUI : MonoBehaviour
         }
         else if (phase == EnvironmentPhase.Day || phase == EnvironmentPhase.Dawn)
         {
-            int currentDay = TimeManager.Instance != null ? TimeManager.Instance.currentDay : 1;
-            PlayDayTransition(currentDay);
+            int currentDay = DayNightTimeManager.Instance != null ? DayNightTimeManager.Instance.CurrentDay : (TimeManager.Instance != null ? TimeManager.Instance.currentDay : 0);
+            if (currentDay > 0)
+            {
+                PlayDayTransition(currentDay);
+            }
         }
     }
 
@@ -249,10 +260,14 @@ public class DayTransitionUI : MonoBehaviour
     /// </summary>
     public void PlayNightTransition()
     {
+        if (Time.frameCount == lastTransitionFrame && lastPlayedPhase == TimeManager.DayPhase.Night)
+            return;
+
         // Cegah pemicuan ganda dalam selang waktu < 1.0 detik
         if (Time.unscaledTime - lastPlayedRealTime < 1.0f && lastPlayedPhase == TimeManager.DayPhase.Night)
             return;
 
+        lastTransitionFrame = Time.frameCount;
         lastPlayedPhase = TimeManager.DayPhase.Night;
         lastPlayedRealTime = Time.unscaledTime;
 
@@ -268,9 +283,16 @@ public class DayTransitionUI : MonoBehaviour
     /// </summary>
     public void PlayDayTransition(int dayNumber)
     {
+        if (dayNumber <= 0)
+            return;
+
+        if (Time.frameCount == lastTransitionFrame && lastPlayedPhase == TimeManager.DayPhase.Day && lastPlayedDay == dayNumber)
+            return;
+
         if (Time.unscaledTime - lastPlayedRealTime < 1.0f && lastPlayedPhase == TimeManager.DayPhase.Day && lastPlayedDay == dayNumber)
             return;
 
+        lastTransitionFrame = Time.frameCount;
         lastPlayedPhase = TimeManager.DayPhase.Day;
         lastPlayedDay = dayNumber;
         lastPlayedRealTime = Time.unscaledTime;
@@ -299,7 +321,7 @@ public class DayTransitionUI : MonoBehaviour
             // 1. Konfigurasi Visual & Konten Teks
             if (isNight)
         {
-            if (iconText != null) iconText.text = "🌙";
+            if (iconText != null) iconText.text = "";
             if (titleText != null)
             {
                 titleText.text = "NIGHTFALL";
@@ -327,7 +349,7 @@ public class DayTransitionUI : MonoBehaviour
         }
         else
         {
-            if (iconText != null) iconText.text = "☀️";
+            if (iconText != null) iconText.text = "";
             if (titleText != null)
             {
                 titleText.text = $"DAY {Mathf.Max(1, dayNumber)}";
@@ -670,7 +692,7 @@ public class DayTransitionUI : MonoBehaviour
         iconText.fontSize = 44;
         iconText.alignment = TextAlignmentOptions.Center;
         iconText.raycastTarget = false;
-        iconText.text = "☀️";
+        iconText.text = "";
 
         // 7. Title Text
         var titleGO = bannerRoot.Find("TitleText")?.gameObject;
@@ -689,7 +711,7 @@ public class DayTransitionUI : MonoBehaviour
         titleText.fontStyle = FontStyles.Bold;
         titleText.alignment = TextAlignmentOptions.MidlineLeft;
         titleText.raycastTarget = false;
-        titleText.text = "DAY 1";
+        titleText.text = "";
 
         // 8. Subtitle Text
         var subGO = bannerRoot.Find("SubtitleText")?.gameObject;
@@ -707,6 +729,6 @@ public class DayTransitionUI : MonoBehaviour
         subtitleText.fontSize = 14;
         subtitleText.alignment = TextAlignmentOptions.TopLeft;
         subtitleText.raycastTarget = false;
-        subtitleText.text = "A new dawn has arrived.";
+        subtitleText.text = "";
     }
 }

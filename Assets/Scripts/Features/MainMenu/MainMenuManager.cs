@@ -72,6 +72,9 @@ public class MainMenuManager : MonoBehaviour
         if (isTransitioning) return;
         isTransitioning = true;
 
+        FarmBeware.Core.Runtime.GameSessionState.IsPendingNewGameIntroCutscene = true;
+        FeaturesSaveSystem.SaveSystemManager.PendingSaveIdToLoad = null;
+
         Debug.Log($"[MainMenuManager] Memulai transisi menuju: {stagingSceneName}");
 
         if (loadingOverlay != null)

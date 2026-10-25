@@ -113,6 +113,9 @@ namespace FeaturesSaveSystem
         public List<string> triggeredStoryBeats = new List<string>();
         public List<string> unlockedJournalEntries = new List<string>();
         public bool isStoryComplete = false;
+        public int[] narrativeFacts;
+        public List<string> lastPlayedBeatKeys = new List<string>();
+        public List<int> lastPlayedDays = new List<int>();
     }
 
     [Serializable]

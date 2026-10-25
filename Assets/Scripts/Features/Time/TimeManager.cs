@@ -51,6 +51,11 @@ public class TimeManager : MonoBehaviour
         }
 
         Instance = this;
+
+        if (FarmBeware.Core.Runtime.GameSessionState.IsPendingNewGameIntroCutscene)
+        {
+            currentDay = 0;
+        }
     }
 
     private void OnDestroy()
@@ -101,11 +106,16 @@ public class TimeManager : MonoBehaviour
     /// Invoking it on load erroneously triggers DayTransitionUI ('Morning' banner), FarmingManager (advancing crop days),
     /// and DailyEconomyManager (resetting stats).
     /// </summary>
-    public void SetTimeState(int day, DayPhase phase, bool cleared, bool notifyPhaseChanged = false)
+    public void SetTimeState(int day, DayPhase phase, bool cleared, bool notifyPhaseChanged = false, bool notifyDayChanged = false)
     {
-        currentDay = Mathf.Max(1, day);
+        currentDay = Mathf.Max(0, day);
         currentPhase = phase;
         isNightEncounterCleared = cleared;
+
+        if (notifyDayChanged)
+        {
+            OnDayChanged?.Invoke(currentDay);
+        }
 
         if (notifyPhaseChanged)
         {

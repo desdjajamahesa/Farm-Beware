@@ -110,21 +110,50 @@ namespace FeaturesEconomy
             RollDailyMarketPrices();
         }
 
+        private bool isSubscribed = false;
+
         private void OnEnable()
         {
+            TrySubscribeTimeService();
+        }
+
+        private void Start()
+        {
+            if (!isSubscribed)
+            {
+                TrySubscribeTimeService();
+            }
+        }
+
+        private void Update()
+        {
+            if (!isSubscribed)
+            {
+                TrySubscribeTimeService();
+            }
+        }
+
+        private void TrySubscribeTimeService()
+        {
+            if (isSubscribed) return;
             var timeService = ServiceLocator.Resolve<ITimeService>();
             if (timeService != null)
             {
                 timeService.OnDayChanged += HandleDayChanged;
+                isSubscribed = true;
             }
         }
 
         private void OnDisable()
         {
-            var timeService = ServiceLocator.Resolve<ITimeService>();
-            if (timeService != null)
+            if (isSubscribed)
             {
-                timeService.OnDayChanged -= HandleDayChanged;
+                var timeService = ServiceLocator.Resolve<ITimeService>();
+                if (timeService != null)
+                {
+                    timeService.OnDayChanged -= HandleDayChanged;
+                }
+                isSubscribed = false;
             }
         }
 
