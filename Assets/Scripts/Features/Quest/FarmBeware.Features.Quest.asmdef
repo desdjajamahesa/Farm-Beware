@@ -1,0 +1,22 @@
+{
+    "name": "FarmBeware.Features.Quest",
+    "rootNamespace": "FarmBeware.Features.Quest",
+    "references": [
+        "FarmBeware.Core.Runtime",
+        "FarmBeware.Data.Runtime",
+        "FarmBeware.Features.Inventory",
+        "FarmBeware.Features.Farming",
+        "FarmBeware.Features.Time",
+        "Unity.TextMeshPro",
+        "Unity.InputSystem"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

@@ -27,6 +27,16 @@ namespace FeaturesFarming
         public static event System.Action<FarmlandTile, SeedItemData> OnAnyCropPlanted;
         public static event System.Action<FarmlandTile, ItemData, int> OnAnyCropHarvested;
 
+        /// <summary>
+        /// Signal dispatched whenever a seed is successfully planted into a farmland tile.
+        /// </summary>
+        public static event System.Action<SeedItemData> OnCropPlanted;
+
+        /// <summary>
+        /// Signal dispatched whenever a crop is successfully watered.
+        /// </summary>
+        public static event System.Action<FarmlandTile> OnCropWatered;
+
         [Header("State Petak Tanah")]
         [SerializeField] private TileState currentState = TileState.Untilled;
         public TileState CurrentState => currentState;
@@ -300,6 +310,7 @@ namespace FeaturesFarming
 
                     SetState(TileState.PlantedDry);
                     OnAnyCropPlanted?.Invoke(this, seed);
+                    OnCropPlanted?.Invoke(seed);
                     Debug.Log($"[FarmlandTile] Successfully planted {seed.itemName}. Requires watering!");
                 }
                 else
@@ -347,6 +358,7 @@ namespace FeaturesFarming
         private void WaterCrop()
         {
             SetState(TileState.PlantedWatered);
+            OnCropWatered?.Invoke(this);
             Debug.Log("[FarmlandTile] Crop watered! Growth countdown started.");
         }
 

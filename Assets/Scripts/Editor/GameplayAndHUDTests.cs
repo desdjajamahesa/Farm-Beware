@@ -24,6 +24,8 @@ using FeaturesStoryline.Cutscenes;
 using FeaturesFarming;
 using FeaturesInteraction;
 using Player;
+using FarmBeware.Logic.Quests;
+using FarmBeware.Features.Quest.UI;
 
 namespace FarmBeware.EditorTests
 {
@@ -37,7 +39,7 @@ namespace FarmBeware.EditorTests
             Debug.Log("[AUDIT-SUITE] ========================================================");
 
             int passed = 0;
-            int total = 61;
+            int total = 62;
 
             if (Test_DayNight_PhaseProgression_DuskUntilNight()) passed++;
             if (Test_BedInteractable_Logic_AllowsDuskAndBlocksNightOnly()) passed++;
@@ -100,6 +102,7 @@ namespace FarmBeware.EditorTests
             if (Test_DaytimeBedSleep_ConfirmationAndTransition_Audit()) passed++;
             if (Test_HUD_NightBrawlWaveTracker_ActiveAndRestored_Audit()) passed++;
             if (Test_Inventory_TabToggle_OpenAndClose_Audit()) passed++;
+            if (Test_SideQuest_FirstSteps_Progression_GatherAndPlant()) passed++;
 
             Debug.Log("[AUDIT-SUITE] ========================================================");
             Debug.Log($"[AUDIT-SUITE] Complete! Passed: {passed}/{total}");
@@ -5413,6 +5416,174 @@ namespace FarmBeware.EditorTests
                 {
                     if (cleanupList[i] != null) Object.DestroyImmediate(cleanupList[i]);
                 }
+            }
+        }
+
+        // Test 62: Side Quest 'First Steps' progression & procedural HUD attachment verification
+        private static bool Test_SideQuest_FirstSteps_Progression_GatherAndPlant()
+        {
+            // 1. Pure POCO logic validation
+            var model = new QuestProgressModel();
+
+            if (model.CurrentStage != QuestStage.GatheringSupplies)
+            {
+                Debug.LogError($"[Test 62] Expected initial stage to be GatheringSupplies, got {model.CurrentStage}!");
+                return false;
+            }
+
+            // Incomplete inventory
+            model.EvaluateInventory(new[] { "tool_hoe", "food_bottle_water" });
+            if (!model.HasHoe || !model.HasWaterBottle || model.HasPlantWaterer || model.HasSweetPotatoSeed || model.IsAllSuppliesGathered)
+            {
+                Debug.LogError("[Test 62] Model failed partial inventory evaluation!");
+                return false;
+            }
+
+            if (model.CurrentStage != QuestStage.GatheringSupplies)
+            {
+                Debug.LogError("[Test 62] Model prematurely advanced stage with incomplete items!");
+                return false;
+            }
+
+            // Complete inventory with all 4 items
+            model.EvaluateInventory(new[] { "tool_hoe", "tool_plant_waterer", "food_bottle_water", "seed_sweet_potato" });
+            if (!model.IsAllSuppliesGathered || model.CurrentStage != QuestStage.PlantingCrop)
+            {
+                Debug.LogError($"[Test 62] Expected stage PlantingCrop after gathering all 4 supplies, got {model.CurrentStage}!");
+                return false;
+            }
+
+            // Incorrect crop planted
+            bool wrongPlanted = model.OnCropPlanted("seed_corn");
+            if (wrongPlanted || model.IsCompleted || model.CurrentStage != QuestStage.PlantingCrop)
+            {
+                Debug.LogError("[Test 62] Model completed on non-sweet-potato seed!");
+                return false;
+            }
+
+            // Correct crop planted -> transitions to WateringCrop
+            bool correctPlanted = model.OnCropPlanted("seed_sweet_potato");
+            if (!correctPlanted || model.CurrentStage != QuestStage.WateringCrop || !model.HasPlantedCrop || model.PlantedCount != 1)
+            {
+                Debug.LogError($"[Test 62] Expected stage WateringCrop after planting sweet potato seed, got {model.CurrentStage}!");
+                return false;
+            }
+
+            // Water crop -> transitions to Completed
+            bool correctWatered = model.OnCropWatered("seed_sweet_potato");
+            if (!correctWatered || !model.IsCompleted || model.CurrentStage != QuestStage.Completed || !model.HasWateredCrop || model.WateredCount != 1)
+            {
+                Debug.LogError($"[Test 62] Expected stage Completed after watering crop, got {model.CurrentStage}!");
+                return false;
+            }
+
+            // Multi-crop progression validation: Ensure quest does not complete until ALL planted crops are watered
+            var multiModel = new QuestProgressModel();
+            multiModel.EvaluateInventory(new[] { "tool_hoe", "tool_plant_waterer", "food_bottle_water", "seed_sweet_potato" });
+            multiModel.OnCropPlanted("seed_sweet_potato");
+            multiModel.OnCropPlanted("seed_sweet_potato");
+            multiModel.OnCropPlanted("seed_sweet_potato");
+
+            if (multiModel.PlantedCount != 3 || multiModel.CurrentStage != QuestStage.WateringCrop || multiModel.IsCompleted)
+            {
+                Debug.LogError($"[Test 62] Multi-crop test failed: Expected 3 planted crops and incomplete quest, got {multiModel.PlantedCount}!");
+                return false;
+            }
+
+            // Water only 1 of 3: must remain incomplete
+            multiModel.OnCropWatered("seed_sweet_potato");
+            if (multiModel.WateredCount != 1 || multiModel.IsCompleted || multiModel.CurrentStage != QuestStage.WateringCrop)
+            {
+                Debug.LogError("[Test 62] Multi-crop test failed: Quest prematurely completed with unwatered crops remaining!");
+                return false;
+            }
+
+            // Water 2nd of 3: still incomplete
+            multiModel.OnCropWatered("seed_sweet_potato");
+            if (multiModel.WateredCount != 2 || multiModel.IsCompleted)
+            {
+                Debug.LogError("[Test 62] Multi-crop test failed: Quest completed before last crop was watered!");
+                return false;
+            }
+
+            // Water 3rd of 3: now all crops are watered -> Completed
+            multiModel.OnCropWatered("seed_sweet_potato");
+            if (multiModel.WateredCount != 3 || !multiModel.IsCompleted || multiModel.CurrentStage != QuestStage.Completed)
+            {
+                Debug.LogError("[Test 62] Multi-crop test failed: Quest failed to complete when all 3 crops were watered!");
+                return false;
+            }
+
+            // SyncCropCounts validation
+            var syncModel = new QuestProgressModel();
+            syncModel.EvaluateInventory(new[] { "tool_hoe", "tool_plant_waterer", "food_bottle_water", "seed_sweet_potato" });
+            syncModel.SyncCropCounts(2, 1);
+            if (syncModel.PlantedCount != 2 || syncModel.WateredCount != 1 || syncModel.IsCompleted)
+            {
+                Debug.LogError("[Test 62] SyncCropCounts failed partial watering test!");
+                return false;
+            }
+
+            syncModel.SyncCropCounts(2, 2);
+            if (syncModel.WateredCount != 2 || !syncModel.IsCompleted)
+            {
+                Debug.LogError("[Test 62] SyncCropCounts failed all-watered completion test!");
+                return false;
+            }
+
+            // 2. Procedural HUD UI validation
+            var hudGo = new GameObject("Test_HUD_Root", typeof(RectTransform));
+            try
+            {
+                var tracker = hudGo.AddComponent<CombatPhaseTrackerUI>();
+                var methodActivity = typeof(CombatPhaseTrackerUI).GetMethod("BuildProceduralActivityUI", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                if (methodActivity != null) methodActivity.Invoke(tracker, null);
+
+                var questHud = hudGo.AddComponent<QuestHUDUI>();
+                questHud.BuildProceduralQuestUI();
+
+                var questCard = hudGo.transform.Find("QuestCard")?.GetComponent<RectTransform>();
+                var questHeader = hudGo.transform.Find("QuestCard/QuestHeader")?.GetComponent<TMPro.TextMeshProUGUI>();
+                var questDetail = hudGo.transform.Find("QuestCard/QuestDetail")?.GetComponent<TMPro.TextMeshProUGUI>();
+
+                if (questCard == null)
+                {
+                    Debug.LogError("[Test 62] QuestCard RectTransform was not created!");
+                    return false;
+                }
+
+                if (Mathf.Abs(questCard.anchoredPosition.y - (-86f)) > 0.1f)
+                {
+                    Debug.LogError($"[Test 62] QuestCard anchoredPosition.y is {questCard.anchoredPosition.y}, expected -86f!");
+                    return false;
+                }
+
+                if (questHeader == null || !questHeader.text.Contains("SIDE QUEST"))
+                {
+                    Debug.LogError("[Test 62] QuestHeader text missing or uninitialized!");
+                    return false;
+                }
+
+                if (questDetail == null || !questDetail.richText)
+                {
+                    Debug.LogError("[Test 62] QuestDetail missing or richText disabled!");
+                    return false;
+                }
+
+                // Verify model text update
+                questHud.UpdateDisplayFromModel(model);
+                if (!questDetail.text.Contains("completed"))
+                {
+                    Debug.LogError("[Test 62] QuestDetail did not reflect completed model state!");
+                    return false;
+                }
+
+                Debug.Log("✅ Test 62: Side Quest 'First Steps' progression (Gather 4 Tools -> Plant Sweet Potato -> Complete) and HUD attachment verified.");
+                return true;
+            }
+            finally
+            {
+                Object.DestroyImmediate(hudGo);
             }
         }
     }
