@@ -105,8 +105,8 @@ public class PlayerEquipment : MonoBehaviour
     private FeaturesCombat.Melee.MeleeCombatStateMachine combatStateMachine = new FeaturesCombat.Melee.MeleeCombatStateMachine();
     public FeaturesCombat.Melee.MeleeCombatStateMachine CombatStateMachine => combatStateMachine;
 
-    private readonly Collider[] _hitBuffer = new Collider[16];
-    private readonly FeaturesCombat.IDamageable[] _damagedTargetsBuffer = new FeaturesCombat.IDamageable[16];
+    private readonly Collider[] _hitBuffer = new Collider[64];
+    private readonly FeaturesCombat.IDamageable[] _damagedTargetsBuffer = new FeaturesCombat.IDamageable[64];
     private int _damagedTargetsCount = 0;
 
     private bool HasTargetBeenHit(FeaturesCombat.IDamageable target)

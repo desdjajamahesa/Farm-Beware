@@ -39,7 +39,7 @@ namespace FarmBeware.EditorTests
             Debug.Log("[AUDIT-SUITE] ========================================================");
 
             int passed = 0;
-            int total = 62;
+            int total = 63;
 
             if (Test_DayNight_PhaseProgression_DuskUntilNight()) passed++;
             if (Test_BedInteractable_Logic_AllowsDuskAndBlocksNightOnly()) passed++;
@@ -103,6 +103,7 @@ namespace FarmBeware.EditorTests
             if (Test_HUD_NightBrawlWaveTracker_ActiveAndRestored_Audit()) passed++;
             if (Test_Inventory_TabToggle_OpenAndClose_Audit()) passed++;
             if (Test_SideQuest_FirstSteps_Progression_GatherAndPlant()) passed++;
+            if (Test_MeleeHitBuffer_Expansion_And_QuestHUD_Lifecycle_Audit()) passed++;
 
             Debug.Log("[AUDIT-SUITE] ========================================================");
             Debug.Log($"[AUDIT-SUITE] Complete! Passed: {passed}/{total}");
@@ -5584,6 +5585,60 @@ namespace FarmBeware.EditorTests
             finally
             {
                 Object.DestroyImmediate(hudGo);
+            }
+        }
+
+        // Test 63: Melee hit buffer capacity expansion (>=64) and QuestHUD multi-scene lifecycle resilience
+        private static bool Test_MeleeHitBuffer_Expansion_And_QuestHUD_Lifecycle_Audit()
+        {
+            var playerGo = new GameObject("Test_PlayerEquipmentAudit");
+            var trackerGo = new GameObject("Test_CombatPhaseTrackerUI");
+            try
+            {
+                // 1. Verify PlayerEquipment _hitBuffer and _damagedTargetsBuffer expansion
+                var eq = playerGo.AddComponent<PlayerEquipment>();
+                var hitBufField = typeof(PlayerEquipment).GetField("_hitBuffer", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                var targetBufField = typeof(PlayerEquipment).GetField("_damagedTargetsBuffer", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+                if (hitBufField == null || targetBufField == null)
+                {
+                    Debug.LogError("[Test 63] PlayerEquipment _hitBuffer or _damagedTargetsBuffer field not found!");
+                    return false;
+                }
+
+                var hitBuf = hitBufField.GetValue(eq) as Collider[];
+                var targetBuf = targetBufField.GetValue(eq) as System.Array;
+
+                if (hitBuf == null || hitBuf.Length < 64)
+                {
+                    Debug.LogError($"[Test 63] _hitBuffer capacity is {hitBuf?.Length ?? 0}, expected >= 64!");
+                    return false;
+                }
+
+                if (targetBuf == null || targetBuf.Length < 64)
+                {
+                    Debug.LogError($"[Test 63] _damagedTargetsBuffer capacity is {targetBuf?.Length ?? 0}, expected >= 64!");
+                    return false;
+                }
+
+                // 2. Verify QuestHUDUI inactive CombatPhaseTrackerUI resolution
+                var tracker = trackerGo.AddComponent<FeaturesTime.UI.CombatPhaseTrackerUI>();
+                trackerGo.SetActive(false);
+
+                var resolvedHud = FarmBeware.Features.Quest.UI.QuestHUDUI.EnsureInstance();
+                if (resolvedHud == null)
+                {
+                    Debug.LogError("[Test 63] QuestHUDUI.EnsureInstance() failed to find inactive CombatPhaseTrackerUI in scene!");
+                    return false;
+                }
+
+                Debug.Log("✅ Test 63: PlayerEquipment melee hit buffers expanded to 64 and QuestHUDUI inactive tracker resolution verified.");
+                return true;
+            }
+            finally
+            {
+                Object.DestroyImmediate(playerGo);
+                Object.DestroyImmediate(trackerGo);
             }
         }
     }

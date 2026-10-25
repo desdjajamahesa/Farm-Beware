@@ -22,12 +22,28 @@ namespace FarmBeware.Features.Quest.UI
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void AutoAttachToHUD()
         {
+            UnityEngine.SceneManagement.SceneManager.sceneLoaded -= HandleSceneLoaded;
+            UnityEngine.SceneManagement.SceneManager.sceneLoaded += HandleSceneLoaded;
+            EnsureInstance();
+        }
+
+        private static void HandleSceneLoaded(UnityEngine.SceneManagement.Scene scene, UnityEngine.SceneManagement.LoadSceneMode mode)
+        {
             EnsureInstance();
         }
 
         public static QuestHUDUI EnsureInstance()
         {
             var tracker = CombatPhaseTrackerUI.Instance;
+            if (tracker == null)
+            {
+                var found = UnityEngine.Object.FindObjectsByType<CombatPhaseTrackerUI>(UnityEngine.FindObjectsInactive.Include, UnityEngine.FindObjectsSortMode.None);
+                if (found != null && found.Length > 0)
+                {
+                    tracker = found[0];
+                }
+            }
+
             if (tracker != null)
             {
                 var existing = tracker.GetComponentInChildren<QuestHUDUI>(true);

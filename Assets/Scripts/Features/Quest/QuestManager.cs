@@ -70,6 +70,10 @@ namespace FarmBeware.Features.Quest
             }
 
             Instance = this;
+            if (transform.parent == null)
+            {
+                DontDestroyOnLoad(gameObject);
+            }
             _model.OnStateChanged += HandleModelStateChanged;
         }
 
