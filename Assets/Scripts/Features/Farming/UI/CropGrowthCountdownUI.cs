@@ -95,6 +95,22 @@ namespace FeaturesFarming
                 return true;
             }
 
+            // 5. Malam hari (Night phase): waktu dan pertumbuhan dibekukan, sembunyikan timer
+            if (FeaturesTime.DayNightTimeManager.Instance != null &&
+                (FeaturesTime.DayNightTimeManager.Instance.CurrentHour >= 18f || FeaturesTime.DayNightTimeManager.Instance.CurrentHour < 5f))
+            {
+                return true;
+            }
+            if (TimeManager.Instance != null && TimeManager.Instance.currentPhase == TimeManager.DayPhase.Night)
+            {
+                return true;
+            }
+            var timeService = ServiceLocator.Resolve<ITimeService>();
+            if (timeService != null && timeService.IsNight)
+            {
+                return true;
+            }
+
             return false;
         }
 

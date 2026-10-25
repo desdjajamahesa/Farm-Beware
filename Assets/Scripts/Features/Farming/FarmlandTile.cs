@@ -147,7 +147,45 @@ namespace FeaturesFarming
                     SetState(TileState.ReadyToHarvest);
                 }
             }
+        }
 
+        public bool CanInteract(GameObject interactor)
+        {
+            if (interactor == null) return false;
+
+            int currentDay = FeaturesTime.DayNightTimeManager.Instance != null 
+                ? FeaturesTime.DayNightTimeManager.Instance.CurrentDay 
+                : (TimeManager.Instance != null ? TimeManager.Instance.currentDay : 1);
+            if (currentDay == 0) return false;
+
+            // Farming is only allowed during daytime
+            if (TimeManager.Instance != null && TimeManager.Instance.currentPhase == TimeManager.DayPhase.Night)
+                return false;
+
+            var timeService = ServiceLocator.Resolve<ITimeService>();
+            if (timeService != null && timeService.IsNight)
+                return false;
+
+            switch (currentState)
+            {
+                case TileState.Untilled:
+                    return IsHoldingHoe(interactor);
+
+                case TileState.Tilled:
+                    return GetHeldSeed(interactor) != null;
+
+                case TileState.PlantedDry:
+                    return IsHoldingPlantWaterer(interactor) && (PlantWaterer.Instance != null ? PlantWaterer.Instance.CurrentWater >= 10f : true);
+
+                case TileState.PlantedWatered:
+                    return false; // Crop is actively growing; cannot interact
+
+                case TileState.ReadyToHarvest:
+                    return true;
+
+                default:
+                    return false;
+            }
         }
 
         public void Interact(GameObject interactor)
@@ -568,7 +606,7 @@ namespace FeaturesFarming
             // At night, display that farming activities are only permitted during daytime
             if (TimeManager.Instance != null && TimeManager.Instance.currentPhase == TimeManager.DayPhase.Night)
             {
-                worldLabel.displayName = "🌙 Can only farm during the day";
+                worldLabel.displayName = "Can only farm during the day";
                 return;
             }
 

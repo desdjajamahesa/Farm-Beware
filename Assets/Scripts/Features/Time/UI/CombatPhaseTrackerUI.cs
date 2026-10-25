@@ -354,7 +354,7 @@ namespace FeaturesTime.UI
         {
             if (activityHeaderBadgeText != null)
             {
-                activityHeaderBadgeText.text = $"📋 ACTIVITY • {entry.timeRangeText}";
+                activityHeaderBadgeText.text = $"ACTIVITY: {entry.timeRangeText}";
             }
             if (activityDetailText != null)
             {
@@ -420,7 +420,7 @@ namespace FeaturesTime.UI
 
             if (phaseText != null)
             {
-                phaseText.text = isNight ? "🌙 NIGHT" : "☀️ DAY";
+                phaseText.text = isNight ? "NIGHT" : "DAY";
                 phaseText.color = isNight ? new Color(1f, 0.45f, 0.45f) : new Color(0.95f, 0.96f, 0.98f);
             }
 
@@ -439,13 +439,13 @@ namespace FeaturesTime.UI
                 if (isNight)
                 {
                     waveText.gameObject.SetActive(true);
-                    waveText.text = totalWaves > 1 ? $"⚔️ Wave {currentWave} / {totalWaves}" : "⚔️ Beware of Monsters!";
+                    waveText.text = totalWaves > 1 ? $"Wave {currentWave} / {totalWaves}" : "Beware of Monsters!";
                     waveText.color = new Color(1f, 0.70f, 0.70f);
                 }
                 else
                 {
                     waveText.gameObject.SetActive(true);
-                    waveText.text = "🛡️ Safe & Farming";
+                    waveText.text = "Safe & Farming";
                     waveText.color = new Color(0.70f, 0.92f, 0.75f);
                 }
             }
@@ -485,8 +485,17 @@ namespace FeaturesTime.UI
             }
         }
 
+        private int _lastIntermissionSeconds = -1;
+        private int _lastIntermissionNextWave = -1;
+
         public void SetIntermissionCountdown(int secondsRemaining, int nextWave, int maxWaves)
         {
+            if (secondsRemaining == _lastIntermissionSeconds && nextWave == _lastIntermissionNextWave)
+                return;
+
+            _lastIntermissionSeconds = secondsRemaining;
+            _lastIntermissionNextWave = nextWave;
+
             if (waveText != null)
             {
                 waveText.text = $"Prep: {secondsRemaining}s (Next W{nextWave})";
@@ -499,6 +508,9 @@ namespace FeaturesTime.UI
 
         public void ClearIntermissionCountdown()
         {
+            _lastIntermissionSeconds = -1;
+            _lastIntermissionNextWave = -1;
+
             if (waveText != null)
             {
                 waveText.text = $"Wave: {currentWave} / {totalWaves}";
@@ -610,7 +622,7 @@ namespace FeaturesTime.UI
             activityHeaderBadgeText.fontStyle = FontStyles.Bold;
             activityHeaderBadgeText.color = new Color(1f, 0.78f, 0.20f);
             activityHeaderBadgeText.alignment = TextAlignmentOptions.Left;
-            activityHeaderBadgeText.text = "📋 ACTIVITY • 06:00 - 06:40";
+            activityHeaderBadgeText.text = "ACTIVITY: 06:00 - 06:40";
 
             GameObject detailObj = new GameObject("ActivityDetail", typeof(RectTransform), typeof(TextMeshProUGUI));
             detailObj.transform.SetParent(activityCardRoot.transform, false);
@@ -696,7 +708,7 @@ namespace FeaturesTime.UI
             phaseText.fontStyle = FontStyles.Bold;
             phaseText.alignment = TextAlignmentOptions.Left;
             phaseText.color = new Color(0.95f, 0.96f, 0.98f);
-            phaseText.text = "☀️ DAY";
+            phaseText.text = "DAY";
 
             // Clock Text (Kanan Atas: HH:mm)
             CreateProceduralClockText(badgeObj.transform);

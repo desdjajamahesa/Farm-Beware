@@ -69,6 +69,10 @@ public class InventoryComponent : MonoBehaviour
             allowedFoodCategories.AddRange(categories);
     }
 
+    [SerializeField] private bool allowAllCropsAndFood = false;
+    public bool AllowAllCropsAndFood { get => allowAllCropsAndFood; set => allowAllCropsAndFood = value; }
+    public void SetAllowAllCropsAndFood(bool allow) => allowAllCropsAndFood = allow;
+
     /// <summary>
     /// Aturan backend tunggal: menentukan apakah sebuah item boleh MASUK ke inventory ini.
     /// Kombinasi: blockTrophyItems + pembatasan kategori makanan.
@@ -81,6 +85,20 @@ public class InventoryComponent : MonoBehaviour
         // Trophy tidak boleh masuk ke inventory pemblokir (mis. Player).
         if (blockTrophyItems && item.type == ItemData.ItemType.Trophy)
             return false;
+
+        // Refrigerator / All Crops & Food Storage rule: can store all crops, food, seeds, and plants
+        if (allowAllCropsAndFood)
+        {
+            if (item.category == ItemCategory.Crop || 
+                item.category == ItemCategory.Food || 
+                item.category == ItemCategory.Seed || 
+                item is FoodItemData ||
+                item is SeedItemData)
+            {
+                return true;
+            }
+            return false;
+        }
 
         // Pembatasan kategori makanan (bila daftar diisi).
         if (allowedFoodCategories != null && allowedFoodCategories.Count > 0)

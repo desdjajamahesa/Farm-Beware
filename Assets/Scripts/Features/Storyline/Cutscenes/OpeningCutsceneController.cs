@@ -263,6 +263,7 @@ namespace FeaturesStoryline.Cutscenes
             // 4. Reveal Letterbox and Skip Gauge
             if (CutsceneLetterboxUI.Instance != null)
             {
+                CutsceneLetterboxUI.Instance.EnsureStoryCardObjects();
                 CutsceneLetterboxUI.Instance.SetLetterboxVisible(true, 0f);
                 CutsceneLetterboxUI.Instance.SetSkipVisible(true);
                 CutsceneLetterboxUI.Instance.UpdateSkipProgress(0f);
@@ -308,12 +309,40 @@ namespace FeaturesStoryline.Cutscenes
             _cutsceneRoutine = StartCoroutine(RoutineCutsceneSequence());
         }
 
+        private void PurgePlayerEquipmentAndInventoryForDay0(GameObject playerObj)
+        {
+            if (playerObj == null) return;
+            var inv = playerObj.GetComponent<InventoryComponent>();
+            if (inv != null && inv.slots != null)
+            {
+                for (int i = 0; i < inv.slots.Count; i++)
+                {
+                    inv.slots[i] = new InventorySlot();
+                }
+                inv.selectedHotbarIndex = 0;
+                inv.OnInventoryChanged?.Invoke();
+            }
+
+            var equip = playerObj.GetComponent("PlayerEquipment");
+            if (equip != null)
+            {
+                equip.GetType().GetMethod("DestroyCurrentWeapon")?.Invoke(equip, null);
+                equip.GetType().GetMethod("UpdateEquipmentVisual")?.Invoke(equip, new object[] { 0 });
+            }
+            playerObj.SendMessage("EnsureStarterKit", 0, SendMessageOptions.DontRequireReceiver);
+        }
+
         private void InitializeVehicleAndPlayerForCutscene()
         {
             var truckObj = GameObject.Find("OldFarmPickup_Truck");
             var playerCtx = GetValidPlayerContext();
             var playerObj = (playerCtx as Component)?.gameObject ?? GameObject.FindWithTag("Player") ?? GameObject.Find("Player");
             var vehicleCtrl = truckObj != null ? truckObj.GetComponent<IVehicleActor>() : null;
+
+            if (playerObj != null)
+            {
+                PurgePlayerEquipmentAndInventoryForDay0(playerObj);
+            }
 
             if (truckObj != null && vehicleCtrl != null)
             {
@@ -410,22 +439,22 @@ namespace FeaturesStoryline.Cutscenes
             else
             {
                 // Fallback coroutine sequence if PlayableDirector is absent
-                if (ui != null) ui.SetIntroStoryCard("1989. The NexaPhyto Bio-Agrochemical facility suffered a catastrophic subterranean rupture.", 0.6f);
+                if (ui != null) ui.SetIntroStoryCard("Ten years in the army was enough. At thirty, I just wanted a quiet life.", 0.6f);
                 yield return new WaitForSecondsRealtime(3.2f);
                 if (ui != null) ui.ClearIntroStoryCard(0.4f);
                 yield return new WaitForSecondsRealtime(0.4f);
 
-                if (ui != null) ui.SetIntroStoryCard("The surrounding province was declared a dead zone. The land abandoned. The truth buried.", 0.6f);
+                if (ui != null) ui.SetIntroStoryCard("I used all my savings to buy a cheap piece of land far away from the city.", 0.6f);
                 yield return new WaitForSecondsRealtime(3.2f);
                 if (ui != null) ui.ClearIntroStoryCard(0.4f);
                 yield return new WaitForSecondsRealtime(0.4f);
 
-                if (ui != null) ui.SetIntroStoryCard("Decades later, you emptied your life savings to claim the fallow deed...", 0.6f);
+                if (ui != null) ui.SetIntroStoryCard("For a while, everything went fine. I cleared the weeds and built a few small farm plots.", 0.6f);
                 yield return new WaitForSecondsRealtime(3.2f);
                 if (ui != null) ui.ClearIntroStoryCard(0.4f);
                 yield return new WaitForSecondsRealtime(0.4f);
 
-                if (ui != null) ui.SetIntroStoryCard("Five days to revive the soil. Five nights to survive what wakes beneath.", 0.6f);
+                if (ui != null) ui.SetIntroStoryCard("Life was peaceful... until the day I started digging in an untouched part of the field.", 0.6f);
                 yield return new WaitForSecondsRealtime(3.2f);
                 if (ui != null) ui.ClearIntroStoryCard(0.4f);
                 yield return new WaitForSecondsRealtime(0.4f);
@@ -441,11 +470,11 @@ namespace FeaturesStoryline.Cutscenes
             // PHASE 2: 3D VEHICLE ARRIVAL (LEFT TO RIGHT TRACKING SHOT)
             // -------------------------------------------------------------
             // SHOT 1 (0.0s - 4.5s): Vehicle approach from Left along perimeter road
-            // Subtitle: "Epilogue — The Outskirts. NexaPhyto Quarantine Sector 7."
+            // Subtitle: "Finally back from town with the last box of supplies and fresh seeds."
             // -------------------------------------------------------------
             if (ui != null)
             {
-                ui.SetSubtitle("Epilogue — The Outskirts. NexaPhyto Quarantine Sector 7.");
+                ui.SetSubtitle("Finally back from town with the last box of supplies and fresh seeds.");
             }
 
             // Frame camera North of road looking South-East across the road at truck approach
@@ -490,11 +519,11 @@ namespace FeaturesStoryline.Cutscenes
 
             // -------------------------------------------------------------
             // SHOT 2 (4.5s - 9.0s): Approaching gate, deceleration curve, stops outside gate
-            // Subtitle: "They declared this land dead... poisoned by the subterranean rupture of 1989."
+            // Subtitle: "The land was dirt cheap because an old factory used to stand near here decades ago."
             // -------------------------------------------------------------
             if (ui != null)
             {
-                ui.SetSubtitle("They declared this land dead... poisoned by the subterranean rupture of 1989.");
+                ui.SetSubtitle("The land was dirt cheap because an old factory used to stand near here decades ago.");
             }
 
             float shot2Duration = 4.5f;
@@ -534,11 +563,11 @@ namespace FeaturesStoryline.Cutscenes
 
             // -------------------------------------------------------------
             // SHOT 3 (9.0s - 13.0s): Vehicle stopped, engine idles and cuts off, close on driver side
-            // Subtitle: "To the world, it's an environmental grave. To me, it's the only sanctuary left."
+            // Subtitle: "Doesn't matter to me. No more orders, no more war—just my own cabin and open ground."
             // -------------------------------------------------------------
             if (ui != null)
             {
-                ui.SetSubtitle("To the world, it's an environmental grave. To me, it's the only sanctuary left.");
+                ui.SetSubtitle("Doesn't matter to me. No more orders, no more war—just my own cabin and open ground.");
             }
 
             // Cut vehicle engine audio
@@ -578,20 +607,22 @@ namespace FeaturesStoryline.Cutscenes
 
             // -------------------------------------------------------------
             // SHOT 4 (13.0s - 16.5s): Atomic player dismount onto soil outside gate
-            // Subtitle: "Empty pockets and five days to reclaim the earth. Find shelter before nightfall."
+            // Subtitle: "Getting late. I'll get some sleep inside, and tomorrow I'll open up that new plot of dirt."
             // -------------------------------------------------------------
             if (ui != null)
             {
-                ui.SetSubtitle("Empty pockets and five days to reclaim the earth. Find shelter before nightfall.");
+                ui.SetSubtitle("Getting late. I'll get some sleep inside, and tomorrow I'll open up that new plot of dirt.");
             }
 
             if (vehicleCtrl != null && vehicleCtrl.IsDriverOccupied)
             {
                 vehicleCtrl.ExitVehicle();
+                PurgePlayerEquipmentAndInventoryForDay0(playerObj);
             }
             else if (playerObj != null)
             {
                 RepositionPlayerAtGate();
+                PurgePlayerEquipmentAndInventoryForDay0(playerObj);
             }
 
             float shot4Duration = 3.5f;
@@ -670,6 +701,7 @@ namespace FeaturesStoryline.Cutscenes
                 }
             }
             RepositionPlayerAtGate();
+            PurgePlayerEquipmentAndInventoryForDay0((GetValidPlayerContext() as Component)?.gameObject ?? GameObject.FindWithTag("Player"));
 
             // 2. Hide Letterbox and Intro story overlay cleanly with zero leftover elements
             if (CutsceneLetterboxUI.Instance != null)
@@ -960,7 +992,6 @@ namespace FeaturesStoryline.Cutscenes
                 {
                     foreach (var name in hudPanelNames)
                     {
-                        if (name == "HUD_NightBrawlWaveTracker") continue; // Kept phase-controlled
                         var t = canvas.transform.Find(name);
                         if (t != null && !t.gameObject.activeSelf)
                         {

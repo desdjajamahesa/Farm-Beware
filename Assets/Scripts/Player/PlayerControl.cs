@@ -217,6 +217,19 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
         // Kunci input: hentikan inventory/hotbar/gerak/animator saat terkunci.
         if (isInputLocked)
         {
+            // Izinkan Tab / I menutup inventori saat UI inventori sedang terbuka
+            if (InventoryManagerUI.Instance != null && InventoryManagerUI.Instance.IsAnyInventoryUIRelatedOpen())
+            {
+                Keyboard kb = Keyboard.current;
+                if (kb != null && (kb.tabKey.wasPressedThisFrame || kb.iKey.wasPressedThisFrame))
+                {
+                    if (Time.frameCount != FarmBeware.Core.Runtime.UIModalHelper.LastFrameUIPanelClosed)
+                    {
+                        InventoryManagerUI.Instance.CloseAllUI();
+                    }
+                }
+            }
+
             // Pastikan velocity benar-benar nol dan animasi idle saat UI terbuka
             inputVector = Vector3.zero;
             isRunning = false;
@@ -1062,8 +1075,16 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
 
         if (keyboard.tabKey.wasPressedThisFrame || keyboard.iKey.wasPressedThisFrame)
         {
+            if (Time.frameCount == FarmBeware.Core.Runtime.UIModalHelper.LastFrameUIPanelClosed)
+                return;
+
             if (InventoryManagerUI.Instance != null)
-                InventoryManagerUI.Instance.TogglePlayerInventory();
+            {
+                if (InventoryManagerUI.Instance.IsAnyInventoryUIRelatedOpen())
+                    InventoryManagerUI.Instance.CloseAllUI();
+                else
+                    InventoryManagerUI.Instance.TogglePlayerInventory();
+            }
         }
     }
 

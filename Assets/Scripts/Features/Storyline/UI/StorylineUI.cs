@@ -201,7 +201,7 @@ namespace FeaturesStoryline.UI
                     break;
 
                 case StoryDeliveryType.JournalPage:
-                    ShowBanner("Journal Updated", $"Unlocked: {formattedTitle}", 4f, onComplete);
+                    ShowDialogue(string.IsNullOrEmpty(beat.speakerName) ? "Field Notes" : beat.speakerName, formattedText, onComplete);
                     break;
 
                 default:
@@ -270,13 +270,51 @@ namespace FeaturesStoryline.UI
                 return;
             }
 
-            if (dialogueSpeakerText != null)
-                dialogueSpeakerText.text = string.IsNullOrEmpty(speaker) ? "Narrator" : speaker;
-            if (dialogueBodyText != null)
-                dialogueBodyText.text = message;
-
             _onDialogueDismissed = onDismiss;
             dialoguePanel.SetActive(true);
+
+            // Dynamically ensure child text references are resolved if inspector bindings were null
+            if (dialogueSpeakerText == null)
+                dialogueSpeakerText = dialoguePanel.transform.Find("DialogueSpeaker")?.GetComponent<TextMeshProUGUI>();
+            if (dialogueBodyText == null)
+                dialogueBodyText = dialoguePanel.transform.Find("DialogueBody")?.GetComponent<TextMeshProUGUI>();
+            if (dialogueContinueButton == null)
+            {
+                dialogueContinueButton = dialoguePanel.transform.Find("DialogueButton")?.GetComponent<Button>();
+                if (dialogueContinueButton != null)
+                {
+                    dialogueContinueButton.onClick.RemoveListener(DismissDialogue);
+                    dialogueContinueButton.onClick.AddListener(DismissDialogue);
+                }
+            }
+
+            // Ensure dialogue panel has top sorting order and last sibling priority
+            // so it is NEVER obscured by Workbench, Merchant, or Inventory UI panels
+            var panelCanvas = dialoguePanel.GetComponent<Canvas>();
+            if (panelCanvas == null)
+            {
+                panelCanvas = dialoguePanel.AddComponent<Canvas>();
+            }
+            panelCanvas.overrideSorting = true;
+            panelCanvas.sortingOrder = 500;
+
+            if (!dialoguePanel.TryGetComponent<GraphicRaycaster>(out _))
+            {
+                dialoguePanel.AddComponent<GraphicRaycaster>();
+            }
+
+            var dlgRT = dialoguePanel.GetComponent<RectTransform>();
+            if (dlgRT != null)
+            {
+                dlgRT.anchoredPosition = new Vector2(0f, 115f); // Above the hotbar
+            }
+
+            dialoguePanel.transform.SetAsLastSibling();
+
+            if (dialogueSpeakerText != null)
+                dialogueSpeakerText.text = string.IsNullOrEmpty(speaker) ? "Veteran" : speaker;
+            if (dialogueBodyText != null)
+                dialogueBodyText.text = message;
 
             // Notify modal stack
             var modalStack = ServiceLocator.Resolve<IModalStackService>();
@@ -304,6 +342,24 @@ namespace FeaturesStoryline.UI
                 onComplete?.Invoke();
                 return;
             }
+
+            overlayPanel.SetActive(true);
+
+            // Ensure overlay panel renders above all other canvases and panels
+            var panelCanvas = overlayPanel.GetComponent<Canvas>();
+            if (panelCanvas == null)
+            {
+                panelCanvas = overlayPanel.AddComponent<Canvas>();
+            }
+            panelCanvas.overrideSorting = true;
+            panelCanvas.sortingOrder = 600;
+
+            if (!overlayPanel.TryGetComponent<GraphicRaycaster>(out _))
+            {
+                overlayPanel.AddComponent<GraphicRaycaster>();
+            }
+
+            overlayPanel.transform.SetAsLastSibling();
 
             if (_activeOverlayRoutine != null) StopCoroutine(_activeOverlayRoutine);
 
@@ -473,7 +529,7 @@ namespace FeaturesStoryline.UI
             camTransform.localPosition = originalPos;
         }
 
-        private void EnsureUIHierarchy()
+        public void EnsureUIHierarchy()
         {
             if (targetCanvas == null)
             {
@@ -565,17 +621,6 @@ namespace FeaturesStoryline.UI
                 if (existingDlg != null)
                 {
                     dialoguePanel = existingDlg.gameObject;
-                    var tSpk = dialoguePanel.transform.Find("DialogueSpeaker");
-                    if (tSpk != null) dialogueSpeakerText = tSpk.GetComponent<TextMeshProUGUI>();
-                    var tBody = dialoguePanel.transform.Find("DialogueBody");
-                    if (tBody != null) dialogueBodyText = tBody.GetComponent<TextMeshProUGUI>();
-                    var tBtn = dialoguePanel.transform.Find("DialogueButton");
-                    if (tBtn != null)
-                    {
-                        dialogueContinueButton = tBtn.GetComponent<Button>();
-                        dialogueContinueButton.onClick.RemoveListener(DismissDialogue);
-                        dialogueContinueButton.onClick.AddListener(DismissDialogue);
-                    }
                 }
                 else
                 {
@@ -586,7 +631,7 @@ namespace FeaturesStoryline.UI
                     rt.anchorMin = new Vector2(0.5f, 0f);
                     rt.anchorMax = new Vector2(0.5f, 0f);
                     rt.pivot = new Vector2(0.5f, 0f);
-                    rt.anchoredPosition = new Vector2(0f, 60f);
+                    rt.anchoredPosition = new Vector2(0f, 115f);
                     rt.sizeDelta = new Vector2(850f, 180f);
 
                     var img = dialoguePanel.GetComponent<Image>();
@@ -626,7 +671,7 @@ namespace FeaturesStoryline.UI
                     btnRT.anchorMax = new Vector2(1f, 0f);
                     btnRT.pivot = new Vector2(1f, 0f);
                     btnRT.anchoredPosition = new Vector2(-20f, 20f);
-                    btnRT.sizeDelta = new Vector2(90f, 36f);
+                    btnRT.sizeDelta = new Vector2(140f, 36f);
                     btnGO.GetComponent<Image>().color = new Color(0.2f, 0.45f, 0.3f);
                     dialogueContinueButton = btnGO.GetComponent<Button>();
                     dialogueContinueButton.onClick.AddListener(DismissDialogue);
@@ -634,14 +679,49 @@ namespace FeaturesStoryline.UI
                     var btnTextGO = new GameObject("Text", typeof(RectTransform), typeof(TextMeshProUGUI));
                     btnTextGO.transform.SetParent(btnGO.transform, false);
                     var btxt = btnTextGO.GetComponent<TextMeshProUGUI>();
-                    btxt.text = "Next ▶";
-                    btxt.fontSize = 14;
+                    btxt.text = "Continue [SPACE] >";
+                    btxt.fontSize = 12;
                     btxt.alignment = TextAlignmentOptions.Center;
                     btxt.color = Color.white;
                 }
             }
+
             if (dialoguePanel != null)
             {
+                var rt = dialoguePanel.GetComponent<RectTransform>();
+                if (rt != null) rt.anchoredPosition = new Vector2(0f, 115f);
+
+                if (dialogueSpeakerText == null)
+                    dialogueSpeakerText = dialoguePanel.transform.Find("DialogueSpeaker")?.GetComponent<TextMeshProUGUI>();
+                if (dialogueBodyText == null)
+                    dialogueBodyText = dialoguePanel.transform.Find("DialogueBody")?.GetComponent<TextMeshProUGUI>();
+                if (dialogueContinueButton == null)
+                {
+                    dialogueContinueButton = dialoguePanel.transform.Find("DialogueButton")?.GetComponent<Button>();
+                    if (dialogueContinueButton != null)
+                    {
+                        dialogueContinueButton.onClick.RemoveListener(DismissDialogue);
+                        dialogueContinueButton.onClick.AddListener(DismissDialogue);
+                    }
+                }
+                var btnTxt = dialoguePanel.transform.Find("DialogueButton/Text")?.GetComponent<TextMeshProUGUI>()
+                          ?? dialoguePanel.transform.Find("DialogueButton")?.GetComponentInChildren<TextMeshProUGUI>();
+                if (btnTxt != null)
+                {
+                    btnTxt.text = "Continue [SPACE] >";
+                }
+
+                var panelCanvas = dialoguePanel.GetComponent<Canvas>();
+                if (panelCanvas == null)
+                {
+                    panelCanvas = dialoguePanel.AddComponent<Canvas>();
+                }
+                panelCanvas.overrideSorting = true;
+                panelCanvas.sortingOrder = 500;
+                if (!dialoguePanel.TryGetComponent<GraphicRaycaster>(out _))
+                {
+                    dialoguePanel.AddComponent<GraphicRaycaster>();
+                }
                 dialoguePanel.SetActive(false);
             }
 
@@ -720,6 +800,17 @@ namespace FeaturesStoryline.UI
             }
             if (overlayPanel != null)
             {
+                var panelCanvas = overlayPanel.GetComponent<Canvas>();
+                if (panelCanvas == null)
+                {
+                    panelCanvas = overlayPanel.AddComponent<Canvas>();
+                }
+                panelCanvas.overrideSorting = true;
+                panelCanvas.sortingOrder = 600;
+                if (!overlayPanel.TryGetComponent<GraphicRaycaster>(out _))
+                {
+                    overlayPanel.AddComponent<GraphicRaycaster>();
+                }
                 overlayPanel.SetActive(false);
             }
 

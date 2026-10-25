@@ -30,6 +30,7 @@ namespace FarmBeware.Core.Runtime
         NexaPhytoCorruptionLevel = 18,       // Environmental corruption percentage (0-100)
         DeadCropsCount = 19,                 // Cumulative withered / dead crops
         TheRangerSlayed = 20,                // Final boss defeat state (0 or 1)
+        WashedCount_Taro = 21,               // Cumulative washed taro crops in sink
         MaxCount = 128
     }
 

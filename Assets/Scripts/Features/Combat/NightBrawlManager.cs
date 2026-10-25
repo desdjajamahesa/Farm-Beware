@@ -250,6 +250,7 @@ namespace FeaturesCombat
 
             EnforceNightFoodLimit();
             EnsureHealthBarManagers();
+            EnsureWaveTrackerActive();
 
             isWaveInProgress = true;
             waveEngine.StartNight(currentDay);
@@ -479,11 +480,17 @@ namespace FeaturesCombat
         private IEnumerator RoutineIntermissionCountdown()
         {
             float countdown = waveIntermissionDelay;
+            int lastUpdatedSecond = -1;
             while (countdown > 0f)
             {
-                if (CombatPhaseTrackerUI.Instance != null)
+                int currentSecond = Mathf.CeilToInt(countdown);
+                if (currentSecond != lastUpdatedSecond)
                 {
-                    CombatPhaseTrackerUI.Instance.SetIntermissionCountdown(Mathf.CeilToInt(countdown), currentWave + 1, totalWaves);
+                    lastUpdatedSecond = currentSecond;
+                    if (CombatPhaseTrackerUI.Instance != null)
+                    {
+                        CombatPhaseTrackerUI.Instance.SetIntermissionCountdown(currentSecond, currentWave + 1, totalWaves);
+                    }
                 }
 
                 // Check for instant skip input ([Enter] or [N]) every frame - non-conflicting with movement, attack, or jump
@@ -929,6 +936,19 @@ namespace FeaturesCombat
             else if (FeaturesCombat.UI.BossHealthBarManager.Instance.transform.parent != targetCanvas.transform)
             {
                 FeaturesCombat.UI.BossHealthBarManager.Instance.transform.SetParent(targetCanvas.transform, false);
+            }
+        }
+
+        private void EnsureWaveTrackerActive()
+        {
+            var targetCanvas = FarmBeware.Core.Runtime.CanvasHelper.ResolveMainUICanvas();
+            if (targetCanvas != null)
+            {
+                var tracker = targetCanvas.transform.Find("HUD_NightBrawlWaveTracker");
+                if (tracker != null && !tracker.gameObject.activeSelf)
+                {
+                    tracker.gameObject.SetActive(true);
+                }
             }
         }
 

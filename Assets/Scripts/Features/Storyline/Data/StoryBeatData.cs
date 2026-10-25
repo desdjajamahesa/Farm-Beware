@@ -163,7 +163,11 @@ namespace FeaturesStoryline.Data
             NarrativeFactMutation[] mutations = null,
             RepeatPolicy repeatPolicy = RepeatPolicy.MatchOnce,
             int saliencePriority = 1,
-            UnityEngine.Playables.PlayableAsset timeline = null)
+            UnityEngine.Playables.PlayableAsset timeline = null,
+            string speaker = null,
+            bool shake = false,
+            float shakeIntensity = 0.3f,
+            float shakeDuration = 0.5f)
         {
             var beat = CreateInstance<StoryBeatData>();
             beat.beatId = id;
@@ -173,6 +177,10 @@ namespace FeaturesStoryline.Data
             beat.title = title;
             beat.narrativeText = text;
             beat.hudBannerText = text;
+            beat.speakerName = speaker;
+            beat.triggersScreenShake = shake;
+            beat.screenShakeIntensity = shakeIntensity;
+            beat.screenShakeDuration = shakeDuration;
             beat.triggerDay = day;
             beat.triggerWave = wave;
             beat.triggerBossType = bossType;

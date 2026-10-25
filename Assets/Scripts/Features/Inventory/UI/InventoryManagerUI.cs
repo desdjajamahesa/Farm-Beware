@@ -283,16 +283,9 @@ public class InventoryManagerUI : MonoBehaviour, IModalWindow
         // TAB / I key closes player inventory if open
         if (Keyboard.current != null && (Keyboard.current.tabKey.wasPressedThisFrame || Keyboard.current.iKey.wasPressedThisFrame))
         {
-            if (Time.frameCount != frameInventoryOpened && (isPlayerOpen || IsAnyInventoryUIRelatedOpen()))
+            if (Time.frameCount != frameInventoryOpened && Time.frameCount != UIModalHelper.LastFrameUIPanelClosed && (isPlayerOpen || IsAnyInventoryUIRelatedOpen()))
             {
-                if (currentStorageInventory != null || isTrophyCabinetMode)
-                {
-                    CloseAllUI();
-                }
-                else
-                {
-                    TogglePlayerInventory();
-                }
+                CloseAllUI();
             }
         }
     }
@@ -367,6 +360,7 @@ public class InventoryManagerUI : MonoBehaviour, IModalWindow
         else
         {
             ModalStackManager.Instance?.PopSpecific(this);
+            UIModalHelper.LastFrameUIPanelClosed = Time.frameCount;
         }
 
         if (playerPanel != null)
@@ -688,6 +682,7 @@ if (customPanel != null)
     {
         isPlayerOpen = false;
         ModalStackManager.Instance?.PopSpecific(this);
+        UIModalHelper.LastFrameUIPanelClosed = Time.frameCount;
 
         // Close all panels
         if (playerPanel != null) playerPanel.SetActive(false);

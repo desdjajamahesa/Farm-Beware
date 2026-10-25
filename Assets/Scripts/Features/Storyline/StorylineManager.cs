@@ -33,6 +33,11 @@ namespace FeaturesStoryline
         [SerializeField] private bool overrideDay5Atmosphere = true;
         [SerializeField] private Color day5AmbientColor = new Color(0.65f, 0.25f, 0.25f);
 
+        private Color _baselineAmbientLight;
+        private float _baselineFogDensity;
+        private bool _baselineAtmosphereCached = false;
+        private bool _isAtmosphereOverridden = false;
+
         private readonly StorylineEngine _engine = new StorylineEngine();
         private INarrativeFactBoard _facts;
         private bool _isInitialized = false;
@@ -57,7 +62,32 @@ namespace FeaturesStoryline
 
         private void Awake()
         {
+            CacheBaselineAtmosphere();
             Initialize();
+        }
+
+        public void CacheBaselineAtmosphere()
+        {
+            if (_baselineAtmosphereCached || _isAtmosphereOverridden)
+            {
+                return;
+            }
+
+            _baselineAmbientLight = RenderSettings.ambientLight;
+            _baselineFogDensity = RenderSettings.fogDensity;
+            _baselineAtmosphereCached = true;
+            Debug.Log($"[StorylineManager] 🌤️ Cached baseline atmosphere: Ambient={_baselineAmbientLight}, Fog={_baselineFogDensity}");
+        }
+
+        public void RestoreAtmosphere()
+        {
+            if (_isAtmosphereOverridden && _baselineAtmosphereCached)
+            {
+                RenderSettings.ambientLight = _baselineAmbientLight;
+                RenderSettings.fogDensity = _baselineFogDensity;
+                _isAtmosphereOverridden = false;
+                Debug.Log("[StorylineManager] 🌤️ Restored baseline atmosphere settings.");
+            }
         }
 
         public void Initialize()
@@ -91,11 +121,14 @@ namespace FeaturesStoryline
 
         private void OnDisable()
         {
+            RestoreAtmosphere();
             UnsubscribeFromGameEvents();
         }
 
         private void OnDestroy()
         {
+            RestoreAtmosphere();
+            UnsubscribeFromGameEvents();
             if (Instance == this)
             {
                 ServiceLocator.Unregister<IStorylineService>();
@@ -112,6 +145,10 @@ namespace FeaturesStoryline
             int currentDay = GetCurrentGameDay();
             _facts?.SetFact(NarrativeFactKey.CurrentDay, currentDay);
             EvaluateTrigger(StoryTriggerType.GameStart, currentDay);
+            if (currentDay >= 1)
+            {
+                EvaluateTrigger(StoryTriggerType.Dawn, currentDay);
+            }
         }
 
         private void InitializeContent()
@@ -159,6 +196,8 @@ namespace FeaturesStoryline
 
         private void SubscribeToGameEvents()
         {
+            UnsubscribeFromGameEvents();
+
             // 1. Time Progression
             if (DayNightTimeManager.Instance != null)
             {
@@ -262,9 +301,10 @@ namespace FeaturesStoryline
             SetChapter(newDay);
             ApplyAtmosphericEffects(newDay);
 
-            if (newDay == 1)
+            if (newDay >= 1)
             {
-                EvaluateTrigger(StoryTriggerType.GameStart, 1);
+                EvaluateTrigger(StoryTriggerType.GameStart, newDay);
+                EvaluateTrigger(StoryTriggerType.Dawn, newDay);
             }
         }
 
@@ -278,6 +318,10 @@ namespace FeaturesStoryline
         private void HandleCropWashed(string cropName, int count)
         {
             _facts?.AddFact(NarrativeFactKey.DirtyCropsWashedCount, count);
+            if (!string.IsNullOrEmpty(cropName) && cropName.IndexOf("Taro", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                _facts?.AddFact(NarrativeFactKey.WashedCount_Taro, count);
+            }
             EvaluateTrigger(StoryTriggerType.CropWashedInSink, GetCurrentGameDay());
         }
 
@@ -334,6 +378,10 @@ namespace FeaturesStoryline
             if (_facts != null && _facts.GetFact(NarrativeFactKey.ActiveCombatThreatCount) < 0)
             {
                 _facts.SetFact(NarrativeFactKey.ActiveCombatThreatCount, 0);
+            }
+            if (_facts != null && _facts.GetFact(NarrativeFactKey.ActiveCombatThreatCount) == 0)
+            {
+                FlushPendingModalBeats();
             }
 
             if (enemy.isBoss || FeaturesCombat.Wave.WaveProgressionEngine.IsBossType(enemy.enemyType))
@@ -492,19 +540,20 @@ namespace FeaturesStoryline
             }
 
             // Modal channel: enforce Hard Safety Invariant
+            // Modal beats (DialogueBox, JournalPage, FullScreenOverlay) must ONLY be deferred to _pendingModalBeats
+            // when ActiveCombatThreatCount > 0. Whenever ActiveCombatThreatCount == 0 (including outdoors in the farmland
+            // during the day or immediately after clearing a night wave), modal beats display immediately on screen.
             int threats = _facts != null ? _facts.GetFact(NarrativeFactKey.ActiveCombatThreatCount) : 0;
-            int inHouse = _facts != null ? _facts.GetFact(NarrativeFactKey.PlayerInHouseSafeZone) : 1;
-            int phase = _facts != null ? _facts.GetFact(NarrativeFactKey.CurrentDayPhase) : 1;
 
-            if (threats > 0 || (phase == (int)DayPhase.Night && inHouse == 0))
+            if (threats > 0)
             {
                 _engine.EnqueuePendingModalBeat(beat);
-                Debug.Log($"[StorylineManager] 🛡️ Hard Safety Invariant: Deferred modal beat '{beat.beatId}' to safe zone queue (Threats: {threats}, InHouse: {inHouse}).");
+                Debug.Log($"[StorylineManager] 🛡️ Hard Safety Invariant: Deferred modal beat '{beat.beatId}' to safe zone queue (Threats: {threats}).");
 
                 var ui = StorylineUI.Instance ?? FindFirstObjectByType<StorylineUI>(FindObjectsInactive.Include);
                 if (ui != null)
                 {
-                    ui.ShowBanner("Archival Log Discovered", "New dossier recovered. Read safely in the house.", 3.5f);
+                    ui.ShowBanner("Archival Log Discovered", "New dossier recovered. Read safely after combat.", 3.5f);
                 }
                 return;
             }
@@ -516,10 +565,9 @@ namespace FeaturesStoryline
         public void FlushPendingModalBeats()
         {
             int threats = _facts != null ? _facts.GetFact(NarrativeFactKey.ActiveCombatThreatCount) : 0;
-            int inHouse = _facts != null ? _facts.GetFact(NarrativeFactKey.PlayerInHouseSafeZone) : 1;
 
-            // Cannot flush if still in combat outside house
-            if (threats > 0 && inHouse == 0) return;
+            // Cannot flush if still in combat
+            if (threats > 0) return;
 
             while (_engine.HasPendingModalBeats)
             {
@@ -612,14 +660,26 @@ namespace FeaturesStoryline
             }
         }
 
+        public void ApplyDay5Atmosphere()
+        {
+            ApplyAtmosphericEffects(5);
+        }
+
         private void ApplyAtmosphericEffects(int day)
         {
             if (!overrideDay5Atmosphere) return;
 
+            CacheBaselineAtmosphere();
+
             if (day >= 5)
             {
                 RenderSettings.ambientLight = day5AmbientColor;
+                _isAtmosphereOverridden = true;
                 Debug.Log("[StorylineManager] 🩸 Applied Day 5 Crimson Sky atmosphere.");
+            }
+            else if (_isAtmosphereOverridden)
+            {
+                RestoreAtmosphere();
             }
         }
 

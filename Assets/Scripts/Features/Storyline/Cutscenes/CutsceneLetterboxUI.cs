@@ -86,6 +86,11 @@ namespace FeaturesStoryline.Cutscenes
             EnsureUIHierarchy();
         }
 
+        private void OnEnable()
+        {
+            EnsureUIHierarchy();
+        }
+
         private void OnDestroy()
         {
             if (Instance == this)
@@ -617,8 +622,13 @@ namespace FeaturesStoryline.Cutscenes
             EnsureStoryCardObjects(introObj.transform);
         }
 
-        private void EnsureStoryCardObjects(Transform introTransform)
+        public void EnsureStoryCardObjects(Transform introTransform = null)
         {
+            if (introTransform == null && introStoryRoot != null)
+            {
+                introTransform = introStoryRoot.transform;
+            }
+
             if (storyCardObjects == null || storyCardObjects.Length != 4)
             {
                 storyCardObjects = new GameObject[4];
@@ -626,26 +636,31 @@ namespace FeaturesStoryline.Cutscenes
 
             string[] cardTexts = new string[4]
             {
-                "1989. The NexaPhyto Bio-Agrochemical facility suffered a catastrophic subterranean rupture.",
-                "The surrounding province was declared a dead zone. The land abandoned. The truth buried.",
-                "Decades later, you emptied your life savings to claim the fallow deed...",
-                "Five days to revive the soil. Five nights to survive what wakes beneath."
+                "Ten years in the army was enough. At thirty, I just wanted a quiet life.",
+                "I used all my savings to buy a cheap piece of land far away from the city.",
+                "For a while, everything went fine. I cleared the weeds and built a few small farm plots.",
+                "Life was peaceful... until the day I started digging in an untouched part of the field."
             };
 
             for (int i = 0; i < 4; i++)
             {
                 string cardName = $"IntroStoryCard_{i + 1}";
-                var existingCard = introTransform.Find(cardName);
+                Transform existingCard = introTransform != null ? introTransform.Find(cardName) : null;
+                if (existingCard == null && storyCardObjects[i] != null)
+                {
+                    existingCard = storyCardObjects[i].transform;
+                }
+
                 if (existingCard != null)
                 {
                     storyCardObjects[i] = existingCard.gameObject;
                     var tmp = existingCard.GetComponent<TextMeshProUGUI>();
-                    if (tmp != null && string.IsNullOrEmpty(tmp.text))
+                    if (tmp != null)
                     {
                         tmp.text = cardTexts[i];
                     }
                 }
-                else
+                else if (introTransform != null)
                 {
                     var newCard = new GameObject(cardName, typeof(RectTransform), typeof(TextMeshProUGUI));
                     newCard.transform.SetParent(introTransform, false);

@@ -38,8 +38,9 @@ public class RefrigeratorInteractable : MonoBehaviour, IInteractable
 
     private void ApplyRestriction(InventoryComponent inventory)
     {
-        // Backend: pastikan InventoryComponent milik kulkas membatasi kategori.
+        // Backend: pastikan InventoryComponent milik kulkas membatasi kategori untuk menyimpan semua tanaman & makanan.
         inventory?.SetAllowedFoodCategories(allowedCategories);
+        inventory?.SetAllowAllCropsAndFood(true);
     }
 
     public void Interact(GameObject interactor)

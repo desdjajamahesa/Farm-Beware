@@ -179,9 +179,9 @@ namespace FeaturesStoryline.UI
         {
             if (_unlockedEntries.Count == 0)
             {
-                if (pageTitleText != null) pageTitleText.text = "No Entries Unlocked";
+                if (pageTitleText != null) pageTitleText.text = "No Story Documents Unlocked";
                 if (pageAuthorText != null) pageAuthorText.text = string.Empty;
-                if (pageBodyText != null) pageBodyText.text = "Explore the farm, plant crops, and survive the night to discover Grandfather's lost journal entries.";
+                if (pageBodyText != null) pageBodyText.text = "Explore the farm, clear new plots, and survive the mutant attacks to recover declassified factory dossiers and field logs.";
                 if (pageNumberText != null) pageNumberText.text = "0 / 0";
                 if (prevPageButton != null) prevPageButton.interactable = false;
                 if (nextPageButton != null) nextPageButton.interactable = false;
@@ -231,7 +231,7 @@ namespace FeaturesStoryline.UI
             }
         }
 
-        private void EnsureUIHierarchy()
+        public void EnsureUIHierarchy()
         {
             if (targetCanvas == null)
             {
@@ -272,7 +272,7 @@ namespace FeaturesStoryline.UI
                     hRT.anchoredPosition = new Vector2(0f, -20f);
                     hRT.sizeDelta = new Vector2(800f, 40f);
                     var hTxt = headerGO.GetComponent<TextMeshProUGUI>();
-                    hTxt.text = "📖 VERDANT HOLLOW ARCHIVES";
+                    hTxt.text = "DOSSIERS & STORY DOCUMENTS [J]";
                     hTxt.fontSize = 22;
                     hTxt.fontStyle = FontStyles.Bold;
                     hTxt.color = new Color(0.95f, 0.8f, 0.4f);
@@ -344,7 +344,7 @@ namespace FeaturesStoryline.UI
                     var pTxtGO = new GameObject("Text", typeof(RectTransform), typeof(TextMeshProUGUI));
                     pTxtGO.transform.SetParent(prevGO.transform, false);
                     var pt = pTxtGO.GetComponent<TextMeshProUGUI>();
-                    pt.text = "◀ Previous";
+                    pt.text = "< Previous";
                     pt.fontSize = 14;
                     pt.alignment = TextAlignmentOptions.Center;
 
@@ -362,7 +362,7 @@ namespace FeaturesStoryline.UI
                     var nTxtGO = new GameObject("Text", typeof(RectTransform), typeof(TextMeshProUGUI));
                     nTxtGO.transform.SetParent(nextGO.transform, false);
                     var nt = nTxtGO.GetComponent<TextMeshProUGUI>();
-                    nt.text = "Next ▶";
+                    nt.text = "Next >";
                     nt.fontSize = 14;
                     nt.alignment = TextAlignmentOptions.Center;
 
@@ -386,6 +386,61 @@ namespace FeaturesStoryline.UI
                     ct.alignment = TextAlignmentOptions.Center;
 
                     journalRoot.SetActive(false);
+                }
+            }
+
+            if (journalRoot != null)
+            {
+                if (pageTitleText == null) pageTitleText = journalRoot.transform.Find("PageTitle")?.GetComponent<TextMeshProUGUI>();
+                if (pageAuthorText == null) pageAuthorText = journalRoot.transform.Find("PageAuthor")?.GetComponent<TextMeshProUGUI>();
+                if (pageBodyText == null) pageBodyText = journalRoot.transform.Find("PageBody")?.GetComponent<TextMeshProUGUI>();
+                if (pageNumberText == null) pageNumberText = journalRoot.transform.Find("PageNumber")?.GetComponent<TextMeshProUGUI>();
+                if (prevPageButton == null)
+                {
+                    prevPageButton = journalRoot.transform.Find("PrevButton")?.GetComponent<Button>();
+                    if (prevPageButton != null)
+                    {
+                        prevPageButton.onClick.RemoveListener(PrevPage);
+                        prevPageButton.onClick.AddListener(PrevPage);
+                    }
+                }
+                if (nextPageButton == null)
+                {
+                    nextPageButton = journalRoot.transform.Find("NextButton")?.GetComponent<Button>();
+                    if (nextPageButton != null)
+                    {
+                        nextPageButton.onClick.RemoveListener(NextPage);
+                        nextPageButton.onClick.AddListener(NextPage);
+                    }
+                }
+                if (closeButton == null)
+                {
+                    closeButton = journalRoot.transform.Find("CloseButton")?.GetComponent<Button>();
+                    if (closeButton != null)
+                    {
+                        closeButton.onClick.RemoveListener(CloseJournal);
+                        closeButton.onClick.AddListener(CloseJournal);
+                    }
+                }
+
+                var rootCanvas = journalRoot.GetComponent<Canvas>();
+                if (rootCanvas == null) rootCanvas = journalRoot.AddComponent<Canvas>();
+                rootCanvas.overrideSorting = true;
+                rootCanvas.sortingOrder = 700;
+                if (!journalRoot.TryGetComponent<GraphicRaycaster>(out _))
+                {
+                    journalRoot.AddComponent<GraphicRaycaster>();
+                }
+            }
+
+            // Clean up any stray HUD_DocsButton if present
+            if (targetCanvas != null)
+            {
+                var existingBtn = targetCanvas.transform.Find("HUD_DocsButton");
+                if (existingBtn != null)
+                {
+                    if (Application.isPlaying) Destroy(existingBtn.gameObject);
+                    else DestroyImmediate(existingBtn.gameObject);
                 }
             }
         }

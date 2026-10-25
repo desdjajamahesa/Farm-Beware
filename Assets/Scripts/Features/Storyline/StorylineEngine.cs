@@ -43,6 +43,20 @@ namespace FeaturesStoryline
         public event Action<int> OnChapterChanged;
         public event Action OnStoryCompleted;
 
+        public static string NormalizeJournalId(string entryId)
+        {
+            if (string.IsNullOrEmpty(entryId)) return entryId;
+            return entryId switch
+            {
+                "LOG_NEXAPHYTO_01" => "JOURNAL_01_WAIVER",
+                "LOG_NEXAPHYTO_02" => "JOURNAL_02_REAGENT7",
+                "LOG_NEXAPHYTO_03" => "JOURNAL_03_INCIDENT042",
+                "LOG_NEXAPHYTO_04" => "JOURNAL_04_APEX_BIO",
+                "LOG_NEXAPHYTO_05" => "JOURNAL_05_FAILSAFE",
+                _ => entryId
+            };
+        }
+
         public bool HasTriggered(string beatId)
         {
             if (string.IsNullOrEmpty(beatId)) return false;
@@ -52,7 +66,7 @@ namespace FeaturesStoryline
         public bool HasJournalEntry(string entryId)
         {
             if (string.IsNullOrEmpty(entryId)) return false;
-            return _unlockedJournals.Contains(entryId);
+            return _unlockedJournals.Contains(NormalizeJournalId(entryId));
         }
 
         /// <summary>
@@ -248,10 +262,11 @@ namespace FeaturesStoryline
         public bool UnlockJournal(string entryId)
         {
             if (string.IsNullOrEmpty(entryId)) return false;
-            if (_unlockedJournals.Contains(entryId)) return false;
+            string canonicalId = NormalizeJournalId(entryId);
+            if (_unlockedJournals.Contains(canonicalId)) return false;
 
-            _unlockedJournals.Add(entryId);
-            OnJournalUnlocked?.Invoke(entryId);
+            _unlockedJournals.Add(canonicalId);
+            OnJournalUnlocked?.Invoke(canonicalId);
             return true;
         }
 
@@ -351,7 +366,11 @@ namespace FeaturesStoryline
             {
                 for (int i = 0; i < payload.unlockedJournals.Count; i++)
                 {
-                    _unlockedJournals.Add(payload.unlockedJournals[i]);
+                    string canonicalId = NormalizeJournalId(payload.unlockedJournals[i]);
+                    if (!string.IsNullOrEmpty(canonicalId))
+                    {
+                        _unlockedJournals.Add(canonicalId);
+                    }
                 }
             }
 

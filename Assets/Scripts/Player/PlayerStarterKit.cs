@@ -34,20 +34,59 @@ namespace Player
             }
         }
 
+        private void OnEnable()
+        {
+            SubscribeTimeEvents();
+        }
+
         private void Start()
         {
-            if (ServiceLocator.TryResolve<ITimeService>(out var timeService) && timeService != null)
-            {
-                timeService.OnDayChanged += HandleDayChanged;
-            }
+            SubscribeTimeEvents();
             EnsureStarterKit();
+        }
+
+        private void OnDisable()
+        {
+            UnsubscribeTimeEvents();
         }
 
         private void OnDestroy()
         {
+            UnsubscribeTimeEvents();
+        }
+
+        private void SubscribeTimeEvents()
+        {
             if (ServiceLocator.TryResolve<ITimeService>(out var timeService) && timeService != null)
             {
                 timeService.OnDayChanged -= HandleDayChanged;
+                timeService.OnDayChanged += HandleDayChanged;
+            }
+            if (FeaturesTime.DayNightTimeManager.Instance != null)
+            {
+                FeaturesTime.DayNightTimeManager.Instance.OnDayChanged -= HandleDayChanged;
+                FeaturesTime.DayNightTimeManager.Instance.OnDayChanged += HandleDayChanged;
+            }
+            if (TimeManager.Instance != null)
+            {
+                TimeManager.Instance.OnDayChanged -= HandleDayChanged;
+                TimeManager.Instance.OnDayChanged += HandleDayChanged;
+            }
+        }
+
+        private void UnsubscribeTimeEvents()
+        {
+            if (ServiceLocator.TryResolve<ITimeService>(out var timeService) && timeService != null)
+            {
+                timeService.OnDayChanged -= HandleDayChanged;
+            }
+            if (FeaturesTime.DayNightTimeManager.Instance != null)
+            {
+                FeaturesTime.DayNightTimeManager.Instance.OnDayChanged -= HandleDayChanged;
+            }
+            if (TimeManager.Instance != null)
+            {
+                TimeManager.Instance.OnDayChanged -= HandleDayChanged;
             }
         }
 
@@ -55,20 +94,12 @@ namespace Player
         {
             if (newDay >= 1)
             {
-                EnsureStarterKit();
+                EnsureStarterKit(newDay);
             }
         }
 
         public void EnsureStarterKit()
         {
-            var inv = GetComponent<InventoryComponent>();
-            if (inv == null) return;
-
-            ResolveItemReferences();
-
-            if (inv.maxCapacity < 16) inv.maxCapacity = 16;
-            inv.EnsureSlotsAllocated();
-
             int currentDay = 0;
             if (ServiceLocator.TryResolve<ITimeService>(out var timeService) && timeService != null)
             {
@@ -83,6 +114,19 @@ namespace Player
                 currentDay = TimeManager.Instance.currentDay;
             }
 
+            EnsureStarterKit(currentDay);
+        }
+
+        public void EnsureStarterKit(int currentDay)
+        {
+            var inv = GetComponent<InventoryComponent>();
+            if (inv == null) return;
+
+            ResolveItemReferences();
+
+            if (inv.maxCapacity < 16) inv.maxCapacity = 16;
+            inv.EnsureSlotsAllocated();
+
             // On Day 0: Player arrives with completely empty pockets per narrative design.
             if (currentDay == 0)
             {
@@ -92,6 +136,13 @@ namespace Player
                     {
                         inv.slots[i] = new InventorySlot();
                     }
+                }
+                inv.selectedHotbarIndex = 0;
+                var equip = GetComponent<PlayerEquipment>();
+                if (equip != null)
+                {
+                    equip.DestroyCurrentWeapon();
+                    equip.UpdateEquipmentVisual(0);
                 }
                 inv.OnInventoryChanged?.Invoke();
                 return;
@@ -143,6 +194,14 @@ namespace Player
             if (PlayerWaterBottle.Instance != null && PlayerWaterBottle.Instance.CurrentWater <= 0f)
             {
                 PlayerWaterBottle.Instance.RefillWater(-1f);
+            }
+
+            // 3. Ensure selected hotbar is slot 0 (Hoe) and update visual representation
+            inv.selectedHotbarIndex = 0;
+            var playerEquip = GetComponent<PlayerEquipment>();
+            if (playerEquip != null)
+            {
+                playerEquip.UpdateEquipmentVisual(0);
             }
 
             inv.OnInventoryChanged?.Invoke();

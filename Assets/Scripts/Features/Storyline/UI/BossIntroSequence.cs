@@ -3,6 +3,7 @@ using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
+using FarmBeware.Core.Runtime;
 
 namespace FeaturesStoryline.UI
 {
@@ -41,6 +42,8 @@ namespace FeaturesStoryline.UI
         [SerializeField] private CanvasGroup bossCardCanvasGroup;
 
         private Coroutine _activeIntroRoutine;
+        private Transform _cameraFocusPivot;
+        private Transform _previousCameraTarget;
 
         private void Awake()
         {
@@ -52,14 +55,72 @@ namespace FeaturesStoryline.UI
             Instance = this;
 
             EnsureUIHierarchy();
+            EnsureFocusPivot();
+        }
+
+        private void OnDisable()
+        {
+            if (_activeIntroRoutine != null)
+            {
+                StopCoroutine(_activeIntroRoutine);
+                _activeIntroRoutine = null;
+            }
+            if (bossCardPanel != null) bossCardPanel.SetActive(false);
+            RestoreCameraTarget();
         }
 
         private void OnDestroy()
         {
+            RestoreCameraTarget();
             if (Instance == this)
             {
                 Instance = null;
             }
+        }
+
+        private Transform EnsureFocusPivot()
+        {
+            if (_cameraFocusPivot == null)
+            {
+                var existing = transform.Find("_BossCameraFocusPivot");
+                if (existing != null)
+                {
+                    _cameraFocusPivot = existing;
+                }
+                else
+                {
+                    var pivotGo = new GameObject("_BossCameraFocusPivot");
+                    pivotGo.transform.SetParent(transform, false);
+                    _cameraFocusPivot = pivotGo.transform;
+                }
+            }
+            return _cameraFocusPivot;
+        }
+
+        public void RestoreCameraTarget()
+        {
+            var isoCam = FeaturesCamera.IsometricCameraController.Instance;
+            if (isoCam != null && _cameraFocusPivot != null && isoCam.target == _cameraFocusPivot)
+            {
+                if (_previousCameraTarget != null)
+                {
+                    isoCam.target = _previousCameraTarget;
+                }
+                else
+                {
+                    var player = ServiceLocator.Resolve<IPlayerContext>();
+                    if (player != null && player.Transform != null)
+                    {
+                        isoCam.target = player.Transform;
+                    }
+                    else
+                    {
+                        var playerGo = GameObject.FindWithTag("Player") ?? GameObject.Find("Player");
+                        if (playerGo != null) isoCam.target = playerGo.transform;
+                    }
+                }
+            }
+            _previousCameraTarget = null;
         }
 
         public void PlayBossIntro(string bossTitle, string subtitle, string loreText, Vector3? focusWorldPosition = null, float duration = 3.5f, Action onComplete = null)
@@ -71,63 +132,56 @@ namespace FeaturesStoryline.UI
 
         private IEnumerator RoutineBossIntro(string title, string subtitle, string lore, Vector3? focusPos, float duration, Action onComplete)
         {
-            Transform prevCamTarget = null;
-            GameObject tempCamTarget = null;
             var isoCam = FeaturesCamera.IsometricCameraController.Instance;
             if (focusPos.HasValue && isoCam != null)
             {
-                prevCamTarget = isoCam.target;
-                tempCamTarget = new GameObject("BossCamFocusTarget");
-                tempCamTarget.transform.position = focusPos.Value;
-                isoCam.target = tempCamTarget.transform;
+                _previousCameraTarget = isoCam.target;
+                var pivot = EnsureFocusPivot();
+                pivot.position = focusPos.Value;
+                isoCam.target = pivot;
             }
 
-            if (bossTitleText != null) bossTitleText.text = title;
-            if (bossSubtitleText != null) bossSubtitleText.text = subtitle;
-            if (bossLoreText != null) bossLoreText.text = lore;
-
-            if (bossCardPanel != null)
+            try
             {
-                bossCardPanel.SetActive(true);
-                if (bossCardCanvasGroup != null) bossCardCanvasGroup.alpha = 0f;
-            }
+                if (bossTitleText != null) bossTitleText.text = title;
+                if (bossSubtitleText != null) bossSubtitleText.text = subtitle;
+                if (bossLoreText != null) bossLoreText.text = lore;
 
-            // Fade in card
-            float t = 0f;
-            while (t < 0.4f)
-            {
-                t += Time.unscaledDeltaTime;
-                if (bossCardCanvasGroup != null) bossCardCanvasGroup.alpha = Mathf.Clamp01(t / 0.4f);
-                yield return null;
-            }
-            if (bossCardCanvasGroup != null) bossCardCanvasGroup.alpha = 1f;
-
-            // Wait for display duration
-            yield return new WaitForSecondsRealtime(duration);
-
-            // Fade out
-            t = 0f;
-            while (t < 0.4f)
-            {
-                t += Time.unscaledDeltaTime;
-                if (bossCardCanvasGroup != null) bossCardCanvasGroup.alpha = 1f - Mathf.Clamp01(t / 0.4f);
-                yield return null;
-            }
-
-            if (bossCardPanel != null) bossCardPanel.SetActive(false);
-
-            if (tempCamTarget != null)
-            {
-                if (isoCam != null && prevCamTarget != null)
+                if (bossCardPanel != null)
                 {
-                    isoCam.target = prevCamTarget;
+                    bossCardPanel.SetActive(true);
+                    if (bossCardCanvasGroup != null) bossCardCanvasGroup.alpha = 0f;
                 }
-                Destroy(tempCamTarget);
+
+                // Fade in card
+                float t = 0f;
+                while (t < 0.4f)
+                {
+                    t += Time.unscaledDeltaTime;
+                    if (bossCardCanvasGroup != null) bossCardCanvasGroup.alpha = Mathf.Clamp01(t / 0.4f);
+                    yield return null;
+                }
+                if (bossCardCanvasGroup != null) bossCardCanvasGroup.alpha = 1f;
+
+                // Wait for display duration
+                yield return new WaitForSecondsRealtime(duration);
+
+                // Fade out
+                t = 0f;
+                while (t < 0.4f)
+                {
+                    t += Time.unscaledDeltaTime;
+                    if (bossCardCanvasGroup != null) bossCardCanvasGroup.alpha = 1f - Mathf.Clamp01(t / 0.4f);
+                    yield return null;
+                }
             }
-
-            _activeIntroRoutine = null;
-
-            onComplete?.Invoke();
+            finally
+            {
+                if (bossCardPanel != null) bossCardPanel.SetActive(false);
+                RestoreCameraTarget();
+                _activeIntroRoutine = null;
+                onComplete?.Invoke();
+            }
         }
 
         private void EnsureUIHierarchy()

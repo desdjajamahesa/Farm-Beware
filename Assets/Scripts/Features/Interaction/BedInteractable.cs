@@ -94,16 +94,16 @@ namespace FeaturesInteraction
             if (timeService.CurrentPhase != DayPhase.Night)
             {
                 var farmingService = ServiceLocator.Resolve<IFarmingService>();
-                if (farmingService != null && farmingService.HasCropsAboutToRipen(180f, out string cropWarning))
+                string cropWarning = null;
+                if (farmingService != null)
                 {
-                    BedSleepConfirmationUI.Show(cropWarning, () =>
-                    {
-                        ExecuteDaytimeSleep(timeService, interactor);
-                    });
-                    return;
+                    farmingService.HasCropsAboutToRipen(180f, out cropWarning);
                 }
 
-                ExecuteDaytimeSleep(timeService, interactor);
+                BedSleepConfirmationUI.Show(cropWarning, () =>
+                {
+                    StartCoroutine(RoutineDaytimeSleep(timeService, interactor));
+                });
                 return;
             }
 
@@ -152,7 +152,7 @@ namespace FeaturesInteraction
                     {
                         floatingText.SpawnText(
                             transform.position + Vector3.up * 1.2f,
-                            $"☀️ Day {timeService.CurrentDay} begins!",
+                            $"Day {timeService.CurrentDay} begins!",
                             new Color(1f, 0.9f, 0.3f));
                     }
                     if (pc != null)
@@ -171,11 +171,19 @@ namespace FeaturesInteraction
 
         private void ExecuteDay0Sleep(ITimeService timeService, GameObject interactor)
         {
-            var pc = interactor != null ? interactor.GetComponent<IPlayerContext>() : ServiceLocator.Resolve<IPlayerContext>();
-            if (pc != null)
+            if (!Application.isPlaying)
             {
-                pc.AddInputLock("BedSleep");
+                ExecuteDay0SleepInstant(timeService, interactor);
+                return;
             }
+
+            StartCoroutine(RoutineDay0Sleep(timeService, interactor));
+        }
+
+        private void ExecuteDay0SleepInstant(ITimeService timeService, GameObject interactor)
+        {
+            var pc = interactor != null ? interactor.GetComponent<IPlayerContext>() : ServiceLocator.Resolve<IPlayerContext>();
+            if (pc != null) pc.AddInputLock("BedSleep");
 
             OnBedSleepExecuted?.Invoke();
 
@@ -187,29 +195,69 @@ namespace FeaturesInteraction
 
             timeService.AdvanceToNextDay();
 
-            // Guarantee starter items populated upon waking on Day 1
-            if (interactor != null)
+            var playerObj = interactor != null ? interactor : GameObject.FindWithTag("Player");
+            if (playerObj != null)
             {
-                interactor.SendMessage("EnsureStarterKit", SendMessageOptions.DontRequireReceiver);
+                playerObj.SendMessage("EnsureStarterKit", 1, SendMessageOptions.DontRequireReceiver);
+                playerObj.SendMessage("EnsureStarterKit", SendMessageOptions.DontRequireReceiver);
+            }
+
+            if (pc != null) pc.RemoveInputLock("BedSleep");
+            UpdateLabel();
+        }
+
+        private System.Collections.IEnumerator RoutineDay0Sleep(ITimeService timeService, GameObject interactor)
+        {
+            var pc = interactor != null ? interactor.GetComponent<IPlayerContext>() : ServiceLocator.Resolve<IPlayerContext>();
+            if (pc != null)
+            {
+                pc.AddInputLock("BedSleep");
+                pc.StopMovement();
+            }
+
+            OnBedSleepExecuted?.Invoke();
+
+            // 1. Smooth Fade Out to solid black screen
+            var fadeService = ServiceLocator.Resolve<IFadeService>();
+            float fadeDuration = 0.5f;
+            if (fadeService != null)
+            {
+                fadeService.FadeIn(fadeDuration);
+                yield return new WaitForSecondsRealtime(fadeDuration + 0.05f);
             }
             else
             {
-                var playerObj = GameObject.FindWithTag("Player");
-                if (playerObj != null)
-                {
-                    playerObj.SendMessage("EnsureStarterKit", SendMessageOptions.DontRequireReceiver);
-                }
+                yield return null;
             }
 
-            var floatingText = ServiceLocator.Resolve<IFloatingTextService>();
-            if (floatingText != null && interactor != null)
+            // 2. Perform day advance and health/buff updates behind the black curtain
+            if (interactor != null)
             {
-                floatingText.SpawnText(
-                    transform.position + Vector3.up * 1.2f,
-                    "☀️ Day 1 begins! Tend to the homestead.",
-                    new Color(1f, 0.9f, 0.3f));
+                interactor.SendMessage("ClearAllBuffs", SendMessageOptions.DontRequireReceiver);
+                interactor.SendMessage("Heal", sleepHealAmount, SendMessageOptions.DontRequireReceiver);
             }
 
+            timeService.AdvanceToNextDay();
+
+            // 3. Guarantee Starter Kit on Day 1
+            var targetPlayer = interactor != null ? interactor : GameObject.FindWithTag("Player");
+            if (targetPlayer != null)
+            {
+                targetPlayer.SendMessage("EnsureStarterKit", 1, SendMessageOptions.DontRequireReceiver);
+                targetPlayer.SendMessage("EnsureStarterKit", SendMessageOptions.DontRequireReceiver);
+            }
+
+            // Small pause behind black screen allowing atmosphere and shadow maps to settle
+            yield return new WaitForSecondsRealtime(0.25f);
+
+            // 5. Smooth Fade In from black to reveal the sunlit homestead
+            if (fadeService != null)
+            {
+                fadeService.FadeOut(fadeDuration);
+                yield return new WaitForSecondsRealtime(fadeDuration + 0.05f);
+            }
+
+            // 6. Release input lock and update bed interaction label
             if (pc != null)
             {
                 pc.RemoveInputLock("BedSleep");
@@ -218,17 +266,49 @@ namespace FeaturesInteraction
             UpdateLabel();
         }
 
-        private void ExecuteDaytimeSleep(ITimeService timeService, GameObject interactor)
+        private System.Collections.IEnumerator RoutineDaytimeSleep(ITimeService timeService, GameObject interactor)
         {
             var pc = interactor != null ? interactor.GetComponent<IPlayerContext>() : ServiceLocator.Resolve<IPlayerContext>();
             if (pc != null)
             {
                 pc.AddInputLock("BedSleep");
+                pc.StopMovement();
             }
 
             OnBedSleepExecuted?.Invoke();
+
+            // 1. Smooth Fade Out to solid black screen
+            var fadeService = ServiceLocator.Resolve<IFadeService>();
+            float fadeDuration = 0.5f;
+            if (fadeService != null)
+            {
+                fadeService.FadeIn(fadeDuration);
+                yield return new WaitForSecondsRealtime(fadeDuration + 0.05f);
+            }
+            else
+            {
+                yield return null;
+            }
+
+            // 2. Clear buffs and transition to Night phase behind the black screen
+            if (interactor != null)
+            {
+                interactor.SendMessage("ClearAllBuffs", SendMessageOptions.DontRequireReceiver);
+            }
+
             timeService.StartNightPhase();
 
+            // Small pause behind black screen allowing lighting and atmosphere to settle
+            yield return new WaitForSecondsRealtime(0.25f);
+
+            // 3. Smooth Fade In from black to night
+            if (fadeService != null)
+            {
+                fadeService.FadeOut(fadeDuration);
+                yield return new WaitForSecondsRealtime(fadeDuration + 0.05f);
+            }
+
+            // 4. Release input lock and update bed interaction label
             if (pc != null)
             {
                 pc.RemoveInputLock("BedSleep");
@@ -239,7 +319,7 @@ namespace FeaturesInteraction
             {
                 floatingText.SpawnText(
                     transform.position + Vector3.up * 1.2f,
-                    "🌙 Nightfall begins! Prepare for battle!",
+                    "Nightfall begins! Prepare for battle!",
                     new Color(1f, 0.45f, 0.45f));
             }
 

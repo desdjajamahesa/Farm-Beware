@@ -212,8 +212,8 @@ namespace FeaturesTime
         {
             if (TimeManager.Instance != null)
                 TimeManager.Instance.StartNightPhase();
-            else
-                SetTime(nightStartHour);
+
+            SetTime(nightStartHour);
         }
 
         void FarmBeware.Core.Runtime.ITimeService.AdvanceToNextDay()
@@ -486,7 +486,7 @@ namespace FeaturesTime
             {
                 floatingText.SpawnText(
                     player.Transform.position + Vector3.up * 1.5f,
-                    "🔔 Dusk Bell: 3 minutes until nightfall! Prepare for battle!",
+                    "[Dusk Bell] 3 minutes until nightfall! Prepare for battle!",
                     new Color(1f, 0.70f, 0.25f));
             }
 
@@ -508,7 +508,7 @@ namespace FeaturesTime
             {
                 floatingText.SpawnText(
                     player.Transform.position + Vector3.up * 1.5f,
-                    "🌙 18:00 — Darkness falls! Night Brawl begins!",
+                    "18:00 — Darkness falls! Night Brawl begins!",
                     new Color(1f, 0.45f, 0.45f));
             }
 
@@ -760,7 +760,8 @@ namespace FeaturesTime
 
         public void SetGameplayHUDState(bool visible)
         {
-            var canvas = GameObject.Find("UI_Canvas");
+            var mainCanvas = FarmBeware.Core.Runtime.CanvasHelper.ResolveMainUICanvas();
+            var canvas = mainCanvas != null ? mainCanvas.gameObject : GameObject.Find("UI_Canvas");
             if (canvas == null) return;
 
             string[] hudPanelNames = {
@@ -769,7 +770,8 @@ namespace FeaturesTime
                 "HUD_CombatPhaseTracker",
                 "HUD_BuffBar",
                 "HUD_PlayerStatsPanel",
-                "HUD_EnemyIndicators"
+                "HUD_EnemyIndicators",
+                "HUD_NightBrawlWaveTracker"
             };
 
             foreach (var name in hudPanelNames)
