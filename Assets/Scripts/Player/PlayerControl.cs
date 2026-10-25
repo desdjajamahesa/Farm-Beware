@@ -1047,11 +1047,61 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
         {
             timer += Time.deltaTime;
 
-            // Jika animasi sudah selesai dan bertransisi kembali ke Idle/Moving setelah minimal 0.5 detik
-            if (timer > 0.5f && animator != null)
+            // Jika animasi sudah selesai dan bertransisi kembali ke Idle/Moving setelah minimal 0.25 detik (kecepatan 2x)
+            if (timer > 0.25f && animator != null)
             {
                 var stateInfo = animator.GetCurrentAnimatorStateInfo(0);
                 if (!stateInfo.IsName("PlantSeed") && !animator.GetNextAnimatorStateInfo(0).IsName("PlantSeed"))
+                {
+                    break;
+                }
+            }
+
+            yield return null;
+        }
+
+        isPlanting = false;
+    }
+
+    /// <summary>
+    /// Memanggil animasi menyiram tanaman secara kontekstual (mis. saat menyiram FarmlandTile).
+    /// </summary>
+    public void TriggerWaterAnimation()
+    {
+        if (isPlanting || isAttacking) return;
+        StartCoroutine(RoutineWaterCrop());
+    }
+
+    private IEnumerator RoutineWaterCrop()
+    {
+        isPlanting = true;
+        inputVector = Vector3.zero;
+
+        if (rb != null)
+        {
+            rb.linearVelocity = new Vector3(0f, rb.linearVelocity.y, 0f);
+            rb.angularVelocity = Vector3.zero;
+        }
+
+        if (animator != null)
+        {
+            animator.SetTrigger("Watering");
+            animator.SetFloat("Vel", 0f);
+            animator.SetBool("Idle", true);
+            animator.SetBool("Sprinting", false);
+        }
+
+        yield return null;
+
+        float timer = 0f;
+        while (timer < 0.7f)
+        {
+            timer += Time.deltaTime;
+
+            if (timer > 0.2f && animator != null)
+            {
+                var stateInfo = animator.GetCurrentAnimatorStateInfo(0);
+                if (!stateInfo.IsName("Watering") && !animator.GetNextAnimatorStateInfo(0).IsName("Watering"))
                 {
                     break;
                 }
@@ -1131,7 +1181,11 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
             isGrounded = false;
             isJumping = true;
             groundBufferTimer = 0f;
-            if (animator != null) animator.SetBool("Grounded", false);
+            if (animator != null)
+            {
+                animator.SetBool("Grounded", false);
+                animator.Play("AirBorn", 0, 0f);
+            }
 
             // Reset kecepatan Y agar lompatan konsisten, lalu dorong ke atas
             rb.linearVelocity = new Vector3(rb.linearVelocity.x, 0f, rb.linearVelocity.z);

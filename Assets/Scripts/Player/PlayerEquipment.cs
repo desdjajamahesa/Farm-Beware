@@ -1098,7 +1098,16 @@ public class PlayerEquipment : MonoBehaviour
         spawned.transform.localPosition = Vector3.zero;
         spawned.transform.localRotation = Quaternion.identity;
         currentWeaponModel = spawned;
-        currentWeaponModel.transform.localScale = tool.equipPrefab.transform.localScale;
+
+        // Compensate for bone hierarchy scale (e.g. 100x rig) so visual tool size in world matches equipPrefab
+        Vector3 prefabScale = tool.equipPrefab.transform.localScale;
+        Vector3 parentLossy = handSocket.lossyScale;
+        Vector3 resolvedScale = new Vector3(
+            Mathf.Abs(parentLossy.x) > 0.0001f ? prefabScale.x / parentLossy.x : prefabScale.x,
+            Mathf.Abs(parentLossy.y) > 0.0001f ? prefabScale.y / parentLossy.y : prefabScale.y,
+            Mathf.Abs(parentLossy.z) > 0.0001f ? prefabScale.z / parentLossy.z : prefabScale.z
+        );
+        currentWeaponModel.transform.localScale = resolvedScale;
 
         // Pastikan model senjata yang di-spawn memiliki WeaponHitbox, trigger collider, dan kinematic Rigidbody
         var hitbox = currentWeaponModel.GetComponentInChildren<FeaturesCombat.WeaponHitbox>();
@@ -1132,22 +1141,40 @@ public class PlayerEquipment : MonoBehaviour
 
     private void FindHandSocketIfNeeded()
     {
-        if (handSocket != null) return;
-
-        foreach (var t in GetComponentsInChildren<Transform>(true))
+        if (handSocket == null)
         {
-            if (t.name.Equals("HandSocket", System.StringComparison.OrdinalIgnoreCase))
+            foreach (var t in GetComponentsInChildren<Transform>(true))
             {
-                handSocket = t;
-                return;
+                if (t.name.Equals("HandSocket", System.StringComparison.OrdinalIgnoreCase))
+                {
+                    handSocket = t;
+                    break;
+                }
+            }
+            if (handSocket == null)
+            {
+                foreach (var t in GetComponentsInChildren<Transform>(true))
+                {
+                    if (t.name.Equals("hand_r", System.StringComparison.OrdinalIgnoreCase) ||
+                        t.name.EndsWith("RightHand", System.StringComparison.OrdinalIgnoreCase))
+                    {
+                        handSocket = t;
+                        break;
+                    }
+                }
             }
         }
-        foreach (var t in GetComponentsInChildren<Transform>(true))
+
+        // Auto-normalize if HandSocket position was authored in meters on a 100x bone rig
+        if (handSocket != null && handSocket.parent != null && handSocket.parent.lossyScale.x > 10f)
         {
-            if (t.name.EndsWith("RightHand", System.StringComparison.OrdinalIgnoreCase))
+            if (Mathf.Abs(handSocket.localPosition.y) > 0.01f)
             {
-                handSocket = t;
-                return;
+                handSocket.localPosition = new Vector3(
+                    handSocket.localPosition.x * 0.01f,
+                    handSocket.localPosition.y * 0.01f,
+                    handSocket.localPosition.z * 0.01f
+                );
             }
         }
     }

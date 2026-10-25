@@ -295,8 +295,8 @@ namespace FeaturesFarming
                 playerControl.TriggerPlantAnimation();
             }
 
-            // Sinkronkan pemunculan bibit saat tangan pemain membungkuk ke tanah (~0.5s)
-            yield return new WaitForSeconds(0.5f);
+            // Sinkronkan pemunculan bibit saat tangan pemain membungkuk ke tanah (snappy ~0.25s)
+            yield return new WaitForSeconds(0.25f);
 
             if (inventory != null && seed != null)
             {
@@ -339,6 +339,10 @@ namespace FeaturesFarming
             var waterer = PlantWaterer.Instance;
             if (waterer != null && waterer.ConsumeWater(waterRequired))
             {
+                if (interactor != null && interactor.TryGetComponent<IPlayerContext>(out var playerContext))
+                {
+                    playerContext.TriggerWaterAnimation();
+                }
                 WaterCrop();
                 ServiceLocator.Resolve<IFloatingTextService>()?.SpawnText(
                     transform.position + Vector3.up * 1.2f,
