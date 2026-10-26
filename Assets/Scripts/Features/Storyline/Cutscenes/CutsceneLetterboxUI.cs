@@ -15,14 +15,25 @@ namespace FeaturesStoryline.Cutscenes
     public class CutsceneLetterboxUI : MonoBehaviour
     {
         private static CutsceneLetterboxUI _instance;
+        public static bool HasInstance => _instance != null;
+        private static bool _isQuitting = false;
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetStaticState()
+        {
+            _instance = null;
+            _isQuitting = false;
+        }
+
         public static CutsceneLetterboxUI Instance
         {
             get
             {
+                if (_isQuitting) return null;
                 if (_instance == null)
                 {
                     _instance = FindFirstObjectByType<CutsceneLetterboxUI>(FindObjectsInactive.Include);
-                    if (_instance == null)
+                    if (_instance == null && Application.isPlaying)
                     {
                         var canvasObj = GameObject.Find("UI_Canvas");
                         var go = new GameObject("CutsceneLetterboxUI");
@@ -32,10 +43,6 @@ namespace FeaturesStoryline.Cutscenes
                         }
                         _instance = go.AddComponent<CutsceneLetterboxUI>();
                     }
-                }
-                if (_instance != null && !_instance.gameObject.activeInHierarchy)
-                {
-                    _instance.gameObject.SetActive(true);
                 }
                 return _instance;
             }
@@ -91,11 +98,16 @@ namespace FeaturesStoryline.Cutscenes
             EnsureUIHierarchy();
         }
 
+        private void OnApplicationQuit()
+        {
+            _isQuitting = true;
+        }
+
         private void OnDestroy()
         {
-            if (Instance == this)
+            if (_instance == this)
             {
-                Instance = null;
+                _instance = null;
             }
         }
 

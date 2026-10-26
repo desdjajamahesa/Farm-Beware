@@ -7,6 +7,7 @@ using FeaturesCamera;
 using FarmBeware.Core.Runtime;
 using FarmBeware.Features.Vehicles.PureLogic;
 using FarmBeware.Features.Vehicles.UI;
+using FeaturesTime;
 
 namespace FarmBeware.Features.Vehicles
 {
@@ -40,6 +41,10 @@ namespace FarmBeware.Features.Vehicles
         [SerializeField] private Transform driverSeatAnchor;
         [SerializeField] private Transform safeDismountAnchor;
         [SerializeField] private float interactionRadius = 5.5f;
+
+        [Header("Homestead Parking (Day 1+)")]
+        [SerializeField] private Vector3 homesteadParkPosition = new Vector3(30.550905f, 0.000355f, 54.140785f);
+        [SerializeField] private Quaternion homesteadParkRotation = new Quaternion(0.000008255243301391602f, -0.3903132677078247f, 0.00008969008922576904f, 0.9206821322441101f);
 
         [Header("Audio & Juice")]
         [SerializeField] private AudioSource engineAudio;
@@ -116,6 +121,28 @@ namespace FarmBeware.Features.Vehicles
             SetupHornAudio();
         }
 
+        private void OnEnable()
+        {
+            TimeManager.OnAnyDayChanged += HandleDayChanged;
+        }
+
+        private void OnDisable()
+        {
+            TimeManager.OnAnyDayChanged -= HandleDayChanged;
+        }
+
+        private void HandleDayChanged(int day)
+        {
+            if (day >= 1 && !_isDriverOccupied)
+            {
+                var cutscene = ServiceLocator.Resolve<ICutsceneService>();
+                if (cutscene == null || !cutscene.IsCutscenePlaying)
+                {
+                    Teleport(homesteadParkPosition, homesteadParkRotation);
+                }
+            }
+        }
+
         private void Start()
         {
             // Ensure Driving HUD is registered
@@ -123,6 +150,22 @@ namespace FarmBeware.Features.Vehicles
             {
                 var hudGo = new GameObject("VehicleDrivingHUD_Host");
                 hudGo.AddComponent<VehicleDrivingHUD>();
+            }
+
+            // Position at homestead on Day 1+ if not playing cutscene
+            if (!_isDriverOccupied)
+            {
+                var cutscene = ServiceLocator.Resolve<ICutsceneService>();
+                if (cutscene == null || !cutscene.IsCutscenePlaying)
+                {
+                    int currentDay = DayNightTimeManager.Instance != null 
+                        ? DayNightTimeManager.Instance.CurrentDay 
+                        : (TimeManager.Instance != null ? TimeManager.Instance.currentDay : 0);
+                    if (currentDay >= 1)
+                    {
+                        Teleport(homesteadParkPosition, homesteadParkRotation);
+                    }
+                }
             }
         }
 

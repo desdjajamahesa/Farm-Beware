@@ -21,17 +21,24 @@ namespace FeaturesStoryline.UI
     public class StorylineUI : MonoBehaviour, IModalWindow
     {
         private static StorylineUI _instance;
+        public static bool HasInstance => _instance != null;
+        private static bool _isQuitting = false;
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetStaticState()
+        {
+            _instance = null;
+            _isQuitting = false;
+        }
+
         public static StorylineUI Instance
         {
             get
             {
+                if (_isQuitting) return null;
                 if (_instance == null)
                 {
                     _instance = FindFirstObjectByType<StorylineUI>(FindObjectsInactive.Include);
-                }
-                if (_instance != null && !_instance.gameObject.activeInHierarchy)
-                {
-                    _instance.gameObject.SetActive(true);
                 }
                 return _instance;
             }
@@ -93,11 +100,16 @@ namespace FeaturesStoryline.UI
             EnsureUIHierarchy();
         }
 
+        private void OnApplicationQuit()
+        {
+            _isQuitting = true;
+        }
+
         private void OnDestroy()
         {
-            if (Instance == this)
+            if (_instance == this)
             {
-                Instance = null;
+                _instance = null;
             }
         }
 
@@ -612,6 +624,9 @@ namespace FeaturesStoryline.UI
             if (bannerPanel != null)
             {
                 bannerPanel.SetActive(false);
+                if (bannerCanvasGroup != null) bannerCanvasGroup.alpha = 0f;
+                if (bannerTitleText != null) bannerTitleText.text = "";
+                if (bannerBodyText != null) bannerBodyText.text = "";
             }
 
             // 2. Procedural Dialogue Panel

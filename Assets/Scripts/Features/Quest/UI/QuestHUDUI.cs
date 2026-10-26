@@ -110,9 +110,12 @@ namespace FarmBeware.Features.Quest.UI
 
         private void Unsubscribe()
         {
-            if (_isSubscribed && QuestManager.Instance != null)
+            if (_isSubscribed)
             {
-                QuestManager.Instance.OnQuestUpdated -= HandleQuestUpdated;
+                if (QuestManager.HasInstance && QuestManager.Instance != null)
+                {
+                    QuestManager.Instance.OnQuestUpdated -= HandleQuestUpdated;
+                }
                 _isSubscribed = false;
             }
         }

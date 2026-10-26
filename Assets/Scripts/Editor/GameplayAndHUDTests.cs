@@ -621,6 +621,10 @@ namespace FarmBeware.EditorTests
         private static bool Test_AttackTrail_NightOnly()
         {
             var weaponGO = new GameObject("Test_Weapon");
+            if (TimeManager.Instance != null)
+            {
+                TimeManager.Instance.SetTimeState(TimeManager.Instance.currentDay, TimeManager.DayPhase.Day, false, false, false);
+            }
             try
             {
                 var trail = weaponGO.AddComponent<WeaponTrailController>();

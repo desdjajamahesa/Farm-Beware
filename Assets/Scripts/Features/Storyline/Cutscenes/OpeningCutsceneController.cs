@@ -18,15 +18,25 @@ namespace FeaturesStoryline.Cutscenes
     [RequireComponent(typeof(PlayableDirector))]
     public class OpeningCutsceneController : MonoBehaviour, ICutsceneService
     {
-        private static OpeningCutsceneController _instance;
+        public static bool HasInstance => _instance != null;
+        private static bool _isQuitting = false;
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetStaticState()
+        {
+            _instance = null;
+            _isQuitting = false;
+        }
+
         public static OpeningCutsceneController Instance
         {
             get
             {
+                if (_isQuitting) return null;
                 if (_instance == null)
                 {
                     _instance = FindFirstObjectByType<OpeningCutsceneController>(FindObjectsInactive.Include);
-                    if (_instance == null)
+                    if (_instance == null && Application.isPlaying)
                     {
                         var systems = GameObject.Find("_SYSTEMS");
                         var go = new GameObject("OpeningCutsceneController");
@@ -36,10 +46,6 @@ namespace FeaturesStoryline.Cutscenes
                         }
                         _instance = go.AddComponent<OpeningCutsceneController>();
                     }
-                }
-                if (_instance != null && !_instance.gameObject.activeInHierarchy)
-                {
-                    _instance.gameObject.SetActive(true);
                 }
                 return _instance;
             }
@@ -138,6 +144,11 @@ namespace FeaturesStoryline.Cutscenes
             }
         }
 
+        private void OnApplicationQuit()
+        {
+            _isQuitting = true;
+        }
+
         private void OnDestroy()
         {
             CleanupCameraAnimator();
@@ -146,10 +157,10 @@ namespace FeaturesStoryline.Cutscenes
             {
                 player.RemoveInputLock("OpeningCutscene");
             }
-            if (Instance == this)
+            if (_instance == this)
             {
                 ServiceLocator.Unregister<ICutsceneService>();
-                Instance = null;
+                _instance = null;
             }
         }
 

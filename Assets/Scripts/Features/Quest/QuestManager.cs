@@ -14,10 +14,21 @@ namespace FarmBeware.Features.Quest
     public class QuestManager : MonoBehaviour
     {
         private static QuestManager _instance;
+        public static bool HasInstance => _instance != null;
+        private static bool _isQuitting = false;
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetStaticState()
+        {
+            _instance = null;
+            _isQuitting = false;
+        }
+
         public static QuestManager Instance
         {
             get
             {
+                if (_isQuitting) return null;
                 if (_instance == null)
                 {
                     QuestManager[] found = FindObjectsByType<QuestManager>(FindObjectsInactive.Include, FindObjectsSortMode.None);
@@ -25,7 +36,7 @@ namespace FarmBeware.Features.Quest
                     {
                         _instance = found[0];
                     }
-                    else
+                    else if (Application.isPlaying)
                     {
                         var go = new GameObject("QuestManager");
                         _instance = go.AddComponent<QuestManager>();
@@ -50,10 +61,11 @@ namespace FarmBeware.Features.Quest
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void AutoBootstrap()
         {
-            if (Instance == null)
+            if (_isQuitting) return;
+            if (_instance == null)
             {
                 var existing = FindFirstObjectByType<QuestManager>();
-                if (existing == null)
+                if (existing == null && Application.isPlaying)
                 {
                     var go = new GameObject("QuestManager");
                     go.AddComponent<QuestManager>();
@@ -91,12 +103,17 @@ namespace FarmBeware.Features.Quest
             UnbindPlayerInventory();
         }
 
+        private void OnApplicationQuit()
+        {
+            _isQuitting = true;
+        }
+
         private void OnDestroy()
         {
             _model.OnStateChanged -= HandleModelStateChanged;
-            if (Instance == this)
+            if (_instance == this)
             {
-                Instance = null;
+                _instance = null;
             }
         }
 

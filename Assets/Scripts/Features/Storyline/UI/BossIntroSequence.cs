@@ -16,17 +16,24 @@ namespace FeaturesStoryline.UI
     public class BossIntroSequence : MonoBehaviour
     {
         private static BossIntroSequence _instance;
+        public static bool HasInstance => _instance != null;
+        private static bool _isQuitting = false;
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetStaticState()
+        {
+            _instance = null;
+            _isQuitting = false;
+        }
+
         public static BossIntroSequence Instance
         {
             get
             {
+                if (_isQuitting) return null;
                 if (_instance == null)
                 {
                     _instance = FindFirstObjectByType<BossIntroSequence>(FindObjectsInactive.Include);
-                }
-                if (_instance != null && !_instance.gameObject.activeInHierarchy)
-                {
-                    _instance.gameObject.SetActive(true);
                 }
                 return _instance;
             }
@@ -69,12 +76,17 @@ namespace FeaturesStoryline.UI
             RestoreCameraTarget();
         }
 
+        private void OnApplicationQuit()
+        {
+            _isQuitting = true;
+        }
+
         private void OnDestroy()
         {
             RestoreCameraTarget();
-            if (Instance == this)
+            if (_instance == this)
             {
-                Instance = null;
+                _instance = null;
             }
         }
 

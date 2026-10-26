@@ -17,17 +17,24 @@ namespace FeaturesStoryline.UI
     public class JournalUI : MonoBehaviour, IModalWindow
     {
         private static JournalUI _instance;
+        public static bool HasInstance => _instance != null;
+        private static bool _isQuitting = false;
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetStaticState()
+        {
+            _instance = null;
+            _isQuitting = false;
+        }
+
         public static JournalUI Instance
         {
             get
             {
+                if (_isQuitting) return null;
                 if (_instance == null)
                 {
                     _instance = FindFirstObjectByType<JournalUI>(FindObjectsInactive.Include);
-                }
-                if (_instance != null && !_instance.gameObject.activeInHierarchy)
-                {
-                    _instance.gameObject.SetActive(true);
                 }
                 return _instance;
             }
@@ -74,11 +81,16 @@ namespace FeaturesStoryline.UI
             EnsureUIHierarchy();
         }
 
+        private void OnApplicationQuit()
+        {
+            _isQuitting = true;
+        }
+
         private void OnDestroy()
         {
-            if (Instance == this)
+            if (_instance == this)
             {
-                Instance = null;
+                _instance = null;
             }
         }
 
