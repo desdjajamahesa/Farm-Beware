@@ -235,7 +235,7 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
             isRunning = false;
             if (rb != null && !rb.isKinematic)
                 rb.linearVelocity = new Vector3(0f, rb.linearVelocity.y, 0f);
-            if (animator != null)
+            if (animator != null && !animator.GetBool("Driving"))
             {
                 animator.SetFloat("Vel", 0f, 0.05f, Time.deltaTime);
                 animator.SetBool("Idle", true);
@@ -249,7 +249,7 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
         {
             inputVector = Vector3.zero;
             isRunning = false;
-            if (animator != null)
+            if (animator != null && !animator.GetBool("Driving"))
             {
                 animator.SetFloat("Vel", 0f, 0.1f, Time.deltaTime);
                 animator.SetBool("Idle", true);
@@ -1445,7 +1445,7 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
         isRunning = false;
         if (rb != null && !rb.isKinematic)
             rb.linearVelocity = new Vector3(0f, rb.linearVelocity.y, 0f);
-        if (animator != null)
+        if (animator != null && !animator.GetBool("Driving"))
         {
             animator.SetFloat("Vel", 0f);
             animator.SetBool("Idle", true);
@@ -1664,7 +1664,7 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
                 attackCoroutine = null;
             }
             playerEquipment?.CombatStateMachine?.InterruptCombatSequence();
-            if (animator != null)
+            if (animator != null && !animator.GetBool("Driving"))
             {
                 animator.SetFloat("Vel", 0f);
                 animator.SetBool("Idle", true);

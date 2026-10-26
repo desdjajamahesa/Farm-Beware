@@ -283,7 +283,7 @@ namespace FarmBeware.Features.Vehicles
                 anim.SetBool("Driving", true);
                 anim.SetBool("Grounded", true);
                 anim.SetFloat("Vel", 0f);
-                anim.SetBool("Idle", true);
+                anim.SetBool("Idle", false);
                 anim.SetBool("Sprinting", false);
                 anim.ResetTrigger("Attack");
                 anim.ResetTrigger("SkillAttack");
@@ -293,6 +293,7 @@ namespace FarmBeware.Features.Vehicles
                 anim.ResetTrigger("LookAround");
                 anim.ResetTrigger("HeavyAttack");
                 anim.Play("Driving", 0, 0f);
+                anim.Update(0f);
             }
 
             // Dock player safely: parent to driverSeatAnchor or transform root, guaranteeing clean scale 1,1,1
@@ -662,6 +663,16 @@ namespace FarmBeware.Features.Vehicles
                 if ((Keyboard.current.lKey.wasPressedThisFrame || Keyboard.current.fKey.wasPressedThisFrame) && _truckLighting != null)
                 {
                     _truckLighting.ToggleHeadlights();
+                }
+            }
+
+            if (_isDriverOccupied && _occupantPlayer != null)
+            {
+                var anim = _occupantPlayer.GetComponentInChildren<Animator>();
+                if (anim != null)
+                {
+                    if (!anim.GetBool("Driving")) anim.SetBool("Driving", true);
+                    if (anim.GetBool("Idle")) anim.SetBool("Idle", false);
                 }
             }
 
