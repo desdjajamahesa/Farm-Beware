@@ -268,6 +268,7 @@ namespace FeaturesFarming.Adapters
 
                     if (grid.TryTill(coord))
                     {
+                        FarmlandTile.InvokeSoilTilled(null);
                         ShowFeedbackText(worldPos, "Soil Tilled!", new Color(0.85f, 0.65f, 0.35f));
                         return true;
                     }
@@ -344,6 +345,7 @@ namespace FeaturesFarming.Adapters
 
             if (grid.TryTill(coord))
             {
+                FarmlandTile.InvokeSoilTilled(null);
                 ShowFeedbackText(worldPos, "Soil Tilled!", new Color(0.85f, 0.65f, 0.35f));
                 return true;
             }

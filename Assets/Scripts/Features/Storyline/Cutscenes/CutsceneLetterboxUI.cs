@@ -57,7 +57,7 @@ namespace FeaturesStoryline.Cutscenes
         [Header("Letterbox Bars")]
         [SerializeField] private RectTransform topBar;
         [SerializeField] private RectTransform bottomBar;
-        [SerializeField] private float barHeight = 110f;
+        [SerializeField] private float barHeight = 125f;
 
         [Header("Subtitles")]
         [SerializeField] private TextMeshProUGUI subtitleText;
@@ -76,6 +76,10 @@ namespace FeaturesStoryline.Cutscenes
         [SerializeField] private GameObject[] storyCardObjects = new GameObject[4];
         public GameObject[] StoryCardObjects => storyCardObjects;
         public GameObject IntroStoryRoot => introStoryRoot;
+        public GameObject LetterboxRoot => letterboxRoot;
+        public TextMeshProUGUI SubtitleText => subtitleText;
+        public TextMeshProUGUI SkipPromptText => skipPromptText;
+        public Canvas TargetCanvas { get => targetCanvas; set => targetCanvas = value; }
 
         private Coroutine _fadeRoutine;
         private Coroutine _subtitleFadeRoutine;
@@ -301,7 +305,15 @@ namespace FeaturesStoryline.Cutscenes
 
             if (_introTextFadeRoutine != null) StopCoroutine(_introTextFadeRoutine);
 
-            introStoryText.text = text;
+            if (!string.IsNullOrEmpty(text) && !text.Contains("PROLOGUE") && !text.StartsWith("<size="))
+            {
+                introStoryText.text = $"<size=65%><color=#E5B044>✦ &nbsp; P R O L O G U E &nbsp; ✦</color></size>\n\n“{text}”";
+            }
+            else
+            {
+                introStoryText.text = text;
+            }
+
             _introTextFadeRoutine = StartCoroutine(RoutineFadeCanvasGroup(introStoryTextCanvasGroup, 1f, fadeIn, onComplete));
         }
 
@@ -365,7 +377,12 @@ namespace FeaturesStoryline.Cutscenes
                 }
             }
 
-            subtitleText.text = newText;
+            string formattedText = newText;
+            if (!string.IsNullOrEmpty(formattedText) && !formattedText.StartsWith("“") && !formattedText.StartsWith("\"") && !formattedText.StartsWith("<"))
+            {
+                formattedText = $"“{formattedText}”";
+            }
+            subtitleText.text = formattedText;
 
             // Fade in new text
             float inDuration = duration * 0.5f;
@@ -380,12 +397,16 @@ namespace FeaturesStoryline.Cutscenes
             subtitleCanvasGroup.alpha = 1f;
         }
 
-        private void EnsureUIHierarchy()
+        public void EnsureUIHierarchy()
         {
             if (targetCanvas == null)
             {
-                var canvasObj = GameObject.Find("UI_Canvas");
-                if (canvasObj != null) targetCanvas = canvasObj.GetComponent<Canvas>();
+                targetCanvas = GetComponentInParent<Canvas>();
+                if (targetCanvas == null)
+                {
+                    var canvasObj = GameObject.Find("UI_Canvas");
+                    if (canvasObj != null) targetCanvas = canvasObj.GetComponent<Canvas>();
+                }
                 if (targetCanvas == null) targetCanvas = FindFirstObjectByType<Canvas>();
             }
 
@@ -415,6 +436,16 @@ namespace FeaturesStoryline.Cutscenes
                     var bBar = letterboxRoot.transform.Find("BottomBar");
                     if (bBar != null) bottomBar = bBar.GetComponent<RectTransform>();
                 }
+
+                if (topBar != null)
+                {
+                    topBar.sizeDelta = new Vector2(0f, barHeight);
+                }
+                if (bottomBar != null)
+                {
+                    bottomBar.sizeDelta = new Vector2(0f, barHeight);
+                }
+
                 if (subtitleText == null || subtitleCanvasGroup == null)
                 {
                     var sub = letterboxRoot.transform.Find("SubtitleText");
@@ -424,6 +455,31 @@ namespace FeaturesStoryline.Cutscenes
                         subtitleCanvasGroup = sub.GetComponent<CanvasGroup>();
                     }
                 }
+
+                if (subtitleText != null)
+                {
+                    subtitleText.fontSize = 28f;
+                    subtitleText.enableAutoSizing = true;
+                    subtitleText.fontSizeMin = 22f;
+                    subtitleText.fontSizeMax = 32f;
+                    subtitleText.fontStyle = FontStyles.Bold;
+                    subtitleText.alignment = TextAlignmentOptions.Center;
+                    subtitleText.color = new Color(0.98f, 0.97f, 0.94f, 1f); // Moonlight Ivory
+                    subtitleText.characterSpacing = 1.2f;
+                    subtitleText.lineSpacing = 6f;
+
+                    var sRt = subtitleText.rectTransform;
+                    if (sRt != null)
+                    {
+                        sRt.anchorMin = new Vector2(0.12f, 0f);
+                        sRt.anchorMax = new Vector2(0.88f, 0f);
+                        sRt.pivot = new Vector2(0.5f, 0f);
+                        sRt.anchoredPosition = new Vector2(0f, 26f);
+                        sRt.sizeDelta = new Vector2(0f, 76f);
+                    }
+                    EnsureSubtitleBackdropPlate(subtitleText.transform);
+                }
+
                 if (skipGaugeRoot == null)
                 {
                     var gauge = letterboxRoot.transform.Find("SkipGaugeRoot");
@@ -449,6 +505,18 @@ namespace FeaturesStoryline.Cutscenes
                         introStoryText = card.GetComponent<TextMeshProUGUI>();
                         introStoryTextCanvasGroup = card.GetComponent<CanvasGroup>();
                     }
+                    if (introStoryText != null)
+                    {
+                        introStoryText.fontSize = 36f;
+                        introStoryText.enableAutoSizing = true;
+                        introStoryText.fontSizeMin = 26f;
+                        introStoryText.fontSizeMax = 42f;
+                        introStoryText.alignment = TextAlignmentOptions.Center;
+                        introStoryText.color = new Color(0.98f, 0.97f, 0.95f, 1f);
+                        introStoryText.lineSpacing = 18f;
+                        introStoryText.characterSpacing = 1.2f;
+                        introStoryText.fontStyle = FontStyles.Bold;
+                    }
                     EnsureStoryCardObjects(intro);
                 }
                 else
@@ -458,7 +526,11 @@ namespace FeaturesStoryline.Cutscenes
 
                 if (skipPromptText != null)
                 {
-                    skipPromptText.text = "[ESC] / HOLD [SPACE] TO SKIP";
+                    skipPromptText.fontSize = 15f;
+                    skipPromptText.fontStyle = FontStyles.Bold;
+                    skipPromptText.alignment = TextAlignmentOptions.Right;
+                    skipPromptText.color = new Color(0.85f, 0.88f, 0.92f, 0.95f);
+                    skipPromptText.text = "<color=#F5D166><b>[ESC]</b></color> / HOLD <color=#F5D166><b>[SPACE]</b></color> TO SKIP";
                     var pRt = skipPromptText.rectTransform;
                     if (pRt != null)
                     {
@@ -469,6 +541,59 @@ namespace FeaturesStoryline.Cutscenes
                     }
                 }
             }
+        }
+
+        private void EnsureSubtitleBackdropPlate(Transform subTransform)
+        {
+            if (subTransform == null || letterboxRoot == null) return;
+
+            var plateTransform = letterboxRoot.transform.Find("SubtitlePlate");
+            GameObject plateObj;
+            if (plateTransform != null)
+            {
+                plateObj = plateTransform.gameObject;
+            }
+            else
+            {
+                plateObj = new GameObject("SubtitlePlate", typeof(RectTransform), typeof(Image));
+                plateObj.transform.SetParent(letterboxRoot.transform, false);
+                plateObj.transform.SetSiblingIndex(subTransform.GetSiblingIndex());
+            }
+
+            var plateRt = plateObj.GetComponent<RectTransform>();
+            plateRt.anchorMin = new Vector2(0.10f, 0f);
+            plateRt.anchorMax = new Vector2(0.90f, 0f);
+            plateRt.pivot = new Vector2(0.5f, 0f);
+            plateRt.anchoredPosition = new Vector2(0f, 20f);
+            plateRt.sizeDelta = new Vector2(0f, 88f);
+
+            var img = plateObj.GetComponent<Image>();
+            img.color = new Color(0.03f, 0.04f, 0.06f, 0.78f); // Frosted Obsidian Backing Plate
+            img.raycastTarget = false;
+
+            // Top gold accent line
+            var lineTransform = plateObj.transform.Find("TopAccentLine");
+            GameObject lineObj;
+            if (lineTransform != null)
+            {
+                lineObj = lineTransform.gameObject;
+            }
+            else
+            {
+                lineObj = new GameObject("TopAccentLine", typeof(RectTransform), typeof(Image));
+                lineObj.transform.SetParent(plateObj.transform, false);
+            }
+
+            var lineRt = lineObj.GetComponent<RectTransform>();
+            lineRt.anchorMin = new Vector2(0.25f, 1f);
+            lineRt.anchorMax = new Vector2(0.75f, 1f);
+            lineRt.pivot = new Vector2(0.5f, 1f);
+            lineRt.anchoredPosition = Vector2.zero;
+            lineRt.sizeDelta = new Vector2(0f, 2f);
+
+            var lineImg = lineObj.GetComponent<Image>();
+            lineImg.color = new Color(0.95f, 0.78f, 0.32f, 0.85f); // Subtle Golden Glow Accent
+            lineImg.raycastTarget = false;
         }
 
         private void BuildProceduralLetterboxUI()
@@ -514,21 +639,28 @@ namespace FeaturesStoryline.Cutscenes
             var subObj = new GameObject("SubtitleText", typeof(RectTransform), typeof(TextMeshProUGUI), typeof(CanvasGroup));
             subObj.transform.SetParent(letterboxRoot.transform, false);
             var subRt = subObj.GetComponent<RectTransform>();
-            subRt.anchorMin = new Vector2(0.1f, 0f);
-            subRt.anchorMax = new Vector2(0.9f, 0f);
+            subRt.anchorMin = new Vector2(0.12f, 0f);
+            subRt.anchorMax = new Vector2(0.88f, 0f);
             subRt.pivot = new Vector2(0.5f, 0f);
-            subRt.anchoredPosition = new Vector2(0f, 32f);
-            subRt.sizeDelta = new Vector2(0f, 56f);
+            subRt.anchoredPosition = new Vector2(0f, 26f);
+            subRt.sizeDelta = new Vector2(0f, 76f);
 
             subtitleText = subObj.GetComponent<TextMeshProUGUI>();
-            subtitleText.fontSize = 20f;
+            subtitleText.fontSize = 28f;
+            subtitleText.enableAutoSizing = true;
+            subtitleText.fontSizeMin = 22f;
+            subtitleText.fontSizeMax = 32f;
             subtitleText.alignment = TextAlignmentOptions.Center;
-            subtitleText.color = new Color(0.95f, 0.96f, 0.98f, 1f); // Moonlight White
-            subtitleText.fontStyle = FontStyles.Normal;
+            subtitleText.color = new Color(0.98f, 0.97f, 0.94f, 1f); // Moonlight Ivory
+            subtitleText.fontStyle = FontStyles.Bold;
+            subtitleText.characterSpacing = 1.2f;
+            subtitleText.lineSpacing = 6f;
             subtitleText.text = string.Empty;
 
             subtitleCanvasGroup = subObj.GetComponent<CanvasGroup>();
             subtitleCanvasGroup.alpha = 0f;
+
+            EnsureSubtitleBackdropPlate(subObj.transform);
 
             // Hold-to-Skip Visual Gauge (bottom right)
             skipGaugeRoot = new GameObject("SkipGaugeRoot", typeof(RectTransform));
@@ -550,11 +682,11 @@ namespace FeaturesStoryline.Cutscenes
             pRt.offsetMax = Vector2.zero;
 
             skipPromptText = promptObj.GetComponent<TextMeshProUGUI>();
-            skipPromptText.fontSize = 13f;
+            skipPromptText.fontSize = 15f;
             skipPromptText.fontStyle = FontStyles.Bold;
             skipPromptText.alignment = TextAlignmentOptions.Right;
-            skipPromptText.color = new Color(0.80f, 0.83f, 0.88f, 0.85f);
-            skipPromptText.text = "[ESC] / HOLD [SPACE] TO SKIP";
+            skipPromptText.color = new Color(0.85f, 0.88f, 0.92f, 0.95f);
+            skipPromptText.text = "<color=#F5D166><b>[ESC]</b></color> / HOLD <color=#F5D166><b>[SPACE]</b></color> TO SKIP";
 
             // Circular / Radial Fill Background Ring
             var ringBgObj = new GameObject("SkipRingBg", typeof(RectTransform), typeof(Image));
@@ -615,17 +747,21 @@ namespace FeaturesStoryline.Cutscenes
             var cardObj = new GameObject("IntroStoryCardText", typeof(RectTransform), typeof(TextMeshProUGUI), typeof(CanvasGroup));
             cardObj.transform.SetParent(introStoryRoot.transform, false);
             var cardRt = cardObj.GetComponent<RectTransform>();
-            cardRt.anchorMin = new Vector2(0.12f, 0.35f);
-            cardRt.anchorMax = new Vector2(0.88f, 0.65f);
+            cardRt.anchorMin = new Vector2(0.10f, 0.25f);
+            cardRt.anchorMax = new Vector2(0.90f, 0.75f);
             cardRt.offsetMin = Vector2.zero;
             cardRt.offsetMax = Vector2.zero;
 
             introStoryText = cardObj.GetComponent<TextMeshProUGUI>();
-            introStoryText.fontSize = 24f;
+            introStoryText.fontSize = 36f;
+            introStoryText.enableAutoSizing = true;
+            introStoryText.fontSizeMin = 26f;
+            introStoryText.fontSizeMax = 42f;
             introStoryText.alignment = TextAlignmentOptions.Center;
-            introStoryText.color = new Color(0.92f, 0.94f, 0.98f, 1f); // Moonlight Cyan White
-            introStoryText.lineSpacing = 16f;
-            introStoryText.fontStyle = FontStyles.Normal;
+            introStoryText.color = new Color(0.98f, 0.97f, 0.95f, 1f); // Moonlight Warm Ivory
+            introStoryText.lineSpacing = 18f;
+            introStoryText.characterSpacing = 1.2f;
+            introStoryText.fontStyle = FontStyles.Bold;
             introStoryText.text = string.Empty;
 
             introStoryTextCanvasGroup = cardObj.GetComponent<CanvasGroup>();
@@ -648,10 +784,10 @@ namespace FeaturesStoryline.Cutscenes
 
             string[] cardTexts = new string[4]
             {
-                "Ten years in the army was enough. At thirty, I just wanted a quiet life.",
-                "I used all my savings to buy a cheap piece of land far away from the city.",
-                "For a while, everything went fine. I cleared the weeds and built a few small farm plots.",
-                "Life was peaceful... until the day I started digging in an untouched part of the field."
+                "<size=65%><color=#E5B044>✦ &nbsp; P R O L O G U E &nbsp; ✦</color></size>\n\n“Ten years in the army was enough.\nAt thirty, I just wanted a quiet life.”",
+                "<size=65%><color=#E5B044>✦ &nbsp; P R O L O G U E &nbsp; ✦</color></size>\n\n“I used all my savings to buy a cheap piece of land\nfar away from the city.”",
+                "<size=65%><color=#E5B044>✦ &nbsp; P R O L O G U E &nbsp; ✦</color></size>\n\n“For a while, everything went fine.\nI cleared the weeds and built a few small farm plots.”",
+                "<size=65%><color=#E5B044>✦ &nbsp; P R O L O G U E &nbsp; ✦</color></size>\n\n“Life was peaceful...\nuntil the day I started digging in an untouched part of the field.”"
             };
 
             for (int i = 0; i < 4; i++)
@@ -666,9 +802,26 @@ namespace FeaturesStoryline.Cutscenes
                 if (existingCard != null)
                 {
                     storyCardObjects[i] = existingCard.gameObject;
+                    var rt = existingCard.GetComponent<RectTransform>();
+                    if (rt != null)
+                    {
+                        rt.anchorMin = new Vector2(0.10f, 0.25f);
+                        rt.anchorMax = new Vector2(0.90f, 0.75f);
+                        rt.offsetMin = Vector2.zero;
+                        rt.offsetMax = Vector2.zero;
+                    }
                     var tmp = existingCard.GetComponent<TextMeshProUGUI>();
                     if (tmp != null)
                     {
+                        tmp.fontSize = 36f;
+                        tmp.enableAutoSizing = true;
+                        tmp.fontSizeMin = 26f;
+                        tmp.fontSizeMax = 42f;
+                        tmp.alignment = TextAlignmentOptions.Center;
+                        tmp.color = new Color(0.98f, 0.97f, 0.95f, 1f);
+                        tmp.lineSpacing = 18f;
+                        tmp.characterSpacing = 1.2f;
+                        tmp.fontStyle = FontStyles.Bold;
                         tmp.text = cardTexts[i];
                     }
                 }
@@ -677,17 +830,21 @@ namespace FeaturesStoryline.Cutscenes
                     var newCard = new GameObject(cardName, typeof(RectTransform), typeof(TextMeshProUGUI));
                     newCard.transform.SetParent(introTransform, false);
                     var rt = newCard.GetComponent<RectTransform>();
-                    rt.anchorMin = new Vector2(0.12f, 0.35f);
-                    rt.anchorMax = new Vector2(0.88f, 0.65f);
+                    rt.anchorMin = new Vector2(0.10f, 0.25f);
+                    rt.anchorMax = new Vector2(0.90f, 0.75f);
                     rt.offsetMin = Vector2.zero;
                     rt.offsetMax = Vector2.zero;
 
                     var tmp = newCard.GetComponent<TextMeshProUGUI>();
-                    tmp.fontSize = 24f;
+                    tmp.fontSize = 36f;
+                    tmp.enableAutoSizing = true;
+                    tmp.fontSizeMin = 26f;
+                    tmp.fontSizeMax = 42f;
                     tmp.alignment = TextAlignmentOptions.Center;
-                    tmp.color = new Color(0.92f, 0.94f, 0.98f, 1f);
-                    tmp.lineSpacing = 16f;
-                    tmp.fontStyle = FontStyles.Normal;
+                    tmp.color = new Color(0.98f, 0.97f, 0.95f, 1f);
+                    tmp.lineSpacing = 18f;
+                    tmp.characterSpacing = 1.2f;
+                    tmp.fontStyle = FontStyles.Bold;
                     tmp.text = cardTexts[i];
 
                     newCard.SetActive(false); // Controlled by Timeline ActivationTrack

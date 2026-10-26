@@ -7,6 +7,12 @@ Welcome to the **Farm-Beware** patch notes! Here you'll find the latest updates,
 ## 2026-10-26
 
 ### Added
+* **Cinematic Cutscene Visual & Typography Overhaul**: Completely overhauled cutscene typography and letterbox presentation for high-definition displays:
+  * **Cinematic Subtitles**: Subtitle font size increased from 20 to **28** (with TextMeshPro auto-sizing 22 – 32, bold moonlight ivory `#FAF8F2`, and crisp kerning).
+  * **Frosted Obsidian Backing Plate & Gold Accent Line**: Added a semi-transparent charcoal backing plate (`SubtitlePlate`) featuring a delicate 2px golden accent line (`#F2C752`) along the top edge, ensuring pristine readability across any 3D environment lighting.
+  * **Full-Screen Prologue Story Cards**: Sentence cards during the intro black screen now display at **36** font size (auto-sizing 26 – 42, bold, generous line spacing) adorned with a gold `✦   P R O L O G U E   ✦` header badge and quotation marks.
+  * **Cinematic Letterbox & Amber Skip Prompt**: Letterbox bar height expanded to **125px** (from 110px), and skip gauge prompt upgraded to 15pt bold with warm amber hotkey highlights (`[ESC] / HOLD [SPACE] TO SKIP`).
+  * **In-Game Dialogue Sizing**: In-game dialogue box upgraded to 21pt body text and 24pt bold gold speaker name across an expanded 920x200 panel.
 * **Player V2 Stylized Character Model & Complete Animation Suite**: Replaced the legacy character model with the brand new, stylized farmer character (`Farmer_Asep_V2`). Equipped with a full suite of responsive, handcrafted generic animations:
   * **Locomotion**: Crisp 8-way directional walking, dynamic running, and sprint animations.
   * **Evasive Roll & Jump**: Smooth, athletic dodge roll (`roll_fit`) and responsive jump physics for traversing the farmstead.
@@ -27,6 +33,7 @@ Welcome to the **Farm-Beware** patch notes! Here you'll find the latest updates,
 * **Cleaned Test Banners & UI Clutter**: Safely removed obsolete editor test banners from the scene, providing an unobstructed view of the homestead and clean HUD presentation.
 
 ### Fixed
+* **Fixed Day 1 Metal Pipe Discovery Story Trigger**: Corrected narrative beat alignment where striking the buried metal warning sign and cracking the underground pipe ("CLANG! My hoe just hit something metal...") was erroneously triggered when planting seeds (`FirstPlant`). Added a dedicated `StoryTriggerType.FirstTill` event invoked specifically upon successfully tilling farmland soil with the hoe.
 * **Fixed Player Standing Inside Vehicle Cab**: Resolved an issue where the character stood upright inside the delivery truck cab while driving, with the head clipping through the roof and feet dangling through the chassis.
 * **Fixed Native Engine Assertions on Game Stop**: Resolved "GameObjects can not be made active when they are being destroyed" console errors during game exit by safeguarding singletons (`OpeningCutsceneController`, `StorylineUI`, `JournalUI`) during teardown.
 * **Fixed Edit Mode Material Leaks & Destroy Warnings**: Implemented safe lifecycle destruction (`DestroyImmediate` in edit mode, `Destroy` in play mode) and `MaterialPropertyBlock` in kitchen and item visualizers, eliminating compiler warnings during test suite runs.

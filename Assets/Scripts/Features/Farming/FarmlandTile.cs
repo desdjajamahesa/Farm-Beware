@@ -37,6 +37,19 @@ namespace FeaturesFarming
         /// </summary>
         public static event System.Action<FarmlandTile> OnCropWatered;
 
+        /// <summary>
+        /// Signal dispatched whenever any farmland tile is tilled into arable soil.
+        /// </summary>
+        public static event System.Action<FarmlandTile> OnAnySoilTilled;
+
+        /// <summary>
+        /// Explicit helper to broadcast soil tilled signal across the game.
+        /// </summary>
+        public static void InvokeSoilTilled(FarmlandTile tile)
+        {
+            OnAnySoilTilled?.Invoke(tile);
+        }
+
         [Header("State Petak Tanah")]
         [SerializeField] private TileState currentState = TileState.Untilled;
         public TileState CurrentState => currentState;
@@ -267,6 +280,7 @@ namespace FeaturesFarming
         private void TillSoil()
         {
             SetState(TileState.Tilled);
+            OnAnySoilTilled?.Invoke(this);
             Debug.Log("[FarmlandTile] Soil tilled. Ready for seeds.");
         }
 

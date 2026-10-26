@@ -223,6 +223,7 @@ namespace FeaturesStoryline
             FeaturesInteraction.BedInteractable.OnBedSleepExecuted += HandleBedSleep;
 
             // 5. Farmland Hooks
+            FarmlandTile.OnAnySoilTilled += HandleSoilTilled;
             FarmlandTile.OnAnyCropPlanted += HandleCropPlanted;
             FarmlandTile.OnAnyCropHarvested += HandleCropHarvested;
 
@@ -260,6 +261,7 @@ namespace FeaturesStoryline
             }
 
             FeaturesInteraction.BedInteractable.OnBedSleepExecuted -= HandleBedSleep;
+            FarmlandTile.OnAnySoilTilled -= HandleSoilTilled;
             FarmlandTile.OnAnyCropPlanted -= HandleCropPlanted;
             FarmlandTile.OnAnyCropHarvested -= HandleCropHarvested;
             WaterWellInteractable.OnWaterWellRefilled -= HandleWellWaterRefilled;
@@ -411,6 +413,12 @@ namespace FeaturesStoryline
         {
             int currentDay = GetCurrentGameDay();
             EvaluateTrigger(StoryTriggerType.Sleep, currentDay);
+        }
+
+        private void HandleSoilTilled(FarmlandTile tile)
+        {
+            int currentDay = GetCurrentGameDay();
+            EvaluateTrigger(StoryTriggerType.FirstTill, currentDay);
         }
 
         private void HandleCropPlanted(FarmlandTile tile, SeedItemData seed)

@@ -22,7 +22,8 @@ namespace FeaturesStoryline.Data
         CropWashedInSink,          // Washing dirty crop in the kitchen sink
         WeaponUpgradedAtBench,     // Forging a weapon upgrade at workbench
         TrophyInspected,           // Inspecting boss trophy at living room cabinet
-        Custom                     // Custom script programmatic trigger
+        Custom,                    // Custom script programmatic trigger
+        FirstTill                  // First soil tilled with a hoe into arable farmland
     }
 
     /// <summary>

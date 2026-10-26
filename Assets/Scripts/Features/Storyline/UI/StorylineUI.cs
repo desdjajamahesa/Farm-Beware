@@ -601,7 +601,7 @@ namespace FeaturesStoryline.UI
                     titleRT.offsetMin = new Vector2(16f, 0f);
                     titleRT.offsetMax = new Vector2(-16f, -6f);
                     bannerTitleText = titleGO.GetComponent<TextMeshProUGUI>();
-                    bannerTitleText.fontSize = 20;
+                    bannerTitleText.fontSize = 22;
                     bannerTitleText.fontStyle = FontStyles.Bold;
                     bannerTitleText.color = new Color(1f, 0.85f, 0.4f);
                     bannerTitleText.alignment = TextAlignmentOptions.Center;
@@ -615,7 +615,7 @@ namespace FeaturesStoryline.UI
                     bodyRT.offsetMin = new Vector2(16f, 6f);
                     bodyRT.offsetMax = new Vector2(-16f, 0f);
                     bannerBodyText = bodyGO.GetComponent<TextMeshProUGUI>();
-                    bannerBodyText.fontSize = 15;
+                    bannerBodyText.fontSize = 18;
                     bannerBodyText.color = Color.white;
                     bannerBodyText.alignment = TextAlignmentOptions.Center;
                     bannerBodyText.textWrappingMode = TextWrappingModes.Normal;
@@ -625,8 +625,16 @@ namespace FeaturesStoryline.UI
             {
                 bannerPanel.SetActive(false);
                 if (bannerCanvasGroup != null) bannerCanvasGroup.alpha = 0f;
-                if (bannerTitleText != null) bannerTitleText.text = "";
-                if (bannerBodyText != null) bannerBodyText.text = "";
+                if (bannerTitleText != null)
+                {
+                    bannerTitleText.fontSize = 22;
+                    bannerTitleText.text = "";
+                }
+                if (bannerBodyText != null)
+                {
+                    bannerBodyText.fontSize = 18;
+                    bannerBodyText.text = "";
+                }
             }
 
             // 2. Procedural Dialogue Panel
@@ -647,7 +655,7 @@ namespace FeaturesStoryline.UI
                     rt.anchorMax = new Vector2(0.5f, 0f);
                     rt.pivot = new Vector2(0.5f, 0f);
                     rt.anchoredPosition = new Vector2(0f, 115f);
-                    rt.sizeDelta = new Vector2(850f, 180f);
+                    rt.sizeDelta = new Vector2(920f, 200f);
 
                     var img = dialoguePanel.GetComponent<Image>();
                     img.color = new Color(0.06f, 0.08f, 0.10f, 0.95f);
@@ -661,7 +669,7 @@ namespace FeaturesStoryline.UI
                     spkRT.offsetMin = new Vector2(24f, 0f);
                     spkRT.offsetMax = new Vector2(-24f, -10f);
                     dialogueSpeakerText = spkGO.GetComponent<TextMeshProUGUI>();
-                    dialogueSpeakerText.fontSize = 22;
+                    dialogueSpeakerText.fontSize = 24;
                     dialogueSpeakerText.fontStyle = FontStyles.Bold;
                     dialogueSpeakerText.color = new Color(0.95f, 0.75f, 0.35f);
 
@@ -674,7 +682,7 @@ namespace FeaturesStoryline.UI
                     bodyRT.offsetMin = new Vector2(24f, 16f);
                     bodyRT.offsetMax = new Vector2(-120f, 0f);
                     dialogueBodyText = bodyGO.GetComponent<TextMeshProUGUI>();
-                    dialogueBodyText.fontSize = 16;
+                    dialogueBodyText.fontSize = 21;
                     dialogueBodyText.color = Color.white;
                     dialogueBodyText.textWrappingMode = TextWrappingModes.Normal;
 
@@ -704,12 +712,20 @@ namespace FeaturesStoryline.UI
             if (dialoguePanel != null)
             {
                 var rt = dialoguePanel.GetComponent<RectTransform>();
-                if (rt != null) rt.anchoredPosition = new Vector2(0f, 115f);
+                if (rt != null)
+                {
+                    rt.anchoredPosition = new Vector2(0f, 115f);
+                    rt.sizeDelta = new Vector2(920f, 200f);
+                }
 
                 if (dialogueSpeakerText == null)
                     dialogueSpeakerText = dialoguePanel.transform.Find("DialogueSpeaker")?.GetComponent<TextMeshProUGUI>();
                 if (dialogueBodyText == null)
                     dialogueBodyText = dialoguePanel.transform.Find("DialogueBody")?.GetComponent<TextMeshProUGUI>();
+
+                if (dialogueSpeakerText != null) dialogueSpeakerText.fontSize = 24;
+                if (dialogueBodyText != null) dialogueBodyText.fontSize = 21;
+
                 if (dialogueContinueButton == null)
                 {
                     dialogueContinueButton = dialoguePanel.transform.Find("DialogueButton")?.GetComponent<Button>();
@@ -780,7 +796,7 @@ namespace FeaturesStoryline.UI
                     titleRT.offsetMin = Vector2.zero;
                     titleRT.offsetMax = Vector2.zero;
                     overlayTitleText = titleGO.GetComponent<TextMeshProUGUI>();
-                    overlayTitleText.fontSize = 38;
+                    overlayTitleText.fontSize = 42;
                     overlayTitleText.fontStyle = FontStyles.Bold;
                     overlayTitleText.color = new Color(1f, 0.88f, 0.5f);
                     overlayTitleText.alignment = TextAlignmentOptions.Center;
@@ -794,7 +810,7 @@ namespace FeaturesStoryline.UI
                     bodyRT.offsetMin = Vector2.zero;
                     bodyRT.offsetMax = Vector2.zero;
                     overlayBodyText = bodyGO.GetComponent<TextMeshProUGUI>();
-                    overlayBodyText.fontSize = 20;
+                    overlayBodyText.fontSize = 24;
                     overlayBodyText.color = new Color(0.9f, 0.9f, 0.92f);
                     overlayBodyText.alignment = TextAlignmentOptions.Center;
                     overlayBodyText.textWrappingMode = TextWrappingModes.Normal;
@@ -815,6 +831,9 @@ namespace FeaturesStoryline.UI
             }
             if (overlayPanel != null)
             {
+                if (overlayTitleText != null) overlayTitleText.fontSize = 42;
+                if (overlayBodyText != null) overlayBodyText.fontSize = 24;
+
                 var panelCanvas = overlayPanel.GetComponent<Canvas>();
                 if (panelCanvas == null)
                 {

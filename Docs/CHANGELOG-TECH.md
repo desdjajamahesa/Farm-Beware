@@ -34,7 +34,23 @@ Konsolidasi dokumentasi teknis dari seluruh kontributor tim pengembang (`Rafi`, 
 
 ### Ditambahkan & Diintegrasikan (Added & Integrated)
 
-#### 1. Arsitektur Karakter PlayerV2, Generic Rig & Normalisasi HandSocket `[Rafi, Roi]`
+#### 1. Overhaul Tipografi Sinematik & Realignment Trigger Pipa Bawah Tanah Day 1 `[Rafi]`
+- **Tipografi & Estetika Visual Sinematik Cutscene ([`CutsceneLetterboxUI.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Storyline/Cutscenes/CutsceneLetterboxUI.cs), [`StorylineUI.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Storyline/UI/StorylineUI.cs))**:
+  - Mendiagnosis keterbatasan visual subtitle dan prologue intro cards yang berukuran terlalu kecil (20f dan 24f) tanpa pelat kontras di atas dunia 3D.
+  - Memperbesar ukuran teks subtitle menjadi **28f** (auto-sizing 22f – 32f, Bold, moonlight ivory `#FAF8F2`, kerning 1.2f, line spacing 6f).
+  - Mengimplementasikan frosted obsidian glass backing plate (`SubtitlePlate`, color `#080A0F`, alpha 0.78) dengan garis aksen emas tipis 2px (`TopAccentLine`, color `#F2C752`) di bagian atas panel.
+  - Memperbesar teks intro story cards menjadi **36f** (auto-sizing 26f – 42f, Bold, line spacing 18f, kerning 1.2f) dengan header badge emas `✦   P R O L O G U E   ✦` dan tanda kutip elegan `“...”`.
+  - Memperbesar tinggi bilah letterbox sinematik menjadi **125f** (dari 110f) dan mempercantik tombol skip hold gauge dengan font 15f bold aksen amber.
+  - Memperbesar dialog in-game pada `StorylineUI`: body 21f (dari 16f), speaker 24f (dari 22f bold gold), panel dialog diperluas menjadi 920x200f.
+- **Koreksi Logika Pemicu Penemuan Pipa Logam Day 1 (`FirstTill` vs `FirstPlant`)**:
+  - Mendiagnosis dan mengoreksi anomali naratif di mana beat pemotongan pipa logam ("CLANG! My hoe just hit something metal buried deep in the dirt...") sebelumnya keliru terpicu saat menanam bibit tanaman (`FirstPlant`).
+  - Menambahkan trigger enum `StoryTriggerType.FirstTill` pada [`StoryEnums.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Storyline/Data/StoryEnums.cs).
+  - Menambahkan event statis `FarmlandTile.OnAnySoilTilled` serta helper `InvokeSoilTilled` pada [`FarmlandTile.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Farming/FarmlandTile.cs), dipanggil saat tanah berhasil dicangkul di [`PlayerFarmInteraction.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Farming/Adapters/PlayerFarmInteraction.cs).
+  - Mengintegrasikan listener `HandleSoilTilled` di [`StorylineManager.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Storyline/StorylineManager.cs) dan mengalihkan beat `D1_FIRST_TILL` di [`StoryDatabase.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Storyline/Data/StoryDatabase.cs) ke trigger `FirstTill`.
+- **Ekspansi Automated Audit Test Suite ke 64 Tes Otomatis (64/64 Passed) ([`GameplayAndHUDTests.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Editor/GameplayAndHUDTests.cs))**:
+  - Menambahkan **Test 64** yang memverifikasi tipografi cutscene (subtitle >= 28f, story cards >= 36f, backing plate frosted obsidian, gold accent line) serta memvalidasi secara deterministik bahwa pemicu penemuan pipa logam Day 1 hanya aktif saat pencangkulan tanah (`FirstTill`) dan tidak lagi terpicu saat penanaman (`FirstPlant`). Seluruh 64 tes audit lulus 100%.
+
+#### 2. Arsitektur Karakter PlayerV2, Generic Rig & Normalisasi HandSocket `[Rafi, Roi]`
 - **Transisi Model & Generic Rig**:
   - Menggantikan model karakter lama berbasis Mixamo Humanoid dengan aset resmi `Farmer_Asep_V2` ([`character_player_v2.prefab`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Prefabs/Player/character_player_v2.prefab)).
   - Mengonfigurasi `Animator.avatar = null` pada instance runtime untuk memastikan kecocokan 100% terhadap generic FBX animation curves tanpa distorsi retargeting tulang humanoid.

@@ -172,9 +172,9 @@ namespace FeaturesStoryline
             ));
 
             beats.Add(StoryBeatData.CreateRuntimeInstance(
-                "D1_FIRST_PLANT",
+                "D1_FIRST_TILL",
                 1,
-                StoryTriggerType.FirstPlant,
+                StoryTriggerType.FirstTill,
                 StoryDeliveryType.DialogueBox,
                 "Something Under the Dirt",
                 "CLANG! My hoe just hit something metal buried deep in the dirt. I pulled it up—it's a bent, rusty warning sign from an old factory. The letters are almost completely faded. Probably just old junk. I tossed it to the side of the field and got back to work... unaware that pulling it out cracked a sealed underground pipe right below my farm.",

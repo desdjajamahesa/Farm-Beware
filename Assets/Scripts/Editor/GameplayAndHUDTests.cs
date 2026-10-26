@@ -39,7 +39,7 @@ namespace FarmBeware.EditorTests
             Debug.Log("[AUDIT-SUITE] ========================================================");
 
             int passed = 0;
-            int total = 63;
+            int total = 64;
 
             if (Test_DayNight_PhaseProgression_DuskUntilNight()) passed++;
             if (Test_BedInteractable_Logic_AllowsDuskAndBlocksNightOnly()) passed++;
@@ -104,6 +104,7 @@ namespace FarmBeware.EditorTests
             if (Test_Inventory_TabToggle_OpenAndClose_Audit()) passed++;
             if (Test_SideQuest_FirstSteps_Progression_GatherAndPlant()) passed++;
             if (Test_MeleeHitBuffer_Expansion_And_QuestHUD_Lifecycle_Audit()) passed++;
+            if (Test_CutsceneTypography_And_Day1PipeDiscoveryTrigger_Audit()) passed++;
 
             Debug.Log("[AUDIT-SUITE] ========================================================");
             Debug.Log($"[AUDIT-SUITE] Complete! Passed: {passed}/{total}");
@@ -5643,6 +5644,147 @@ namespace FarmBeware.EditorTests
             {
                 Object.DestroyImmediate(playerGo);
                 Object.DestroyImmediate(trackerGo);
+            }
+        }
+
+        // Test 64: Cutscene typography overhaul and Day 1 pipe discovery trigger realignment (FirstTill vs FirstPlant)
+        private static bool Test_CutsceneTypography_And_Day1PipeDiscoveryTrigger_Audit()
+        {
+            var canvasGo = new GameObject("Test_Canvas_64", typeof(Canvas));
+            var cutsceneGo = new GameObject("Test_CutsceneLetterboxUI");
+            try
+            {
+                // 1. Cutscene Letterbox Typography Verification
+                cutsceneGo.transform.SetParent(canvasGo.transform, false);
+                var letterboxUI = cutsceneGo.AddComponent<CutsceneLetterboxUI>();
+                letterboxUI.TargetCanvas = canvasGo.GetComponent<Canvas>();
+                letterboxUI.EnsureUIHierarchy();
+                letterboxUI.EnsureStoryCardObjects();
+
+                var subText = letterboxUI.SubtitleText;
+                if (subText == null || subText.fontSize < 27f)
+                {
+                    Debug.LogError($"[Test 64] Subtitle font size was {subText?.fontSize ?? 0}, expected >= 28!");
+                    return false;
+                }
+
+                if (!subText.enableAutoSizing || subText.fontSizeMax < 31f)
+                {
+                    Debug.LogError($"[Test 64] Subtitle auto-sizing not configured properly! max: {subText?.fontSizeMax}");
+                    return false;
+                }
+
+                var subPlate = letterboxUI.LetterboxRoot != null ? letterboxUI.LetterboxRoot.transform.Find("SubtitlePlate") : null;
+                if (subPlate == null)
+                {
+                    Debug.LogError("[Test 64] SubtitlePlate backing plate not found!");
+                    return false;
+                }
+
+                var goldLine = subPlate.Find("TopAccentLine");
+                if (goldLine == null)
+                {
+                    Debug.LogError("[Test 64] TopAccentLine on SubtitlePlate not found!");
+                    return false;
+                }
+
+                var skipPrompt = letterboxUI.SkipPromptText;
+                if (skipPrompt == null || skipPrompt.fontSize < 14.5f)
+                {
+                    Debug.LogError($"[Test 64] Skip prompt font size was {skipPrompt?.fontSize ?? 0}, expected >= 15!");
+                    return false;
+                }
+
+                // Verify 4 Intro Story Cards have font size >= 34f and contain Prologue badge
+                var cards = letterboxUI.StoryCardObjects;
+                if (cards == null || cards.Length != 4)
+                {
+                    Debug.LogError("[Test 64] StoryCardObjects count was not 4!");
+                    return false;
+                }
+
+                for (int i = 0; i < 4; i++)
+                {
+                    if (cards[i] == null)
+                    {
+                        Debug.LogError($"[Test 64] Story card {i} is null!");
+                        return false;
+                    }
+                    var cardTmp = cards[i].GetComponent<TextMeshProUGUI>();
+                    if (cardTmp == null || cardTmp.fontSize < 34f)
+                    {
+                        Debug.LogError($"[Test 64] Story card {i} font size was {cardTmp?.fontSize ?? 0}, expected >= 36!");
+                        return false;
+                    }
+                    if (!cardTmp.text.Contains("P R O L O G U E") && !cardTmp.text.Contains("PROLOGUE"))
+                    {
+                        Debug.LogError($"[Test 64] Story card {i} does not contain cinematic prologue badge!");
+                        return false;
+                    }
+                }
+
+                // 2. Day 1 Pipe Discovery Trigger Realignment Verification
+                var beats = StoryDatabase.CreateDefaultStoryBeats();
+                var pipeBeat = beats.FirstOrDefault(b => b.beatId == "D1_FIRST_TILL");
+                if (pipeBeat == null)
+                {
+                    Debug.LogError("[Test 64] D1_FIRST_TILL beat not found in StoryDatabase!");
+                    return false;
+                }
+
+                if (pipeBeat.triggerType != StoryTriggerType.FirstTill)
+                {
+                    Debug.LogError($"[Test 64] D1_FIRST_TILL triggerType is {pipeBeat.triggerType}, expected FirstTill!");
+                    return false;
+                }
+
+                if (pipeBeat.chapter != 1)
+                {
+                    Debug.LogError($"[Test 64] D1_FIRST_TILL chapter is {pipeBeat.chapter}, expected 1!");
+                    return false;
+                }
+
+                if (!pipeBeat.narrativeText.Contains("hoe just hit something metal"))
+                {
+                    Debug.LogError("[Test 64] D1_FIRST_TILL does not contain pipe-striking narrative!");
+                    return false;
+                }
+
+                // Verify no pipe-striking beat is bound to FirstPlant
+                var plantPipeBeat = beats.FirstOrDefault(b => b.triggerType == StoryTriggerType.FirstPlant && b.narrativeText.Contains("hoe just hit"));
+                if (plantPipeBeat != null)
+                {
+                    Debug.LogError($"[Test 64] Found pipe striking beat {plantPipeBeat.beatId} attached to FirstPlant!");
+                    return false;
+                }
+
+                // Verify StorylineEngine evaluation
+                var facts = new NarrativeFactBoard();
+                var engine = new StorylineEngine();
+                engine.SetChapter(1);
+
+                // Evaluating FirstPlant should NOT trigger D1_FIRST_TILL
+                var plantResult = engine.EvaluateTrigger(StoryTriggerType.FirstPlant, facts, beats, currentDay: 1);
+                if (plantResult != null && plantResult.beatId == "D1_FIRST_TILL")
+                {
+                    Debug.LogError("[Test 64] Evaluating FirstPlant triggered D1_FIRST_TILL! It should only trigger on FirstTill.");
+                    return false;
+                }
+
+                // Evaluating FirstTill SHOULD trigger D1_FIRST_TILL
+                var tillResult = engine.EvaluateTrigger(StoryTriggerType.FirstTill, facts, beats, currentDay: 1);
+                if (tillResult == null || tillResult.beatId != "D1_FIRST_TILL")
+                {
+                    Debug.LogError($"[Test 64] Evaluating FirstTill failed to trigger D1_FIRST_TILL on Day 1! Got: {tillResult?.beatId ?? "null"}");
+                    return false;
+                }
+
+                Debug.Log("✅ Test 64: Cutscene typography overhaul (font sizes >=28/36, auto-sizing, frosted backing plate, prologue badge) and Day 1 pipe discovery trigger realignment (FirstTill) verified successfully.");
+                return true;
+            }
+            finally
+            {
+                Object.DestroyImmediate(canvasGo);
             }
         }
     }
