@@ -307,7 +307,7 @@ namespace FeaturesStoryline.Cutscenes
 
             if (!string.IsNullOrEmpty(text) && !text.Contains("PROLOGUE") && !text.StartsWith("<size="))
             {
-                introStoryText.text = $"<size=65%><color=#E5B044>✦ &nbsp; P R O L O G U E &nbsp; ✦</color></size>\n\n“{text}”";
+                introStoryText.text = $"<size=65%><color=#E5B044>—   P R O L O G U E   —</color></size>\n\n“{text}”";
             }
             else
             {
@@ -784,10 +784,10 @@ namespace FeaturesStoryline.Cutscenes
 
             string[] cardTexts = new string[4]
             {
-                "<size=65%><color=#E5B044>✦ &nbsp; P R O L O G U E &nbsp; ✦</color></size>\n\n“Ten years in the army was enough.\nAt thirty, I just wanted a quiet life.”",
-                "<size=65%><color=#E5B044>✦ &nbsp; P R O L O G U E &nbsp; ✦</color></size>\n\n“I used all my savings to buy a cheap piece of land\nfar away from the city.”",
-                "<size=65%><color=#E5B044>✦ &nbsp; P R O L O G U E &nbsp; ✦</color></size>\n\n“For a while, everything went fine.\nI cleared the weeds and built a few small farm plots.”",
-                "<size=65%><color=#E5B044>✦ &nbsp; P R O L O G U E &nbsp; ✦</color></size>\n\n“Life was peaceful...\nuntil the day I started digging in an untouched part of the field.”"
+                "<size=65%><color=#E5B044>—   P R O L O G U E   —</color></size>\n\n“Ten years in the army was enough.\nAt thirty, I just wanted a quiet life.”",
+                "<size=65%><color=#E5B044>—   P R O L O G U E   —</color></size>\n\n“I used all my savings to buy a cheap piece of land\nfar away from the city.”",
+                "<size=65%><color=#E5B044>—   P R O L O G U E   —</color></size>\n\n“For a while, everything went fine.\nI cleared the weeds and built a few small farm plots.”",
+                "<size=65%><color=#E5B044>—   P R O L O G U E   —</color></size>\n\n“Life was peaceful...\nuntil the day I started digging in an untouched part of the field.”"
             };
 
             for (int i = 0; i < 4; i++)

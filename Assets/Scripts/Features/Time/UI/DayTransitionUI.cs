@@ -379,7 +379,7 @@ public class DayTransitionUI : MonoBehaviour
                 if (iconText != null) iconText.text = "";
                 if (categoryTagText != null)
                 {
-                    categoryTagText.text = "✦   T H E   B L O O D   M O O N   E C L I P S E   ✦";
+                    categoryTagText.text = "—   T H E   B L O O D   M O O N   E C L I P S E   —";
                     categoryTagText.color = new Color(0.98f, 0.45f, 0.45f, 0.90f);
                 }
 
@@ -428,7 +428,7 @@ public class DayTransitionUI : MonoBehaviour
                 if (iconText != null) iconText.text = "";
                 if (categoryTagText != null)
                 {
-                    categoryTagText.text = $"✦   D A Y   {roman}   •   A   N E W   D A W N   A W A K E N S   ✦";
+                    categoryTagText.text = $"—   D A Y   {roman}   •   A   N E W   D A W N   A W A K E N S   —";
                     categoryTagText.color = new Color(1.0f, 0.85f, 0.40f, 0.90f);
                 }
 

@@ -140,7 +140,7 @@ namespace FarmBeware.Features.Quest.UI
             if (questHeaderBadgeText != null)
             {
                 string statusTag = model.IsCompleted ? "• COMPLETED" : "• FIRST STEPS";
-                questHeaderBadgeText.text = $"📜 SIDE QUEST {statusTag}";
+                questHeaderBadgeText.text = $"• SIDE QUEST {statusTag}";
                 questHeaderBadgeText.color = model.IsCompleted
                     ? new Color(1f, 0.84f, 0.25f)
                     : new Color(0.40f, 0.85f, 1f);
@@ -199,7 +199,7 @@ namespace FarmBeware.Features.Quest.UI
             questHeaderBadgeText.fontStyle = FontStyles.Bold;
             questHeaderBadgeText.color = new Color(0.40f, 0.85f, 1f);
             questHeaderBadgeText.alignment = TextAlignmentOptions.Left;
-            questHeaderBadgeText.text = "📜 SIDE QUEST • FIRST STEPS";
+            questHeaderBadgeText.text = "• SIDE QUEST • FIRST STEPS";
 
             GameObject detailObj = new GameObject("QuestDetail", typeof(RectTransform), typeof(TextMeshProUGUI));
             detailObj.transform.SetParent(questCardRoot.transform, false);

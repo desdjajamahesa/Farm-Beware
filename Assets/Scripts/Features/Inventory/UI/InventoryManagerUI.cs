@@ -781,7 +781,7 @@ if (customPanel != null)
                     {
                         string buffDesc = !string.IsNullOrEmpty(buff.description) ? buff.description : buff.buffName;
                         sb.AppendLine();
-                        sb.Append($"<color=#FBBF24>✦ {buffDesc} ({buff.duration}s)</color>");
+                        sb.Append($"<color=#FBBF24>• {buffDesc} ({buff.duration}s)</color>");
                     }
                 }
                 detailItemDesc.text = sb.ToString();

@@ -109,7 +109,15 @@ Konsolidasi dokumentasi teknis dari seluruh kontributor tim pengembang (`Rafi`, 
 
 ### Diperbaiki (Fixed)
 
-#### 5. Keamanan Siklus Hidup Mesin & Eliminasi Warning Edit-Mode `[Rafi]`
+#### 5. Pembersihan Entity HTML TextMeshPro & Koreksi Glyph Atlas `[Rafi]`
+- **Eliminasi Artefak Render `□ &nbsp; P R O L O G U E &nbsp; □` ([`CutsceneLetterboxUI.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Storyline/Cutscenes/CutsceneLetterboxUI.cs), [`DayTransitionUI.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Time/UI/DayTransitionUI.cs), [`StoveUIManager.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Kitchen/UI/StoveUIManager.cs), [`InventoryManagerUI.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Inventory/UI/InventoryManagerUI.cs))**:
+  - Mendiagnosis render artifact `□ &nbsp; P R O L O G U E &nbsp; □`:
+    - TextMeshPro parser hanya mengevaluasi tag XML formatting bawaan (`<size>`, `<color>`, `<b>`, dll.) dan tidak memproses HTML character entities seperti `&nbsp;`, menyebabkan teks literal `&nbsp;` tercetak ke layar.
+    - Karakter Unicode bintang `✦` (`\u2726`) tidak tercakup dalam tabel font atlas bawaan `LiberationSans SDF`, memicu fallback square `□`.
+  - Mengganti format header prolog menjadi `<size=65%><color=#E5B044>—   P R O L O G U E   —</color></size>` menggunakan spasi standar ASCII dan glyph em-dash `—` (`\u2014`) yang diverifikasi ada pada atlas.
+  - Mengonversi simbol dekoratif di `DayTransitionUI`, `StoveUIManager`, dan `InventoryManagerUI` ke bullet `•` (`\u2022`) dan em-dash `—` (`\u2014`) yang terbukti aman dari missing glyph.
+
+#### 6. Keamanan Siklus Hidup Mesin & Eliminasi Warning Edit-Mode `[Rafi]`
 - **SafeDestroy Lifecycle Abstraction ([`KitchenStationProgressOverlay.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Kitchen/UI/KitchenStationProgressOverlay.cs), [`WorldItemPickup.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Combat/WorldItemPickup.cs))**:
   - Mengeliminasi peringatan native engine `"Destroy may not be called from edit mode! Use DestroyImmediate instead."` saat menjalankan pengujian otomatis di Unity Editor.
   - Mengimplementasikan helper `SafeDestroy(Object target)`:
