@@ -10,7 +10,7 @@ Welcome to the **Farm-Beware** patch notes! Here you'll find the latest updates,
 * **Cinematic Cutscene Visual & Typography Overhaul**: Completely overhauled cutscene typography and letterbox presentation for high-definition displays:
   * **Cinematic Subtitles**: Subtitle font size increased from 20 to **28** (with TextMeshPro auto-sizing 22 – 32, bold moonlight ivory `#FAF8F2`, and crisp kerning).
   * **Frosted Obsidian Backing Plate & Gold Accent Line**: Added a semi-transparent charcoal backing plate (`SubtitlePlate`) featuring a delicate 2px golden accent line (`#F2C752`) along the top edge, ensuring pristine readability across any 3D environment lighting.
-  * **Full-Screen Prologue Story Cards**: Sentence cards during the intro black screen now display at **36** font size (auto-sizing 26 – 42, bold, generous line spacing) adorned with a gold `✦   P R O L O G U E   ✦` header badge and quotation marks.
+  * **Full-Screen Intro Story Cards**: Sentence cards during the intro black screen now display at **36** font size (auto-sizing 26 – 42, bold, generous line spacing) with pure cinematic quotation marks `“...”` centered on the screen.
   * **Cinematic Letterbox & Amber Skip Prompt**: Letterbox bar height expanded to **125px** (from 110px), and skip gauge prompt upgraded to 15pt bold with warm amber hotkey highlights (`[ESC] / HOLD [SPACE] TO SKIP`).
   * **In-Game Dialogue Sizing**: In-game dialogue box upgraded to 21pt body text and 24pt bold gold speaker name across an expanded 920x200 panel.
 * **Player V2 Stylized Character Model & Complete Animation Suite**: Replaced the legacy character model with the brand new, stylized farmer character (`Farmer_Asep_V2`). Equipped with a full suite of responsive, handcrafted generic animations:

@@ -75,6 +75,7 @@ namespace FeaturesStoryline.Cutscenes
         [SerializeField] private CanvasGroup introStoryTextCanvasGroup;
         [SerializeField] private GameObject[] storyCardObjects = new GameObject[4];
         public GameObject[] StoryCardObjects => storyCardObjects;
+        public TextMeshProUGUI IntroStoryText => introStoryText;
         public GameObject IntroStoryRoot => introStoryRoot;
         public GameObject LetterboxRoot => letterboxRoot;
         public TextMeshProUGUI SubtitleText => subtitleText;
@@ -305,9 +306,9 @@ namespace FeaturesStoryline.Cutscenes
 
             if (_introTextFadeRoutine != null) StopCoroutine(_introTextFadeRoutine);
 
-            if (!string.IsNullOrEmpty(text) && !text.Contains("PROLOGUE") && !text.StartsWith("<size="))
+            if (!string.IsNullOrEmpty(text) && !text.StartsWith("“") && !text.StartsWith("\""))
             {
-                introStoryText.text = $"<size=65%><color=#E5B044>—   P R O L O G U E   —</color></size>\n\n“{text}”";
+                introStoryText.text = $"“{text}”";
             }
             else
             {
@@ -784,10 +785,10 @@ namespace FeaturesStoryline.Cutscenes
 
             string[] cardTexts = new string[4]
             {
-                "<size=65%><color=#E5B044>—   P R O L O G U E   —</color></size>\n\n“Ten years in the army was enough.\nAt thirty, I just wanted a quiet life.”",
-                "<size=65%><color=#E5B044>—   P R O L O G U E   —</color></size>\n\n“I used all my savings to buy a cheap piece of land\nfar away from the city.”",
-                "<size=65%><color=#E5B044>—   P R O L O G U E   —</color></size>\n\n“For a while, everything went fine.\nI cleared the weeds and built a few small farm plots.”",
-                "<size=65%><color=#E5B044>—   P R O L O G U E   —</color></size>\n\n“Life was peaceful...\nuntil the day I started digging in an untouched part of the field.”"
+                "“Ten years in the army was enough.\nAt thirty, I just wanted a quiet life.”",
+                "“I used all my savings to buy a cheap piece of land\nfar away from the city.”",
+                "“For a while, everything went fine.\nI cleared the weeds and built a few small farm plots.”",
+                "“Life was peaceful...\nuntil the day I started digging in an untouched part of the field.”"
             };
 
             for (int i = 0; i < 4; i++)

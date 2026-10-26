@@ -39,7 +39,7 @@ Konsolidasi dokumentasi teknis dari seluruh kontributor tim pengembang (`Rafi`, 
   - Mendiagnosis keterbatasan visual subtitle dan prologue intro cards yang berukuran terlalu kecil (20f dan 24f) tanpa pelat kontras di atas dunia 3D.
   - Memperbesar ukuran teks subtitle menjadi **28f** (auto-sizing 22f – 32f, Bold, moonlight ivory `#FAF8F2`, kerning 1.2f, line spacing 6f).
   - Mengimplementasikan frosted obsidian glass backing plate (`SubtitlePlate`, color `#080A0F`, alpha 0.78) dengan garis aksen emas tipis 2px (`TopAccentLine`, color `#F2C752`) di bagian atas panel.
-  - Memperbesar teks intro story cards menjadi **36f** (auto-sizing 26f – 42f, Bold, line spacing 18f, kerning 1.2f) dengan header badge emas `✦   P R O L O G U E   ✦` dan tanda kutip elegan `“...”`.
+  - Memperbesar teks intro story cards menjadi **36f** (auto-sizing 26f – 42f, Bold, line spacing 18f, kerning 1.2f) dengan penyajian kutipan narasi sinematik murni `“...”` tanpa label header "PROLOGUE".
   - Memperbesar tinggi bilah letterbox sinematik menjadi **125f** (dari 110f) dan mempercantik tombol skip hold gauge dengan font 15f bold aksen amber.
   - Memperbesar dialog in-game pada `StorylineUI`: body 21f (dari 16f), speaker 24f (dari 22f bold gold), panel dialog diperluas menjadi 920x200f.
 - **Koreksi Logika Pemicu Penemuan Pipa Logam Day 1 (`FirstTill` vs `FirstPlant`)**:

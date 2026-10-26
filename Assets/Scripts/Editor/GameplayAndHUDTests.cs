@@ -5695,7 +5695,7 @@ namespace FarmBeware.EditorTests
                     return false;
                 }
 
-                // Verify 4 Intro Story Cards have font size >= 34f and contain Prologue badge
+                // Verify 4 Intro Story Cards have font size >= 34f and contain narrative quotes
                 var cards = letterboxUI.StoryCardObjects;
                 if (cards == null || cards.Length != 4)
                 {
@@ -5716,9 +5716,9 @@ namespace FarmBeware.EditorTests
                         Debug.LogError($"[Test 64] Story card {i} font size was {cardTmp?.fontSize ?? 0}, expected >= 36!");
                         return false;
                     }
-                    if (!cardTmp.text.Contains("P R O L O G U E") && !cardTmp.text.Contains("PROLOGUE"))
+                    if (!cardTmp.text.Contains("“") || !cardTmp.text.Contains("”"))
                     {
-                        Debug.LogError($"[Test 64] Story card {i} does not contain cinematic prologue badge!");
+                        Debug.LogError($"[Test 64] Story card {i} does not contain cinematic narrative quotes!");
                         return false;
                     }
                 }
@@ -5779,7 +5779,7 @@ namespace FarmBeware.EditorTests
                     return false;
                 }
 
-                Debug.Log("✅ Test 64: Cutscene typography overhaul (font sizes >=28/36, auto-sizing, frosted backing plate, prologue badge) and Day 1 pipe discovery trigger realignment (FirstTill) verified successfully.");
+                Debug.Log("✅ Test 64: Cutscene typography overhaul (font sizes >=28/36, auto-sizing, frosted backing plate, cinematic narrative quotes) and Day 1 pipe discovery trigger realignment (FirstTill) verified successfully.");
                 return true;
             }
             finally
