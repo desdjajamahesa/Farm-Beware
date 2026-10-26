@@ -201,7 +201,7 @@ public class KitchenStationProgressOverlay : MonoBehaviour
             GameObject trackGO = GameObject.CreatePrimitive(PrimitiveType.Quad);
             trackGO.name = "Track_" + i;
             Collider trackCol = trackGO.GetComponent<Collider>();
-            if (trackCol != null) Destroy(trackCol);
+            if (trackCol != null) SafeDestroy(trackCol);
 
             Transform trackTransform = trackGO.transform;
             trackTransform.SetParent(root, false);
@@ -213,15 +213,34 @@ public class KitchenStationProgressOverlay : MonoBehaviour
             trackMesh.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             trackMesh.receiveShadows = false;
             trackMesh.motionVectorGenerationMode = MotionVectorGenerationMode.ForceNoMotion;
-            if (overlayMaterial != null) { trackMesh.material = overlayMaterial; trackMesh.material.renderQueue = 3999; }
-            trackMesh.material.color = new Color(0.10f, 0.15f, 0.22f, 0.65f);
+            if (Application.isPlaying)
+            {
+                if (overlayMaterial != null)
+                {
+                    trackMesh.material = overlayMaterial;
+                    trackMesh.material.renderQueue = 3999;
+                }
+                trackMesh.material.color = new Color(0.10f, 0.15f, 0.22f, 0.65f);
+            }
+            else
+            {
+                if (overlayMaterial != null)
+                {
+                    trackMesh.sharedMaterial = overlayMaterial;
+                }
+                var trackBlock = new MaterialPropertyBlock();
+                trackMesh.GetPropertyBlock(trackBlock);
+                trackBlock.SetColor("_BaseColor", new Color(0.10f, 0.15f, 0.22f, 0.65f));
+                trackBlock.SetColor("_Color", new Color(0.10f, 0.15f, 0.22f, 0.65f));
+                trackMesh.SetPropertyBlock(trackBlock);
+            }
 
             // 2. Garis Pengisi Progress Vertikal (Fill Bar dari Bawah ke Atas)
             GameObject quadGO = GameObject.CreatePrimitive(PrimitiveType.Quad);
             quadGO.name = "Veil_" + i;
             Collider col = quadGO.GetComponent<Collider>();
             if (col != null)
-                Destroy(col);
+                SafeDestroy(col);
 
             Transform quad = quadGO.transform;
             quad.SetParent(root, false);
@@ -233,13 +252,38 @@ public class KitchenStationProgressOverlay : MonoBehaviour
             mesh.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             mesh.receiveShadows = false;
             mesh.motionVectorGenerationMode = MotionVectorGenerationMode.ForceNoMotion;
-            if (overlayMaterial != null) { mesh.material = overlayMaterial; mesh.material.renderQueue = 4000; } else if (!warnedMissing)
-            {
-                Debug.LogWarning("[KitchenStationProgressOverlay] overlayMaterial is null on '" + gameObject.name + "'. Rendering fallback veil.", this);
-                warnedMissing = true;
-            }
             Color color = (overlayMaterial != null) ? overlayColor : Color.white;
-            mesh.material.color = color;
+            if (Application.isPlaying)
+            {
+                if (overlayMaterial != null)
+                {
+                    mesh.material = overlayMaterial;
+                    mesh.material.renderQueue = 4000;
+                }
+                else if (!warnedMissing)
+                {
+                    Debug.LogWarning("[KitchenStationProgressOverlay] overlayMaterial is null on '" + gameObject.name + "'. Rendering fallback veil.", this);
+                    warnedMissing = true;
+                }
+                mesh.material.color = color;
+            }
+            else
+            {
+                if (overlayMaterial != null)
+                {
+                    mesh.sharedMaterial = overlayMaterial;
+                }
+                else if (!warnedMissing)
+                {
+                    Debug.LogWarning("[KitchenStationProgressOverlay] overlayMaterial is null on '" + gameObject.name + "'. Rendering fallback veil.", this);
+                    warnedMissing = true;
+                }
+                var meshBlock = new MaterialPropertyBlock();
+                mesh.GetPropertyBlock(meshBlock);
+                meshBlock.SetColor("_BaseColor", color);
+                meshBlock.SetColor("_Color", color);
+                mesh.SetPropertyBlock(meshBlock);
+            }
 
             SlotOverlay slot = new SlotOverlay();
             slot.root = root;
@@ -488,5 +532,14 @@ public class KitchenStationProgressOverlay : MonoBehaviour
                 return all[i];
         }
         return null;
+    }
+
+    private static void SafeDestroy(UnityEngine.Object obj)
+    {
+        if (obj == null) return;
+        if (Application.isPlaying)
+            Destroy(obj);
+        else
+            DestroyImmediate(obj);
     }
 }

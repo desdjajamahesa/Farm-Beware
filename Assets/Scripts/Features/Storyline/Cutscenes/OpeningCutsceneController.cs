@@ -341,7 +341,15 @@ namespace FeaturesStoryline.Cutscenes
                 equip.GetType().GetMethod("DestroyCurrentWeapon")?.Invoke(equip, null);
                 equip.GetType().GetMethod("UpdateEquipmentVisual")?.Invoke(equip, new object[] { 0 });
             }
-            playerObj.SendMessage("EnsureStarterKit", 0, SendMessageOptions.DontRequireReceiver);
+            var starterKit = playerObj.GetComponent("PlayerStarterKit");
+            if (starterKit != null)
+            {
+                starterKit.GetType().GetMethod("EnsureStarterKit", new Type[] { typeof(int) })?.Invoke(starterKit, new object[] { 0 });
+            }
+            else if (Application.isPlaying && playerObj.activeInHierarchy)
+            {
+                playerObj.SendMessage("EnsureStarterKit", 0, SendMessageOptions.DontRequireReceiver);
+            }
         }
 
         private void InitializeVehicleAndPlayerForCutscene()

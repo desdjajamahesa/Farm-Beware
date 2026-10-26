@@ -132,10 +132,10 @@ namespace FeaturesInteraction
             // Hapus seluruh food buff aktif saat pemain tidur (sehingga pagi hari bersih dari buff)
             if (interactor != null)
             {
-                interactor.SendMessage("ClearAllBuffs", SendMessageOptions.DontRequireReceiver);
+                SafeClearBuffs(interactor);
 
                 // Malam selesai: pulihkan HP pemain bila komponen PlayerStats tersedia.
-                interactor.SendMessage("Heal", sleepHealAmount, SendMessageOptions.DontRequireReceiver);
+                SafeHeal(interactor, sleepHealAmount);
             }
 
             int completedDay = timeService.CurrentDay;
@@ -189,8 +189,8 @@ namespace FeaturesInteraction
 
             if (interactor != null)
             {
-                interactor.SendMessage("ClearAllBuffs", SendMessageOptions.DontRequireReceiver);
-                interactor.SendMessage("Heal", sleepHealAmount, SendMessageOptions.DontRequireReceiver);
+                SafeClearBuffs(interactor);
+                SafeHeal(interactor, sleepHealAmount);
             }
 
             timeService.AdvanceToNextDay();
@@ -198,8 +198,7 @@ namespace FeaturesInteraction
             var playerObj = interactor != null ? interactor : GameObject.FindWithTag("Player");
             if (playerObj != null)
             {
-                playerObj.SendMessage("EnsureStarterKit", 1, SendMessageOptions.DontRequireReceiver);
-                playerObj.SendMessage("EnsureStarterKit", SendMessageOptions.DontRequireReceiver);
+                SafeEnsureStarterKit(playerObj, 1);
             }
 
             if (pc != null) pc.RemoveInputLock("BedSleep");
@@ -233,8 +232,8 @@ namespace FeaturesInteraction
             // 2. Perform day advance and health/buff updates behind the black curtain
             if (interactor != null)
             {
-                interactor.SendMessage("ClearAllBuffs", SendMessageOptions.DontRequireReceiver);
-                interactor.SendMessage("Heal", sleepHealAmount, SendMessageOptions.DontRequireReceiver);
+                SafeClearBuffs(interactor);
+                SafeHeal(interactor, sleepHealAmount);
             }
 
             timeService.AdvanceToNextDay();
@@ -243,8 +242,7 @@ namespace FeaturesInteraction
             var targetPlayer = interactor != null ? interactor : GameObject.FindWithTag("Player");
             if (targetPlayer != null)
             {
-                targetPlayer.SendMessage("EnsureStarterKit", 1, SendMessageOptions.DontRequireReceiver);
-                targetPlayer.SendMessage("EnsureStarterKit", SendMessageOptions.DontRequireReceiver);
+                SafeEnsureStarterKit(targetPlayer, 1);
             }
 
             // Small pause behind black screen allowing atmosphere and shadow maps to settle
@@ -293,7 +291,7 @@ namespace FeaturesInteraction
             // 2. Clear buffs and transition to Night phase behind the black screen
             if (interactor != null)
             {
-                interactor.SendMessage("ClearAllBuffs", SendMessageOptions.DontRequireReceiver);
+                SafeClearBuffs(interactor);
             }
 
             timeService.StartNightPhase();
@@ -324,6 +322,48 @@ namespace FeaturesInteraction
             }
 
             UpdateLabel();
+        }
+
+        private static void SafeClearBuffs(GameObject target)
+        {
+            if (target == null) return;
+            var buffMgr = target.GetComponent("PlayerBuffManager");
+            if (buffMgr != null)
+            {
+                buffMgr.GetType().GetMethod("ClearAllBuffs")?.Invoke(buffMgr, null);
+            }
+            else if (Application.isPlaying && target.activeInHierarchy)
+            {
+                target.SendMessage("ClearAllBuffs", SendMessageOptions.DontRequireReceiver);
+            }
+        }
+
+        private static void SafeHeal(GameObject target, int amount)
+        {
+            if (target == null) return;
+            var stats = target.GetComponent("PlayerStats");
+            if (stats != null)
+            {
+                stats.GetType().GetMethod("Heal", new System.Type[] { typeof(int) })?.Invoke(stats, new object[] { amount });
+            }
+            else if (Application.isPlaying && target.activeInHierarchy)
+            {
+                target.SendMessage("Heal", amount, SendMessageOptions.DontRequireReceiver);
+            }
+        }
+
+        private static void SafeEnsureStarterKit(GameObject target, int day)
+        {
+            if (target == null) return;
+            var kit = target.GetComponent("PlayerStarterKit");
+            if (kit != null)
+            {
+                kit.GetType().GetMethod("EnsureStarterKit", new System.Type[] { typeof(int) })?.Invoke(kit, new object[] { day });
+            }
+            else if (Application.isPlaying && target.activeInHierarchy)
+            {
+                target.SendMessage("EnsureStarterKit", day, SendMessageOptions.DontRequireReceiver);
+            }
         }
     }
 }

@@ -302,7 +302,18 @@ namespace FeaturesCombat
             var r = go.GetComponent<Renderer>();
             if (r != null)
             {
-                r.material.color = new Color(0.95f, 0.75f, 0.2f);
+                if (Application.isPlaying)
+                {
+                    r.material.color = new Color(0.95f, 0.75f, 0.2f);
+                }
+                else
+                {
+                    var block = new MaterialPropertyBlock();
+                    r.GetPropertyBlock(block);
+                    block.SetColor("_BaseColor", new Color(0.95f, 0.75f, 0.2f));
+                    block.SetColor("_Color", new Color(0.95f, 0.75f, 0.2f));
+                    r.SetPropertyBlock(block);
+                }
             }
 
             var pickup = go.AddComponent<WorldItemPickup>();
