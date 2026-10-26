@@ -18,6 +18,7 @@ namespace FeaturesStoryline.Cutscenes
     [RequireComponent(typeof(PlayableDirector))]
     public class OpeningCutsceneController : MonoBehaviour, ICutsceneService
     {
+        private static OpeningCutsceneController _instance;
         public static bool HasInstance => _instance != null;
         private static bool _isQuitting = false;
 
