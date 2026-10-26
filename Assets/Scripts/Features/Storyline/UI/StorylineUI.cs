@@ -324,7 +324,7 @@ namespace FeaturesStoryline.UI
             dialoguePanel.transform.SetAsLastSibling();
 
             if (dialogueSpeakerText != null)
-                dialogueSpeakerText.text = string.IsNullOrEmpty(speaker) ? "Veteran" : speaker;
+                dialogueSpeakerText.text = string.IsNullOrEmpty(speaker) ? "Ucup" : speaker;
             if (dialogueBodyText != null)
                 dialogueBodyText.text = message;
 

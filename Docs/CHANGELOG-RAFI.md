@@ -54,6 +54,14 @@ Semua perubahan penting pada proyek ini oleh Rafi akan dicatat di halaman ini.
 - **Ekspansi Automated Audit Test Suite ke 63 Tes Otomatis (63/63 Passed) ([`GameplayAndHUDTests.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Editor/GameplayAndHUDTests.cs))**:
   - Menambahkan **Test 50 - Test 63** yang memvalidasi integritas rig PlayerV2, pose cockpit truk, transisi Day 0/1 kasur, pendaftaran sinyal side quest, ekspansi buffer tempur 64 target, dan penempelan hierarki QuestHUD (63/63 audit tests lulus 100%).
 
+### Diubah (Changed)
+- **Pembaruan Identitas Karakter Protagonis Menjadi 'Ucup' ([`StoryDatabase.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Storyline/Data/StoryDatabase.cs), [`StorylineUI.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Storyline/UI/StorylineUI.cs), [`StoryBeatData.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Storyline/Data/StoryBeatData.cs), [`StagingScene.unity`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scenes/StagingScene.unity))**:
+  - Mengubah seluruh referensi pembicara dialog (*dialogue speaker*) dan kepemilikan berkas jurnal dari "Veteran" / "The Veteran" menjadi **"Ucup"**:
+    - Dialog box in-game pada seluruh beat cerita (`D1_NEW_PLOT`, `D1_WELL_WATER_100`, `D1_FIRST_TILL`, `D1_DUSK_WARNING`, `D2_DAWN_PIPES`, `D2_SINK_WASH_TARO`, `D2_FIRST_HARVEST`, `D3_WORKBENCH_UPGRADE`, `D5_DAWN_REDSKY`) kini menampilkan nama pembicara "Ucup".
+    - Fallback default speaker pada `StorylineUI.cs` diperbarui menjadi `"Ucup"`.
+    - Token penggantian nama pemain pada `StoryBeatData.cs` (`playerName`) diperbarui default-nya menjadi `"Ucup"`.
+    - Entri jurnal dan catatan riset (`Cheap Land Deed`, `Mutant Combat Dossier`, `Heavy Armor Observations`, `Threat Assessment`, `Peace at Last`) diatribusikan kepada "Ucup".
+
 ### Diperbaiki (Fixed)
 - **Koreksi Glyph SDF & Eliminasi HTML Entity `&nbsp;` pada Cutscene & UI ([`CutsceneLetterboxUI.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Storyline/Cutscenes/CutsceneLetterboxUI.cs), [`DayTransitionUI.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Time/UI/DayTransitionUI.cs), [`StoveUIManager.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Kitchen/UI/StoveUIManager.cs), [`InventoryManagerUI.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Inventory/UI/InventoryManagerUI.cs))**:
   - Mendiagnosis penyebab teks `□ &nbsp; P R O L O G U E &nbsp; □` pada kartu narasi awal:

@@ -28,7 +28,7 @@ namespace FeaturesStoryline
                     "JOURNAL_01_WAIVER",
                     1,
                     "Cheap Land Deed",
-                    "Municipal Land Registry / The Veteran",
+                    "Municipal Land Registry / Ucup",
                     "PARCEL ACQUISITION RECORD — LOT 417-B\n\n" +
                     "I used my military severance to buy this land for next to nothing. The contract had an environmental waiver mentioning an old factory from 1989 that was shut down and buried.\n\n" +
                     "Clause 14 basically said: 'Buy at your own risk. Municipality is not responsible for whatever is left underneath.' I didn't think much of it at the time. Land is land.",
@@ -62,7 +62,7 @@ namespace FeaturesStoryline
                     "JOURNAL_04_APEX_BIO",
                     4,
                     "Mutant Combat Dossier",
-                    "Veteran's Field Observations",
+                    "Ucup's Field Observations",
                     "TACTICAL LOG — DEFENSE ANALYSIS\n\n" +
                     "1. Tuber Maws: Fast and erratic, but soft skin. Easy to bring down with quick strikes.\n" +
                     "2. Taro Brutes: Armored in petrified plant bark. Need heavy weapons and timed dodges to crack their plating.\n" +
@@ -82,7 +82,7 @@ namespace FeaturesStoryline
                 ),
                 // Additional canonical dossiers
                 JournalEntryData.CreateRuntimeInstance(
-                    "LOG_NEXAPHYTO_06", 4, "Heavy Armor Observations", "Veteran's Weapon Bench Notes",
+                    "LOG_NEXAPHYTO_06", 4, "Heavy Armor Observations", "Ucup's Weapon Bench Notes",
                     "The taro roots pulled from the ground don't rot. They harden into composite armor within hours of being exposed to well water. Wrapping these dried fibers around my weapons adds serious kinetic weight.", 6
                 ),
                 JournalEntryData.CreateRuntimeInstance(
@@ -90,11 +90,11 @@ namespace FeaturesStoryline
                     "The emergency relief tank contains high-pressure neutralizing vapor. One burst is enough to neutralize the entire subterranean basin. All I need to do is clear the roots off the release lever.", 7
                 ),
                 JournalEntryData.CreateRuntimeInstance(
-                    "LOG_NEXAPHYTO_08", 5, "The Root of the Problem", "Veteran's Threat Assessment",
+                    "LOG_NEXAPHYTO_08", 5, "The Root of the Problem", "Ucup's Threat Assessment",
                     "The monster guarding the central valve isn't just an overgrown plant—it's plugged directly into the ruptured chemical conduit. It won't let go of the valve willingly. Time to treat this like a combat breach.", 8
                 ),
                 JournalEntryData.CreateRuntimeInstance(
-                    "LOG_FARMER_PURGE", 5, "Peace at Last: Veteran's Journal", "The Veteran",
+                    "LOG_FARMER_PURGE", 5, "Peace at Last: Ucup's Journal", "Ucup",
                     "The big monster is down. The emergency valve popped open with a thunderous hiss, and white neutralizing gas swept through the cracked pipes. The green slime dissolved into clean, rich soil.\n\n" +
                     "No more monsters. No more war. Tomorrow morning, I can finally be just a farmer.", 9
                 )
@@ -153,7 +153,7 @@ namespace FeaturesStoryline
                 },
                 journal: GetJournal("JOURNAL_01_WAIVER"),
                 saliencePriority: 2,
-                speaker: "Veteran"
+                speaker: "Ucup"
             ));
 
             // Reactive Storylet: First well water draw
@@ -168,7 +168,7 @@ namespace FeaturesStoryline
                 criteria: new[] { new NarrativeFactCondition(NarrativeFactKey.TotalWellWaterDrawnLiters, FactOperator.GreaterOrEqual, 100, 20) },
                 mutations: new[] { new NarrativeFactMutation(NarrativeFactKey.NexaPhytoTruthLevel, FactMutationOp.Max, 2) },
                 saliencePriority: 2,
-                speaker: "Veteran"
+                speaker: "Ucup"
             ));
 
             beats.Add(StoryBeatData.CreateRuntimeInstance(
@@ -179,7 +179,7 @@ namespace FeaturesStoryline
                 "Something Under the Dirt",
                 "CLANG! My hoe just hit something metal buried deep in the dirt. I pulled it up—it's a bent, rusty warning sign from an old factory. The letters are almost completely faded. Probably just old junk. I tossed it to the side of the field and got back to work... unaware that pulling it out cracked a sealed underground pipe right below my farm.",
                 day: 1,
-                speaker: "Veteran",
+                speaker: "Ucup",
                 shake: true,
                 shakeIntensity: 0.35f
             ));
@@ -192,7 +192,7 @@ namespace FeaturesStoryline
                 "Growing Way Too Fast",
                 "That's crazy. The seeds I planted earlier today are already growing huge. At first I thought the soil was just rich, but now the vines are actually twitching in the dirt...",
                 day: 1,
-                speaker: "Veteran",
+                speaker: "Ucup",
                 shake: true,
                 shakeIntensity: 0.25f
             ));
@@ -244,7 +244,7 @@ namespace FeaturesStoryline
                 "Checking the Old Sign",
                 "I went back to the edge of the field and scraped the rust off that metal sign I dug up yesterday. Beneath the dirt, I can still read part of it: 'NEXAPHYTO FACTORY — DANGER: CHEMICAL TANK 04'. So this land wasn't just an ordinary factory...",
                 day: 2,
-                speaker: "Veteran"
+                speaker: "Ucup"
             ));
 
             // Reactive Storylet: Washing Taro in Sink
@@ -263,7 +263,7 @@ namespace FeaturesStoryline
                 },
                 mutations: new[] { new NarrativeFactMutation(NarrativeFactKey.NexaPhytoTruthLevel, FactMutationOp.Max, 4) },
                 saliencePriority: 3,
-                speaker: "Veteran"
+                speaker: "Ucup"
             ));
 
             beats.Add(StoryBeatData.CreateRuntimeInstance(
@@ -274,7 +274,7 @@ namespace FeaturesStoryline
                 "Glowing Veins",
                 "Look at the roots on this harvest. They grew twice as fast overnight, and there are weird glowing veins inside them. Whatever leaked from that crack is feeding the plants.",
                 day: 2,
-                speaker: "Veteran"
+                speaker: "Ucup"
             ));
 
             beats.Add(StoryBeatData.CreateRuntimeInstance(
@@ -332,12 +332,12 @@ namespace FeaturesStoryline
                 3,
                 StoryTriggerType.WeaponUpgradedAtBench,
                 StoryDeliveryType.DialogueBox,
-                "Veteran Ingenuity",
+                "Ucup's Ingenuity",
                 "The roots left behind by those monsters don't rot—they dry harder than iron. Back in the army, we used whatever we had to survive. Wrapping these fibers around my weapon makes it hit twice as hard.",
                 day: 3,
                 mutations: new[] { new NarrativeFactMutation(NarrativeFactKey.NexaPhytoTruthLevel, FactMutationOp.Max, 6) },
                 saliencePriority: 2,
-                speaker: "Veteran"
+                speaker: "Ucup"
             ));
 
             beats.Add(StoryBeatData.CreateRuntimeInstance(
@@ -452,7 +452,7 @@ namespace FeaturesStoryline
                 "The Final Stand",
                 "Red chemical gas is pouring out of the vents, turning the whole sky dark red. If I run away now, I lose everything I worked for. One more night. I finish this tonight.",
                 day: 5,
-                speaker: "Veteran"
+                speaker: "Ucup"
             );
             d5Dawn.triggersAtmosphericChange = true;
             beats.Add(d5Dawn);

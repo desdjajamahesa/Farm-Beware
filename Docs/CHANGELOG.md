@@ -29,6 +29,7 @@ Welcome to the **Farm-Beware** patch notes! Here you'll find the latest updates,
 * **Day 0 to Day 1 Prologue Sleep Transition**: Day 0 arrival now seamlessly transitions into Day 1 Morning upon sleeping in your bedroom bed. The delivery truck remains permanently parked by the front entrance (`X: 30.55, Y: 0.00, Z: 54.14`), facing the house.
 
 ### Changed
+* **Protagonist Character Identity Renamed to 'Ucup'**: Updated all dialogue boxes, story beat speaker metadata, and research journal author signatures across the narrative engine from "Veteran" to "Ucup".
 * **Combat Hit Registration Expansion**: Expanded melee target detection buffers from 16 to 64 simultaneous colliders, ensuring all strikes connect cleanly even in dense enemy swarms during Night Brawl.
 * **Cleaned Test Banners & UI Clutter**: Safely removed obsolete editor test banners from the scene, providing an unobstructed view of the homestead and clean HUD presentation.
 

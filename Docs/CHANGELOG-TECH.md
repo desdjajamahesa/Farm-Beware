@@ -107,9 +107,17 @@ Konsolidasi dokumentasi teknis dari seluruh kontributor tim pengembang (`Rafi`, 
   - Membangun kartu UI otomatis berlatar belakang glassmorphism semi-transparan yang berlabuh tepat di bawah jam digital HUD (`CombatPhaseTrackerUI`).
   - Menampilkan daftar checklist objektif interaktif dengan ikon status (centang hijau untuk selesai, lingkaran abu-abu untuk proses).
 
+### Diubah (Changed)
+
+#### 5. Pembaruan Identitas Karakter Protagonis Menjadi 'Ucup' `[Rafi]`
+- **Refactoring Speaker & Journal Metadata ([`StoryDatabase.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Storyline/Data/StoryDatabase.cs), [`StorylineUI.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Storyline/UI/StorylineUI.cs), [`StoryBeatData.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Storyline/Data/StoryBeatData.cs))**:
+  - Mengubah seluruh label pembicara dialog naratif dan atribusi kepemilikan berkas journal dari "Veteran" menjadi "Ucup".
+  - Memperbarui fallback speaker name di `StorylineUI.cs` menjadi `"Ucup"`.
+  - Mengonfigurasi token replacement parameter `playerName` default pada `StoryBeatData.FormatNarrativeText()` dan `FormatHudBannerText()` menjadi `"Ucup"`.
+
 ### Diperbaiki (Fixed)
 
-#### 5. Pembersihan Entity HTML TextMeshPro & Koreksi Glyph Atlas `[Rafi]`
+#### 6. Pembersihan Entity HTML TextMeshPro & Koreksi Glyph Atlas `[Rafi]`
 - **Eliminasi Artefak Render `□ &nbsp; P R O L O G U E &nbsp; □` ([`CutsceneLetterboxUI.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Storyline/Cutscenes/CutsceneLetterboxUI.cs), [`DayTransitionUI.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Time/UI/DayTransitionUI.cs), [`StoveUIManager.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Kitchen/UI/StoveUIManager.cs), [`InventoryManagerUI.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Inventory/UI/InventoryManagerUI.cs))**:
   - Mendiagnosis render artifact `□ &nbsp; P R O L O G U E &nbsp; □`:
     - TextMeshPro parser hanya mengevaluasi tag XML formatting bawaan (`<size>`, `<color>`, `<b>`, dll.) dan tidak memproses HTML character entities seperti `&nbsp;`, menyebabkan teks literal `&nbsp;` tercetak ke layar.

@@ -114,7 +114,7 @@ namespace FeaturesStoryline.Data
         /// <summary>
         /// Formats dynamic token replacements into the narrative text without heap allocation when tokens are absent.
         /// </summary>
-        public string FormatNarrativeText(INarrativeFactBoard facts, string playerName = "Asep")
+        public string FormatNarrativeText(INarrativeFactBoard facts, string playerName = "Ucup")
         {
             return FormatTokenString(narrativeText, facts, playerName);
         }
@@ -122,7 +122,7 @@ namespace FeaturesStoryline.Data
         /// <summary>
         /// Formats dynamic token replacements into the HUD banner text without heap allocation when tokens are absent.
         /// </summary>
-        public string FormatHudBannerText(INarrativeFactBoard facts, string playerName = "Asep")
+        public string FormatHudBannerText(INarrativeFactBoard facts, string playerName = "Ucup")
         {
             string source = !string.IsNullOrEmpty(hudBannerText) ? hudBannerText : narrativeText;
             return FormatTokenString(source, facts, playerName);
