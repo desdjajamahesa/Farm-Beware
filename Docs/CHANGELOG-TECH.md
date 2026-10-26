@@ -12,6 +12,9 @@ Konsolidasi dokumentasi teknis dari seluruh kontributor tim pengembang (`Rafi`, 
 ---
 
 ## Daftar Isi Kronologis
+- [2026-10-26](#--2026-10-26)
+- [2026-10-25](#--2026-10-25)
+- [2026-10-22](#--2026-10-22)
 - [2026-10-20](#--2026-10-20)
 - [2026-10-17](#--2026-10-17)
 - [2026-10-16](#--2026-10-16)
@@ -24,6 +27,127 @@ Konsolidasi dokumentasi teknis dari seluruh kontributor tim pengembang (`Rafi`, 
 - [2026-10-02](#--2026-10-02)
 - [2026-10-01](#--2026-10-01)
 - [2026-09-30](#--2026-09-30)
+
+---
+
+## - 2026-10-26
+
+### Ditambahkan & Diintegrasikan (Added & Integrated)
+
+#### 1. Arsitektur Karakter PlayerV2, Generic Rig & Normalisasi HandSocket `[Rafi, Roi]`
+- **Transisi Model & Generic Rig**:
+  - Menggantikan model karakter lama berbasis Mixamo Humanoid dengan aset resmi `Farmer_Asep_V2` ([`character_player_v2.prefab`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Prefabs/Player/character_player_v2.prefab)).
+  - Mengonfigurasi `Animator.avatar = null` pada instance runtime untuk memastikan kecocokan 100% terhadap generic FBX animation curves tanpa distorsi retargeting tulang humanoid.
+  - Membangun controller state machine baru [`AsepAnimator_V2.controller`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Resources/Player/AsepAnimator_V2.controller) yang mendukung:
+    - Locomotion blend tree (Idle, Walk, Run, Sprint).
+    - Farming animations: `farm_plantseed` dan `farm_watering`.
+    - Athletic dodge roll: `roll_fit` dan `standing jump`.
+    - Melee combo string: `standing melee attack horizontal`, `standing melee attack downward`, dan `standing melee attack 360 low`.
+- **Normalisasi Skala HandSocket & Weapon Mount ([`PlayerEquipment.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Player/PlayerEquipment.cs))**:
+  - Mendiagnosis isu di mana weapon/tool yang di-equip mengalami pembesaran atau pengecilan ekstrem karena scale inheritance dari bone rig.
+  - Menetapkan normalisasi skala absolut `transform.localScale = Vector3.one` pada seluruh socket instansiasi tool/senjata (`HandSocket`, `WeaponSocket`).
+  - Menghubungkan weapon visual prefab resmi untuk hoe, plant waterer, pedang, dan kapak tempur.
+- **Ekspansi Buffer Deteksi Tempur Non-Alloc & Input Klik Kanan ([`PlayerEquipment.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Player/PlayerEquipment.cs), [`PlayerControl.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Player/PlayerControl.cs))**:
+  - Mengembangkan buffer deteksi tabrakan melee non-alloc `_sphereHitResults` dan `_coneHitResults` dari kapasitas 16 menjadi **64 colliders**, mencegah dropped hits saat berhadapan dengan gerombolan musuh padat pada Night Brawl.
+  - Menambahkan dukungan eksekusi combo attack melalui klik kanan mouse (`Mouse.current.rightButton.wasPressedThisFrame`) melengkapi klik kiri standar pada `PlayerControl.HandleAttackInput()`.
+
+#### 2. Kalibrasi Geometri Duduk Cockpit & State Machine Berkendara Truk `[Rafi]`
+- **Akar Masalah (Root Cause Diagnostic)**:
+  - Karakter tampak berdiri kaku menembus atap kabin saat menaiki truk pickup pada Day 0 Cutscene dan free driving.
+  - Investigasi mendalam menemukan bahwa `PlayerControl.Update()` memproses input baseline dan terus memanggil `animator.SetFloat("Speed", 0f)` serta state default, menimpa (*overriding*) pose duduk. Selain itu, posisi anchor kursi penumpang (`DriverSeatAnchor`) tidak sejajar dengan kurva animasi duduk generic.
+- **Implementasi Solusi Arsitektural**:
+  - **Pose Animasi Duduk Kustom ([`PlayerV2_DrivingPose.anim`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/PlayerV2/anim/PlayerV2_DrivingPose.anim))**:
+    - Membuat pose duduk statis generic dengan tangan memegang setir dan kedua kaki tertekuk di pedal gas/rem pada elevasi $Y = 0.46\text{m}$.
+    - Menghubungkan state `Driving` pada layer dasar `AsepAnimator_V2.controller` dengan transisi prioritas instan (`Driving == true`).
+  - **Driving Heartbeat & Input Lock Guard ([`ArcadeVehicleController.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Vehicles/ArcadeVehicleController.cs), [`PlayerControl.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Player/PlayerControl.cs))**:
+    - `ArcadeVehicleController.DriveVehicle()` kini secara konsisten menegakkan pose duduk: memanggil `anim.Play("Driving", 0, 0f)` dan mengeksekusi `anim.Update(0f)` setiap frame saat kendaraan aktif.
+    - Menambahkan guard pada `PlayerControl.Update()` sehingga saat `playerCtx.HasInputLock("VehicleDriving")` atau `isDriving` aktif, seluruh evaluasi locomotion animator dilewati.
+  - **Rekalibrasi Titik Anchor Kursi Pengemudi**:
+    - Menata ulang koordinat lokal `DriverSeatAnchor` pada truk pickup ke $Y = 0.08\text{m}$ (sejajar permukaan busa jok $Y = 0.72\text{m}$ world space), mengeliminasi tembus pandang kaki ke bawah sasis truk.
+
+#### 3. Konsolidasi Alur Prolog Day 0 / Day 1 & World Placement Truk `[Rafi]`
+- **Transisi Kasur Tidur Day 0 ke Day 1 ([`BedInteractable.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Interaction/BedInteractable.cs), [`OpeningCutsceneController.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Storyline/Cutscenes/OpeningCutsceneController.cs))**:
+  - Menghubungkan interaksi kasur kamar tidur saat Day 0: berinteraksi dengan kasur memicu konfirmasi tidur malam, memajukan nomor hari dari Day 0 ke Day 1, mengatur jam ke 06:00 pagi, dan merestorasi status stamina/kesehatan pemain.
+- **Permanent World Placement Truk Pengiriman ([`StagingScene.unity`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scenes/StagingScene.unity))**:
+  - Menetapkan posisi permanen truk pickup di depan halaman masuk kebun:
+    - Posisi: `X = 30.5509, Y = 0.00035, Z = 54.1408`
+    - Rotasi: `X = 0.0000, Y = -0.3903, Z = 0.0000, W = 0.9207`
+    - Skala: `Vector3.one` (1, 1, 1)
+  - Menyembunyikan spanduk pengujian usang (*test banners*) agar kanvas visual bebas dari gangguan visual sementara.
+
+#### 4. Subsistem Side Quest 'First Steps' & Farmland Signal Bus `[Rafi]`
+- **Arsitektur Pure C# POCO Quest Model ([`QuestProgressModel.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Quest/Core/QuestProgressModel.cs))**:
+  - Mengembangkan model quest murni tanpa siklus hidup Unity (Zero-GC, deterministik) di namespace `FeaturesQuest.Core`.
+  - Mengelola target side quest permulaan (*First Steps*):
+    1. Mengumpulkan cangkul (`tool_hoe`).
+    2. Mengumpulkan kaleng penyiram (`tool_plant_waterer`).
+    3. Mengumpulkan botol air mineral (`food_bottle_water`).
+    4. Mengumpulkan bibit ubi (`seed_sweet_potato`).
+    5. Mencangkul tanah, menanam bibit, dan menyiram petak kebun.
+- **QuestManager & Event Signal Bus ([`QuestManager.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Quest/QuestManager.cs), [`FarmlandTile.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Farming/FarmlandTile.cs))**:
+  - Menambahkan sinyal event statis pada `FarmlandTile`: `OnAnyTileTilled`, `OnAnySeedPlanted`, dan `OnAnyTileWatered`.
+  - `QuestManager` mendengarkan event inventori (`OnInventoryChanged`) dan sinyal pertanian untuk memperbarui status pencapaian secara instan.
+- **Antarmuka Glassmorphic HUD Quest ([`QuestHUDUI.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Quest/UI/QuestHUDUI.cs))**:
+  - Membangun kartu UI otomatis berlatar belakang glassmorphism semi-transparan yang berlabuh tepat di bawah jam digital HUD (`CombatPhaseTrackerUI`).
+  - Menampilkan daftar checklist objektif interaktif dengan ikon status (centang hijau untuk selesai, lingkaran abu-abu untuk proses).
+
+### Diperbaiki (Fixed)
+
+#### 5. Keamanan Siklus Hidup Mesin & Eliminasi Warning Edit-Mode `[Rafi]`
+- **SafeDestroy Lifecycle Abstraction ([`KitchenStationProgressOverlay.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Kitchen/UI/KitchenStationProgressOverlay.cs), [`WorldItemPickup.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Combat/WorldItemPickup.cs))**:
+  - Mengeliminasi peringatan native engine `"Destroy may not be called from edit mode! Use DestroyImmediate instead."` saat menjalankan pengujian otomatis di Unity Editor.
+  - Mengimplementasikan helper `SafeDestroy(Object target)`:
+    - Memanggil `Object.DestroyImmediate(target)` jika `!Application.isPlaying`.
+    - Memanggil `Object.Destroy(target)` jika `Application.isPlaying == true`.
+- **Eliminasi Kebocoran Material Edit-Mode**:
+  - Mengganti mutasi material langsung pada renderer dengan `MaterialPropertyBlock` di `KitchenStationProgressOverlay`, mencegah terbentuknya duplikat material yang tidak terlacak (*material leak assertion*).
+- **Proteksi Singleton OnDestroy saat Game Berhenti**:
+  - Mengeliminasi error `"GameObjects can not be made active when they are being destroyed"` pada `OpeningCutsceneController`, `StorylineUI`, dan `JournalUI` dengan memeriksa status penghancuran dan menghindari pengaktifan objek kembali saat teardown.
+
+#### 6. Ekspansi Audit Test Suite ke 63 Tes Otomatis (63/63 Passed) `[Rafi]`
+- Menambahkan **Test 50 - Test 63** pada [`GameplayAndHUDTests.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Editor/GameplayAndHUDTests.cs):
+  - Validasi integrasi rig generic PlayerV2, controller locomotion, dan normalisasi HandSocket.
+  - Validasi pose duduk kendaraan dan sinkronisasi heartbeat rotasi roda.
+  - Validasi transisi Day 0/Day 1, status tidur kasur, dan registrasi signal quest.
+  - Validasi ekspansi buffer serang 64 target dan penempelan hierarki QuestHUD.
+  - Hasil: Seluruh 63 unit test lolos tanpa kegagalan (63/63 Passed, 0 Errors, 0 Warnings).
+
+---
+
+## - 2026-10-25
+
+### Ditambahkan & Diintegrasikan (Added & Integrated)
+
+#### 1. Overhaul Perspektif Kamera Sinematik & Cutscene Kedatangan Truk `[Rafi]`
+- **Lensa Sinematik 50mm ([`OpeningCutsceneController.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Storyline/Cutscenes/OpeningCutsceneController.cs))**:
+  - Menggantikan sudut pandang lebar yang terdistorsi dengan lensa sinematik proporsional 50mm (`fieldOfView = 50.0`, `nearClipPlane = 0.3`).
+  - Menetapkan koordinat sudut pandang kamera dari arah utara bebas rintangan (`Z = 57.5 - 62.5`), mengeliminasi clipping visual pagar depan dan tiang gapura kebun.
+- **Dinamika Fisika Kendaraan Zero-GC ([`VehicleDynamicsCore.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Vehicles/Core/VehicleDynamicsCore.cs))**:
+  - Mengembangkan simulasi fisika akselerasi murni POCO Zero-GC yang menghitung kurva torsi mesin, batas kecepatan maksimum, transfer bobot pengereman, dan radius belok dinamis.
+  - Mengintegrasikannya ke dalam `ArcadeVehicleController` sebagai adapter thin MonoBehaviour.
+- **Letterbox & Subtitle Typewriter ([`CutsceneLetterboxUI.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Storyline/Cutscenes/CutsceneLetterboxUI.cs))**:
+  - Mengembangkan panel bilah hitam sinematik atas-bawah dengan animasi sliding mulus.
+  - Menampilkan narasi pengantar cerita bertahap (*typewriter subtitle*) yang mengiringi mobil saat melaju memasuki kebun.
+  - Mendukung pembatalan instan (*Skip*) dengan tombol `Space` atau klik mouse tanpa menghasilkan glitch orientasi kamera.
+
+---
+
+## - 2026-10-22
+
+### Ditambahkan & Diintegrasikan (Added & Integrated)
+
+#### 1. Arsitektur Naratif Modular & Siklus Cerita 5 Hari `[Rafi]`
+- **Decoupled Storyline Engine ([`StorylineEngine.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Storyline/Core/StorylineEngine.cs))**:
+  - Mengembangkan mesin naratif deterministik POCO yang mengelola tahapan fakta cerita (`StoryState`), pencapaian objektif (`StoryObjective`), dan kueri dialog.
+  - Mengintegrasikan kanon narasi fasilitas riset biokimia NexaPhyto yang terungkap secara bertahap dari Hari 1 hingga klimaks Hari 5.
+- **Antarmuka Dialog & Jurnal Cerita ([`StorylineUI.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Storyline/UI/StorylineUI.cs), [`JournalUI.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Storyline/UI/JournalUI.cs))**:
+  - Membangun antarmuka jurnal terpadu yang dapat dibuka menggunakan shortcut tombol **`J`**.
+  - Mengimplementasikan kartu dialog glassmorphic dengan portret karakter, nama pembicara, dan typewriter text effect.
+  - Mengembangkan sequence perkenalan bos sinematik ([`BossIntroSequence.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Storyline/UI/BossIntroSequence.cs)) saat boss gelombang malam pertama kali menampakkan diri.
+- **Centralized Modal Input Stack ([`PlayerControl.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Player/PlayerControl.cs))**:
+  - Memusatkan seluruh status gating input jendela modal ke `ModalStackManager`, menjamin kontrol pergerakan karakter dan aksi alat terkunci secara aman saat pemain membaca jurnal cerita atau berdialog.
+- **Aset Data Jagung & Farm Grid Dual Lookup**:
+  - Menambahkan ScriptableObject resmi [`CropData_Corn.asset`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Data/Items/Crops/CropData_Corn.asset) dan memperluas resolver string di `FarmGridManager` untuk mendukung rotasi panen jagung.
 
 ---
 

@@ -4,6 +4,58 @@ Welcome to the **Farm-Beware** patch notes! Here you'll find the latest updates,
 
 ---
 
+## 2026-10-26
+
+### Added
+* **Player V2 Stylized Character Model & Complete Animation Suite**: Replaced the legacy character model with the brand new, stylized farmer character (`Farmer_Asep_V2`). Equipped with a full suite of responsive, handcrafted generic animations:
+  * **Locomotion**: Crisp 8-way directional walking, dynamic running, and sprint animations.
+  * **Evasive Roll & Jump**: Smooth, athletic dodge roll (`roll_fit`) and responsive jump physics for traversing the farmstead.
+  * **Farming Actions**: Dedicated planting and watering animations (`farm_plantseed`, `farm_watering`) synchronized with tool particles.
+  * **Triple-Hit Melee Combo & Right-Click Attack**: Fluid 3-stage combat attack sequence (horizontal slash, downward chop, 360 spin attack) triggered with either left-click or right-click.
+  * **HandSocket & Weapon Alignment**: Normalized hand sockets to prevent weapon distortion, ensuring all tools (Hoe, Plant Waterer, Sword, Axe) fit snugly into the farmer's hands.
+* **Side Quest "First Steps" HUD Tracker**: Added a beginner quest tracker card prominently docked on the top-right HUD beneath the clock. Guides players step-by-step through their first day on the farm:
+  1. Retrieve farming tools (`tool_hoe` and `tool_plant_waterer`) from the homestead.
+  2. Stock up on fresh water bottles (`food_bottle_water`) from the kitchen or storage.
+  3. Acquire Sweet Potato seeds (`seed_sweet_potato`).
+  4. Till farmland soil, plant the seeds, and water the crops to initiate growth.
+  * Real-time checklist updates automatically as items enter your inventory or field actions are performed.
+* **Dedicated Cockpit Seating & Driving Pose**: Stepping into the delivery truck now transitions the character into a seated driving pose (`PlayerV2_DrivingPose`) inside the cab, with hands grasping the steering wheel and feet resting on the pedals.
+* **Day 0 to Day 1 Prologue Sleep Transition**: Day 0 arrival now seamlessly transitions into Day 1 Morning upon sleeping in your bedroom bed. The delivery truck remains permanently parked by the front entrance (`X: 30.55, Y: 0.00, Z: 54.14`), facing the house.
+
+### Changed
+* **Combat Hit Registration Expansion**: Expanded melee target detection buffers from 16 to 64 simultaneous colliders, ensuring all strikes connect cleanly even in dense enemy swarms during Night Brawl.
+* **Cleaned Test Banners & UI Clutter**: Safely removed obsolete editor test banners from the scene, providing an unobstructed view of the homestead and clean HUD presentation.
+
+### Fixed
+* **Fixed Player Standing Inside Vehicle Cab**: Resolved an issue where the character stood upright inside the delivery truck cab while driving, with the head clipping through the roof and feet dangling through the chassis.
+* **Fixed Native Engine Assertions on Game Stop**: Resolved "GameObjects can not be made active when they are being destroyed" console errors during game exit by safeguarding singletons (`OpeningCutsceneController`, `StorylineUI`, `JournalUI`) during teardown.
+* **Fixed Edit Mode Material Leaks & Destroy Warnings**: Implemented safe lifecycle destruction (`DestroyImmediate` in edit mode, `Destroy` in play mode) and `MaterialPropertyBlock` in kitchen and item visualizers, eliminating compiler warnings during test suite runs.
+
+---
+
+## 2026-10-25
+
+### Added
+* **Cinematic Vehicle Arrival Cutscene Overhaul**: Rebuilt the game's opening sequence with a cinematic road trip leading to the homestead:
+  * **Cinematic 50mm Lens Perspective**: Replaced wide distorted view with an authentic 50mm cinematic perspective (50° FOV, 0.3 near clip) from an unobstructed northern vantage point (`Z = 57.5 - 62.5`), preventing fence and pillar clipping.
+  * **Dynamic Vehicle Dynamics**: Built a responsive vehicle physics model featuring realistic acceleration curves, steering dampening, and suspension friction.
+  * **Atmospheric Letterbox & Subtitles**: Sleek cinematic black bars and smooth typewriter subtitle narration introducing the backstory as the truck arrives at the front gate.
+  * **Instant & Hold-to-Skip Support**: Players can tap or hold the skip button to smoothly transition directly to live gameplay without camera jitter or animation snapping.
+
+---
+
+## 2026-10-22
+
+### Added
+* **Modular Storyline & Lore Progression System**: Implemented an episodic narrative engine spanning the 5-day gameplay cycle:
+  * **NexaPhyto Research Lore**: Uncover the dark history of the abandoned NexaPhyto bio-chemical facility, rogue genetic crop experiments, and the source of the nighttime abominations.
+  * **In-Game Story Journal (`J` Key)**: Open an interactive journal anytime to review discovered story facts, daily logs, and active narrative milestones.
+  * **Dialogue Cards & Cutscene Sequences**: Introduced glassmorphic dialogue popups and cinematic boss introduction sequences (`BossIntroSequence`) that trigger when confronting climactic boss encounters.
+* **Centralized Modal Input Management**: Unified all fullscreen and overlay UI panels (Journal, Storyline, Menus) under a centralized input stack, preventing accidental character movement or tool swings while reading lore or adjusting settings.
+* **New Crop Data & Farm Grid Lookups**: Added canonical data for Corn (`CropData_Corn.asset`) and expanded farm grid query aliases to support versatile crop rotations.
+
+---
+
 ## 2026-10-20
 
 ### Fixed
