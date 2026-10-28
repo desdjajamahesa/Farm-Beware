@@ -87,3 +87,30 @@ crashlytics-build.properties
 /[Ss]aves/*
 !/[Ss]aves/.gitkeep
 
+# Agent & Teamwork scratch and runtime artifacts
+/.agents/teamwork/
+/.agents/tmp/
+/.agents/scratch/
+
+# Python cache & virtual environments
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.venv/
+venv/
+env/
+
+# JetBrains Rider & IDEA
+.idea/
+*.sln.iml
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+[Dd]esktop.ini
