@@ -23,9 +23,9 @@ public class PlayerEquipment : MonoBehaviour
     [SerializeField] private bool allowBareHandsAttack = true;
 
     [Header("Pengaturan Animasi Serangan")]
-    [Tooltip("Kecepatan pemutaran animasi serangan di Animator (1 = normal, 1.6 = 60% lebih cepat). Dapat diatur bebas di Inspector.")]
+    [Tooltip("Kecepatan pemutaran animasi serangan di Animator (1 = normal baseline). Nilai 1.0 memberikan ritme serangan yang terbaca, natural, dan terkalibrasi.")]
     [Range(0.5f, 3.5f)]
-    [SerializeField] private float attackAnimationSpeed = 1.6f;
+    [SerializeField] private float attackAnimationSpeed = 1.0f;
 
     public float AttackAnimationSpeed => attackAnimationSpeed;
 
@@ -50,24 +50,24 @@ public class PlayerEquipment : MonoBehaviour
 
     [Header("Pengaturan Timing Ayunan & Trail Kombo")]
     [Tooltip("Delay windup (detik) untuk ayunan Hit 1 (Horizontal Slash) pada base speed.")]
-    [SerializeField] private float combo1SwingDelay = 0.32f;
+    [SerializeField] private float combo1SwingDelay = 0.10f;
     [Tooltip("Durasi aktif ayunan (detik) untuk Hit 1.")]
-    [SerializeField] private float combo1SwingDuration = 0.16f;
+    [SerializeField] private float combo1SwingDuration = 0.20f;
 
     [Tooltip("Delay windup (detik) untuk ayunan Hit 2 (Downward Chop) pada base speed.")]
-    [SerializeField] private float combo2SwingDelay = 0.26f;
+    [SerializeField] private float combo2SwingDelay = 0.20f;
     [Tooltip("Durasi aktif ayunan (detik) untuk Hit 2.")]
-    [SerializeField] private float combo2SwingDuration = 0.16f;
+    [SerializeField] private float combo2SwingDuration = 0.24f;
 
     [Tooltip("Delay windup (detik) untuk putaran Hit 3 (360 Low Finisher) pada base speed.")]
-    [SerializeField] private float combo3SwingDelay = 0.10f;
+    [SerializeField] private float combo3SwingDelay = 0.18f;
     [Tooltip("Durasi aktif putaran (detik) untuk Hit 3.")]
-    [SerializeField] private float combo3SwingDuration = 0.38f;
+    [SerializeField] private float combo3SwingDuration = 0.55f;
 
     [Tooltip("Windup delay (seconds) for Heavy Attack (Charged Combo Attack ver. 1) at base speed.")]
-    [SerializeField] private float heavySwingDelay = 0.38f;
+    [SerializeField] private float heavySwingDelay = 0.25f;
     [Tooltip("Active strike sweep duration (seconds) for Heavy Attack.")]
-    [SerializeField] private float heavySwingDuration = 0.65f;
+    [SerializeField] private float heavySwingDuration = 0.70f;
 
     [Header("Pengaturan Jurus Spesial (Leap Strike)")]
     [Tooltip("Nama Trigger parameter di Animator untuk jurus spesial.")]
@@ -205,6 +205,7 @@ public class PlayerEquipment : MonoBehaviour
                state.IsName("Attack_Combo1") ||
                state.IsName("Attack_Combo2") ||
                state.IsName("Attack_Combo3") ||
+               state.IsName("Attack_Heavy") ||
                state.IsName("Attack_Skill");
     }
 

@@ -11,7 +11,7 @@ namespace FarmBeware.Features.Quest
     /// Thin MonoBehaviour adapter managing quest progression and game event listening.
     /// Bridges runtime Unity events (inventory changes, farming actions) to pure C# POCO models.
     /// </summary>
-    public class QuestManager : MonoBehaviour
+    public class QuestManager : MonoBehaviour, INarrativeObjectiveService
     {
         private static QuestManager _instance;
         public static bool HasInstance => _instance != null;
@@ -51,6 +51,10 @@ namespace FarmBeware.Features.Quest
         public QuestProgressModel Model => _model;
 
         public event Action<QuestProgressModel> OnQuestUpdated;
+        public event Action<string, bool> OnObjectiveStateChanged;
+
+        private readonly List<NarrativeObjective> _storyObjectives = new List<NarrativeObjective>();
+        public IReadOnlyList<NarrativeObjective> ActiveObjectives => _storyObjectives;
 
         private InventoryComponent _playerInventory;
         private bool _isInventorySubscribed = false;
@@ -82,6 +86,7 @@ namespace FarmBeware.Features.Quest
             }
 
             Instance = this;
+            ServiceLocator.Register<INarrativeObjectiveService>(this);
             if (transform.parent == null)
             {
                 DontDestroyOnLoad(gameObject);
@@ -111,6 +116,7 @@ namespace FarmBeware.Features.Quest
         private void OnDestroy()
         {
             _model.OnStateChanged -= HandleModelStateChanged;
+            ServiceLocator.Unregister<INarrativeObjectiveService>();
             if (_instance == this)
             {
                 _instance = null;
@@ -318,5 +324,183 @@ namespace FarmBeware.Features.Quest
                 Debug.Log($"[QuestManager] {message}");
             }
         }
+
+        #region INarrativeObjectiveService Implementation
+
+        public NarrativeObjective GetObjective(string objectiveId)
+        {
+            if (string.IsNullOrEmpty(objectiveId)) return null;
+            for (int i = 0; i < _storyObjectives.Count; i++)
+            {
+                if (string.Equals(_storyObjectives[i].objectiveId, objectiveId, StringComparison.OrdinalIgnoreCase))
+                {
+                    return _storyObjectives[i];
+                }
+            }
+            return null;
+        }
+
+        public NarrativeObjective GetObject(string objectiveId) => GetObjective(objectiveId);
+
+        public void AssignStoryObjective(string objectiveId, string title, string description, int targetCount)
+        {
+            AssignStoryObjective(objectiveId, NarrativeObjectiveCategory.MainStory, title, description, targetCount, NarrativeFactKey.CurrentDay);
+        }
+
+        public void AssignStoryObjective(string objectiveId, NarrativeObjectiveCategory category, string title, string description, int targetCount, NarrativeFactKey trackingKey)
+        {
+            if (string.IsNullOrEmpty(objectiveId)) return;
+
+            var existing = GetObjective(objectiveId);
+            if (existing != null)
+            {
+                existing.title = title;
+                existing.description = description;
+                existing.targetCount = targetCount;
+                existing.category = category;
+                existing.trackingFactKey = trackingKey;
+            }
+            else
+            {
+                var newObj = new NarrativeObjective(objectiveId, title, description, targetCount, category, trackingKey);
+                _storyObjectives.Add(newObj);
+            }
+
+            OnObjectiveStateChanged?.Invoke(objectiveId, false);
+            OnQuestUpdated?.Invoke(_model);
+        }
+
+        public void CompleteStoryObjective(string objectiveId)
+        {
+            if (string.IsNullOrEmpty(objectiveId)) return;
+
+            var obj = GetObjective(objectiveId);
+            if (obj != null && !obj.isCompleted)
+            {
+                obj.isCompleted = true;
+                obj.currentCount = obj.targetCount;
+                OnObjectiveStateChanged?.Invoke(objectiveId, true);
+                OnQuestUpdated?.Invoke(_model);
+
+                var floatingText = ServiceLocator.Resolve<IFloatingTextService>();
+                var player = ServiceLocator.Resolve<IPlayerContext>();
+                if (floatingText != null && player != null && player.Transform != null)
+                {
+                    floatingText.SpawnText(player.Transform.position + Vector3.up * 2.2f, $"✨ Objective Complete: {obj.title}!", new Color(1f, 0.85f, 0.25f));
+                }
+                Debug.Log($"[QuestManager] ✨ Story objective completed: '{obj.title}' ({objectiveId})");
+            }
+        }
+
+        public void UpdateObjectiveProgress(string objectiveId, int currentCount)
+        {
+            if (string.IsNullOrEmpty(objectiveId)) return;
+
+            var obj = GetObjective(objectiveId);
+            if (obj != null)
+            {
+                obj.currentCount = currentCount;
+                if (obj.currentCount >= obj.targetCount && !obj.isCompleted)
+                {
+                    CompleteStoryObjective(objectiveId);
+                }
+                else
+                {
+                    OnObjectiveStateChanged?.Invoke(objectiveId, false);
+                    OnQuestUpdated?.Invoke(_model);
+                }
+            }
+        }
+
+        public void ReportProgress(NarrativeFactKey factKey, int delta)
+        {
+            for (int i = 0; i < _storyObjectives.Count; i++)
+            {
+                var obj = _storyObjectives[i];
+                if (obj != null && !obj.isCompleted && obj.trackingFactKey == factKey)
+                {
+                    UpdateObjectiveProgress(obj.objectiveId, obj.currentCount + delta);
+                }
+            }
+        }
+
+        public QuestSavePayload ExportSavePayload()
+        {
+            var payload = new QuestSavePayload
+            {
+                activeQuestId = QuestProgressModel.QuestId,
+                currentStage = (int)_model.CurrentStage,
+                plantedCount = _model.PlantedCount,
+                wateredCount = _model.WateredCount,
+                isCompleted = _model.IsCompleted
+            };
+
+            for (int i = 0; i < _storyObjectives.Count; i++)
+            {
+                var obj = _storyObjectives[i];
+                if (obj != null)
+                {
+                    payload.activeStoryObjectives.Add(new NarrativeObjectiveSaveData
+                    {
+                        objectiveId = obj.objectiveId,
+                        category = obj.category,
+                        title = obj.title,
+                        description = obj.description,
+                        targetCount = obj.targetCount,
+                        currentCount = obj.currentCount,
+                        isCompleted = obj.isCompleted,
+                        trackingFactKey = obj.trackingFactKey
+                    });
+                }
+            }
+
+            return payload;
+        }
+
+        public void ImportSavePayload(QuestSavePayload payload)
+        {
+            if (payload == null) return;
+
+            // Zero-reflection typed model state restoration
+            _model.RestoreState(
+                (QuestStage)payload.currentStage,
+                payload.plantedCount,
+                payload.wateredCount,
+                payload.plantedCount > 0,
+                payload.isCompleted
+            );
+
+            _storyObjectives.Clear();
+            if (payload.activeStoryObjectives != null)
+            {
+                for (int i = 0; i < payload.activeStoryObjectives.Count; i++)
+                {
+                    var saved = payload.activeStoryObjectives[i];
+                    if (saved == null || string.IsNullOrEmpty(saved.objectiveId)) continue;
+
+                    int resolvedTarget = saved.targetCount > 0 ? saved.targetCount : 1;
+                    string resolvedTitle = !string.IsNullOrEmpty(saved.title) ? saved.title : saved.objectiveId;
+                    string resolvedDescription = saved.description ?? string.Empty;
+
+                    var restored = new NarrativeObjective(
+                        saved.objectiveId,
+                        resolvedTitle,
+                        resolvedDescription,
+                        resolvedTarget,
+                        saved.category,
+                        saved.trackingFactKey)
+                    {
+                        currentCount = saved.currentCount,
+                        isCompleted = saved.isCompleted
+                    };
+                    _storyObjectives.Add(restored);
+                }
+            }
+
+            OnQuestUpdated?.Invoke(_model);
+            OnObjectiveStateChanged?.Invoke(string.Empty, false);
+        }
+
+        #endregion
     }
 }

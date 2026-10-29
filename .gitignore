@@ -19,6 +19,10 @@
 # Recordings can get excessive in size
 /[Rr]ecordings/
 
+# Profiler traces
+*.raw
+*.tracedata
+
 # Uncomment this line if you wish to ignore the asset store tools plugin
 # /[Aa]ssets/AssetStoreTools*
 
@@ -48,6 +52,10 @@ ExportedObj/
 *.mdb
 *.opendb
 *.VC.db
+*.slnx.user
+*.csproj.user
+*.sln.docstates
+*.slnx.docstates
 
 # Unity3D generated meta files
 *.pidb.meta
@@ -82,6 +90,9 @@ crashlytics-build.properties
 
 # Scratch and temporary tools
 /scratch/
+update_*.py
+add_*.py
+test_*.py
 
 # Gameplay and local save files
 /[Ss]aves/*
@@ -91,6 +102,9 @@ crashlytics-build.properties
 /.agents/teamwork/
 /.agents/tmp/
 /.agents/scratch/
+/.agents/logs/
+/.agents/cache/
+/.agents/telemetry/
 
 # Python cache & virtual environments
 __pycache__/
@@ -104,6 +118,14 @@ env/
 # JetBrains Rider & IDEA
 .idea/
 *.sln.iml
+
+# Backup & swap files
+*.bak
+*.orig
+*.rej
+*~
+*.swp
+*.swo
 
 # OS generated files
 .DS_Store

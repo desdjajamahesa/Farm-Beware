@@ -998,6 +998,7 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
                info.IsName("Attack_Combo1") ||
                info.IsName("Attack_Combo2") ||
                info.IsName("Attack_Combo3") ||
+               info.IsName("Attack_Heavy") ||
                info.IsName("Attack_Skill");
     }
 

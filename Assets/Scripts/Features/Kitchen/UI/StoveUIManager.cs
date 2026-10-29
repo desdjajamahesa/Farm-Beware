@@ -416,6 +416,10 @@ public class StoveUIManager : MonoBehaviour, IModalWindow
 
     private void HandleCookingCompleted(KitchenRecipe recipe)
     {
+        var facts = ServiceLocator.Resolve<INarrativeFactBoard>();
+        facts?.AddFact(NarrativeFactKey.MealsCookedCount, 1);
+        NarrativeTelemetryHooks.ReportCookingCompleted();
+
         UpdateAllBurnerCards();
         UpdateCookedSlotUI();
         UpdateCookButton();

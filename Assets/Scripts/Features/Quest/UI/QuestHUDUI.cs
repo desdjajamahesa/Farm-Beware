@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
+using FarmBeware.Core.Runtime;
 using FarmBeware.Logic.Quests;
 using FeaturesTime.UI;
 
@@ -18,6 +19,12 @@ namespace FarmBeware.Features.Quest.UI
         [SerializeField] private TextMeshProUGUI questDetailText;
 
         private bool _isSubscribed = false;
+        private INarrativeObjectiveService _objectiveService;
+        private int _cachedStage = -1;
+        private int _cachedPlanted = -1;
+        private int _cachedWatered = -1;
+        private bool _cachedCompleted = false;
+        private int _cachedObjectiveVersion = -1;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void AutoAttachToHUD()
@@ -78,33 +85,44 @@ namespace FarmBeware.Features.Quest.UI
             Unsubscribe();
         }
 
+        /// <summary>
+        /// Zero-GC Update loop. Performs zero per-frame string allocations.
+        /// State transitions and text updates are driven strictly via events.
+        /// </summary>
         private void Update()
         {
-            if (!_isSubscribed)
+            SimulateFrame(Time.unscaledDeltaTime);
+        }
+
+        /// <summary>
+        /// Frame simulation entry point for automated Zero-GC profiling tests.
+        /// Guarantees 0 B GC allocation per call when event state has not mutated.
+        /// </summary>
+        public void SimulateFrame(float deltaTime)
+        {
+            if (!_isSubscribed || _objectiveService == null)
             {
                 TrySubscribe();
-            }
-
-            if (questCardRoot == null || questHeaderBadgeText == null || questDetailText == null)
-            {
-                EnsureUIHierarchy();
-            }
-
-            if (QuestManager.Instance != null && QuestManager.Instance.Model != null)
-            {
-                UpdateDisplayFromModel(QuestManager.Instance.Model);
             }
         }
 
         private void TrySubscribe()
         {
-            if (_isSubscribed) return;
-
-            if (QuestManager.Instance != null)
+            if (!_isSubscribed && QuestManager.Instance != null)
             {
                 QuestManager.Instance.OnQuestUpdated += HandleQuestUpdated;
                 _isSubscribed = true;
                 RefreshDisplay();
+            }
+
+            if (_objectiveService == null)
+            {
+                if (ServiceLocator.TryResolve<INarrativeObjectiveService>(out var svc) && svc != null)
+                {
+                    _objectiveService = svc;
+                    _objectiveService.OnObjectiveStateChanged += HandleObjectiveStateChanged;
+                    RefreshDisplay();
+                }
             }
         }
 
@@ -118,10 +136,39 @@ namespace FarmBeware.Features.Quest.UI
                 }
                 _isSubscribed = false;
             }
+            if (_objectiveService != null)
+            {
+                _objectiveService.OnObjectiveStateChanged -= HandleObjectiveStateChanged;
+                _objectiveService = null;
+            }
+        }
+
+        private void HandleObjectiveStateChanged(string objectiveId, bool isCompleted)
+        {
+            _cachedObjectiveVersion++;
+            RefreshDisplay();
         }
 
         private void HandleQuestUpdated(QuestProgressModel model)
         {
+            if (model == null) return;
+
+            int stage = (int)model.CurrentStage;
+            int planted = model.PlantedCount;
+            int watered = model.WateredCount;
+            bool completed = model.IsCompleted;
+
+            // Zero string formatting if state has not mutated
+            if (stage == _cachedStage && planted == _cachedPlanted && watered == _cachedWatered && completed == _cachedCompleted)
+            {
+                return;
+            }
+
+            _cachedStage = stage;
+            _cachedPlanted = planted;
+            _cachedWatered = watered;
+            _cachedCompleted = completed;
+
             UpdateDisplayFromModel(model);
         }
 
@@ -148,7 +195,29 @@ namespace FarmBeware.Features.Quest.UI
 
             if (questDetailText != null)
             {
-                questDetailText.text = model.GetFormattedObjectiveDetails();
+                string baseText = model.GetFormattedObjectiveDetails();
+
+                if (_objectiveService != null && _objectiveService.ActiveObjectives.Count > 0)
+                {
+                    NarrativeObjective activeStoryObj = null;
+                    for (int i = 0; i < _objectiveService.ActiveObjectives.Count; i++)
+                    {
+                        var obj = _objectiveService.ActiveObjectives[i];
+                        if (obj != null && !obj.isCompleted)
+                        {
+                            activeStoryObj = obj;
+                            break;
+                        }
+                    }
+
+                    if (activeStoryObj != null)
+                    {
+                        questDetailText.text = $"{baseText}\n<color=#38BDF8>• STORY:</color> {activeStoryObj.title} ({activeStoryObj.currentCount}/{activeStoryObj.targetCount})";
+                        return;
+                    }
+                }
+
+                questDetailText.text = baseText;
             }
         }
 

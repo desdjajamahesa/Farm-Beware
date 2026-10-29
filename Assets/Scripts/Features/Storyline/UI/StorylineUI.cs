@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
@@ -8,6 +9,28 @@ using FarmBeware.Core.Runtime;
 
 namespace FeaturesStoryline.UI
 {
+    /// <summary>
+    /// Interactive player dialogue choice option with associated fact board mutation.
+    /// </summary>
+    [Serializable]
+    public struct DialogueChoice
+    {
+        public string text;
+        public NarrativeFactMutation mutation;
+
+        public DialogueChoice(string text, NarrativeFactMutation mutation)
+        {
+            this.text = text;
+            this.mutation = mutation;
+        }
+
+        public DialogueChoice(string text, NarrativeFactKey key, FactMutationOp op, int operandValue)
+        {
+            this.text = text;
+            this.mutation = new NarrativeFactMutation(key, op, operandValue);
+        }
+    }
+
     /// <summary>
     /// UI Controller handling all visual and narrative presentations for the Storyline system:
     /// - HUD Banner (non-intrusive upper screen notification)
@@ -72,6 +95,23 @@ namespace FeaturesStoryline.UI
         [SerializeField] private TextMeshProUGUI dialogueBodyText;
         [SerializeField] private Button dialogueContinueButton;
 
+        [Header("Typewriter & Audio Feedback")]
+        [SerializeField] private float typewriterCharactersPerSecond = 35f;
+        [SerializeField] private AudioSource typewriterAudioSource;
+        [SerializeField] private AudioClip typewriterAudioChit;
+
+        [Header("Interactive Choice Elements")]
+        [SerializeField] private GameObject choiceContainer;
+        [SerializeField] private List<Button> choiceButtons = new List<Button>();
+        [SerializeField] private List<TextMeshProUGUI> choiceButtonTexts = new List<TextMeshProUGUI>();
+
+        private int _typewriterTotalCharacters = 0;
+        private float _typewriterVisibleCount = 0f;
+        private bool _isTypewriterActive = false;
+        private bool _hasPendingChoices = false;
+        private DialogueChoice[] _currentChoices;
+        private Action<int> _onChoiceSelected;
+
         [Header("Overlay Elements")]
         [SerializeField] private TextMeshProUGUI overlayTitleText;
         [SerializeField] private TextMeshProUGUI overlayBodyText;
@@ -113,28 +153,78 @@ namespace FeaturesStoryline.UI
             }
         }
 
+        /// <summary>
+        /// Frame simulation entry point for automated Zero-GC profiling tests.
+        /// Guarantees 0 B GC allocation during active typewriter progression.
+        /// </summary>
+        public void SimulateFrame(float deltaTime)
+        {
+            if (!_isTypewriterActive || dialogueBodyText == null) return;
+
+            int prevCharIndex = (int)_typewriterVisibleCount;
+            _typewriterVisibleCount += typewriterCharactersPerSecond * deltaTime;
+            int newCharIndex = Mathf.Min((int)_typewriterVisibleCount, _typewriterTotalCharacters);
+
+            if (newCharIndex > prevCharIndex)
+            {
+                dialogueBodyText.maxVisibleCharacters = newCharIndex;
+
+                if (typewriterAudioSource != null && typewriterAudioChit != null && dialogueBodyText.text != null && newCharIndex - 1 < dialogueBodyText.text.Length)
+                {
+                    char c = dialogueBodyText.text[newCharIndex - 1];
+                    if (!char.IsWhiteSpace(c))
+                    {
+                        typewriterAudioSource.pitch = UnityEngine.Random.Range(0.95f, 1.05f);
+                        typewriterAudioSource.PlayOneShot(typewriterAudioChit, 0.4f);
+                    }
+                }
+            }
+
+            if (newCharIndex >= _typewriterTotalCharacters)
+            {
+                _isTypewriterActive = false;
+                dialogueBodyText.maxVisibleCharacters = _typewriterTotalCharacters;
+                OnTypewriterCompleted();
+            }
+        }
+
         private void Update()
         {
+            SimulateFrame(Time.unscaledDeltaTime);
+
             // Allow Space, Enter, or Click to advance dialogue if open
             if (dialoguePanel != null && dialoguePanel.activeSelf)
             {
-                bool advanceDialogue = false;
+                bool advanceInput = false;
                 if (UnityEngine.InputSystem.Keyboard.current != null)
                 {
                     if (UnityEngine.InputSystem.Keyboard.current.spaceKey.wasPressedThisFrame ||
                         UnityEngine.InputSystem.Keyboard.current.enterKey.wasPressedThisFrame)
                     {
-                        advanceDialogue = true;
+                        advanceInput = true;
                     }
                 }
                 if (UnityEngine.InputSystem.Mouse.current != null && UnityEngine.InputSystem.Mouse.current.leftButton.wasPressedThisFrame)
                 {
-                    advanceDialogue = true;
+                    advanceInput = true;
                 }
 
-                if (advanceDialogue)
+                if (advanceInput)
                 {
-                    DismissDialogue();
+                    if (_isTypewriterActive)
+                    {
+                        // Fast-forward: instantly reveal full text without substring allocations
+                        _isTypewriterActive = false;
+                        if (dialogueBodyText != null)
+                        {
+                            dialogueBodyText.maxVisibleCharacters = _typewriterTotalCharacters;
+                        }
+                        OnTypewriterCompleted();
+                    }
+                    else if (!_hasPendingChoices)
+                    {
+                        DismissDialogue();
+                    }
                 }
             }
 
@@ -325,17 +415,193 @@ namespace FeaturesStoryline.UI
 
             if (dialogueSpeakerText != null)
                 dialogueSpeakerText.text = string.IsNullOrEmpty(speaker) ? "Ucup" : speaker;
+
             if (dialogueBodyText != null)
+            {
                 dialogueBodyText.text = message;
+                dialogueBodyText.maxVisibleCharacters = 0;
+            }
+
+            _typewriterTotalCharacters = !string.IsNullOrEmpty(message) ? message.Length : 0;
+            _typewriterVisibleCount = 0f;
+            _isTypewriterActive = _typewriterTotalCharacters > 0;
+
+            EnsureChoiceUI();
+            if (_hasPendingChoices)
+            {
+                if (choiceContainer != null) choiceContainer.SetActive(false);
+                if (dialogueContinueButton != null) dialogueContinueButton.gameObject.SetActive(false);
+            }
+            else
+            {
+                if (choiceContainer != null) choiceContainer.SetActive(false);
+                if (dialogueContinueButton != null) dialogueContinueButton.gameObject.SetActive(true);
+            }
+
+            if (!_isTypewriterActive)
+            {
+                if (dialogueBodyText != null) dialogueBodyText.maxVisibleCharacters = 99999;
+                OnTypewriterCompleted();
+            }
 
             // Notify modal stack
             var modalStack = ServiceLocator.Resolve<IModalStackService>();
             modalStack?.Push(this);
         }
 
+        public void ShowDialogueWithChoices(string speaker, string message, DialogueChoice[] choices, Action<int> onChoiceSelected = null, Action onComplete = null)
+        {
+            _hasPendingChoices = choices != null && choices.Length > 0;
+            _currentChoices = choices;
+            _onChoiceSelected = onChoiceSelected;
+            ShowDialogue(speaker, message, onComplete);
+        }
+
+        private void OnTypewriterCompleted()
+        {
+            if (_hasPendingChoices && _currentChoices != null && _currentChoices.Length > 0)
+            {
+                PresentChoices(_currentChoices);
+            }
+            else
+            {
+                if (dialogueContinueButton != null)
+                {
+                    dialogueContinueButton.gameObject.SetActive(true);
+                }
+            }
+        }
+
+        private void PresentChoices(DialogueChoice[] choices)
+        {
+            EnsureChoiceUI();
+            if (choiceContainer != null)
+            {
+                choiceContainer.SetActive(true);
+            }
+            if (dialogueContinueButton != null)
+            {
+                dialogueContinueButton.gameObject.SetActive(false);
+            }
+
+            for (int i = 0; i < choiceButtons.Count; i++)
+            {
+                if (i < choices.Length)
+                {
+                    choiceButtons[i].gameObject.SetActive(true);
+                    if (i < choiceButtonTexts.Count && choiceButtonTexts[i] != null)
+                    {
+                        choiceButtonTexts[i].text = choices[i].text;
+                    }
+                }
+                else
+                {
+                    choiceButtons[i].gameObject.SetActive(false);
+                }
+            }
+        }
+
+        private void HandleChoiceClicked(int choiceIndex)
+        {
+            if (_currentChoices != null && choiceIndex >= 0 && choiceIndex < _currentChoices.Length)
+            {
+                var choice = _currentChoices[choiceIndex];
+                var facts = StorylineManager.Instance != null ? StorylineManager.Instance.FactBoard : ServiceLocator.Resolve<INarrativeFactBoard>();
+                facts?.ApplyMutation(choice.mutation);
+                _onChoiceSelected?.Invoke(choiceIndex);
+            }
+
+            _hasPendingChoices = false;
+            _currentChoices = null;
+            _onChoiceSelected = null;
+            if (choiceContainer != null) choiceContainer.SetActive(false);
+            DismissDialogue();
+        }
+
+        private void EnsureChoiceUI()
+        {
+            if (choiceContainer != null && choiceButtons.Count > 0) return;
+            if (dialoguePanel == null) return;
+
+            Transform existing = dialoguePanel.transform.Find("ChoiceContainer");
+            if (existing != null)
+            {
+                choiceContainer = existing.gameObject;
+            }
+            else
+            {
+                choiceContainer = new GameObject("ChoiceContainer", typeof(RectTransform));
+                choiceContainer.transform.SetParent(dialoguePanel.transform, false);
+                var rt = choiceContainer.GetComponent<RectTransform>();
+                rt.anchorMin = new Vector2(0.55f, 0f);
+                rt.anchorMax = new Vector2(1f, 1f);
+                rt.offsetMin = new Vector2(10f, 12f);
+                rt.offsetMax = new Vector2(-16f, -12f);
+            }
+
+            choiceButtons.Clear();
+            choiceButtonTexts.Clear();
+
+            for (int i = 0; i < 3; i++)
+            {
+                string btnName = $"ChoiceBtn_{i + 1}";
+                Transform foundBtn = choiceContainer.transform.Find(btnName);
+                Button btn;
+                TextMeshProUGUI txt;
+
+                if (foundBtn != null)
+                {
+                    btn = foundBtn.GetComponent<Button>();
+                    txt = foundBtn.GetComponentInChildren<TextMeshProUGUI>();
+                }
+                else
+                {
+                    var btnGO = new GameObject(btnName, typeof(RectTransform), typeof(Image), typeof(Button));
+                    btnGO.transform.SetParent(choiceContainer.transform, false);
+                    var bRt = btnGO.GetComponent<RectTransform>();
+                    bRt.anchorMin = new Vector2(0f, 1f - (i + 1) * 0.32f);
+                    bRt.anchorMax = new Vector2(1f, 1f - i * 0.32f);
+                    bRt.offsetMin = new Vector2(0f, 2f);
+                    bRt.offsetMax = new Vector2(0f, -2f);
+
+                    var img = btnGO.GetComponent<Image>();
+                    img.color = new Color(0.12f, 0.28f, 0.42f, 0.95f);
+
+                    btn = btnGO.GetComponent<Button>();
+
+                    var tGO = new GameObject("Text", typeof(RectTransform), typeof(TextMeshProUGUI));
+                    tGO.transform.SetParent(btnGO.transform, false);
+                    var tRt = tGO.GetComponent<RectTransform>();
+                    tRt.anchorMin = Vector2.zero;
+                    tRt.anchorMax = Vector2.one;
+                    tRt.offsetMin = new Vector2(8f, 0f);
+                    tRt.offsetMax = new Vector2(-8f, 0f);
+
+                    txt = tGO.GetComponent<TextMeshProUGUI>();
+                    txt.fontSize = 13;
+                    txt.alignment = TextAlignmentOptions.MidlineLeft;
+                    txt.color = Color.white;
+                }
+
+                int capturedIndex = i;
+                btn.onClick.RemoveAllListeners();
+                btn.onClick.AddListener(() => HandleChoiceClicked(capturedIndex));
+
+                choiceButtons.Add(btn);
+                choiceButtonTexts.Add(txt);
+                btn.gameObject.SetActive(false);
+            }
+        }
+
         public void DismissDialogue()
         {
             if (dialoguePanel == null || !dialoguePanel.activeSelf) return;
+
+            _isTypewriterActive = false;
+            _hasPendingChoices = false;
+            _currentChoices = null;
+            _onChoiceSelected = null;
+            if (choiceContainer != null) choiceContainer.SetActive(false);
 
             dialoguePanel.SetActive(false);
             var modalStack = ServiceLocator.Resolve<IModalStackService>();

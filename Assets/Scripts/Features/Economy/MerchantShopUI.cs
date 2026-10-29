@@ -196,6 +196,8 @@ namespace FeaturesEconomy
             if (shopPanel != null)
                 shopPanel.SetActive(true);
 
+            NarrativeTelemetryHooks.ReportMerchantOpened();
+
             int currentGold = PlayerWallet.Instance != null ? PlayerWallet.Instance.CurrentGold : 0;
             UpdateGoldDisplay(currentGold);
             SwitchTab(ShopTab.Buy);

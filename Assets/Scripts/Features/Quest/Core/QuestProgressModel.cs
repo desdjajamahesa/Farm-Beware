@@ -191,6 +191,36 @@ namespace FarmBeware.Logic.Quests
         }
 
         /// <summary>
+        /// Restores complete quest progress state from persistent save data without reflection.
+        /// </summary>
+        public void RestoreState(QuestStage stage, int plantedCount, int wateredCount, bool hasPlantedCrop, bool hasWateredCrop)
+        {
+            CurrentStage = stage;
+            PlantedCount = plantedCount;
+            WateredCount = wateredCount;
+            HasPlantedCrop = hasPlantedCrop;
+            HasWateredCrop = hasWateredCrop;
+
+            if (stage != QuestStage.GatheringSupplies)
+            {
+                HasHoe = true;
+                HasPlantWaterer = true;
+                HasWaterBottle = true;
+                HasSweetPotatoSeed = true;
+            }
+
+            OnStateChanged?.Invoke();
+        }
+
+        /// <summary>
+        /// Convenience overload restoring state directly from save flags.
+        /// </summary>
+        public void RestoreState(QuestStage stage, int plantedCount, int wateredCount, bool isCompleted)
+        {
+            RestoreState(stage, plantedCount, wateredCount, plantedCount > 0, isCompleted);
+        }
+
+        /// <summary>
         /// Formats the current quest objectives into display text for the HUD.
         /// </summary>
         public string GetFormattedObjectiveDetails()
