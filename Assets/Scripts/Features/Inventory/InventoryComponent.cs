@@ -93,7 +93,9 @@ public class InventoryComponent : MonoBehaviour
                 item.category == ItemCategory.Food || 
                 item.category == ItemCategory.Seed || 
                 item is FoodItemData ||
-                item is SeedItemData)
+                item is SeedItemData ||
+                string.Equals(item.itemId, "mat_coconut", System.StringComparison.OrdinalIgnoreCase) ||
+                (item.itemName != null && item.itemName.IndexOf("Coconut", System.StringComparison.OrdinalIgnoreCase) >= 0))
             {
                 return true;
             }
@@ -121,6 +123,7 @@ public class InventoryComponent : MonoBehaviour
 
     // Listener hooking (tanpa mengubah struktur data) untuk memberi tahu UI ketika slot berubah.
     public System.Action OnInventoryChanged;
+    public static event System.Action<ItemData> OnItemConsumed;
 
     // State & event Hotbar (4 slot pertama).
     public int selectedHotbarIndex = 0;
@@ -557,6 +560,7 @@ public class InventoryComponent : MonoBehaviour
             }
 
             OnInventoryChanged?.Invoke();
+            OnItemConsumed?.Invoke(item);
         }
     }
 

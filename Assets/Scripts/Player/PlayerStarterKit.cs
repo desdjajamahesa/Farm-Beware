@@ -210,6 +210,7 @@ namespace Player
             {
                 PopulateStorageChest(targetChest);
             }
+            PopulateRefrigerator();
 
             // Cleanse any accidental Mat_MutatedRoot
             var db = Resources.Load<ItemDatabase>("Database/ItemDatabase");
@@ -273,6 +274,39 @@ namespace Player
             }
 
             chestInv.OnInventoryChanged?.Invoke();
+        }
+
+        public void PopulateRefrigerator(InventoryComponent fridgeInv = null)
+        {
+            if (fridgeInv == null)
+            {
+                var fridge = UnityEngine.Object.FindFirstObjectByType<RefrigeratorInteractable>(
+                    UnityEngine.FindObjectsInactive.Include);
+                if (fridge != null)
+                {
+                    fridgeInv = fridge.GetComponent<InventoryComponent>();
+                }
+            }
+
+            if (fridgeInv == null) return;
+
+            var db = Resources.Load<ItemDatabase>("Database/ItemDatabase");
+            if (db == null) return;
+
+            var taroItem = db.GetItem("crop_taro");
+            var coconutItem = db.GetItem("mat_coconut");
+            var playerInv = GetComponent<InventoryComponent>();
+
+            if (taroItem != null && fridgeInv.CountItem(taroItem) == 0 && (playerInv == null || playerInv.CountItem(taroItem) == 0))
+            {
+                fridgeInv.AddItem(taroItem, 1);
+            }
+            if (coconutItem != null && fridgeInv.CountItem(coconutItem) == 0 && (playerInv == null || playerInv.CountItem(coconutItem) == 0))
+            {
+                fridgeInv.AddItem(coconutItem, 1);
+            }
+
+            fridgeInv.OnInventoryChanged?.Invoke();
         }
 
         private void ResolveItemReferences()

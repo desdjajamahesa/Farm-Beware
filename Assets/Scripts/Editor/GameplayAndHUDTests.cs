@@ -39,7 +39,7 @@ namespace FarmBeware.EditorTests
             Debug.Log("[AUDIT-SUITE] ========================================================");
 
             int passed = 0;
-            int total = 65;
+            int total = 66;
 
             if (Test_DayNight_PhaseProgression_DuskUntilNight()) passed++;
             if (Test_BedInteractable_Logic_AllowsDuskAndBlocksNightOnly()) passed++;
@@ -106,6 +106,7 @@ namespace FarmBeware.EditorTests
             if (Test_MeleeHitBuffer_Expansion_And_QuestHUD_Lifecycle_Audit()) passed++;
             if (Test_CutsceneTypography_And_Day1PipeDiscoveryTrigger_Audit()) passed++;
             if (Test_Day1_StorageChestStarterKit_And_SideQuestRetrieve_Audit()) passed++;
+            if (Test_CookingQuest_Progression_And_Double_Click_Audit()) passed++;
 
             Debug.Log("[AUDIT-SUITE] ========================================================");
             Debug.Log($"[AUDIT-SUITE] Complete! Passed: {passed}/{total}");
@@ -5953,6 +5954,183 @@ namespace FarmBeware.EditorTests
             {
                 DayNightTimeManager.Instance = prevTime;
                 if (prevService != null) ServiceLocator.Register<ITimeService>(prevService);
+                foreach (var go in cleanupList)
+                {
+                    if (go != null) Object.DestroyImmediate(go);
+                }
+            }
+        }
+
+        // Test 66: Home Cooking Side Quest progression (Enter Kitchen -> Retrieve Taro & Coconut -> Cook at Stove -> Double-click to Consume) Audit
+        private static bool Test_CookingQuest_Progression_And_Double_Click_Audit()
+        {
+            var cleanupList = new List<GameObject>();
+            try
+            {
+                // 1. POCO Model Progression Lifecycle
+                var model = new QuestProgressModel();
+
+                // Finish First Steps planting quest
+                model.EvaluateInventory(new[] { "tool_hoe", "tool_plant_waterer", "food_bottle_water", "seed_sweet_potato" });
+                model.OnCropPlanted("seed_sweet_potato");
+                model.OnCropWatered("seed_sweet_potato");
+
+                if (model.CurrentStage != QuestStage.Completed)
+                {
+                    Debug.LogError($"[Test 66] Expected stage Completed for First Steps, got {model.CurrentStage}!");
+                    return false;
+                }
+
+                // Advance to Cooking Quest: EnterKitchen
+                bool advanced = model.AdvanceToCookingQuest();
+                if (!advanced || model.CurrentStage != QuestStage.EnterKitchen || !model.IsCookingQuest)
+                {
+                    Debug.LogError($"[Test 66] Expected stage EnterKitchen after AdvanceToCookingQuest, got {model.CurrentStage}!");
+                    return false;
+                }
+
+                string enterDetails = model.GetFormattedObjectiveDetails();
+                if (!enterDetails.Contains("Kitchen"))
+                {
+                    Debug.LogError($"[Test 66] Objective details do not mention Kitchen! Got:\n{enterDetails}");
+                    return false;
+                }
+
+                // Player enters Kitchen -> RetrieveIngredients
+                bool enteredKitchen = model.OnEnteredKitchen();
+                if (!enteredKitchen || model.CurrentStage != QuestStage.RetrieveIngredients || !model.HasEnteredKitchen)
+                {
+                    Debug.LogError($"[Test 66] Expected stage RetrieveIngredients after entering kitchen, got {model.CurrentStage}!");
+                    return false;
+                }
+
+                string retrieveDetails = model.GetFormattedObjectiveDetails();
+                if (!retrieveDetails.Contains("Refrigerator") || !retrieveDetails.Contains("Taro") || !retrieveDetails.Contains("Coconut"))
+                {
+                    Debug.LogError($"[Test 66] Objective details do not mention Refrigerator, Taro, and Coconut! Got:\n{retrieveDetails}");
+                    return false;
+                }
+
+                // 2. Refrigerator Capacity & Coconut/Taro Acceptance
+                var fridgeGo = new GameObject("Test_Fridge_Audit");
+                cleanupList.Add(fridgeGo);
+                var fridgeInv = fridgeGo.AddComponent<InventoryComponent>();
+                fridgeInv.ResetInventory(16);
+                fridgeInv.SetAllowAllCropsAndFood(true);
+
+                var db = Resources.Load<ItemDatabase>("Database/ItemDatabase");
+                var taroItem = db != null ? db.GetItem("crop_taro") : null;
+                var coconutItem = db != null ? db.GetItem("mat_coconut") : null;
+                var stewItem = db != null ? db.GetItem("food_taro_coconut_stew") : null;
+
+                if (taroItem != null && !fridgeInv.CanAcceptItem(taroItem))
+                {
+                    Debug.LogError("[Test 66] Refrigerator failed to accept crop_taro!");
+                    return false;
+                }
+                if (coconutItem != null && !fridgeInv.CanAcceptItem(coconutItem))
+                {
+                    Debug.LogError("[Test 66] Refrigerator failed to accept mat_coconut!");
+                    return false;
+                }
+
+                // 3. Player Inventory Evaluation with Taro and Coconut -> Advance to CookStew
+                model.EvaluateInventory(new[] { "crop_taro" });
+                if (model.CurrentStage != QuestStage.RetrieveIngredients || !model.HasTaro || model.HasCoconut)
+                {
+                    Debug.LogError($"[Test 66] Model prematurely advanced with only Taro gathered! Stage: {model.CurrentStage}");
+                    return false;
+                }
+
+                model.EvaluateInventory(new[] { "crop_taro", "mat_coconut" });
+                if (model.CurrentStage != QuestStage.CookStew || !model.IsAllCookingIngredientsGathered)
+                {
+                    Debug.LogError($"[Test 66] Expected stage CookStew after retrieving Taro and Coconut, got {model.CurrentStage}!");
+                    return false;
+                }
+
+                string cookDetails = model.GetFormattedObjectiveDetails();
+                if (!cookDetails.Contains("Kitchen Stove") || !cookDetails.Contains("Taro Coconut Stew Bowl"))
+                {
+                    Debug.LogError($"[Test 66] Objective details do not mention Kitchen Stove and Taro Coconut Stew Bowl! Got:\n{cookDetails}");
+                    return false;
+                }
+
+                // 4. Cook at Stove -> Advance to ConsumeDish with double-click tip
+                bool stewCooked = model.OnStewCooked();
+                if (!stewCooked || model.CurrentStage != QuestStage.ConsumeDish || !model.HasCookedStew)
+                {
+                    Debug.LogError($"[Test 66] Expected stage ConsumeDish after cooking stew, got {model.CurrentStage}!");
+                    return false;
+                }
+
+                string consumeDetails = model.GetFormattedObjectiveDetails();
+                if (!consumeDetails.Contains("Double-click") && !consumeDetails.Contains("double-click"))
+                {
+                    Debug.LogError($"[Test 66] Objective details do not contain double-click instruction/tip! Got:\n{consumeDetails}");
+                    return false;
+                }
+
+                // 5. Inventory Consumption and Double-Click Event Integration
+                var playerGo = new GameObject("Test_Player_CookingQuest");
+                cleanupList.Add(playerGo);
+                playerGo.tag = "Player";
+                var playerInv = playerGo.AddComponent<InventoryComponent>();
+                playerInv.ResetInventory(16);
+
+                bool itemConsumedEventFired = false;
+                ItemData consumedItemReceived = null;
+                System.Action<ItemData> listener = (item) =>
+                {
+                    itemConsumedEventFired = true;
+                    consumedItemReceived = item;
+                };
+                InventoryComponent.OnItemConsumed += listener;
+
+                try
+                {
+                    if (stewItem != null)
+                    {
+                        playerInv.AddItem(stewItem, 1);
+                        playerInv.UseItem(0);
+
+                        if (!itemConsumedEventFired || consumedItemReceived != stewItem)
+                        {
+                            Debug.LogError("[Test 66] InventoryComponent.OnItemConsumed event was not fired upon UseItem!");
+                            return false;
+                        }
+
+                        // Complete quest by consuming dish
+                        bool consumedQuestDone = model.OnDishConsumed(consumedItemReceived.itemId);
+                        if (!consumedQuestDone || model.CurrentStage != QuestStage.CookingQuestCompleted || !model.IsCompleted)
+                        {
+                            Debug.LogError($"[Test 66] Expected stage CookingQuestCompleted after consuming stew, got {model.CurrentStage}!");
+                            return false;
+                        }
+
+                        string finalDetails = model.GetFormattedObjectiveDetails();
+                        if (!finalDetails.Contains("completed") || !finalDetails.Contains("Taro Coconut Stew Bowl"))
+                        {
+                            Debug.LogError($"[Test 66] Final objective details missing completion text! Got:\n{finalDetails}");
+                            return false;
+                        }
+                    }
+                }
+                finally
+                {
+                    InventoryComponent.OnItemConsumed -= listener;
+                }
+
+                Debug.Log("✅ Test 66: Home Cooking Side Quest progression (Enter Kitchen -> Retrieve Taro & Coconut -> Cook at Stove -> Double-click to Consume) and Refrigerator item storage verified.");
+                return true;
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogError($"[Test 66] Exception: {ex.Message}\n{ex.StackTrace}");
+                return false;
+            }
+            finally
+            {
                 foreach (var go in cleanupList)
                 {
                     if (go != null) Object.DestroyImmediate(go);

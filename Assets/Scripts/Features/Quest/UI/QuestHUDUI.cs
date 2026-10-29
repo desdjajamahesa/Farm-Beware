@@ -167,9 +167,17 @@ namespace FarmBeware.Features.Quest.UI
 
             if (questHeaderBadgeText != null)
             {
-                string statusTag = model.IsCompleted ? "• COMPLETED" : "• FIRST STEPS";
+                string statusTag;
+                if (model.CurrentStage >= QuestStage.EnterKitchen)
+                {
+                    statusTag = model.CurrentStage == QuestStage.CookingQuestCompleted ? "• COMPLETED" : "• HOME COOKING";
+                }
+                else
+                {
+                    statusTag = model.IsCompleted ? "• COMPLETED" : "• FIRST STEPS";
+                }
                 questHeaderBadgeText.text = $"• SIDE QUEST {statusTag}";
-                questHeaderBadgeText.color = model.IsCompleted
+                questHeaderBadgeText.color = (model.CurrentStage == QuestStage.Completed || model.CurrentStage == QuestStage.CookingQuestCompleted)
                     ? new Color(1f, 0.84f, 0.25f)
                     : new Color(0.40f, 0.85f, 1f);
             }

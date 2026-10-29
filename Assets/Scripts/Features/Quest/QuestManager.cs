@@ -4,6 +4,7 @@ using UnityEngine;
 using FarmBeware.Core.Runtime;
 using FarmBeware.Logic.Quests;
 using FeaturesFarming;
+using FeaturesKitchen;
 
 namespace FarmBeware.Features.Quest
 {
@@ -57,6 +58,9 @@ namespace FarmBeware.Features.Quest
         private QuestStage _lastAnnouncedStage = QuestStage.GatheringSupplies;
         private readonly List<string> _itemIdsCache = new List<string>(16);
         private FarmlandTile[] _cachedFarmlandTiles;
+        private Transform _playerTransform;
+        private float _firstStepsCompletedTimer = 0f;
+        private const float TransitionToCookingQuestDelay = 3.5f;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void AutoBootstrap()
@@ -93,6 +97,9 @@ namespace FarmBeware.Features.Quest
         {
             FarmlandTile.OnCropPlanted += HandleCropPlanted;
             FarmlandTile.OnCropWatered += HandleCropWatered;
+            InventoryComponent.OnItemConsumed += HandleItemConsumed;
+            RefrigeratorInteractable.OnRefrigeratorOpened += HandleRefrigeratorOpened;
+            KitchenStove.OnAnyCookingCompleted += HandleCookingCompleted;
             SubscribeTimeEvents();
             TryBindPlayerInventory();
         }
@@ -101,6 +108,9 @@ namespace FarmBeware.Features.Quest
         {
             FarmlandTile.OnCropPlanted -= HandleCropPlanted;
             FarmlandTile.OnCropWatered -= HandleCropWatered;
+            InventoryComponent.OnItemConsumed -= HandleItemConsumed;
+            RefrigeratorInteractable.OnRefrigeratorOpened -= HandleRefrigeratorOpened;
+            KitchenStove.OnAnyCookingCompleted -= HandleCookingCompleted;
             UnsubscribeTimeEvents();
             UnbindPlayerInventory();
         }
@@ -175,6 +185,57 @@ namespace FarmBeware.Features.Quest
             else if (_model.CurrentStage == QuestStage.PlantingCrop || _model.CurrentStage == QuestStage.WateringCrop)
             {
                 RefreshFarmingProgress();
+            }
+            else if (_model.CurrentStage == QuestStage.Completed)
+            {
+                _firstStepsCompletedTimer += Time.deltaTime;
+                if (_firstStepsCompletedTimer >= TransitionToCookingQuestDelay)
+                {
+                    _model.AdvanceToCookingQuest();
+                }
+            }
+            else if (_model.CurrentStage == QuestStage.EnterKitchen)
+            {
+                CheckPlayerInKitchen();
+            }
+            else if (_model.CurrentStage == QuestStage.RetrieveIngredients || _model.CurrentStage == QuestStage.CookStew)
+            {
+                RefreshInventoryEvaluation();
+            }
+        }
+
+        private void CheckPlayerInKitchen()
+        {
+            if (_playerTransform == null)
+            {
+                var player = GameObject.FindWithTag("Player");
+                if (player != null)
+                {
+                    _playerTransform = player.transform;
+                }
+                else
+                {
+                    var playerContext = ServiceLocator.Resolve<IPlayerContext>();
+                    if (playerContext != null && playerContext.Transform != null)
+                    {
+                        _playerTransform = playerContext.Transform;
+                    }
+                }
+            }
+
+            if (_playerTransform != null)
+            {
+                Vector3 pos = _playerTransform.position;
+                // Kitchen room bounds: X: 9.0 to 20.5, Z: 4.5 to 13.5
+                bool inKitchenArea = (pos.x >= 9.0f && pos.x <= 20.5f && pos.z >= 4.5f && pos.z <= 13.5f);
+                if (inKitchenArea)
+                {
+                    _model.OnEnteredKitchen();
+                }
+                else if (KitchenStove.Instance != null && Vector3.Distance(pos, KitchenStove.Instance.transform.position) <= 5.5f)
+                {
+                    _model.OnEnteredKitchen();
+                }
             }
         }
 
@@ -309,6 +370,34 @@ namespace FarmBeware.Features.Quest
             RefreshFarmingProgress();
         }
 
+        private void HandleRefrigeratorOpened()
+        {
+            _model.OnEnteredKitchen();
+        }
+
+        private void HandleCookingCompleted(KitchenRecipe recipe)
+        {
+            if (recipe != null)
+            {
+                string outId = recipe.output != null ? recipe.output.itemId : null;
+                if (string.Equals(outId, QuestProgressModel.ItemIdTaroCoconutStew, StringComparison.OrdinalIgnoreCase) ||
+                    (recipe.recipeName != null && recipe.recipeName.IndexOf("Taro Coconut Stew", StringComparison.OrdinalIgnoreCase) >= 0))
+                {
+                    _model.OnStewCooked();
+                }
+            }
+            RefreshInventoryEvaluation();
+        }
+
+        private void HandleItemConsumed(ItemData item)
+        {
+            if (item != null && !string.IsNullOrEmpty(item.itemId))
+            {
+                _model.OnDishConsumed(item.itemId);
+            }
+            RefreshInventoryEvaluation();
+        }
+
         private void HandleModelStateChanged()
         {
             if (_model.CurrentStage != _lastAnnouncedStage)
@@ -344,6 +433,31 @@ namespace FarmBeware.Features.Quest
 
                 case QuestStage.Completed:
                     message = "🎉 Side Quest Completed: First Steps!";
+                    textColor = new Color(1f, 0.84f, 0.25f);
+                    break;
+
+                case QuestStage.EnterKitchen:
+                    message = "🍳 Side Quest: Enter the Kitchen to prepare a meal!";
+                    textColor = new Color(1f, 0.70f, 0.25f);
+                    break;
+
+                case QuestStage.RetrieveIngredients:
+                    message = "🧊 Quest Updated: Take Taro & Coconut from the Refrigerator!";
+                    textColor = new Color(0.35f, 0.85f, 1f);
+                    break;
+
+                case QuestStage.CookStew:
+                    message = "🍲 Quest Updated: Cook Taro Coconut Stew Bowl at the Kitchen Stove!";
+                    textColor = new Color(0.40f, 0.95f, 0.45f);
+                    break;
+
+                case QuestStage.ConsumeDish:
+                    message = "😋 Dish Ready! Double-click Taro Coconut Stew Bowl in inventory to Eat & Drink!";
+                    textColor = new Color(1f, 0.85f, 0.25f);
+                    break;
+
+                case QuestStage.CookingQuestCompleted:
+                    message = "🎉 Side Quest Completed: Home Cooking! Fully nourished & buffed!";
                     textColor = new Color(1f, 0.84f, 0.25f);
                     break;
             }

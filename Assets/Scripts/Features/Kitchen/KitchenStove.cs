@@ -184,6 +184,7 @@ public class KitchenStove : MonoBehaviour, IInteractable
     public event Action<KitchenRecipe, float> OnCookingStarted;   // (recipe, duration)
     public event Action<float, float> OnCookingProgress;         // (progress01, remainingSeconds)
     public event Action<KitchenRecipe> OnCookingCompleted;       // (recipe)
+    public static event Action<KitchenRecipe> OnAnyCookingCompleted; // Static decoupled event for quest/narrative systems
     public event Action<KitchenRecipe> OnCookingCancelled;       // (recipe)
     public event Action<ItemData, int> OnCookedOutputChanged;    // (item, count)
     public event Action<ItemData, int> OnPendingOutputChanged;   // (item, count)
@@ -573,6 +574,7 @@ public class KitchenStove : MonoBehaviour, IInteractable
 
         OnSlotCookingCompleted?.Invoke(slot.slotIndex, recipe);
         OnCookingCompleted?.Invoke(recipe);
+        OnAnyCookingCompleted?.Invoke(recipe);
         OnCookingStateChanged?.Invoke(CurrentState);
     }
 
