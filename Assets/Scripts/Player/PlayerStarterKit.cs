@@ -24,6 +24,9 @@ namespace Player
         [SerializeField] private ItemData sweetPotatoSeedItem;
         [SerializeField] private int starterSeedCount = 6;
 
+        [Header("Target Storage Chest (Auto-found if null)")]
+        [SerializeField] private InventoryComponent storageChestInventory;
+
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void AutoAttachToPlayer()
         {
@@ -98,6 +101,58 @@ namespace Player
             }
         }
 
+        public void SetTargetStorageChest(InventoryComponent chestInv)
+        {
+            storageChestInventory = chestInv;
+        }
+
+        public InventoryComponent FindTargetStorageChest()
+        {
+            if (storageChestInventory != null) return storageChestInventory;
+
+            var storageInteractables = UnityEngine.Object.FindObjectsByType<FeaturesInteraction.StorageInteractable>(
+                UnityEngine.FindObjectsInactive.Include, UnityEngine.FindObjectsSortMode.None);
+
+            if (storageInteractables != null)
+            {
+                foreach (var storage in storageInteractables)
+                {
+                    if (storage != null && storage.name.Contains("StorageChest"))
+                    {
+                        var inv = storage.GetComponent<InventoryComponent>();
+                        if (inv != null)
+                        {
+                            storageChestInventory = inv;
+                            return storageChestInventory;
+                        }
+                    }
+                }
+
+                if (storageInteractables.Length > 0 && storageInteractables[0] != null)
+                {
+                    var inv = storageInteractables[0].GetComponent<InventoryComponent>();
+                    if (inv != null)
+                    {
+                        storageChestInventory = inv;
+                        return storageChestInventory;
+                    }
+                }
+            }
+
+            var chestGo = UnityEngine.GameObject.Find("StorageChest");
+            if (chestGo != null)
+            {
+                var inv = chestGo.GetComponent<InventoryComponent>();
+                if (inv != null)
+                {
+                    storageChestInventory = inv;
+                    return storageChestInventory;
+                }
+            }
+
+            return null;
+        }
+
         public void EnsureStarterKit()
         {
             int currentDay = 0;
@@ -148,6 +203,14 @@ namespace Player
                 return;
             }
 
+            // On Day 1+: Player wakes up with empty hands/pockets.
+            // Starter tools are stored in the Storage Chest per design to be retrieved via Side Quest.
+            var targetChest = FindTargetStorageChest();
+            if (targetChest != null)
+            {
+                PopulateStorageChest(targetChest);
+            }
+
             // Cleanse any accidental Mat_MutatedRoot
             var db = Resources.Load<ItemDatabase>("Database/ItemDatabase");
             if (db != null)
@@ -159,34 +222,7 @@ namespace Player
                 }
             }
 
-            // 1. Check if hotbar is completely uninitialized or empty
-            bool isEmptyInventory = true;
-            if (inv.slots != null)
-            {
-                foreach (var slot in inv.slots)
-                {
-                    if (slot != null && !slot.IsEmpty)
-                    {
-                        isEmptyInventory = false;
-                        break;
-                    }
-                }
-            }
-
-            if (isEmptyInventory)
-            {
-                PopulateFreshSlots(inv);
-            }
-            else
-            {
-                // Fallback guarantee: if individual key tools are completely missing, add them safely
-                if (hoeItem != null && inv.CountItem(hoeItem) == 0) inv.AddItem(hoeItem, 1);
-                if (plantWatererItem != null && inv.CountItem(plantWatererItem) == 0) inv.AddItem(plantWatererItem, 1);
-                if (waterBottleItem != null && inv.CountItem(waterBottleItem) == 0) inv.AddItem(waterBottleItem, 1);
-                if (sweetPotatoSeedItem != null && inv.CountItem(sweetPotatoSeedItem) == 0) inv.AddItem(sweetPotatoSeedItem, starterSeedCount);
-            }
-
-            // 2. Ensure water tool states
+            // Ensure water tool states
             if (PlantWaterer.Instance != null && PlantWaterer.Instance.CurrentWater <= 0f)
             {
                 PlantWaterer.Instance.RefillWater(-1f);
@@ -196,25 +232,47 @@ namespace Player
                 PlayerWaterBottle.Instance.RefillWater(-1f);
             }
 
-            // 3. Ensure selected hotbar is slot 0 (Hoe) and update visual representation
+            // Ensure player hotbar slot 0 is selected and weapon visual is cleared (player holds nothing upon waking)
             inv.selectedHotbarIndex = 0;
             var playerEquip = GetComponent<PlayerEquipment>();
             if (playerEquip != null)
             {
+                playerEquip.DestroyCurrentWeapon();
                 playerEquip.UpdateEquipmentVisual(0);
             }
 
             inv.OnInventoryChanged?.Invoke();
         }
 
-        private void PopulateFreshSlots(InventoryComponent inv)
+        public void PopulateStorageChest(InventoryComponent chestInv)
         {
-            if (inv.slots == null || inv.slots.Count < 4) return;
+            if (chestInv == null) return;
+            ResolveItemReferences();
 
-            if (hoeItem != null) inv.slots[0] = new InventorySlot(hoeItem, 1);
-            if (plantWatererItem != null) inv.slots[1] = new InventorySlot(plantWatererItem, 1);
-            if (waterBottleItem != null) inv.slots[2] = new InventorySlot(waterBottleItem, 1);
-            if (sweetPotatoSeedItem != null) inv.slots[3] = new InventorySlot(sweetPotatoSeedItem, starterSeedCount);
+            if (chestInv.maxCapacity < 16) chestInv.maxCapacity = 16;
+            chestInv.EnsureSlotsAllocated();
+
+            var playerInv = GetComponent<InventoryComponent>();
+
+            // Ensure starter items in chest only if neither the chest nor the player currently possesses them
+            if (hoeItem != null && chestInv.CountItem(hoeItem) == 0 && (playerInv == null || playerInv.CountItem(hoeItem) == 0))
+            {
+                chestInv.AddItem(hoeItem, 1);
+            }
+            if (plantWatererItem != null && chestInv.CountItem(plantWatererItem) == 0 && (playerInv == null || playerInv.CountItem(plantWatererItem) == 0))
+            {
+                chestInv.AddItem(plantWatererItem, 1);
+            }
+            if (waterBottleItem != null && chestInv.CountItem(waterBottleItem) == 0 && (playerInv == null || playerInv.CountItem(waterBottleItem) == 0))
+            {
+                chestInv.AddItem(waterBottleItem, 1);
+            }
+            if (sweetPotatoSeedItem != null && chestInv.CountItem(sweetPotatoSeedItem) == 0 && (playerInv == null || playerInv.CountItem(sweetPotatoSeedItem) == 0))
+            {
+                chestInv.AddItem(sweetPotatoSeedItem, starterSeedCount);
+            }
+
+            chestInv.OnInventoryChanged?.Invoke();
         }
 
         private void ResolveItemReferences()

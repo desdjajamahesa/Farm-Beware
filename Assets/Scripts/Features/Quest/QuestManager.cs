@@ -93,6 +93,7 @@ namespace FarmBeware.Features.Quest
         {
             FarmlandTile.OnCropPlanted += HandleCropPlanted;
             FarmlandTile.OnCropWatered += HandleCropWatered;
+            SubscribeTimeEvents();
             TryBindPlayerInventory();
         }
 
@@ -100,7 +101,42 @@ namespace FarmBeware.Features.Quest
         {
             FarmlandTile.OnCropPlanted -= HandleCropPlanted;
             FarmlandTile.OnCropWatered -= HandleCropWatered;
+            UnsubscribeTimeEvents();
             UnbindPlayerInventory();
+        }
+
+        private void SubscribeTimeEvents()
+        {
+            if (ServiceLocator.TryResolve<ITimeService>(out var timeService) && timeService != null)
+            {
+                timeService.OnDayChanged -= HandleDayChanged;
+                timeService.OnDayChanged += HandleDayChanged;
+            }
+            if (FeaturesTime.DayNightTimeManager.Instance != null)
+            {
+                FeaturesTime.DayNightTimeManager.Instance.OnDayChanged -= HandleDayChanged;
+                FeaturesTime.DayNightTimeManager.Instance.OnDayChanged += HandleDayChanged;
+            }
+        }
+
+        private void UnsubscribeTimeEvents()
+        {
+            if (ServiceLocator.TryResolve<ITimeService>(out var timeService) && timeService != null)
+            {
+                timeService.OnDayChanged -= HandleDayChanged;
+            }
+            if (FeaturesTime.DayNightTimeManager.Instance != null)
+            {
+                FeaturesTime.DayNightTimeManager.Instance.OnDayChanged -= HandleDayChanged;
+            }
+        }
+
+        private void HandleDayChanged(int day)
+        {
+            if (day >= 1 && _model.CurrentStage == QuestStage.GatheringSupplies)
+            {
+                NotifyPlayerOfStageProgress(QuestStage.GatheringSupplies);
+            }
         }
 
         private void OnApplicationQuit()
@@ -291,6 +327,11 @@ namespace FarmBeware.Features.Quest
 
             switch (stage)
             {
+                case QuestStage.GatheringSupplies:
+                    message = "📦 Side Quest: Take your farming tools from the Storage Chest!";
+                    textColor = new Color(0.40f, 0.85f, 1f);
+                    break;
+
                 case QuestStage.PlantingCrop:
                     message = "📋 Quest Updated: Till soil with Hoe & plant Sweet Potato!";
                     textColor = new Color(0.35f, 0.95f, 0.45f);

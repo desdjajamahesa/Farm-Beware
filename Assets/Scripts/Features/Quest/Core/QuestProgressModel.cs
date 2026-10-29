@@ -203,7 +203,7 @@ namespace FarmBeware.Logic.Quests
                     string bottleMark = HasWaterBottle ? "<color=#80FF80>[OK]</color>" : "<color=#FFA0A0>[  ]</color>";
                     string seedMark = HasSweetPotatoSeed ? "<color=#80FF80>[OK]</color>" : "<color=#FFA0A0>[  ]</color>";
 
-                    return $"Gather farming supplies:\n" +
+                    return $"Take farming tools from Storage Chest:\n" +
                            $"{hoeMark} Hoe  {watererMark} Waterer\n" +
                            $"{bottleMark} Bottle  {seedMark} Sweet Potato Seed";
 

@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
+using FarmBeware.Core.Runtime;
 using FarmBeware.Logic.Quests;
 using FeaturesTime.UI;
 
@@ -137,6 +138,33 @@ namespace FarmBeware.Features.Quest.UI
         {
             if (model == null) return;
 
+            // Suppress Side Quest card on Day 0 per narrative progression (player only sleeps on Day 0)
+            int currentDay = 1;
+            if (ServiceLocator.TryResolve<ITimeService>(out var timeService) && timeService != null)
+            {
+                currentDay = timeService.CurrentDay;
+            }
+            else if (FeaturesTime.DayNightTimeManager.Instance != null)
+            {
+                currentDay = FeaturesTime.DayNightTimeManager.Instance.CurrentDay;
+            }
+
+            if (currentDay == 0)
+            {
+                if (questCardRoot != null && questCardRoot.activeSelf)
+                {
+                    questCardRoot.SetActive(false);
+                }
+                return;
+            }
+            else
+            {
+                if (questCardRoot != null && !questCardRoot.activeSelf)
+                {
+                    questCardRoot.SetActive(true);
+                }
+            }
+
             if (questHeaderBadgeText != null)
             {
                 string statusTag = model.IsCompleted ? "• COMPLETED" : "• FIRST STEPS";
@@ -215,7 +243,7 @@ namespace FarmBeware.Features.Quest.UI
             questDetailText.textWrappingMode = TextWrappingModes.Normal;
             questDetailText.overflowMode = TextOverflowModes.Ellipsis;
             questDetailText.alignment = TextAlignmentOptions.TopLeft;
-            questDetailText.text = "Gather farming supplies:\n<color=#FFA0A0>[  ]</color> Hoe  <color=#FFA0A0>[  ]</color> Waterer\n<color=#FFA0A0>[  ]</color> Bottle  <color=#FFA0A0>[  ]</color> Sweet Potato Seed";
+            questDetailText.text = "Take farming tools from Storage Chest:\n<color=#FFA0A0>[  ]</color> Hoe  <color=#FFA0A0>[  ]</color> Waterer\n<color=#FFA0A0>[  ]</color> Bottle  <color=#FFA0A0>[  ]</color> Sweet Potato Seed";
         }
     }
 }

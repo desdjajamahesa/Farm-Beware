@@ -39,7 +39,7 @@ namespace FarmBeware.EditorTests
             Debug.Log("[AUDIT-SUITE] ========================================================");
 
             int passed = 0;
-            int total = 64;
+            int total = 65;
 
             if (Test_DayNight_PhaseProgression_DuskUntilNight()) passed++;
             if (Test_BedInteractable_Logic_AllowsDuskAndBlocksNightOnly()) passed++;
@@ -105,6 +105,7 @@ namespace FarmBeware.EditorTests
             if (Test_SideQuest_FirstSteps_Progression_GatherAndPlant()) passed++;
             if (Test_MeleeHitBuffer_Expansion_And_QuestHUD_Lifecycle_Audit()) passed++;
             if (Test_CutsceneTypography_And_Day1PipeDiscoveryTrigger_Audit()) passed++;
+            if (Test_Day1_StorageChestStarterKit_And_SideQuestRetrieve_Audit()) passed++;
 
             Debug.Log("[AUDIT-SUITE] ========================================================");
             Debug.Log($"[AUDIT-SUITE] Complete! Passed: {passed}/{total}");
@@ -4413,28 +4414,45 @@ namespace FarmBeware.EditorTests
                 // 3. Advance to Day 1
                 timeMgr.SetDayAndTime(1, 6.0f);
 
+                var chestGo = new GameObject("Test_StorageChest_Audit");
+                cleanupList.Add(chestGo);
+                var chestStorage = chestGo.AddComponent<FeaturesInteraction.StorageInteractable>();
+                var chestInv = chestGo.GetComponent<InventoryComponent>();
+                chestInv.ResetInventory(16);
+                kit.SetTargetStorageChest(chestInv);
+
                 // 4. Trigger Day 1 EnsureStarterKit
                 kit.EnsureStarterKit();
 
-                // Verify starter items populated in slots 0-3
-                if (inv.slots[0].IsEmpty || inv.slots[0].item == null || !inv.slots[0].item.itemId.Contains("hoe"))
+                // Verify player inventory remains completely empty on Day 1 wake up per design
+                for (int i = 0; i < 4; i++)
                 {
-                    Debug.LogError($"[Test 48] Day 1 Slot 0 expected Hoe, found: {inv.slots[0].item?.itemId ?? "empty"}!");
+                    if (inv.slots[i] != null && !inv.slots[i].IsEmpty)
+                    {
+                        Debug.LogError($"[Test 48] Day 1 player slot {i} was expected empty, found: {inv.slots[i].item?.itemId}!");
+                        return false;
+                    }
+                }
+
+                // Verify starter items populated in Storage Chest for side quest retrieval
+                if (chestInv.slots[0].IsEmpty || chestInv.slots[0].item == null || !chestInv.slots[0].item.itemId.Contains("hoe"))
+                {
+                    Debug.LogError($"[Test 48] Storage Chest Slot 0 expected Hoe, found: {chestInv.slots[0].item?.itemId ?? "empty"}!");
                     return false;
                 }
-                if (inv.slots[1].IsEmpty || inv.slots[1].item == null || !inv.slots[1].item.itemId.Contains("plant_waterer"))
+                if (chestInv.slots[1].IsEmpty || chestInv.slots[1].item == null || !chestInv.slots[1].item.itemId.Contains("plant_waterer"))
                 {
-                    Debug.LogError($"[Test 48] Day 1 Slot 1 expected Plant Waterer, found: {inv.slots[1].item?.itemId ?? "empty"}!");
+                    Debug.LogError($"[Test 48] Storage Chest Slot 1 expected Plant Waterer, found: {chestInv.slots[1].item?.itemId ?? "empty"}!");
                     return false;
                 }
-                if (inv.slots[2].IsEmpty || inv.slots[2].item == null || !inv.slots[2].item.itemId.Contains("bottle_water"))
+                if (chestInv.slots[2].IsEmpty || chestInv.slots[2].item == null || !chestInv.slots[2].item.itemId.Contains("bottle_water"))
                 {
-                    Debug.LogError($"[Test 48] Day 1 Slot 2 expected Water Bottle, found: {inv.slots[2].item?.itemId ?? "empty"}!");
+                    Debug.LogError($"[Test 48] Storage Chest Slot 2 expected Water Bottle, found: {chestInv.slots[2].item?.itemId ?? "empty"}!");
                     return false;
                 }
-                if (inv.slots[3].IsEmpty || inv.slots[3].item == null || !inv.slots[3].item.itemId.Contains("sweet_potato") || inv.slots[3].quantity != 6)
+                if (chestInv.slots[3].IsEmpty || chestInv.slots[3].item == null || !chestInv.slots[3].item.itemId.Contains("sweet_potato") || chestInv.slots[3].quantity != 6)
                 {
-                    Debug.LogError($"[Test 48] Day 1 Slot 3 expected 6x Sweet Potato Seeds, found: {inv.slots[3].item?.itemId ?? "empty"} x{inv.slots[3].quantity}!");
+                    Debug.LogError($"[Test 48] Storage Chest Slot 3 expected 6x Sweet Potato Seeds, found: {chestInv.slots[3].item?.itemId ?? "empty"} x{chestInv.slots[3].quantity}!");
                     return false;
                 }
 
@@ -4445,7 +4463,7 @@ namespace FarmBeware.EditorTests
                     return false;
                 }
 
-                Debug.Log("✅ Test 48: Day 0 Zero-Inventory Invariant & Day 1 Starter Kit Tool Population + Hotbar Gating verified.");
+                Debug.Log("✅ Test 48: Day 0 Zero-Inventory & Day 1 Storage Chest Tool Population + Player Empty Hands & Hotbar Gating verified.");
                 return true;
             }
             catch (System.Exception ex)
@@ -5073,6 +5091,14 @@ namespace FarmBeware.EditorTests
                     }
                 }
 
+                // Storage chest setup for Day 1 starter tools placement
+                var chestGo = new GameObject("StorageChest");
+                cleanupList.Add(chestGo);
+                var chestStorage = chestGo.AddComponent<FeaturesInteraction.StorageInteractable>();
+                var chestInv = chestGo.GetComponent<InventoryComponent>();
+                chestInv.ResetInventory(16);
+                kit.SetTargetStorageChest(chestInv);
+
                 // Verify Bed interaction on Day 0 advances to Day 1
                 var bedGo = new GameObject("Test_Bed_Day0To1", typeof(BedInteractable));
                 cleanupList.Add(bedGo);
@@ -5085,25 +5111,35 @@ namespace FarmBeware.EditorTests
                     return false;
                 }
 
-                // Verify starter items populated on Day 1
-                if (inv.slots[0].IsEmpty || inv.slots[0].item == null || !inv.slots[0].item.itemId.Contains("hoe"))
+                // Verify player inventory remains completely empty on Day 1 wake up (player holds nothing)
+                for (int i = 0; i < 4; i++)
                 {
-                    Debug.LogError($"[Test 58] Expected Hoe in slot 0, found: {inv.slots[0].item?.itemId ?? "empty"}!");
+                    if (inv.slots[i] != null && !inv.slots[i].IsEmpty)
+                    {
+                        Debug.LogError($"[Test 58] Expected player slot {i} to be empty on Day 1 wake up, found {inv.slots[i].item?.itemId}!");
+                        return false;
+                    }
+                }
+
+                // Verify starter items populated in Storage Chest on Day 1
+                if (chestInv.slots[0].IsEmpty || chestInv.slots[0].item == null || !chestInv.slots[0].item.itemId.Contains("hoe"))
+                {
+                    Debug.LogError($"[Test 58] Expected Hoe in storage chest slot 0, found: {chestInv.slots[0].item?.itemId ?? "empty"}!");
                     return false;
                 }
-                if (inv.slots[1].IsEmpty || inv.slots[1].item == null || !inv.slots[1].item.itemId.Contains("plant_waterer"))
+                if (chestInv.slots[1].IsEmpty || chestInv.slots[1].item == null || !chestInv.slots[1].item.itemId.Contains("plant_waterer"))
                 {
-                    Debug.LogError($"[Test 58] Expected Plant Waterer in slot 1, found: {inv.slots[1].item?.itemId ?? "empty"}!");
+                    Debug.LogError($"[Test 58] Expected Plant Waterer in storage chest slot 1, found: {chestInv.slots[1].item?.itemId ?? "empty"}!");
                     return false;
                 }
-                if (inv.slots[2].IsEmpty || inv.slots[2].item == null || !inv.slots[2].item.itemId.Contains("bottle_water"))
+                if (chestInv.slots[2].IsEmpty || chestInv.slots[2].item == null || !chestInv.slots[2].item.itemId.Contains("bottle_water"))
                 {
-                    Debug.LogError($"[Test 58] Expected Water Bottle in slot 2, found: {inv.slots[2].item?.itemId ?? "empty"}!");
+                    Debug.LogError($"[Test 58] Expected Water Bottle in storage chest slot 2, found: {chestInv.slots[2].item?.itemId ?? "empty"}!");
                     return false;
                 }
-                if (inv.slots[3].IsEmpty || inv.slots[3].item == null || !inv.slots[3].item.itemId.Contains("sweet_potato") || inv.slots[3].quantity != 6)
+                if (chestInv.slots[3].IsEmpty || chestInv.slots[3].item == null || !chestInv.slots[3].item.itemId.Contains("sweet_potato") || chestInv.slots[3].quantity != 6)
                 {
-                    Debug.LogError($"[Test 58] Expected 6 Sweet Potato Seeds in slot 3, found: {inv.slots[3].item?.itemId ?? "empty"} x{inv.slots[3].quantity}!");
+                    Debug.LogError($"[Test 58] Expected 6 Sweet Potato Seeds in storage chest slot 3, found: {chestInv.slots[3].item?.itemId ?? "empty"} x{chestInv.slots[3].quantity}!");
                     return false;
                 }
 
@@ -5114,7 +5150,7 @@ namespace FarmBeware.EditorTests
                     return false;
                 }
 
-                Debug.Log("✅ Test 58: Day 0 -> Day 1 Bed Transition, Inventory Zero-State Wipe, Starter Kit Population, & Slot 0 Selection verified.");
+                Debug.Log("✅ Test 58: Day 0 -> Day 1 Bed Transition, Inventory Zero-State Wipe, Storage Chest Population, & Slot 0 Selection verified.");
                 return true;
             }
             catch (System.Exception ex)
@@ -5785,6 +5821,142 @@ namespace FarmBeware.EditorTests
             finally
             {
                 Object.DestroyImmediate(canvasGo);
+            }
+        }
+
+        // Test 65: Day 1 Storage Chest Starter Kit placement, Player Empty Hands/Inventory, & Side Quest Retrieval progression
+        private static bool Test_Day1_StorageChestStarterKit_And_SideQuestRetrieve_Audit()
+        {
+            var cleanupList = new List<GameObject>();
+            var prevTime = FeaturesTime.DayNightTimeManager.Instance;
+            var prevService = ServiceLocator.Resolve<ITimeService>();
+            try
+            {
+                var timeGo = new GameObject("Test_TimeManager_Day1_ChestQuest");
+                cleanupList.Add(timeGo);
+                var timeMgr = timeGo.AddComponent<FeaturesTime.DayNightTimeManager>();
+                FeaturesTime.DayNightTimeManager.Instance = timeMgr;
+                ServiceLocator.Register<ITimeService>(timeMgr);
+                timeMgr.SetDayAndTime(0, 20.0f); // Day 0 Night
+
+                // 1. Create player with starter kit and equipment
+                var playerGo = new GameObject("Test_Player_ChestQuest");
+                cleanupList.Add(playerGo);
+                playerGo.tag = "Player";
+                var inv = playerGo.AddComponent<InventoryComponent>();
+                inv.ResetInventory(16);
+                var equip = playerGo.AddComponent<PlayerEquipment>();
+                var kit = playerGo.AddComponent<PlayerStarterKit>();
+                kit.EnsureStarterKit(0); // Day 0 empty
+
+                // 2. Create Storage Chest
+                var chestGo = new GameObject("StorageChest");
+                cleanupList.Add(chestGo);
+                var chestStorage = chestGo.AddComponent<FeaturesInteraction.StorageInteractable>();
+                var chestInv = chestGo.GetComponent<InventoryComponent>();
+                chestInv.ResetInventory(16);
+                kit.SetTargetStorageChest(chestInv);
+
+                // 3. Create Bed and execute Day 0 Sleep to transition to Day 1
+                var bedGo = new GameObject("Test_Bed_ChestQuest", typeof(BedInteractable));
+                cleanupList.Add(bedGo);
+                var bed = bedGo.GetComponent<BedInteractable>();
+                bed.Interact(playerGo);
+
+                if (timeMgr.CurrentDay != 1)
+                {
+                    Debug.LogError($"[Test 65] Expected Day 1 after sleeping, got Day {timeMgr.CurrentDay}!");
+                    return false;
+                }
+
+                // 4. Verify player woke up with completely empty hands and empty inventory
+                for (int i = 0; i < inv.slots.Count; i++)
+                {
+                    if (inv.slots[i] != null && !inv.slots[i].IsEmpty)
+                    {
+                        Debug.LogError($"[Test 65] Player inventory slot {i} was not empty upon waking on Day 1! Item: {inv.slots[i].item?.itemId}");
+                        return false;
+                    }
+                }
+                var weaponField = typeof(PlayerEquipment).GetField("currentWeaponModel", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+                if (weaponField != null && weaponField.GetValue(equip) != null)
+                {
+                    Debug.LogError("[Test 65] Player should not hold any weapon/tool visual upon waking on Day 1!");
+                    return false;
+                }
+
+                // 5. Verify Storage Chest contains all 4 starter items
+                var db = Resources.Load<ItemDatabase>("Database/ItemDatabase");
+                var hoeItem = db != null ? db.GetItem("tool_hoe") : null;
+                var watererItem = db != null ? db.GetItem("tool_plant_waterer") : null;
+                var bottleItem = db != null ? db.GetItem("food_bottle_water") : null;
+                var seedItem = db != null ? db.GetItem("seed_sweet_potato") : null;
+
+                if (chestInv.CountItem(hoeItem) < 1)
+                {
+                    Debug.LogError("[Test 65] Storage Chest missing Hoe tool!");
+                    return false;
+                }
+                if (chestInv.CountItem(watererItem) < 1)
+                {
+                    Debug.LogError("[Test 65] Storage Chest missing Plant Waterer!");
+                    return false;
+                }
+                if (chestInv.CountItem(bottleItem) < 1)
+                {
+                    Debug.LogError("[Test 65] Storage Chest missing Water Bottle!");
+                    return false;
+                }
+                if (chestInv.CountItem(seedItem) < 6)
+                {
+                    Debug.LogError($"[Test 65] Storage Chest missing 6x Sweet Potato Seeds! Found: {chestInv.CountItem(seedItem)}");
+                    return false;
+                }
+
+                // 6. Verify Side Quest model state and objective text
+                var questModel = new QuestProgressModel();
+                if (questModel.CurrentStage != QuestStage.GatheringSupplies)
+                {
+                    Debug.LogError($"[Test 65] Expected Side Quest stage GatheringSupplies, got {questModel.CurrentStage}!");
+                    return false;
+                }
+
+                string objectiveText = questModel.GetFormattedObjectiveDetails();
+                if (!objectiveText.Contains("Storage Chest"))
+                {
+                    Debug.LogError($"[Test 65] Side Quest objective text does not mention Storage Chest! Details:\n{objectiveText}");
+                    return false;
+                }
+
+                // 7. Simulate Player retrieving items from Storage Chest into inventory
+                inv.AddItem(hoeItem, 1);
+                inv.AddItem(watererItem, 1);
+                inv.AddItem(bottleItem, 1);
+                inv.AddItem(seedItem, 6);
+
+                questModel.EvaluateInventory(new[] { "tool_hoe", "tool_plant_waterer", "food_bottle_water", "seed_sweet_potato" });
+                if (!questModel.IsAllSuppliesGathered || questModel.CurrentStage != QuestStage.PlantingCrop)
+                {
+                    Debug.LogError($"[Test 65] Expected stage PlantingCrop after retrieving all supplies, got: {questModel.CurrentStage}!");
+                    return false;
+                }
+
+                Debug.Log("✅ Test 65: Day 1 Storage Chest starter kit placement, Player empty hands/inventory, and Side Quest retrieval progression verified.");
+                return true;
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogError($"[Test 65] Exception: {ex.Message}\n{ex.StackTrace}");
+                return false;
+            }
+            finally
+            {
+                DayNightTimeManager.Instance = prevTime;
+                if (prevService != null) ServiceLocator.Register<ITimeService>(prevService);
+                foreach (var go in cleanupList)
+                {
+                    if (go != null) Object.DestroyImmediate(go);
+                }
             }
         }
     }
