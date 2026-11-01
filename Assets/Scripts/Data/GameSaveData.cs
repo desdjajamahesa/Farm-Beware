@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using FarmBeware.Core.Runtime;
 
 namespace FeaturesSaveSystem
 {
@@ -116,6 +117,9 @@ namespace FeaturesSaveSystem
         public int[] narrativeFacts;
         public List<string> lastPlayedBeatKeys = new List<string>();
         public List<int> lastPlayedDays = new List<int>();
+
+        // Quest Progress Persistence
+        public QuestSavePayload questPayload;
     }
 
     [Serializable]

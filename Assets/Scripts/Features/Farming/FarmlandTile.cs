@@ -593,6 +593,30 @@ namespace FeaturesFarming
         }
 
         /// <summary>
+        /// Handles withering or destruction of crops on this farmland tile.
+        /// Increments DeadCropsCount in NarrativeFactBoard and fires narrative telemetry.
+        /// </summary>
+        public void WitherCrop()
+        {
+            if (currentState == TileState.PlantedDry || currentState == TileState.PlantedWatered || currentState == TileState.ReadyToHarvest)
+            {
+                plantedSeed = null;
+                growthProgress = 0f;
+                currentTimer = 0f;
+                SetState(TileState.Untilled);
+
+                var facts = ServiceLocator.Resolve<INarrativeFactBoard>();
+                facts?.AddFact(NarrativeFactKey.DeadCropsCount, 1);
+                NarrativeTelemetryHooks.ReportCropWithered();
+
+                Debug.Log("[FarmlandTile] Crop withered and died. DeadCropsCount updated.");
+            }
+        }
+
+        /// <summary>Alias method for crop withering / death.</summary>
+        public void OnCropWithered() => WitherCrop();
+
+        /// <summary>
         /// Restores complete crop state (used by Save/Load system).
         /// </summary>
         public void RestoreCropState(TileState state, SeedItemData seed, float progress, float timer, float duration = -1f)

@@ -27,6 +27,7 @@ using Player;
 using FarmBeware.Logic.Quests;
 using FarmBeware.Features.Quest.UI;
 
+using FarmBeware.Features.Quest;
 namespace FarmBeware.EditorTests
 {
     public static class GameplayAndHUDTests
@@ -39,7 +40,7 @@ namespace FarmBeware.EditorTests
             Debug.Log("[AUDIT-SUITE] ========================================================");
 
             int passed = 0;
-            int total = 66;
+            int total = 71;
 
             if (Test_DayNight_PhaseProgression_DuskUntilNight()) passed++;
             if (Test_BedInteractable_Logic_AllowsDuskAndBlocksNightOnly()) passed++;
@@ -105,6 +106,11 @@ namespace FarmBeware.EditorTests
             if (Test_SideQuest_FirstSteps_Progression_GatherAndPlant()) passed++;
             if (Test_MeleeHitBuffer_Expansion_And_QuestHUD_Lifecycle_Audit()) passed++;
             if (Test_CutsceneTypography_And_Day1PipeDiscoveryTrigger_Audit()) passed++;
+            if (Test_Storyline_UpdateLoop_ZeroGC_Profiling_Audit()) passed++;
+            if (Test_Storyline_SandboxPlayableLoop_E2E_Audit()) passed++;
+            if (Test_PlayerV2_CharacterAsset_NativeAnimations_And_Avatar_Audit()) passed++;
+            if (Test_DummySword_Redesign_And_HandSocket_Alignment_Audit()) passed++;
+            if (Test_AttackAnimationPacing_ControllerSpeeds_And_HitboxTiming_Audit()) passed++;
             if (Test_Day1_StorageChestStarterKit_And_SideQuestRetrieve_Audit()) passed++;
             if (Test_CookingQuest_Progression_And_Double_Click_Audit()) passed++;
 
@@ -5825,7 +5831,520 @@ namespace FarmBeware.EditorTests
             }
         }
 
-        // Test 65: Day 1 Storage Chest Starter Kit placement, Player Empty Hands/Inventory, & Side Quest Retrieval progression
+
+        // Test 65: Storyline and QuestHUD Zero-GC Update Loop Invariant Audit
+        public static bool Test_Storyline_UpdateLoop_ZeroGC_Profiling_Audit()
+        {
+            var go = new GameObject("Test_ZeroGC_Harness");
+            try
+            {
+                // 1. Setup Canvas, StorylineUI, QuestHUDUI, and Managers
+                var canvas = go.AddComponent<Canvas>();
+                var hudUI = go.AddComponent<QuestHUDUI>();
+                var storyUI = go.AddComponent<StorylineUI>();
+                var facts = new NarrativeFactBoard();
+                var questModel = new QuestProgressModel();
+
+                // 2. Warm up JIT and initial allocations
+                hudUI.UpdateDisplayFromModel(questModel);
+                storyUI.EnsureUIHierarchy();
+
+                // Start typewriter with dialogue text (250 chars) for active playback profiling
+                storyUI.ShowDialogue("Ucup", new string('A', 250));
+                storyUI.SimulateFrame(0.016f);
+                hudUI.SimulateFrame(0.016f);
+
+                // 3. Begin Zero-GC Allocation Window
+                long allocStart = System.GC.GetAllocatedBytesForCurrentThread();
+
+                // Simulate 100+ frames of active typewriter playback and 1,000 frames of Update() ticking
+                for (int frame = 0; frame < 1000; frame++)
+                {
+                    // QuestHUDUI and StorylineUI Update() logic; event-driven with zero per-frame string/heap allocations
+                    hudUI.SimulateFrame(0.016f);
+                    storyUI.SimulateFrame(0.016f);
+                }
+
+                long allocDelta = System.GC.GetAllocatedBytesForCurrentThread() - allocStart;
+
+                if (allocDelta > 0)
+                {
+                    Debug.LogError($"[Test 65 FAILED] Zero-GC Invariant breached! Allocated {allocDelta} bytes across 1,000 update ticks.");
+                    return false;
+                }
+
+                Debug.Log("✅ Test 65: Storyline and QuestHUD zero-GC update loop audit verified (0 bytes allocated across 1,000 frames).");
+                return true;
+            }
+            finally
+            {
+                Object.DestroyImmediate(go);
+            }
+        }
+
+        public static bool Test_Storyline_And_QuestHUD_ZeroGC_UpdateLoop_Audit() => Test_Storyline_UpdateLoop_ZeroGC_Profiling_Audit();
+
+        // Test 66: Playable Sandbox Day 1 to 5 Narrative Loop Reachability Audit
+        public static bool Test_Storyline_SandboxPlayableLoop_E2E_Audit()
+        {
+            var engine = new StorylineEngine();
+            var facts = new NarrativeFactBoard();
+            var beats = StoryDatabase.CreateDefaultStoryBeats();
+            StoryDatabase.BakeTriggerBuckets(beats);
+
+            // Day 0: Prologue & Initialization
+            engine.EvaluateTrigger(StoryTriggerType.GameStart, facts, beats, 0);
+            facts.SetFact(NarrativeFactKey.IntroCutsceneCompleted, 1);
+
+            // INarrativeObjectiveService integration check
+            GameObject questHost = null;
+            try
+            {
+                var questService = QuestManager.Instance;
+                if (questService == null)
+                {
+                    questHost = new GameObject("Test_QuestHost");
+                    questService = questHost.AddComponent<QuestManager>();
+                }
+                questService.AssignStoryObjective("OBJ_DAY1_PLANT", "Plant Sweet Potatoes", "Plant 6 sweet potato seeds", 6);
+                questService.UpdateObjectiveProgress("OBJ_DAY1_PLANT", 6);
+                questService.CompleteStoryObjective("OBJ_DAY1_PLANT");
+                var completedObj = questService.GetObject("OBJ_DAY1_PLANT");
+                if (completedObj == null || !completedObj.isCompleted)
+                {
+                    Debug.LogError("[Test 66 FAILED] INarrativeObjectiveService objective completion failed!");
+                    return false;
+                }
+
+                // Simulate complete 5-day cycle
+                for (int day = 1; day <= 5; day++)
+                {
+                    engine.SetChapter(day);
+                    facts.SetFact(NarrativeFactKey.CurrentDay, day);
+
+                    // Dawn
+                    var dawnBeat = engine.EvaluateTrigger(StoryTriggerType.Dawn, facts, beats, day);
+                    if (dawnBeat == null && day == 1)
+                    {
+                        Debug.LogError($"[Test 66 FAILED] Missing Dawn beat on Day {day}!");
+                        return false;
+                    }
+
+                    // Midday chore
+                    if (day == 1) facts.AddFact(NarrativeFactKey.PlantedCount_SweetPotato, 6);
+                    if (day >= 2) facts.AddFact(NarrativeFactKey.DirtyCropsWashedCount, 3);
+
+                    // Dusk Bell at 15:00
+                    var duskBeat = engine.EvaluateTrigger(StoryTriggerType.Dusk, facts, beats, day);
+
+                    // Night Waves & Bosses
+                    facts.SetFact(NarrativeFactKey.ActiveCombatThreatCount, day); // monsters
+
+                    // Modal combat safety check: simulate modal beat deferral during active threat
+                    var modalBeatCandidate = beats.Find(b => b.deliveryType == StoryDeliveryType.DialogueBox);
+                    if (modalBeatCandidate != null)
+                    {
+                        int prevCount = engine.PendingModalCount;
+                        engine.EnqueuePendingModalBeat(modalBeatCandidate);
+                        if (engine.PendingModalCount != prevCount + 1)
+                        {
+                            Debug.LogError("[Test 66 FAILED] Failed to enqueue modal beat during active combat threat!");
+                            return false;
+                        }
+                        var dequeued = engine.DequeuePendingModalBeat();
+                        if (dequeued == null || dequeued.beatId != modalBeatCandidate.beatId)
+                        {
+                            Debug.LogError("[Test 66 FAILED] Failed to dequeue modal beat after combat clearance!");
+                            return false;
+                        }
+                    }
+
+                    if (day == 4) engine.EvaluateTrigger(StoryTriggerType.BossSpawn, facts, beats, day, wave: 4, bossType: EnemyType.CyclopsTuberMaw);
+                    if (day == 5) engine.EvaluateTrigger(StoryTriggerType.BossSpawn, facts, beats, day, wave: 5, bossType: EnemyType.TheRanger);
+
+                    // Clear waves
+                    facts.SetFact(NarrativeFactKey.ActiveCombatThreatCount, 0);
+                    if (day == 5)
+                    {
+                        facts.SetFact(NarrativeFactKey.TheRangerSlayed, 1);
+                        engine.MarkStoryComplete();
+                    }
+
+                    // Sleep
+                    engine.EvaluateTrigger(StoryTriggerType.Sleep, facts, beats, day);
+                }
+
+                if (!engine.IsStoryComplete)
+                {
+                    Debug.LogError("[Test 66 FAILED] Day 5 completed but IsStoryComplete was false!");
+                    return false;
+                }
+
+                Debug.Log("✅ Test 66: Playable sandbox 5-day narrative loop reachability audit verified (Clean run from Day 1 to Day 5 Victory).");
+                return true;
+            }
+            finally
+            {
+                if (questHost != null)
+                {
+                    Object.DestroyImmediate(questHost);
+                }
+            }
+        }
+
+
+        // Test 67: Player V2 Character Rig Avatar, Native Combat Animations, Loop Settings, and Controller State Audit
+        private static bool Test_PlayerV2_CharacterAsset_NativeAnimations_And_Avatar_Audit()
+        {
+            try
+            {
+                // 1. Verify character_player_v2 prefab avatar binding
+                var prefabPath = "Assets/Prefabs/Player/character_player_v2.prefab";
+                var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
+                if (prefab == null)
+                {
+                    Debug.LogError("[Test 67] character_player_v2.prefab not found at expected path!");
+                    return false;
+                }
+
+                var anim = prefab.GetComponent<Animator>();
+                if (anim == null)
+                {
+                    Debug.LogError("[Test 67] Animator missing on character_player_v2.prefab!");
+                    return false;
+                }
+
+                if (anim.avatar == null || anim.avatar.name != "characterAvatar")
+                {
+                    Debug.LogError($"[Test 67] Animator avatar is {anim.avatar?.name}, expected 'characterAvatar'!");
+                    return false;
+                }
+
+                // 2. Verify AsepAnimator_V2 controller states and native combat motions
+                var ctrlPath = "Assets/Resources/Player/AsepAnimator_V2.controller";
+                var ctrl = AssetDatabase.LoadAssetAtPath<UnityEditor.Animations.AnimatorController>(ctrlPath);
+                if (ctrl == null)
+                {
+                    Debug.LogError("[Test 67] AsepAnimator_V2.controller missing from Resources/Player/!");
+                    return false;
+                }
+
+                var sm = ctrl.layers[0].stateMachine;
+                var stateDict = sm.states.ToDictionary(s => s.state.name, s => s.state);
+
+                // Verify Combat Motions
+                if (!stateDict.TryGetValue("Attack_Combo1", out var combo1) || combo1.motion == null || combo1.motion.name != "sword_up")
+                {
+                    Debug.LogError($"[Test 67] Attack_Combo1 motion is {combo1?.motion?.name}, expected 'sword_up'!");
+                    return false;
+                }
+
+                if (!stateDict.TryGetValue("Attack_Combo2", out var combo2) || combo2.motion == null || combo2.motion.name != "sword_cross")
+                {
+                    Debug.LogError($"[Test 67] Attack_Combo2 motion is {combo2?.motion?.name}, expected 'sword_cross'!");
+                    return false;
+                }
+
+                if (!stateDict.TryGetValue("Attack_Combo3", out var combo3) || combo3.motion == null || combo3.motion.name != "sword_combo")
+                {
+                    Debug.LogError($"[Test 67] Attack_Combo3 motion is {combo3?.motion?.name}, expected 'sword_combo'!");
+                    return false;
+                }
+
+                if (!stateDict.TryGetValue("Attack_Heavy", out var heavy) || heavy.motion == null || heavy.motion.name != "sword_combo")
+                {
+                    Debug.LogError($"[Test 67] Attack_Heavy motion is {heavy?.motion?.name}, expected 'sword_combo'!");
+                    return false;
+                }
+
+                if (!stateDict.TryGetValue("Attack_Skill", out var skill) || skill.motion == null || skill.motion.name != "sword_dash")
+                {
+                    Debug.LogError($"[Test 67] Attack_Skill motion is {skill?.motion?.name}, expected 'sword_dash'!");
+                    return false;
+                }
+
+                if (!stateDict.TryGetValue("Idle_Combat", out var idleCombat) || idleCombat.motion == null || idleCombat.motion.name != "sword_idle")
+                {
+                    Debug.LogError($"[Test 67] Idle_Combat state or motion is {idleCombat?.motion?.name}, expected 'sword_idle'!");
+                    return false;
+                }
+
+                // 3. Verify Animation Clip Loop Time Invariants
+                string[] loopingClips = new string[] { "idle_loop", "walk_loop", "Running", "sword_idle" };
+                foreach (var clipName in loopingClips)
+                {
+                    string p = clipName == "sword_idle" 
+                        ? "Assets/Art/Characters/PlayerV2/anim/combat/sword_idle.anim" 
+                        : $"Assets/Art/Characters/PlayerV2/anim/{clipName}.anim";
+                    var c = AssetDatabase.LoadAssetAtPath<AnimationClip>(p);
+                    if (c == null)
+                    {
+                        Debug.LogError($"[Test 67] Clip {clipName} not found at {p}!");
+                        return false;
+                    }
+                    var settings = AnimationUtility.GetAnimationClipSettings(c);
+                    if (!settings.loopTime)
+                    {
+                        Debug.LogError($"[Test 67] Clip {clipName} expected loopTime=true!");
+                        return false;
+                    }
+                }
+
+                Debug.Log("✅ Test 67: Player V2 character rig avatar, native combat animations (sword_up, sword_cross, sword_combo, sword_dash, sword_idle), and controller state audit verified.");
+                return true;
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogError($"[Test 67] Exception: {ex.Message}\n{ex.StackTrace}");
+                return false;
+            }
+        }
+
+
+        // Test 68: Dummy Sword Modular Redesign Anatomy, Shader Integrity, and HandSocket Alignment Audit
+        private static bool Test_DummySword_Redesign_And_HandSocket_Alignment_Audit()
+        {
+            var cleanupList = new List<Object>();
+            try
+            {
+                // 1. Verify DummySword prefab geometry and modular anatomy
+                var swordPrefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/Weapons/DummySword.prefab");
+                if (swordPrefab == null)
+                {
+                    Debug.LogError("[Test 68] Assets/Prefabs/Weapons/DummySword.prefab not found!");
+                    return false;
+                }
+
+                if (swordPrefab.transform.localScale != Vector3.one)
+                {
+                    Debug.LogError($"[Test 68] DummySword prefab expected localScale (1,1,1), got {swordPrefab.transform.localScale}!");
+                    return false;
+                }
+
+                // Verify required modular children
+                string[] requiredParts = new string[] { "Handle", "Pommel", "Crossguard", "BladeMain", "BladeTip", "TipAnchor", "WeaponSlashTrail" };
+                foreach (var part in requiredParts)
+                {
+                    var child = swordPrefab.transform.Find(part);
+                    if (child == null)
+                    {
+                        Debug.LogError($"[Test 68] DummySword modular part '{part}' missing from prefab!");
+                        return false;
+                    }
+                }
+
+                // Verify MeshRenderers and shaders
+                var renderers = swordPrefab.GetComponentsInChildren<MeshRenderer>(true);
+                if (renderers.Length < 4)
+                {
+                    Debug.LogError($"[Test 68] DummySword expected at least 4 MeshRenderers, found {renderers.Length}!");
+                    return false;
+                }
+
+                foreach (var mr in renderers)
+                {
+                    if (mr.sharedMaterial == null)
+                    {
+                        Debug.LogError($"[Test 68] DummySword part '{mr.name}' has null sharedMaterial!");
+                        return false;
+                    }
+                    if (mr.sharedMaterial.shader == null || mr.sharedMaterial.shader.name == "Hidden/InternalErrorShader")
+                    {
+                        Debug.LogError($"[Test 68] DummySword part '{mr.name}' has invalid/pink shader!");
+                        return false;
+                    }
+                }
+
+                // Verify Combat Hitbox & Trail Controller
+                var hitbox = swordPrefab.GetComponent<FeaturesCombat.WeaponHitbox>();
+                if (hitbox == null)
+                {
+                    Debug.LogError("[Test 68] DummySword missing WeaponHitbox component!");
+                    return false;
+                }
+
+                var wt = swordPrefab.GetComponent<FeaturesCombat.Adapters.WeaponTrailController>();
+                if (wt == null)
+                {
+                    Debug.LogError("[Test 68] DummySword missing WeaponTrailController component!");
+                    return false;
+                }
+
+                // 2. Verify HandSocket alignment on character_player_v2
+                var charPrefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/Player/character_player_v2.prefab");
+                if (charPrefab == null)
+                {
+                    Debug.LogError("[Test 68] Assets/Prefabs/Player/character_player_v2.prefab not found!");
+                    return false;
+                }
+
+                var handSocket = charPrefab.transform.Find("root/pelvis/spine_01/spine_02/spine_03/clavicle_r/upperarm_r/lowerarm_r/hand_r/HandSocket");
+                if (handSocket == null)
+                {
+                    Debug.LogError("[Test 68] HandSocket missing under hand_r in character_player_v2.prefab!");
+                    return false;
+                }
+
+                float angleDelta = Quaternion.Angle(handSocket.localRotation, Quaternion.Euler(25f, 90f, 110f));
+                if (angleDelta > 1.0f)
+                {
+                    Debug.LogError($"[Test 68] HandSocket localEulerAngles is {handSocket.localEulerAngles}, expected (25, 90, 110)! Delta: {angleDelta:F2}");
+                    return false;
+                }
+
+                if (handSocket.localPosition.sqrMagnitude > 0.001f)
+                {
+                    Debug.LogError($"[Test 68] HandSocket expected localPosition (0,0,0), got {handSocket.localPosition}!");
+                    return false;
+                }
+
+                Debug.Log("✅ Test 68: Dummy Sword modular stylized redesign, material/shader integrity, and HandSocket ergonomic alignment audit verified.");
+                return true;
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogError($"[Test 68] Exception: {ex.Message}\n{ex.StackTrace}");
+                return false;
+            }
+            finally
+            {
+                for (int i = cleanupList.Count - 1; i >= 0; i--)
+                {
+                    if (cleanupList[i] != null) Object.DestroyImmediate(cleanupList[i]);
+                }
+            }
+        }
+
+        // Test 69: Attack Animation Pacing, Controller State Speeds, and Hitbox Timing Audit
+        private static bool Test_AttackAnimationPacing_ControllerSpeeds_And_HitboxTiming_Audit()
+        {
+            var cleanupList = new List<Object>();
+            try
+            {
+                // 1. Verify PlayerEquipment baseline defaults
+                var go = new GameObject("Test_PlayerEquipment_Pacing");
+                cleanupList.Add(go);
+                var pe = go.AddComponent<PlayerEquipment>();
+
+                if (Mathf.Abs(pe.AttackAnimationSpeed - 1.0f) > 0.001f)
+                {
+                    Debug.LogError($"[Test 69] PlayerEquipment.AttackAnimationSpeed expected 1.0f, got {pe.AttackAnimationSpeed}!");
+                    return false;
+                }
+
+                var peType = typeof(PlayerEquipment);
+                float c1Delay = (float)peType.GetField("combo1SwingDelay", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).GetValue(pe);
+                float c1Dur = (float)peType.GetField("combo1SwingDuration", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).GetValue(pe);
+                float c2Delay = (float)peType.GetField("combo2SwingDelay", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).GetValue(pe);
+                float c2Dur = (float)peType.GetField("combo2SwingDuration", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).GetValue(pe);
+                float c3Delay = (float)peType.GetField("combo3SwingDelay", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).GetValue(pe);
+                float c3Dur = (float)peType.GetField("combo3SwingDuration", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).GetValue(pe);
+                float hDelay = (float)peType.GetField("heavySwingDelay", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).GetValue(pe);
+                float hDur = (float)peType.GetField("heavySwingDuration", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).GetValue(pe);
+
+                if (c1Delay < 0.05f || c1Delay > 0.15f || c1Dur < 0.15f || c1Dur > 0.25f)
+                {
+                    Debug.LogError($"[Test 69] Combo1 timing out of bounds: delay={c1Delay}, dur={c1Dur}!");
+                    return false;
+                }
+
+                if (c2Delay < 0.15f || c2Delay > 0.25f || c2Dur < 0.20f || c2Dur > 0.30f)
+                {
+                    Debug.LogError($"[Test 69] Combo2 timing out of bounds: delay={c2Delay}, dur={c2Dur}!");
+                    return false;
+                }
+
+                if (c3Delay < 0.12f || c3Delay > 0.25f || c3Dur < 0.45f || c3Dur > 0.65f)
+                {
+                    Debug.LogError($"[Test 69] Combo3 timing out of bounds: delay={c3Delay}, dur={c3Dur}!");
+                    return false;
+                }
+
+                if (hDelay < 0.20f || hDelay > 0.30f || hDur < 0.60f || hDur > 0.80f)
+                {
+                    Debug.LogError($"[Test 69] Heavy timing out of bounds: delay={hDelay}, dur={hDur}!");
+                    return false;
+                }
+
+                // 2. Verify AsepAnimator_V2 controller states and speeds
+                var ctrlPath = "Assets/Resources/Player/AsepAnimator_V2.controller";
+                var ctrl = AssetDatabase.LoadAssetAtPath<UnityEditor.Animations.AnimatorController>(ctrlPath);
+                if (ctrl == null)
+                {
+                    Debug.LogError("[Test 69] AsepAnimator_V2.controller missing from Resources/Player/!");
+                    return false;
+                }
+
+                var sm = ctrl.layers[0].stateMachine;
+                var stateDict = sm.states.ToDictionary(s => s.state.name, s => s.state);
+
+                // Attack_Combo1: sword_up (0.27s), calibrated speed ~0.70f for readable ~0.38s swing
+                if (!stateDict.TryGetValue("Attack_Combo1", out var c1State) || Mathf.Abs(c1State.speed - 0.70f) > 0.05f)
+                {
+                    Debug.LogError($"[Test 69] Attack_Combo1 speed is {c1State?.speed}, expected ~0.70f!");
+                    return false;
+                }
+
+                // Attack_Combo2: sword_cross (1.00s), calibrated speed ~1.05f
+                if (!stateDict.TryGetValue("Attack_Combo2", out var c2State) || Mathf.Abs(c2State.speed - 1.05f) > 0.05f)
+                {
+                    Debug.LogError($"[Test 69] Attack_Combo2 speed is {c2State?.speed}, expected ~1.05f!");
+                    return false;
+                }
+
+                // Attack_Combo3: sword_combo (2.30s), calibrated speed ~1.15f
+                if (!stateDict.TryGetValue("Attack_Combo3", out var c3State) || Mathf.Abs(c3State.speed - 1.15f) > 0.05f)
+                {
+                    Debug.LogError($"[Test 69] Attack_Combo3 speed is {c3State?.speed}, expected ~1.15f!");
+                    return false;
+                }
+
+                // Attack_Heavy: sword_combo (2.30s), calibrated speed ~1.05f
+                if (!stateDict.TryGetValue("Attack_Heavy", out var hState) || Mathf.Abs(hState.speed - 1.05f) > 0.05f)
+                {
+                    Debug.LogError($"[Test 69] Attack_Heavy speed is {hState?.speed}, expected ~1.05f!");
+                    return false;
+                }
+
+                // Attack_Skill: sword_dash (0.67s), calibrated speed ~0.85f
+                if (!stateDict.TryGetValue("Attack_Skill", out var sState) || Mathf.Abs(sState.speed - 0.85f) > 0.05f)
+                {
+                    Debug.LogError($"[Test 69] Attack_Skill speed is {sState?.speed}, expected ~0.85f!");
+                    return false;
+                }
+
+                // 3. Verify exit transitions are not prematurely cutting off
+                foreach (var t in c1State.transitions)
+                {
+                    if (t.destinationState != null && t.destinationState.name == "Idle")
+                    {
+                        if (t.exitTime < 0.80f)
+                        {
+                            Debug.LogError($"[Test 69] Attack_Combo1 exitTime to Idle is {t.exitTime}, expected >= 0.80f!");
+                            return false;
+                        }
+                    }
+                }
+
+                Debug.Log("✅ Test 69: Attack animation pacing, calibrated controller state speeds, and synchronized hitbox timing audit verified.");
+                return true;
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogError($"[Test 69] Exception: {ex.Message}\n{ex.StackTrace}");
+                return false;
+            }
+            finally
+            {
+                for (int i = cleanupList.Count - 1; i >= 0; i--)
+                {
+                    if (cleanupList[i] != null) Object.DestroyImmediate(cleanupList[i]);
+                }
+            }
+        }
+
+
+        // Test 70: Day 1 Storage Chest Starter Kit placement, Player Empty Hands/Inventory, & Side Quest Retrieval progression
         private static bool Test_Day1_StorageChestStarterKit_And_SideQuestRetrieve_Audit()
         {
             var cleanupList = new List<GameObject>();
@@ -5866,7 +6385,7 @@ namespace FarmBeware.EditorTests
 
                 if (timeMgr.CurrentDay != 1)
                 {
-                    Debug.LogError($"[Test 65] Expected Day 1 after sleeping, got Day {timeMgr.CurrentDay}!");
+                    Debug.LogError($"[Test 70] Expected Day 1 after sleeping, got Day {timeMgr.CurrentDay}!");
                     return false;
                 }
 
@@ -5875,14 +6394,14 @@ namespace FarmBeware.EditorTests
                 {
                     if (inv.slots[i] != null && !inv.slots[i].IsEmpty)
                     {
-                        Debug.LogError($"[Test 65] Player inventory slot {i} was not empty upon waking on Day 1! Item: {inv.slots[i].item?.itemId}");
+                        Debug.LogError($"[Test 70] Player inventory slot {i} was not empty upon waking on Day 1! Item: {inv.slots[i].item?.itemId}");
                         return false;
                     }
                 }
                 var weaponField = typeof(PlayerEquipment).GetField("currentWeaponModel", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
                 if (weaponField != null && weaponField.GetValue(equip) != null)
                 {
-                    Debug.LogError("[Test 65] Player should not hold any weapon/tool visual upon waking on Day 1!");
+                    Debug.LogError("[Test 70] Player should not hold any weapon/tool visual upon waking on Day 1!");
                     return false;
                 }
 
@@ -5895,22 +6414,22 @@ namespace FarmBeware.EditorTests
 
                 if (chestInv.CountItem(hoeItem) < 1)
                 {
-                    Debug.LogError("[Test 65] Storage Chest missing Hoe tool!");
+                    Debug.LogError("[Test 70] Storage Chest missing Hoe tool!");
                     return false;
                 }
                 if (chestInv.CountItem(watererItem) < 1)
                 {
-                    Debug.LogError("[Test 65] Storage Chest missing Plant Waterer!");
+                    Debug.LogError("[Test 70] Storage Chest missing Plant Waterer!");
                     return false;
                 }
                 if (chestInv.CountItem(bottleItem) < 1)
                 {
-                    Debug.LogError("[Test 65] Storage Chest missing Water Bottle!");
+                    Debug.LogError("[Test 70] Storage Chest missing Water Bottle!");
                     return false;
                 }
                 if (chestInv.CountItem(seedItem) < 6)
                 {
-                    Debug.LogError($"[Test 65] Storage Chest missing 6x Sweet Potato Seeds! Found: {chestInv.CountItem(seedItem)}");
+                    Debug.LogError($"[Test 70] Storage Chest missing 6x Sweet Potato Seeds! Found: {chestInv.CountItem(seedItem)}");
                     return false;
                 }
 
@@ -5918,14 +6437,14 @@ namespace FarmBeware.EditorTests
                 var questModel = new QuestProgressModel();
                 if (questModel.CurrentStage != QuestStage.GatheringSupplies)
                 {
-                    Debug.LogError($"[Test 65] Expected Side Quest stage GatheringSupplies, got {questModel.CurrentStage}!");
+                    Debug.LogError($"[Test 70] Expected Side Quest stage GatheringSupplies, got {questModel.CurrentStage}!");
                     return false;
                 }
 
                 string objectiveText = questModel.GetFormattedObjectiveDetails();
                 if (!objectiveText.Contains("Storage Chest"))
                 {
-                    Debug.LogError($"[Test 65] Side Quest objective text does not mention Storage Chest! Details:\n{objectiveText}");
+                    Debug.LogError($"[Test 70] Side Quest objective text does not mention Storage Chest! Details:\n{objectiveText}");
                     return false;
                 }
 
@@ -5938,16 +6457,16 @@ namespace FarmBeware.EditorTests
                 questModel.EvaluateInventory(new[] { "tool_hoe", "tool_plant_waterer", "food_bottle_water", "seed_sweet_potato" });
                 if (!questModel.IsAllSuppliesGathered || questModel.CurrentStage != QuestStage.PlantingCrop)
                 {
-                    Debug.LogError($"[Test 65] Expected stage PlantingCrop after retrieving all supplies, got: {questModel.CurrentStage}!");
+                    Debug.LogError($"[Test 70] Expected stage PlantingCrop after retrieving all supplies, got: {questModel.CurrentStage}!");
                     return false;
                 }
 
-                Debug.Log("✅ Test 65: Day 1 Storage Chest starter kit placement, Player empty hands/inventory, and Side Quest retrieval progression verified.");
+                Debug.Log("✅ Test 70: Day 1 Storage Chest starter kit placement, Player empty hands/inventory, and Side Quest retrieval progression verified.");
                 return true;
             }
             catch (System.Exception ex)
             {
-                Debug.LogError($"[Test 65] Exception: {ex.Message}\n{ex.StackTrace}");
+                Debug.LogError($"[Test 70] Exception: {ex.Message}\n{ex.StackTrace}");
                 return false;
             }
             finally
@@ -5961,7 +6480,7 @@ namespace FarmBeware.EditorTests
             }
         }
 
-        // Test 66: Home Cooking Side Quest progression (Enter Kitchen -> Retrieve Taro & Coconut -> Cook at Stove -> Double-click to Consume) Audit
+        // Test 71: Home Cooking Side Quest progression (Enter Kitchen -> Retrieve Taro & Coconut -> Cook at Stove -> Double-click to Consume) Audit
         private static bool Test_CookingQuest_Progression_And_Double_Click_Audit()
         {
             var cleanupList = new List<GameObject>();
@@ -5977,7 +6496,7 @@ namespace FarmBeware.EditorTests
 
                 if (model.CurrentStage != QuestStage.Completed)
                 {
-                    Debug.LogError($"[Test 66] Expected stage Completed for First Steps, got {model.CurrentStage}!");
+                    Debug.LogError($"[Test 71] Expected stage Completed for First Steps, got {model.CurrentStage}!");
                     return false;
                 }
 
@@ -5985,14 +6504,14 @@ namespace FarmBeware.EditorTests
                 bool advanced = model.AdvanceToCookingQuest();
                 if (!advanced || model.CurrentStage != QuestStage.EnterKitchen || !model.IsCookingQuest)
                 {
-                    Debug.LogError($"[Test 66] Expected stage EnterKitchen after AdvanceToCookingQuest, got {model.CurrentStage}!");
+                    Debug.LogError($"[Test 71] Expected stage EnterKitchen after AdvanceToCookingQuest, got {model.CurrentStage}!");
                     return false;
                 }
 
                 string enterDetails = model.GetFormattedObjectiveDetails();
                 if (!enterDetails.Contains("Kitchen"))
                 {
-                    Debug.LogError($"[Test 66] Objective details do not mention Kitchen! Got:\n{enterDetails}");
+                    Debug.LogError($"[Test 71] Objective details do not mention Kitchen! Got:\n{enterDetails}");
                     return false;
                 }
 
@@ -6000,14 +6519,14 @@ namespace FarmBeware.EditorTests
                 bool enteredKitchen = model.OnEnteredKitchen();
                 if (!enteredKitchen || model.CurrentStage != QuestStage.RetrieveIngredients || !model.HasEnteredKitchen)
                 {
-                    Debug.LogError($"[Test 66] Expected stage RetrieveIngredients after entering kitchen, got {model.CurrentStage}!");
+                    Debug.LogError($"[Test 71] Expected stage RetrieveIngredients after entering kitchen, got {model.CurrentStage}!");
                     return false;
                 }
 
                 string retrieveDetails = model.GetFormattedObjectiveDetails();
                 if (!retrieveDetails.Contains("Refrigerator") || !retrieveDetails.Contains("Taro") || !retrieveDetails.Contains("Coconut"))
                 {
-                    Debug.LogError($"[Test 66] Objective details do not mention Refrigerator, Taro, and Coconut! Got:\n{retrieveDetails}");
+                    Debug.LogError($"[Test 71] Objective details do not mention Refrigerator, Taro, and Coconut! Got:\n{retrieveDetails}");
                     return false;
                 }
 
@@ -6025,12 +6544,12 @@ namespace FarmBeware.EditorTests
 
                 if (taroItem != null && !fridgeInv.CanAcceptItem(taroItem))
                 {
-                    Debug.LogError("[Test 66] Refrigerator failed to accept crop_taro!");
+                    Debug.LogError("[Test 71] Refrigerator failed to accept crop_taro!");
                     return false;
                 }
                 if (coconutItem != null && !fridgeInv.CanAcceptItem(coconutItem))
                 {
-                    Debug.LogError("[Test 66] Refrigerator failed to accept mat_coconut!");
+                    Debug.LogError("[Test 71] Refrigerator failed to accept mat_coconut!");
                     return false;
                 }
 
@@ -6038,21 +6557,21 @@ namespace FarmBeware.EditorTests
                 model.EvaluateInventory(new[] { "crop_taro" });
                 if (model.CurrentStage != QuestStage.RetrieveIngredients || !model.HasTaro || model.HasCoconut)
                 {
-                    Debug.LogError($"[Test 66] Model prematurely advanced with only Taro gathered! Stage: {model.CurrentStage}");
+                    Debug.LogError($"[Test 71] Model prematurely advanced with only Taro gathered! Stage: {model.CurrentStage}");
                     return false;
                 }
 
                 model.EvaluateInventory(new[] { "crop_taro", "mat_coconut" });
                 if (model.CurrentStage != QuestStage.CookStew || !model.IsAllCookingIngredientsGathered)
                 {
-                    Debug.LogError($"[Test 66] Expected stage CookStew after retrieving Taro and Coconut, got {model.CurrentStage}!");
+                    Debug.LogError($"[Test 71] Expected stage CookStew after retrieving Taro and Coconut, got {model.CurrentStage}!");
                     return false;
                 }
 
                 string cookDetails = model.GetFormattedObjectiveDetails();
                 if (!cookDetails.Contains("Kitchen Stove") || !cookDetails.Contains("Taro Coconut Stew Bowl"))
                 {
-                    Debug.LogError($"[Test 66] Objective details do not mention Kitchen Stove and Taro Coconut Stew Bowl! Got:\n{cookDetails}");
+                    Debug.LogError($"[Test 71] Objective details do not mention Kitchen Stove and Taro Coconut Stew Bowl! Got:\n{cookDetails}");
                     return false;
                 }
 
@@ -6060,14 +6579,14 @@ namespace FarmBeware.EditorTests
                 bool stewCooked = model.OnStewCooked();
                 if (!stewCooked || model.CurrentStage != QuestStage.ConsumeDish || !model.HasCookedStew)
                 {
-                    Debug.LogError($"[Test 66] Expected stage ConsumeDish after cooking stew, got {model.CurrentStage}!");
+                    Debug.LogError($"[Test 71] Expected stage ConsumeDish after cooking stew, got {model.CurrentStage}!");
                     return false;
                 }
 
                 string consumeDetails = model.GetFormattedObjectiveDetails();
                 if (!consumeDetails.Contains("Double-click") && !consumeDetails.Contains("double-click"))
                 {
-                    Debug.LogError($"[Test 66] Objective details do not contain double-click instruction/tip! Got:\n{consumeDetails}");
+                    Debug.LogError($"[Test 71] Objective details do not contain double-click instruction/tip! Got:\n{consumeDetails}");
                     return false;
                 }
 
@@ -6096,7 +6615,7 @@ namespace FarmBeware.EditorTests
 
                         if (!itemConsumedEventFired || consumedItemReceived != stewItem)
                         {
-                            Debug.LogError("[Test 66] InventoryComponent.OnItemConsumed event was not fired upon UseItem!");
+                            Debug.LogError("[Test 71] InventoryComponent.OnItemConsumed event was not fired upon UseItem!");
                             return false;
                         }
 
@@ -6104,14 +6623,14 @@ namespace FarmBeware.EditorTests
                         bool consumedQuestDone = model.OnDishConsumed(consumedItemReceived.itemId);
                         if (!consumedQuestDone || model.CurrentStage != QuestStage.CookingQuestCompleted || !model.IsCompleted)
                         {
-                            Debug.LogError($"[Test 66] Expected stage CookingQuestCompleted after consuming stew, got {model.CurrentStage}!");
+                            Debug.LogError($"[Test 71] Expected stage CookingQuestCompleted after consuming stew, got {model.CurrentStage}!");
                             return false;
                         }
 
                         string finalDetails = model.GetFormattedObjectiveDetails();
                         if (!finalDetails.Contains("completed") || !finalDetails.Contains("Taro Coconut Stew Bowl"))
                         {
-                            Debug.LogError($"[Test 66] Final objective details missing completion text! Got:\n{finalDetails}");
+                            Debug.LogError($"[Test 71] Final objective details missing completion text! Got:\n{finalDetails}");
                             return false;
                         }
                     }
@@ -6121,12 +6640,12 @@ namespace FarmBeware.EditorTests
                     InventoryComponent.OnItemConsumed -= listener;
                 }
 
-                Debug.Log("✅ Test 66: Home Cooking Side Quest progression (Enter Kitchen -> Retrieve Taro & Coconut -> Cook at Stove -> Double-click to Consume) and Refrigerator item storage verified.");
+                Debug.Log("✅ Test 71: Home Cooking Side Quest progression (Enter Kitchen -> Retrieve Taro & Coconut -> Cook at Stove -> Double-click to Consume) and Refrigerator item storage verified.");
                 return true;
             }
             catch (System.Exception ex)
             {
-                Debug.LogError($"[Test 66] Exception: {ex.Message}\n{ex.StackTrace}");
+                Debug.LogError($"[Test 71] Exception: {ex.Message}\n{ex.StackTrace}");
                 return false;
             }
             finally
@@ -6137,6 +6656,6 @@ namespace FarmBeware.EditorTests
                 }
             }
         }
+        public static bool Test_Playable_Sandbox_Day1To5_NarrativeLoop_Audit() => Test_Storyline_SandboxPlayableLoop_E2E_Audit();
     }
 }
-

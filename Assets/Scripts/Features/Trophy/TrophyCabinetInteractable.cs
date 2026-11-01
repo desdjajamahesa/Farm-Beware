@@ -10,6 +10,9 @@ namespace FeaturesInteraction
     {
         public void Interact(GameObject interactor)
         {
+            // Report narrative telemetry for trophy inspection
+            FarmBeware.Core.Runtime.NarrativeTelemetryHooks.ReportTrophyInspected();
+
             // Masuk mode trophy (kunci input pemain + pindah kamera ke rak).
             if (TrophySystemManager.Instance != null)
                 TrophySystemManager.Instance.EnterTrophyMode();

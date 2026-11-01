@@ -20,7 +20,39 @@ namespace FeaturesStoryline
     [DefaultExecutionOrder(-800)]
     public class StorylineManager : MonoBehaviour, IStorylineService
     {
-        public static StorylineManager Instance { get; private set; }
+        private static StorylineManager _instance;
+        public static StorylineManager Instance
+        {
+            get
+            {
+                if (_instance == null && Application.isPlaying)
+                {
+                    _instance = FindFirstObjectByType<StorylineManager>(FindObjectsInactive.Include);
+                }
+                return _instance;
+            }
+            set => _instance = value;
+        }
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetStaticState()
+        {
+            _instance = null;
+        }
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+        private static void AutoBootstrap()
+        {
+            if (Instance == null && Application.isPlaying)
+            {
+                var existing = FindFirstObjectByType<StorylineManager>(FindObjectsInactive.Include);
+                if (existing == null)
+                {
+                    var go = new GameObject("StorylineManager");
+                    go.AddComponent<StorylineManager>();
+                }
+            }
+        }
 
         [Header("Narrative Content Configuration")]
         [Tooltip("Catalog of all story beats. If empty, automatically populates from StoryDatabase defaults.")]
@@ -62,6 +94,24 @@ namespace FeaturesStoryline
 
         private void Awake()
         {
+            if (Application.isPlaying && Instance != null && Instance != this)
+            {
+                enabled = false;
+                Destroy(gameObject);
+                return;
+            }
+            Instance = this;
+
+            if (transform.parent != null && Application.isPlaying)
+            {
+                transform.SetParent(null);
+            }
+
+            if (Application.isPlaying)
+            {
+                DontDestroyOnLoad(gameObject);
+            }
+
             CacheBaselineAtmosphere();
             Initialize();
         }
@@ -92,15 +142,18 @@ namespace FeaturesStoryline
 
         public void Initialize()
         {
-            if (Instance != null && Instance != this)
+            if (Application.isPlaying && Instance != null && Instance != this)
             {
-                if (Application.isPlaying)
-                    Destroy(gameObject);
-                else
-                    DestroyImmediate(gameObject);
+                enabled = false;
+                Destroy(gameObject);
                 return;
             }
             Instance = this;
+
+            if (transform.parent == null && Application.isPlaying)
+            {
+                DontDestroyOnLoad(gameObject);
+            }
 
             ServiceLocator.Register<IStorylineService>(this);
 
@@ -116,24 +169,65 @@ namespace FeaturesStoryline
 
         private void OnEnable()
         {
+            if (Application.isPlaying)
+            {
+                UnityEngine.SceneManagement.SceneManager.sceneLoaded -= HandleSceneLoaded;
+                UnityEngine.SceneManagement.SceneManager.sceneLoaded += HandleSceneLoaded;
+            }
             SubscribeToGameEvents();
         }
 
         private void OnDisable()
         {
-            RestoreAtmosphere();
-            UnsubscribeFromGameEvents();
+            if (Instance == this)
+            {
+                if (Application.isPlaying)
+                {
+                    UnityEngine.SceneManagement.SceneManager.sceneLoaded -= HandleSceneLoaded;
+                }
+                RestoreAtmosphere();
+                UnsubscribeFromGameEvents();
+            }
         }
 
         private void OnDestroy()
         {
-            RestoreAtmosphere();
-            UnsubscribeFromGameEvents();
             if (Instance == this)
             {
+                if (Application.isPlaying)
+                {
+                    UnityEngine.SceneManagement.SceneManager.sceneLoaded -= HandleSceneLoaded;
+                }
+                RestoreAtmosphere();
+                UnsubscribeFromGameEvents();
                 ServiceLocator.Unregister<IStorylineService>();
                 ServiceLocator.Unregister<INarrativeFactBoard>();
                 Instance = null;
+            }
+        }
+
+        public void HandleSceneLoaded(UnityEngine.SceneManagement.Scene scene, UnityEngine.SceneManagement.LoadSceneMode mode)
+        {
+            if (Instance != this) return;
+
+            _baselineAtmosphereCached = false;
+            _isAtmosphereOverridden = false;
+            CacheBaselineAtmosphere();
+
+            SubscribeToGameEvents();
+
+            int currentDay = GetCurrentGameDay();
+            _facts?.SetFact(NarrativeFactKey.CurrentDay, currentDay);
+
+            if (currentDay >= 5)
+            {
+                ApplyAtmosphericEffects(currentDay);
+            }
+
+            int threats = _facts != null ? _facts.GetFact(NarrativeFactKey.ActiveCombatThreatCount) : 0;
+            if (threats == 0)
+            {
+                FlushPendingModalBeats();
             }
         }
 
@@ -144,6 +238,7 @@ namespace FeaturesStoryline
 
             int currentDay = GetCurrentGameDay();
             _facts?.SetFact(NarrativeFactKey.CurrentDay, currentDay);
+            AssignDailyStoryObjectives(currentDay);
             EvaluateTrigger(StoryTriggerType.GameStart, currentDay);
             if (currentDay >= 1)
             {
@@ -179,6 +274,18 @@ namespace FeaturesStoryline
                 else
                 {
                     storyBeats = StoryDatabase.CreateDefaultStoryBeats(journalEntries);
+                }
+            }
+
+            for (int i = 0; i < storyBeats.Count; i++)
+            {
+                var beat = storyBeats[i];
+                if (beat != null && string.Equals(beat.beatId, "EPILOGUE_STATS", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (beat.criteria == null || beat.criteria.Length == 0)
+                    {
+                        beat.criteria = new[] { new NarrativeFactCondition(NarrativeFactKey.TheRangerSlayed, FactOperator.GreaterOrEqual, 1) };
+                    }
                 }
             }
 
@@ -238,6 +345,12 @@ namespace FeaturesStoryline
 
             // 9. Weapon Upgrades (via Core Telemetry)
             NarrativeTelemetry.OnWeaponUpgraded += HandleWeaponUpgradesChanged;
+
+            // 10. Cross-subsystem Narrative Telemetry Hooks
+            NarrativeTelemetryHooks.OnMerchantOpened += HandleMerchantOpened;
+            NarrativeTelemetryHooks.OnTrophyInspected += HandleTrophyInspected;
+            NarrativeTelemetryHooks.OnCookingCompleted += HandleCookingCompleted;
+            NarrativeTelemetryHooks.OnCropWithered += HandleCropWithered;
         }
 
         private void UnsubscribeFromGameEvents()
@@ -268,6 +381,10 @@ namespace FeaturesStoryline
             NarrativeTelemetry.OnCropWashed -= HandleCropWashed;
             NarrativeTelemetry.OnPlayerSafeZoneChanged -= HandleInteriorStateChanged;
             NarrativeTelemetry.OnWeaponUpgraded -= HandleWeaponUpgradesChanged;
+            NarrativeTelemetryHooks.OnMerchantOpened -= HandleMerchantOpened;
+            NarrativeTelemetryHooks.OnTrophyInspected -= HandleTrophyInspected;
+            NarrativeTelemetryHooks.OnCookingCompleted -= HandleCookingCompleted;
+            NarrativeTelemetryHooks.OnCropWithered -= HandleCropWithered;
         }
 
         #region Event Handlers
@@ -302,12 +419,102 @@ namespace FeaturesStoryline
         {
             SetChapter(newDay);
             ApplyAtmosphericEffects(newDay);
+            AssignDailyStoryObjectives(newDay);
 
             if (newDay >= 1)
             {
                 EvaluateTrigger(StoryTriggerType.GameStart, newDay);
                 EvaluateTrigger(StoryTriggerType.Dawn, newDay);
             }
+        }
+
+        /// <summary>
+        /// Dispatches daily storyline objectives to the unified INarrativeObjectiveService.
+        /// </summary>
+        public void AssignDailyStoryObjectives(int day)
+        {
+            var objService = ServiceLocator.Resolve<INarrativeObjectiveService>();
+            if (objService == null) return;
+
+            switch (day)
+            {
+                case 1:
+                    objService.AssignStoryObjective(
+                        "OBJ_D1_FIRST_STEPS",
+                        NarrativeObjectiveCategory.MainStory,
+                        "First Steps: Till & Plant",
+                        "Till 1 plot, draw well water, and plant Sweet Potato",
+                        1,
+                        NarrativeFactKey.PlantedCount_SweetPotato);
+                    break;
+
+                case 2:
+                    objService.AssignStoryObjective(
+                        "OBJ_D2_ARMORED_TARO",
+                        NarrativeObjectiveCategory.MainStory,
+                        "Armored Harvest: Clean Taro",
+                        "Harvest Taro and wash 3 roots at the Kitchen Sink",
+                        3,
+                        NarrativeFactKey.WashedCount_Taro);
+                    break;
+
+                case 3:
+                    objService.AssignStoryObjective(
+                        "OBJ_D3_WORKBENCH",
+                        NarrativeObjectiveCategory.MainStory,
+                        "Workbench: Harden Weapon",
+                        "Upgrade weapon at Workbench before Dusk",
+                        1,
+                        NarrativeFactKey.WeaponUpgradeTier_Speed);
+                    break;
+
+                case 4:
+                    objService.AssignStoryObjective(
+                        "OBJ_D4_BATTLE_PREP",
+                        NarrativeObjectiveCategory.MainStory,
+                        "Siege Prep: Cook Battle Food",
+                        "Cook 3 combat buff dishes at the Kitchen Stove",
+                        3,
+                        NarrativeFactKey.MealsCookedCount);
+                    break;
+
+                case 5:
+                    objService.AssignStoryObjective(
+                        "OBJ_D5_PURGE_VALVE",
+                        NarrativeObjectiveCategory.MainStory,
+                        "Final Stand: Purge Conduit",
+                        "Defeat The Ranger and purge subterranean Reagent 7",
+                        1,
+                        NarrativeFactKey.TheRangerSlayed);
+                    break;
+            }
+        }
+
+        private void HandleMerchantOpened()
+        {
+            int currentDay = GetCurrentGameDay();
+            EvaluateTrigger(StoryTriggerType.MerchantOpen, currentDay);
+        }
+
+        private void HandleTrophyInspected()
+        {
+            int currentDay = GetCurrentGameDay();
+            EvaluateTrigger(StoryTriggerType.TrophyInspected, currentDay);
+        }
+
+        private void HandleCookingCompleted()
+        {
+            if (_facts != null)
+            {
+                int meals = _facts.GetFact(NarrativeFactKey.MealsCookedCount);
+                ServiceLocator.Resolve<INarrativeObjectiveService>()?.UpdateObjectiveProgress("OBJ_D4_BATTLE_PREP", meals);
+            }
+        }
+
+        private void HandleCropWithered()
+        {
+            _facts?.AddFact(NarrativeFactKey.DeadCropsCount, 1);
+            ServiceLocator.Resolve<INarrativeObjectiveService>()?.ReportProgress(NarrativeFactKey.DeadCropsCount, 1);
         }
 
         private void HandleWellWaterRefilled(int liters)
@@ -323,6 +530,8 @@ namespace FeaturesStoryline
             if (!string.IsNullOrEmpty(cropName) && cropName.IndexOf("Taro", StringComparison.OrdinalIgnoreCase) >= 0)
             {
                 _facts?.AddFact(NarrativeFactKey.WashedCount_Taro, count);
+                int washed = _facts != null ? _facts.GetFact(NarrativeFactKey.WashedCount_Taro) : 0;
+                ServiceLocator.Resolve<INarrativeObjectiveService>()?.UpdateObjectiveProgress("OBJ_D2_ARMORED_TARO", washed);
             }
             EvaluateTrigger(StoryTriggerType.CropWashedInSink, GetCurrentGameDay());
         }
@@ -341,6 +550,7 @@ namespace FeaturesStoryline
             _facts?.SetFact(NarrativeFactKey.WeaponUpgradeTier_Speed, sweetPotato ? 1 : 0);
             _facts?.SetFact(NarrativeFactKey.WeaponUpgradeTier_Power, taro ? 1 : 0);
             _facts?.SetFact(NarrativeFactKey.WeaponUpgradeTier_Ballistic, corn ? 1 : 0);
+            ServiceLocator.Resolve<INarrativeObjectiveService>()?.CompleteStoryObjective("OBJ_D3_WORKBENCH");
             EvaluateTrigger(StoryTriggerType.WeaponUpgradedAtBench, GetCurrentGameDay());
         }
 
@@ -399,6 +609,12 @@ namespace FeaturesStoryline
                     else if (enemy.enemyType == EnemyType.TaroColossus) mask |= 2;
                     else if (enemy.enemyType == EnemyType.TheRanger) mask |= 4;
                     _facts.SetFact(NarrativeFactKey.TrophyUnlockedBitmask, mask);
+                }
+
+                if (enemy.enemyType == EnemyType.TheRanger)
+                {
+                    _facts?.SetFact(NarrativeFactKey.TheRangerSlayed, 1);
+                    ServiceLocator.Resolve<INarrativeObjectiveService>()?.CompleteStoryObjective("OBJ_D5_PURGE_VALVE");
                 }
 
                 // If The Ranger was defeated on Day 5, complete story (Epilogue will be chained on victory dismissal)
@@ -640,8 +856,7 @@ namespace FeaturesStoryline
             {
                 onBeatComplete = () =>
                 {
-                    int currentDay = GetCurrentGameDay();
-                    EvaluateTrigger(StoryTriggerType.Custom, currentDay);
+                    TriggerBeat("EPILOGUE_STATS");
                 };
             }
 

@@ -976,6 +976,13 @@ namespace FeaturesSaveSystem
                 storyService.ExportCooldowns(out data.lastPlayedBeatKeys, out data.lastPlayedDays);
             }
 
+            // 11. Quest Progress Persistence
+            var questService = ServiceLocator.Resolve<INarrativeObjectiveService>();
+            if (questService != null)
+            {
+                data.questPayload = questService.ExportSavePayload();
+            }
+
             return data;
         }
 
@@ -1271,6 +1278,13 @@ namespace FeaturesSaveSystem
                     data.lastPlayedBeatKeys,
                     data.lastPlayedDays
                 );
+            }
+
+            // 17. Quest Progress Persistence
+            var loadedQuestService = FarmBeware.Core.Runtime.ServiceLocator.Resolve<FarmBeware.Core.Runtime.INarrativeObjectiveService>();
+            if (loadedQuestService != null && data.questPayload != null)
+            {
+                loadedQuestService.ImportSavePayload(data.questPayload);
             }
         }
 
