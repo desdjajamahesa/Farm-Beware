@@ -133,8 +133,7 @@ namespace FeaturesStoryline
                 "After years in the military, this remote farm is finally yours. Head inside the cabin and get some rest. Tomorrow, the real farm work begins.",
                 day: 0,
                 mutations: new[] {
-                    new NarrativeFactMutation(NarrativeFactKey.NexaPhytoTruthLevel, FactMutationOp.Set, 1),
-                    new NarrativeFactMutation(NarrativeFactKey.IntroCutsceneCompleted, FactMutationOp.Set, 1)
+                    new NarrativeFactMutation(NarrativeFactKey.NexaPhytoTruthLevel, FactMutationOp.Set, 1)
                 },
                 saliencePriority: 5
             ));

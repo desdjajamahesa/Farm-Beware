@@ -81,6 +81,7 @@ namespace FeaturesStoryline.Cutscenes
         public TextMeshProUGUI SubtitleText => subtitleText;
         public TextMeshProUGUI SkipPromptText => skipPromptText;
         public Canvas TargetCanvas { get => targetCanvas; set => targetCanvas = value; }
+        public Canvas LetterboxCanvas => letterboxRoot != null ? letterboxRoot.GetComponent<Canvas>() : GetComponent<Canvas>();
 
         private Coroutine _fadeRoutine;
         private Coroutine _subtitleFadeRoutine;
@@ -426,6 +427,21 @@ namespace FeaturesStoryline.Cutscenes
 
             if (letterboxRoot != null)
             {
+                // Declarative visual layering: ensure CutsceneLetterboxPanel possesses an override Canvas at sortingOrder 750
+                // so letterbox bars and subtitles always render on top of HUD (0), dialogue (500), overlays (600), and journal (700).
+                var panelCanvas = letterboxRoot.GetComponent<Canvas>();
+                if (panelCanvas == null)
+                {
+                    panelCanvas = letterboxRoot.AddComponent<Canvas>();
+                }
+                panelCanvas.overrideSorting = true;
+                panelCanvas.sortingOrder = 750;
+
+                if (!letterboxRoot.TryGetComponent<GraphicRaycaster>(out _))
+                {
+                    letterboxRoot.AddComponent<GraphicRaycaster>();
+                }
+
                 if (letterboxCanvasGroup == null) letterboxCanvasGroup = letterboxRoot.GetComponent<CanvasGroup>();
                 if (topBar == null)
                 {
@@ -595,13 +611,24 @@ namespace FeaturesStoryline.Cutscenes
             var lineImg = lineObj.GetComponent<Image>();
             lineImg.color = new Color(0.95f, 0.78f, 0.32f, 0.85f); // Subtle Golden Glow Accent
             lineImg.raycastTarget = false;
+
+            var selfCanvas = GetComponent<Canvas>();
+            if (selfCanvas != null)
+            {
+                selfCanvas.overrideSorting = true;
+                selfCanvas.sortingOrder = 750;
+            }
         }
 
         private void BuildProceduralLetterboxUI()
         {
             // Root panel
-            letterboxRoot = new GameObject("CutsceneLetterboxPanel", typeof(RectTransform), typeof(CanvasGroup));
+            letterboxRoot = new GameObject("CutsceneLetterboxPanel", typeof(RectTransform), typeof(CanvasGroup), typeof(Canvas), typeof(GraphicRaycaster));
             letterboxRoot.transform.SetParent(targetCanvas.transform, false);
+
+            var panelCanvas = letterboxRoot.GetComponent<Canvas>();
+            panelCanvas.overrideSorting = true;
+            panelCanvas.sortingOrder = 750;
 
             var rootRt = letterboxRoot.GetComponent<RectTransform>();
             rootRt.anchorMin = Vector2.zero;

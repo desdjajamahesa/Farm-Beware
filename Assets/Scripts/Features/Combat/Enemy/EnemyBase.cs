@@ -67,6 +67,27 @@ namespace FeaturesCombat
         private Renderer meshRenderer;
         private Color originalColor;
         private MaterialPropertyBlock mpb;
+
+        private void SetLinearVelocity(Vector3 velocity)
+        {
+            if (rb != null && !rb.isKinematic)
+            {
+                rb.linearVelocity = velocity;
+            }
+        }
+
+        private void SetAngularVelocity(Vector3 velocity)
+        {
+            if (rb != null && !rb.isKinematic)
+            {
+                rb.angularVelocity = velocity;
+            }
+        }
+
+        private float GetLinearVelocityY()
+        {
+            return (rb != null && !rb.isKinematic) ? rb.linearVelocity.y : 0f;
+        }
         private float lastAttackTime = 0f;
         private float skillCooldownTimer = 0f;
         private bool isPerformingSkill = false;
@@ -182,8 +203,8 @@ namespace FeaturesCombat
             {
                 rb.position = transform.position;
                 rb.rotation = transform.rotation;
-                rb.linearVelocity = Vector3.zero;
-                rb.angularVelocity = Vector3.zero;
+                SetLinearVelocity(Vector3.zero);
+                SetAngularVelocity(Vector3.zero);
             }
             Physics.SyncTransforms();
 
@@ -418,7 +439,7 @@ namespace FeaturesCombat
                 if (rb != null)
                 {
                     rb.position = safeOutdoor;
-                    rb.linearVelocity = Vector3.zero;
+                    SetLinearVelocity(Vector3.zero);
                 }
                 transform.position = safeOutdoor;
             }
@@ -608,19 +629,19 @@ namespace FeaturesCombat
                     }
                     else if (rb != null)
                     {
-                        rb.linearVelocity = new Vector3(0f, rb.linearVelocity.y, 0f);
+                        SetLinearVelocity(new Vector3(0f, GetLinearVelocityY(), 0f));
                     }
                 }
                 else if (rb != null)
                 {
-                    rb.linearVelocity = new Vector3(0f, rb.linearVelocity.y, 0f);
+                    SetLinearVelocity(new Vector3(0f, GetLinearVelocityY(), 0f));
                 }
             }
         }
 
         private void ChaseTarget(Vector3 targetPos, float speedMultiplier = 1.0f)
         {
-            if (rb == null) return;
+            if (rb == null || rb.isKinematic) return;
 
             Vector3 desiredDir;
 
@@ -687,7 +708,7 @@ namespace FeaturesCombat
             Vector3 finalMoveDir = ApplyObstacleAvoidance(desiredDir);
 
             float effectiveSpeed = moveSpeed * speedMultiplier;
-            rb.linearVelocity = new Vector3(finalMoveDir.x * effectiveSpeed, rb.linearVelocity.y, finalMoveDir.z * effectiveSpeed);
+            SetLinearVelocity(new Vector3(finalMoveDir.x * effectiveSpeed, GetLinearVelocityY(), finalMoveDir.z * effectiveSpeed));
 
             // Putar hadap monster mengikuti arah gerak navigasi secara halus
             if (finalMoveDir.sqrMagnitude > 0.01f)
@@ -820,7 +841,7 @@ namespace FeaturesCombat
             // 1. Wind-up Phase (0.35s): Berhenti sejenak, aktifkan indikator telegraf tanah, kedip oranye
             if (rb != null)
             {
-                rb.linearVelocity = Vector3.zero;
+                SetLinearVelocity(Vector3.zero);
             }
 
             float windupDuration = 0.35f;
@@ -921,7 +942,7 @@ namespace FeaturesCombat
 
             if (rb != null)
             {
-                rb.linearVelocity = Vector3.zero;
+                SetLinearVelocity(Vector3.zero);
             }
 
             // 1. Aiming Telegraph (0.55s total)
@@ -1040,7 +1061,7 @@ namespace FeaturesCombat
 
             if (rb != null)
             {
-                rb.linearVelocity = Vector3.zero;
+                SetLinearVelocity(Vector3.zero);
             }
 
             // 1. Aiming Telegraph (0.45s)
@@ -1208,7 +1229,7 @@ namespace FeaturesCombat
 
                     if (rb != null)
                     {
-                        rb.linearVelocity = new Vector3(moveDir.x * (moveSpeed * 1.35f), rb.linearVelocity.y, moveDir.z * (moveSpeed * 1.35f));
+                        SetLinearVelocity(new Vector3(moveDir.x * (moveSpeed * 1.35f), GetLinearVelocityY(), moveDir.z * (moveSpeed * 1.35f)));
                     }
 
                     if (moveDir.sqrMagnitude > 0.01f)
@@ -1230,7 +1251,7 @@ namespace FeaturesCombat
             // Hentikan gerak mundur
             if (rb != null)
             {
-                rb.linearVelocity = new Vector3(0f, rb.linearVelocity.y, 0f);
+                SetLinearVelocity(new Vector3(0f, GetLinearVelocityY(), 0f));
             }
 
             // 2. Heal diri sendiri sampai 50 current health
@@ -1311,7 +1332,7 @@ namespace FeaturesCombat
             if (rb != null)
             {
                 rb.position = transform.position;
-                rb.linearVelocity = Vector3.zero;
+                SetLinearVelocity(Vector3.zero);
             }
 
             float telegraphDuration = 0.55f;
@@ -1348,7 +1369,7 @@ namespace FeaturesCombat
             if (rb != null)
             {
                 rb.position = transform.position;
-                rb.linearVelocity = Vector3.zero;
+                SetLinearVelocity(Vector3.zero);
             }
             Physics.SyncTransforms();
 
@@ -1441,7 +1462,7 @@ namespace FeaturesCombat
             if (rb != null)
             {
                 rb.position = slamTarget;
-                rb.linearVelocity = Vector3.zero;
+                SetLinearVelocity(Vector3.zero);
             }
             Physics.SyncTransforms();
 
@@ -1617,9 +1638,9 @@ namespace FeaturesCombat
 
             if (rb != null)
             {
+                SetLinearVelocity(Vector3.zero);
+                SetAngularVelocity(Vector3.zero);
                 rb.isKinematic = true;
-                rb.linearVelocity = Vector3.zero;
-                rb.angularVelocity = Vector3.zero;
             }
 
             if (combatTelegraph != null) combatTelegraph.Hide();
@@ -1701,8 +1722,8 @@ namespace FeaturesCombat
                 rb.isKinematic = false;
                 rb.position = transform.position;
                 rb.rotation = transform.rotation;
-                rb.linearVelocity = Vector3.zero;
-                rb.angularVelocity = Vector3.zero;
+                SetLinearVelocity(Vector3.zero);
+                SetAngularVelocity(Vector3.zero);
             }
             Physics.SyncTransforms();
 

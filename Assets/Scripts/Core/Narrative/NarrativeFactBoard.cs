@@ -70,6 +70,7 @@ namespace FarmBeware.Core.Runtime
                     FactOperator.GreaterOrEqual => actualVal >= cond.targetValue,
                     FactOperator.LessOrEqual => actualVal <= cond.targetValue,
                     FactOperator.NotEqual => actualVal != cond.targetValue,
+                    FactOperator.BitwiseAndNonZero => (actualVal & cond.targetValue) != 0,
                     _ => false
                 };
 
@@ -107,6 +108,9 @@ namespace FarmBeware.Core.Runtime
                 case FactMutationOp.Max:
                     if (mutation.operandValue > _facts[idx])
                         _facts[idx] = mutation.operandValue;
+                    break;
+                case FactMutationOp.BitwiseOr:
+                    _facts[idx] |= mutation.operandValue;
                     break;
             }
 

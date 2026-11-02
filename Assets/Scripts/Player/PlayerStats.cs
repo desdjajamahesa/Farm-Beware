@@ -257,6 +257,13 @@ public class PlayerStats : MonoBehaviour, FeaturesCombat.IDamageable, IPlayerDam
         OnHealthChanged?.Invoke(currentHealth, maxHealth);
         if (actualHealed > 0)
             OnHealed?.Invoke(actualHealed);
+
+        var facts = ServiceLocator.Resolve<INarrativeFactBoard>();
+        if (facts != null)
+        {
+            bool isLowHealth = currentHealth > 0 && currentHealth <= (maxHealth * 0.25f);
+            facts.SetFact(NarrativeFactKey.PlayerLowHealthTriggered, isLowHealth ? 1 : 0);
+        }
     }
 
     public FeaturesCombat.Core.PureLogic.CombatStatModifiers GetCombatStatModifiers()
@@ -327,6 +334,13 @@ public class PlayerStats : MonoBehaviour, FeaturesCombat.IDamageable, IPlayerDam
         currentHealth = Mathf.Clamp(currentHealth - amount, 0, maxHealth);
         OnHealthChanged?.Invoke(currentHealth, maxHealth);
         OnDamageTaken?.Invoke(amount);
+
+        var facts = ServiceLocator.Resolve<INarrativeFactBoard>();
+        if (facts != null)
+        {
+            bool isLowHealth = currentHealth > 0 && currentHealth <= (maxHealth * 0.25f);
+            facts.SetFact(NarrativeFactKey.PlayerLowHealthTriggered, isLowHealth ? 1 : 0);
+        }
 
         if (currentHealth <= 0 && !isDeadHandled)
         {

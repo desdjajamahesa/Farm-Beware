@@ -19,7 +19,15 @@ namespace FeaturesStoryline.Cutscenes
     public class OpeningCutsceneController : MonoBehaviour, ICutsceneService
     {
         private static OpeningCutsceneController _instance;
-        public static bool HasInstance => _instance != null;
+        public static bool HasInstance
+        {
+            get
+            {
+                if (_instance != null) return true;
+                _instance = FindFirstObjectByType<OpeningCutsceneController>(FindObjectsInactive.Include);
+                return _instance != null;
+            }
+        }
         private static bool _isQuitting = false;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
@@ -33,19 +41,22 @@ namespace FeaturesStoryline.Cutscenes
         {
             get
             {
-                if (_isQuitting) return null;
                 if (_instance == null)
                 {
                     _instance = FindFirstObjectByType<OpeningCutsceneController>(FindObjectsInactive.Include);
-                    if (_instance == null && Application.isPlaying)
+                    if (_instance == null && Application.isPlaying && !_isQuitting)
                     {
-                        var systems = GameObject.Find("_SYSTEMS");
-                        var go = new GameObject("OpeningCutsceneController");
-                        if (systems != null)
+                        var activeScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene();
+                        if (activeScene.isLoaded && activeScene.name != "MainMenuScene")
                         {
-                            go.transform.SetParent(systems.transform, false);
+                            var systems = GameObject.Find("_SYSTEMS");
+                            var go = new GameObject("OpeningCutsceneController");
+                            if (systems != null)
+                            {
+                                go.transform.SetParent(systems.transform, false);
+                            }
+                            _instance = go.AddComponent<OpeningCutsceneController>();
                         }
-                        _instance = go.AddComponent<OpeningCutsceneController>();
                     }
                 }
                 return _instance;
@@ -84,12 +95,28 @@ namespace FeaturesStoryline.Cutscenes
         private Action _onCompleteCallback;
         private readonly System.Collections.Generic.List<GameObject> _hiddenHudPanels = new System.Collections.Generic.List<GameObject>();
 
-        public bool IsCutscenePlaying => _isCutscenePlaying;
+        public bool IsOpeningCutscenePlaying => _isCutscenePlaying;
+        public bool IsCutscenePlaying
+        {
+            get
+            {
+                if (_isCutscenePlaying) return true;
+                if (Night1CutsceneController.HasInstance && Night1CutsceneController.Instance.IsNight1CutscenePlaying)
+                {
+                    return true;
+                }
+                return false;
+            }
+        }
         public event Action OnCutsceneStarted;
         public event Action OnCutsceneEnded;
 
+        public void NotifyCutsceneStarted() => OnCutsceneStarted?.Invoke();
+        public void NotifyCutsceneEnded() => OnCutsceneEnded?.Invoke();
+
         private void Awake()
         {
+            _isQuitting = false;
             if (Instance != null && Instance != this)
             {
                 Destroy(gameObject);
@@ -123,6 +150,16 @@ namespace FeaturesStoryline.Cutscenes
             EnsureTimelineAssetLoaded();
         }
 
+        private void OnEnable()
+        {
+            _isQuitting = false;
+            if (Instance == null || Instance == this)
+            {
+                Instance = this;
+                ServiceLocator.Register<ICutsceneService>(this);
+            }
+        }
+
         private IPlayerContext GetValidPlayerContext()
         {
             var ctx = ServiceLocator.Resolve<IPlayerContext>();
@@ -130,6 +167,7 @@ namespace FeaturesStoryline.Cutscenes
             {
                 return ctx;
             }
+            if (!Application.isPlaying || _isQuitting || !gameObject.scene.isLoaded) return null;
             var playerObj = GameObject.FindWithTag("Player") ?? GameObject.Find("Player");
             return playerObj != null ? playerObj.GetComponent<IPlayerContext>() : null;
         }
@@ -153,10 +191,13 @@ namespace FeaturesStoryline.Cutscenes
         private void OnDestroy()
         {
             CleanupCameraAnimator();
-            var player = GetValidPlayerContext();
-            if (player != null)
+            if (!_isQuitting)
             {
-                player.RemoveInputLock("OpeningCutscene");
+                var player = GetValidPlayerContext();
+                if (player != null)
+                {
+                    player.RemoveInputLock("OpeningCutscene");
+                }
             }
             if (_instance == this)
             {
@@ -231,6 +272,21 @@ namespace FeaturesStoryline.Cutscenes
         }
 
         /// <summary>
+        /// Plays the Night Day 1 in-engine cinematic cutscene via Night1CutsceneController.
+        /// </summary>
+        public void PlayNight1Cutscene(Action onComplete = null)
+        {
+            if (Night1CutsceneController.Instance != null)
+            {
+                Night1CutsceneController.Instance.PlayNight1Cutscene(onComplete);
+            }
+            else
+            {
+                onComplete?.Invoke();
+            }
+        }
+
+        /// <summary>
         /// Initiates the Day 0 Arrival Timeline sequence.
         /// Repositions player outside the gate, locks movement input, switches camera to Cinematic,
         /// and coordinates widescreen letterbox subtitles.
@@ -238,6 +294,12 @@ namespace FeaturesStoryline.Cutscenes
         public void PlayOpeningCutscene(Action onComplete = null)
         {
             if (_isCutscenePlaying) return;
+            if (UnityEngine.SceneManagement.SceneManager.GetActiveScene().name != "StagingScene")
+            {
+                Debug.LogWarning("[OpeningCutsceneController] Opening cutscene only permitted in StagingScene.");
+                onComplete?.Invoke();
+                return;
+            }
 
             _onCompleteCallback = onComplete;
             EnsureTimelineAssetLoaded();
@@ -245,7 +307,20 @@ namespace FeaturesStoryline.Cutscenes
             _isCutscenePlaying = true;
             _skipHoldTimer = 0f;
 
+            // Forcefully dismiss any open dialogue or modal overlay
+            if (FeaturesStoryline.UI.StorylineUI.HasInstance && FeaturesStoryline.UI.StorylineUI.Instance != null)
+            {
+                FeaturesStoryline.UI.StorylineUI.Instance.DismissDialogue();
+            }
+
             OnCutsceneStarted?.Invoke();
+            if (Night1CutsceneController.HasInstance)
+            {
+                Night1CutsceneController.Instance.NotifyCutsceneStarted();
+            }
+
+            // Immediately suppress all gameplay HUD and driving UI before staging actors
+            SetGameplayHUDVisible(false);
 
             // 1. Position vehicle at road start and seat player inside
             InitializeVehicleAndPlayerForCutscene();
@@ -384,7 +459,14 @@ namespace FeaturesStoryline.Cutscenes
         /// </summary>
         public void SkipCurrentCutscene()
         {
-            if (!_isCutscenePlaying) return;
+            if (!_isCutscenePlaying)
+            {
+                if (Night1CutsceneController.HasInstance && Night1CutsceneController.Instance.IsCutscenePlaying)
+                {
+                    Night1CutsceneController.Instance.SkipCurrentCutscene();
+                }
+                return;
+            }
 
             // 1. Immediately abort all camera sweeps and cutscene coroutines
             StopAllCoroutines();
@@ -785,6 +867,10 @@ namespace FeaturesStoryline.Cutscenes
             }
 
             OnCutsceneEnded?.Invoke();
+            if (Night1CutsceneController.HasInstance)
+            {
+                Night1CutsceneController.Instance.NotifyCutsceneEnded();
+            }
             _onCompleteCallback?.Invoke();
             _onCompleteCallback = null;
 
@@ -993,6 +1079,58 @@ namespace FeaturesStoryline.Cutscenes
                 if (invUI != null && invUI.playerHotbarContainer != null)
                 {
                     invUI.playerHotbarContainer.gameObject.SetActive(false);
+                }
+
+                var hudHost = GameObject.Find("VehicleDrivingHUD_Host");
+                if (hudHost != null)
+                {
+                    hudHost.SendMessage("SnapHidden", SendMessageOptions.DontRequireReceiver);
+                }
+
+                var allCanvases = UnityEngine.Object.FindObjectsByType<Canvas>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+                for (int i = 0; i < allCanvases.Length; i++)
+                {
+                    if (allCanvases[i] == null) continue;
+
+                    if (allCanvases[i].gameObject.name == "VehicleDrivingCanvas")
+                    {
+                        allCanvases[i].gameObject.SetActive(false);
+                        allCanvases[i].enabled = false;
+                        var cg = allCanvases[i].GetComponent<CanvasGroup>();
+                        if (cg != null) cg.alpha = 0f;
+                        allCanvases[i].gameObject.SendMessage("SnapHidden", SendMessageOptions.DontRequireReceiver);
+                    }
+
+                    string[] modalPanelNames = { "BossIntroPanel", "StoryBannerPanel", "StoryDialoguePanel", "StoryOverlayPanel", "StoryDreamPanel" };
+                    foreach (var mName in modalPanelNames)
+                    {
+                        var modalTransform = allCanvases[i].transform.Find(mName);
+                        if (modalTransform != null)
+                        {
+                            modalTransform.gameObject.SetActive(false);
+                            var cg = modalTransform.GetComponent<CanvasGroup>();
+                            if (cg != null)
+                            {
+                                cg.alpha = 0f;
+                                cg.blocksRaycasts = false;
+                                cg.interactable = false;
+                            }
+                        }
+                    }
+                }
+
+                // Modal sequence and dialogue suppression
+                if (FeaturesStoryline.UI.StorylineUI.HasInstance && FeaturesStoryline.UI.StorylineUI.Instance != null)
+                {
+                    FeaturesStoryline.UI.StorylineUI.Instance.DismissDialogue();
+                }
+                if (ServiceLocator.TryResolve<IModalStackService>(out var modalStack) && modalStack != null)
+                {
+                    modalStack.CloseAll();
+                }
+                if (FeaturesStoryline.UI.BossIntroSequence.HasInstance && FeaturesStoryline.UI.BossIntroSequence.Instance != null)
+                {
+                    FeaturesStoryline.UI.BossIntroSequence.Instance.HideImmediate();
                 }
             }
             else

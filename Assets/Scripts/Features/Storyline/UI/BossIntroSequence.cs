@@ -4,6 +4,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using FarmBeware.Core.Runtime;
+using FeaturesStoryline.Cutscenes;
 
 namespace FeaturesStoryline.UI
 {
@@ -34,10 +35,20 @@ namespace FeaturesStoryline.UI
                 if (_instance == null)
                 {
                     _instance = FindFirstObjectByType<BossIntroSequence>(FindObjectsInactive.Include);
+                    if (_instance == null && Application.isPlaying)
+                    {
+                        var canvas = GameObject.Find("UI_Canvas");
+                        if (canvas != null)
+                        {
+                            var go = new GameObject("BossIntroSequence");
+                            go.transform.SetParent(canvas.transform, false);
+                            _instance = go.AddComponent<BossIntroSequence>();
+                        }
+                    }
                 }
                 return _instance;
             }
-            private set => _instance = value;
+            set => _instance = value;
         }
 
         [Header("UI Canvas & Elements")]
@@ -52,28 +63,41 @@ namespace FeaturesStoryline.UI
         private Transform _cameraFocusPivot;
         private Transform _previousCameraTarget;
 
+        public bool IsPlayingIntro => _activeIntroRoutine != null;
+
         private void Awake()
         {
-            if (Instance != null && Instance != this)
+            if (_instance != null && _instance != this)
             {
-                Destroy(gameObject);
+                if (Application.isPlaying) Destroy(gameObject);
+                else DestroyImmediate(gameObject);
                 return;
             }
-            Instance = this;
+            _instance = this;
 
             EnsureUIHierarchy();
             EnsureFocusPivot();
+            HideImmediate();
+        }
+
+        private void Start()
+        {
+            EnsureUIHierarchy();
+            HideImmediate();
+        }
+
+        private void OnEnable()
+        {
+            EnsureUIHierarchy();
+            if (!IsPlayingIntro)
+            {
+                HideImmediate();
+            }
         }
 
         private void OnDisable()
         {
-            if (_activeIntroRoutine != null)
-            {
-                StopCoroutine(_activeIntroRoutine);
-                _activeIntroRoutine = null;
-            }
-            if (bossCardPanel != null) bossCardPanel.SetActive(false);
-            RestoreCameraTarget();
+            HideImmediate();
         }
 
         private void OnApplicationQuit()
@@ -135,9 +159,82 @@ namespace FeaturesStoryline.UI
             _previousCameraTarget = null;
         }
 
+        /// <summary>
+        /// Immediately forces the boss card panel completely hidden and resets any active coroutine or camera targets.
+        /// </summary>
+        public void HideImmediate()
+        {
+            if (_activeIntroRoutine != null)
+            {
+                StopCoroutine(_activeIntroRoutine);
+                _activeIntroRoutine = null;
+            }
+            if (bossCardPanel != null)
+            {
+                bossCardPanel.SetActive(false);
+            }
+            if (bossCardCanvasGroup != null)
+            {
+                bossCardCanvasGroup.alpha = 0f;
+                bossCardCanvasGroup.blocksRaycasts = false;
+                bossCardCanvasGroup.interactable = false;
+            }
+            RestoreCameraTarget();
+        }
+
+        private bool IsCutsceneActive()
+        {
+            if (ServiceLocator.TryResolve<ICutsceneService>(out var cutscene) && cutscene != null && cutscene.IsCutscenePlaying)
+                return true;
+            if (OpeningCutsceneController.HasInstance && OpeningCutsceneController.Instance.IsCutscenePlaying)
+                return true;
+            if (Night1CutsceneController.HasInstance && Night1CutsceneController.Instance.IsCutscenePlaying)
+                return true;
+            return false;
+        }
+
         public void PlayBossIntro(string bossTitle, string subtitle, string loreText, Vector3? focusWorldPosition = null, float duration = 3.5f, Action onComplete = null)
         {
             EnsureUIHierarchy();
+
+            // Gating 1: If DayTransitionUI is actively playing, defer boss intro presentation until transition completes
+            if (DayTransitionUI.Instance != null && DayTransitionUI.Instance.IsPlayingTransition)
+            {
+                void OnTransitionDone()
+                {
+                    if (DayTransitionUI.Instance != null)
+                        DayTransitionUI.Instance.OnTransitionCompleted -= OnTransitionDone;
+                    PlayBossIntro(bossTitle, subtitle, loreText, focusWorldPosition, duration, onComplete);
+                }
+                DayTransitionUI.Instance.OnTransitionCompleted += OnTransitionDone;
+                return;
+            }
+
+            // Gating 2: If a cutscene is actively playing, defer boss intro presentation until cutscene completes
+            if (IsCutsceneActive())
+            {
+                void OnCutsceneDone()
+                {
+                    if (ServiceLocator.TryResolve<ICutsceneService>(out var cs) && cs != null)
+                        cs.OnCutsceneEnded -= OnCutsceneDone;
+                    if (OpeningCutsceneController.HasInstance)
+                        OpeningCutsceneController.Instance.OnCutsceneEnded -= OnCutsceneDone;
+                    if (Night1CutsceneController.HasInstance)
+                        Night1CutsceneController.Instance.OnCutsceneEnded -= OnCutsceneDone;
+
+                    PlayBossIntro(bossTitle, subtitle, loreText, focusWorldPosition, duration, onComplete);
+                }
+
+                if (ServiceLocator.TryResolve<ICutsceneService>(out var cutsceneService) && cutsceneService != null)
+                    cutsceneService.OnCutsceneEnded += OnCutsceneDone;
+                if (OpeningCutsceneController.HasInstance)
+                    OpeningCutsceneController.Instance.OnCutsceneEnded += OnCutsceneDone;
+                if (Night1CutsceneController.HasInstance)
+                    Night1CutsceneController.Instance.OnCutsceneEnded += OnCutsceneDone;
+
+                return;
+            }
+
             if (_activeIntroRoutine != null) StopCoroutine(_activeIntroRoutine);
             _activeIntroRoutine = StartCoroutine(RoutineBossIntro(bossTitle, subtitle, loreText, focusWorldPosition, duration, onComplete));
         }
@@ -200,9 +297,13 @@ namespace FeaturesStoryline.UI
         {
             if (targetCanvas == null)
             {
-                var canvasObj = GameObject.Find("UI_Canvas");
-                if (canvasObj != null) targetCanvas = canvasObj.GetComponent<Canvas>();
-                if (targetCanvas == null) targetCanvas = FindFirstObjectByType<Canvas>();
+                targetCanvas = GetComponentInParent<Canvas>();
+                if (targetCanvas == null)
+                {
+                    var canvasObj = GameObject.Find("UI_Canvas");
+                    if (canvasObj != null) targetCanvas = canvasObj.GetComponent<Canvas>();
+                    if (targetCanvas == null) targetCanvas = FindFirstObjectByType<Canvas>();
+                }
             }
 
             if (bossCardPanel == null && targetCanvas != null)
@@ -272,6 +373,17 @@ namespace FeaturesStoryline.UI
                     bossLoreText.alignment = TextAlignmentOptions.Center;
 
                     bossCardPanel.SetActive(false);
+                }
+            }
+
+            if (bossCardPanel != null && !IsPlayingIntro)
+            {
+                bossCardPanel.SetActive(false);
+                if (bossCardCanvasGroup != null)
+                {
+                    bossCardCanvasGroup.alpha = 0f;
+                    bossCardCanvasGroup.blocksRaycasts = false;
+                    bossCardCanvasGroup.interactable = false;
                 }
             }
         }

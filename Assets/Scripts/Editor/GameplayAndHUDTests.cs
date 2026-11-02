@@ -39,8 +39,13 @@ namespace FarmBeware.EditorTests
             Debug.Log("[AUDIT-SUITE] === STARTING DEEP AUDIT & AUTOMATED TEST VERIFICATION ===");
             Debug.Log("[AUDIT-SUITE] ========================================================");
 
+            if (ModalStackManager.HasInstance && ModalStackManager.Instance != null)
+            {
+                ModalStackManager.Instance.Clear();
+            }
+
             int passed = 0;
-            int total = 69;
+            int total = 72;
 
             if (Test_DayNight_PhaseProgression_DuskUntilNight()) passed++;
             if (Test_BedInteractable_Logic_AllowsDuskAndBlocksNightOnly()) passed++;
@@ -111,6 +116,9 @@ namespace FarmBeware.EditorTests
             if (Test_PlayerV2_CharacterAsset_NativeAnimations_And_Avatar_Audit()) passed++;
             if (Test_DummySword_Redesign_And_HandSocket_Alignment_Audit()) passed++;
             if (Test_AttackAnimationPacing_ControllerSpeeds_And_HitboxTiming_Audit()) passed++;
+            if (Test_VehicleDrivingHUD_Suppression_And_KinematicEnemySafety_Audit()) passed++;
+            if (Test_Day1_DayToNight_CutsceneAndStorylineDeconfliction_Audit()) passed++;
+            if (Test_OpeningCutscene_DialogueSuppression_And_Night1CamClearance_Audit()) passed++;
 
             Debug.Log("[AUDIT-SUITE] ========================================================");
             Debug.Log($"[AUDIT-SUITE] Complete! Passed: {passed}/{total}");
@@ -5223,7 +5231,9 @@ namespace FarmBeware.EditorTests
                 var methodConfirm = typeof(BedSleepConfirmationUI).GetMethod("HandleConfirm", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
                 if (methodConfirm != null)
                 {
+                    modalGO = GameObject.Find("BedSleepConfirmationUI") ?? GameObject.Find("SleepConfirmModalRoot");
                     var uiInst = modalGO != null ? modalGO.GetComponent<BedSleepConfirmationUI>() : null;
+                    if (uiInst == null) uiInst = Object.FindFirstObjectByType<BedSleepConfirmationUI>();
                     if (uiInst != null) methodConfirm.Invoke(uiInst, null);
                     if (!confirmed)
                     {
@@ -5268,6 +5278,12 @@ namespace FarmBeware.EditorTests
 
                 var modalRoot = GameObject.Find("SleepConfirmModalRoot");
                 if (modalRoot != null) cleanupList.Add(modalRoot);
+                var modalBedUI = GameObject.Find("BedSleepConfirmationUI");
+                if (modalBedUI != null) cleanupList.Add(modalBedUI);
+                if (ModalStackManager.HasInstance && ModalStackManager.Instance != null)
+                {
+                    ModalStackManager.Instance.Clear();
+                }
 
                 for (int i = cleanupList.Count - 1; i >= 0; i--)
                 {
@@ -6298,6 +6314,728 @@ namespace FarmBeware.EditorTests
             }
             finally
             {
+                for (int i = cleanupList.Count - 1; i >= 0; i--)
+                {
+                    if (cleanupList[i] != null) Object.DestroyImmediate(cleanupList[i]);
+                }
+            }
+        }
+
+        // Test 70: Vehicle Driving HUD Cutscene Suppression, Cross-Cutscene State Integrity, and Kinematic Enemy Safety Audit
+        private static bool Test_VehicleDrivingHUD_Suppression_And_KinematicEnemySafety_Audit()
+        {
+            var cleanupList = new System.Collections.Generic.List<GameObject>();
+            var oldCutscene = FarmBeware.Core.Runtime.ServiceLocator.Resolve<FarmBeware.Core.Runtime.ICutsceneService>();
+
+            var opening = FeaturesStoryline.Cutscenes.OpeningCutsceneController.Instance;
+            GameObject opGo = null;
+            if (opening == null)
+            {
+                opGo = new GameObject("Test_OpeningCutscene_Host", typeof(UnityEngine.Playables.PlayableDirector), typeof(FeaturesStoryline.Cutscenes.OpeningCutsceneController));
+                cleanupList.Add(opGo);
+                opening = opGo.GetComponent<FeaturesStoryline.Cutscenes.OpeningCutsceneController>();
+            }
+            var opField = typeof(FeaturesStoryline.Cutscenes.OpeningCutsceneController).GetField("_isCutscenePlaying", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            bool origOpPlaying = (bool)(opField?.GetValue(opening) ?? false);
+
+            var night1 = FeaturesStoryline.Cutscenes.Night1CutsceneController.Instance;
+            GameObject n1Go = null;
+            if (night1 == null)
+            {
+                n1Go = new GameObject("Test_Night1Cutscene_Host", typeof(FeaturesStoryline.Cutscenes.Night1CutsceneController));
+                cleanupList.Add(n1Go);
+                night1 = n1Go.GetComponent<FeaturesStoryline.Cutscenes.Night1CutsceneController>();
+            }
+            var n1Field = typeof(FeaturesStoryline.Cutscenes.Night1CutsceneController).GetField("_isCutscenePlaying", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            bool origN1Playing = (bool)(n1Field?.GetValue(night1) ?? false);
+
+            try
+            {
+                // 1. Setup VehicleDrivingHUD
+                var hud = FarmBeware.Features.Vehicles.UI.VehicleDrivingHUD.Instance;
+                GameObject hudGo = null;
+                if (hud == null)
+                {
+                    hudGo = new GameObject("VehicleDrivingHUD_Host", typeof(FarmBeware.Features.Vehicles.UI.VehicleDrivingHUD));
+                    cleanupList.Add(hudGo);
+                    hud = hudGo.GetComponent<FarmBeware.Features.Vehicles.UI.VehicleDrivingHUD>();
+                }
+
+                // Register Night1CutsceneController into ServiceLocator to test cross-service resolution
+                FarmBeware.Core.Runtime.ServiceLocator.Register<FarmBeware.Core.Runtime.ICutsceneService>(night1);
+
+                opField?.SetValue(opening, false);
+                n1Field?.SetValue(night1, false);
+
+                hud.SetDrivingActive(false);
+                if (hud.ShouldBeVisible())
+                {
+                    Debug.LogError("[Test 70] HUD should not be visible when driving is inactive!");
+                    return false;
+                }
+
+                // Simulate driving mode outside cutscene
+                hud.SetDrivingActive(true);
+                if (!hud.ShouldBeVisible())
+                {
+                    Debug.LogError("[Test 70] HUD should be visible while driving outside cutscenes!");
+                    return false;
+                }
+
+                // 2. Simulate Opening Cutscene playback
+                opField?.SetValue(opening, true);
+
+                if (!night1.IsCutscenePlaying)
+                {
+                    Debug.LogError("[Test 70] night1.IsCutscenePlaying must return true when opening cutscene is active!");
+                    return false;
+                }
+
+                if (!hud.IsCutsceneActive())
+                {
+                    Debug.LogError("[Test 70] hud.IsCutsceneActive() must return true when opening cutscene is active!");
+                    return false;
+                }
+
+                if (hud.ShouldBeVisible())
+                {
+                    Debug.LogError("[Test 70] hud.ShouldBeVisible() must be FALSE during opening cutscene!");
+                    return false;
+                }
+
+                // SnapHidden test
+                hud.SnapHidden();
+                var canvas = GameObject.Find("VehicleDrivingCanvas")?.GetComponent<Canvas>();
+                if (canvas != null && canvas.enabled)
+                {
+                    Debug.LogError("[Test 70] Canvas must be disabled after SnapHidden()!");
+                    return false;
+                }
+
+                // Reset opening cutscene and test Night1 cutscene
+                opField?.SetValue(opening, false);
+                n1Field?.SetValue(night1, true);
+
+                if (!hud.IsCutsceneActive() || hud.ShouldBeVisible())
+                {
+                    Debug.LogError("[Test 70] HUD must suppress during Night1 cutscene!");
+                    return false;
+                }
+
+                // 3. Kinematic Rigidbody Safety in EnemyBase
+                var enemyGo = new GameObject("Test_Enemy_Kinematic", typeof(Rigidbody), typeof(BoxCollider));
+                cleanupList.Add(enemyGo);
+                var rb = enemyGo.GetComponent<Rigidbody>();
+                rb.isKinematic = true;
+
+                var enemy = enemyGo.AddComponent<FeaturesCombat.EnemyBase>();
+                var setVel = typeof(FeaturesCombat.EnemyBase).GetMethod("SetLinearVelocity", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                // Must execute cleanly without throwing "Setting linear velocity of a kinematic body is not supported"
+                setVel?.Invoke(enemy, new object[] { new Vector3(3f, 0f, 3f) });
+
+                Debug.Log("✅ Test 70: Vehicle Driving HUD Cutscene Suppression, Cross-Cutscene State Integrity, and Kinematic Enemy Safety verified.");
+                return true;
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogError($"[Test 70] Exception during audit: {ex.Message} " + ex.StackTrace);
+                return false;
+            }
+            finally
+            {
+                if (opField != null && opening != null) opField.SetValue(opening, origOpPlaying);
+                if (n1Field != null && night1 != null) n1Field.SetValue(night1, origN1Playing);
+
+                if (oldCutscene != null)
+                {
+                    FarmBeware.Core.Runtime.ServiceLocator.Register<FarmBeware.Core.Runtime.ICutsceneService>(oldCutscene);
+                }
+                else
+                {
+                    FarmBeware.Core.Runtime.ServiceLocator.Unregister<FarmBeware.Core.Runtime.ICutsceneService>();
+                }
+
+                for (int i = cleanupList.Count - 1; i >= 0; i--)
+                {
+                    if (cleanupList[i] != null) Object.DestroyImmediate(cleanupList[i]);
+                }
+            }
+        }
+
+        // Test 71: Day 1 Day-to-Night Transition, Night 1 Cutscene, and Storyline Deconfliction Audit
+        private static bool Test_Day1_DayToNight_CutsceneAndStorylineDeconfliction_Audit()
+        {
+            var cleanupList = new List<GameObject>();
+            var origTimeService = ServiceLocator.Resolve<ITimeService>();
+            var origPlayerContext = ServiceLocator.Resolve<IPlayerContext>();
+            var origCameraService = ServiceLocator.Resolve<ICameraService>();
+            var origFactBoard = ServiceLocator.Resolve<INarrativeFactBoard>();
+            var origCutsceneService = ServiceLocator.Resolve<ICutsceneService>();
+
+            try
+            {
+                // 1. Setup mock player context
+                var playerObj = new GameObject("Test_Player_DeconflictionAudit", typeof(Rigidbody), typeof(CapsuleCollider), typeof(PlayerControl));
+                playerObj.tag = "Player";
+                cleanupList.Add(playerObj);
+                var player = playerObj.GetComponent<PlayerControl>();
+                ServiceLocator.Register<IPlayerContext>(player);
+
+                // 2. Setup mock camera service
+                var mockCam = new MockCameraService();
+                ServiceLocator.Register<ICameraService>(mockCam);
+
+                // 3. Setup mock time service (Day 1 Dusk, 16:00)
+                var mockTime = new MockTimeService
+                {
+                    CurrentDay = 1,
+                    CurrentHour = 16.0f,
+                    TimeOfDay = 16.0f,
+                    CurrentPhase = DayPhase.Day
+                };
+                ServiceLocator.Register<ITimeService>(mockTime);
+
+                // 4. Setup narrative fact blackboard
+                var facts = new NarrativeFactBoard();
+                facts.SetFact(NarrativeFactKey.CurrentDay, 1);
+                facts.SetFact(NarrativeFactKey.Night1CutsceneCompleted, 0);
+                ServiceLocator.Register<INarrativeFactBoard>(facts);
+
+                // 5. Setup UI Canvas hierarchy and mock gameplay HUD panels
+                var canvasObj = GameObject.Find("UI_Canvas") ?? GameObject.Find("_UI/UI_Canvas");
+                if (canvasObj == null)
+                {
+                    canvasObj = new GameObject("UI_Canvas", typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
+                    cleanupList.Add(canvasObj);
+                }
+                var canvas = canvasObj.GetComponent<Canvas>();
+                if (canvas == null)
+                {
+                    canvas = canvasObj.AddComponent<Canvas>();
+                }
+                canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+
+                string[] hudPanelNames = {
+                    "HUD_HotbarPanel",
+                    "HUD_Hotbar",
+                    "HUD_CombatPhaseTracker",
+                    "HUD_BuffBar",
+                    "HUD_PlayerStatsPanel",
+                    "HUD_EnemyIndicators",
+                    "HUD_NightBrawlWaveTracker"
+                };
+                var testHudPanels = new List<GameObject>();
+                foreach (var pName in hudPanelNames)
+                {
+                    var existingPanel = canvas.transform.Find(pName)?.gameObject;
+                    if (existingPanel == null)
+                    {
+                        existingPanel = new GameObject(pName);
+                        existingPanel.transform.SetParent(canvas.transform, false);
+                        cleanupList.Add(existingPanel);
+                    }
+                    existingPanel.SetActive(true);
+                    testHudPanels.Add(existingPanel);
+                }
+
+                // 6. Setup StorylineUI
+                var storyUIGO = new GameObject("Test_StorylineUI", typeof(StorylineUI));
+                cleanupList.Add(storyUIGO);
+                var storyUI = storyUIGO.GetComponent<StorylineUI>();
+                storyUI.EnsureUIHierarchy();
+
+                var dlgPanelField = typeof(StorylineUI).GetField("dialoguePanel", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+                var dlgPanel = dlgPanelField?.GetValue(storyUI) as GameObject;
+                if (dlgPanel == null)
+                {
+                    Debug.LogError("[Test 71] StorylineUI failed to generate dialoguePanel!");
+                    return false;
+                }
+
+                // 7. Setup CutsceneLetterboxUI
+                var letterboxUI = CutsceneLetterboxUI.Instance;
+                if (letterboxUI == null)
+                {
+                    var letterboxGO = new GameObject("CutsceneLetterboxUI", typeof(CutsceneLetterboxUI));
+                    letterboxGO.transform.SetParent(canvasObj.transform, false);
+                    cleanupList.Add(letterboxGO);
+                    letterboxUI = letterboxGO.GetComponent<CutsceneLetterboxUI>();
+                }
+                letterboxUI.TargetCanvas = canvas;
+                letterboxUI.EnsureUIHierarchy();
+
+                // 8. Setup DayTransitionUI
+                var dayTransitionUI = DayTransitionUI.Instance;
+                if (dayTransitionUI == null)
+                {
+                    var dayTransitionGO = new GameObject("Test_DayTransitionUI", typeof(DayTransitionUI));
+                    cleanupList.Add(dayTransitionGO);
+                    dayTransitionUI = dayTransitionGO.GetComponent<DayTransitionUI>();
+                }
+                dayTransitionUI.EnsureUIHierarchy();
+                typeof(DayTransitionUI).GetField("lastTransitionFrame", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)?.SetValue(dayTransitionUI, -1);
+                typeof(DayTransitionUI).GetField("lastPlayedRealTime", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)?.SetValue(dayTransitionUI, -999f);
+                typeof(DayTransitionUI).GetField("lastPlayedPhase", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)?.SetValue(dayTransitionUI, (TimeManager.DayPhase)(-1));
+
+                // 9. Setup StorylineManager
+                var storyMgrGO = new GameObject("Test_StorylineManager", typeof(StorylineManager));
+                cleanupList.Add(storyMgrGO);
+                var storyManager = storyMgrGO.GetComponent<StorylineManager>();
+
+                // 10. Setup Night1CutsceneController
+                var cutsceneController = Night1CutsceneController.Instance;
+                if (cutsceneController == null)
+                {
+                    var cutsceneGO = new GameObject("Night1CutsceneController", typeof(Night1CutsceneController));
+                    cleanupList.Add(cutsceneGO);
+                    cutsceneController = cutsceneGO.GetComponent<Night1CutsceneController>();
+                }
+                ServiceLocator.Register<ICutsceneService>(cutsceneController);
+
+                // 11. Setup NightBrawlManager
+                var brawlGO = new GameObject("Test_NightBrawlManager", typeof(NightBrawlManager));
+                cleanupList.Add(brawlGO);
+                var brawlManager = brawlGO.GetComponent<NightBrawlManager>();
+
+                // -------------------------------------------------------------
+                // ASSERTION: Canvas Sorting Order Hierarchy
+                // -------------------------------------------------------------
+                var dayTransitionCanvas = dayTransitionUI.GetComponent<Canvas>();
+                if (dayTransitionCanvas == null || dayTransitionCanvas.sortingOrder < 750)
+                {
+                    Debug.LogError($"[Test 71] DayTransitionUI Canvas sortingOrder must be >= 750 (found: {(dayTransitionCanvas != null ? dayTransitionCanvas.sortingOrder.ToString() : "null")})");
+                    return false;
+                }
+
+                var letterboxCanvas = (letterboxUI.LetterboxRoot != null ? letterboxUI.LetterboxRoot.GetComponent<Canvas>() : null)
+                                      ?? letterboxUI.GetComponent<Canvas>();
+                if (letterboxCanvas == null || letterboxCanvas.sortingOrder < 700)
+                {
+                    Debug.LogError($"[Test 71] CutsceneLetterboxUI Canvas sortingOrder must be >= 700 (found: {(letterboxCanvas != null ? letterboxCanvas.sortingOrder.ToString() : "null")})");
+                    return false;
+                }
+
+                var dialogueCanvas = dlgPanel.GetComponent<Canvas>();
+                if (dialogueCanvas == null || !dialogueCanvas.overrideSorting)
+                {
+                    Debug.LogError("[Test 71] StoryDialoguePanel Canvas must exist and have overrideSorting enabled!");
+                    return false;
+                }
+
+                if (dayTransitionCanvas.sortingOrder <= dialogueCanvas.sortingOrder)
+                {
+                    Debug.LogError($"[Test 71] DayTransitionUI sortingOrder ({dayTransitionCanvas.sortingOrder}) must be strictly greater than StoryDialoguePanel sortingOrder ({dialogueCanvas.sortingOrder})!");
+                    return false;
+                }
+
+                if (letterboxCanvas.sortingOrder <= dialogueCanvas.sortingOrder)
+                {
+                    Debug.LogError($"[Test 71] CutsceneLetterboxUI sortingOrder ({letterboxCanvas.sortingOrder}) must be strictly greater than StoryDialoguePanel sortingOrder ({dialogueCanvas.sortingOrder})!");
+                    return false;
+                }
+
+                // -------------------------------------------------------------
+                // STEP 1: Dusk Monologue Trigger at 16:00
+                // -------------------------------------------------------------
+                storyUI.ShowDialogue("Ucup", "That's crazy. The seeds I planted earlier today are already growing huge...");
+                if (!dlgPanel.activeSelf)
+                {
+                    Debug.LogError("[Test 71] Step 1 Failed: StoryDialoguePanel should be active upon Dusk monologue trigger!");
+                    return false;
+                }
+
+                // -------------------------------------------------------------
+                // STEP 2: Suppression during DayTransitionUI (18:00 Nightfall)
+                // -------------------------------------------------------------
+                dayTransitionUI.PlayNightTransition();
+                if (!DayTransitionUI.IsAnyTransitionActive)
+                {
+                    Debug.LogError("[Test 71] Step 2 Failed: DayTransitionUI.IsAnyTransitionActive should be true!");
+                    return false;
+                }
+
+                if (dlgPanel.activeSelf)
+                {
+                    Debug.LogError("[Test 71] Step 2 Failed: StoryDialoguePanel must be dismissed when DayTransitionUI begins!");
+                    return false;
+                }
+
+                // Test beat deferral during environmental transition
+                var beatDuringTransition = StoryBeatData.CreateRuntimeInstance(
+                    "TEST_DEFERRED_BEAT", 1, StoryTriggerType.WaveStart, StoryDeliveryType.DialogueBox,
+                    "Deferred Title", "Deferred Message", day: 1, speaker: "Ucup");
+                typeof(StorylineManager).GetMethod("DeliverStoryBeat", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+                    ?.Invoke(storyManager, new object[] { beatDuringTransition });
+
+                if (dlgPanel.activeSelf)
+                {
+                    Debug.LogError("[Test 71] Step 2 Failed: Modal beat was delivered to UI while DayTransitionUI was active!");
+                    return false;
+                }
+                if (!storyManager.Engine.HasPendingModalBeats)
+                {
+                    Debug.LogError("[Test 71] Step 2 Failed: Modal beat delivered during transition was not enqueued in pending queue!");
+                    return false;
+                }
+
+                // -------------------------------------------------------------
+                // STEP 3: Suppression during Night1CutsceneController Playback
+                // -------------------------------------------------------------
+                dayTransitionUI.CancelTransition();
+
+                cutsceneController.PlayNight1Cutscene();
+                if (!cutsceneController.IsCutscenePlaying)
+                {
+                    Debug.LogError("[Test 71] Step 3 Failed: Night1CutsceneController failed to enter playing state!");
+                    return false;
+                }
+                if (!storyManager.IsCutsceneActive())
+                {
+                    Debug.LogError("[Test 71] Step 3 Failed: StorylineManager.IsCutsceneActive() returned false while cutscene is playing!");
+                    return false;
+                }
+                if (!player.HasInputLock("Night1Cutscene"))
+                {
+                    Debug.LogError("[Test 71] Step 3 Failed: Player input lock 'Night1Cutscene' missing during cutscene playback!");
+                    return false;
+                }
+                if (dlgPanel.activeSelf)
+                {
+                    Debug.LogError("[Test 71] Step 3 Failed: StoryDialoguePanel must remain inactive during cutscene playback!");
+                    return false;
+                }
+
+                // Verify StorylineManager.FlushPendingModalBeats() is blocked while cutscene is active
+                storyManager.FlushPendingModalBeats();
+                if (dlgPanel.activeSelf)
+                {
+                    Debug.LogError("[Test 71] Step 3 Failed: FlushPendingModalBeats() popped dialogue while cutscene was playing!");
+                    return false;
+                }
+                if (!storyManager.Engine.HasPendingModalBeats)
+                {
+                    Debug.LogError("[Test 71] Step 3 Failed: Pending modal beats were removed while cutscene was playing!");
+                    return false;
+                }
+
+                // -------------------------------------------------------------
+                // STEP 4: Unhindered CutsceneLetterboxUI Subtitle Presentation
+                // -------------------------------------------------------------
+                CutsceneLetterboxUI.Instance.SetSubtitle("<i>Wh-what the hell is that?! The crops... they've turned into monsters?!</i>", 0f);
+                if (CutsceneLetterboxUI.Instance.SubtitleText == null ||
+                    !CutsceneLetterboxUI.Instance.SubtitleText.text.Contains("monsters"))
+                {
+                    Debug.LogError("[Test 71] Step 4 Failed: CutsceneLetterboxUI subtitle presentation failed or text was not updated!");
+                    return false;
+                }
+                if (dlgPanel.activeSelf)
+                {
+                    Debug.LogError("[Test 71] Step 4 Failed: StoryDialoguePanel conflicted with CutsceneLetterboxUI subtitles!");
+                    return false;
+                }
+
+                // -------------------------------------------------------------
+                // STEP 5: Clean Handoff into NightBrawlManager Wave 1
+                // -------------------------------------------------------------
+                cutsceneController.SkipCurrentCutscene();
+
+                if (cutsceneController.IsCutscenePlaying)
+                {
+                    Debug.LogError("[Test 71] Step 5 Failed: Cutscene did not end after skip!");
+                    return false;
+                }
+                if (player.HasInputLock("Night1Cutscene"))
+                {
+                    Debug.LogError("[Test 71] Step 5 Failed: Input lock 'Night1Cutscene' was not released upon cutscene completion!");
+                    return false;
+                }
+                if (facts.GetFact(NarrativeFactKey.Night1CutsceneCompleted) != 1)
+                {
+                    Debug.LogError("[Test 71] Step 5 Failed: Narrative fact Night1CutsceneCompleted was not set to 1!");
+                    return false;
+                }
+
+                // Verify transition into NightBrawlManager Wave 1
+                brawlManager.StartNightBrawl();
+                if (!brawlManager.IsNightBrawlActive)
+                {
+                    Debug.LogError("[Test 71] Step 5 Failed: NightBrawlManager failed to activate Wave 1 brawl after cutscene completion!");
+                    return false;
+                }
+
+                // -------------------------------------------------------------
+                // STEP 6: Teardown State Restoration During Active Playback
+                // -------------------------------------------------------------
+                // Re-trigger cutscene playback to simulate mid-cinematic interruption / teardown
+                facts.SetFact(NarrativeFactKey.ActiveCombatThreatCount, 0);
+                cutsceneController.PlayNight1Cutscene();
+                if (!cutsceneController.IsCutscenePlaying)
+                {
+                    Debug.LogError("[Test 71] Step 6 Failed: Failed to re-enter cutscene for teardown audit!");
+                    return false;
+                }
+                if (!storyManager.IsCutsceneActive())
+                {
+                    Debug.LogError("[Test 71] Step 6 Failed: StorylineManager did not acknowledge cutscene active on re-trigger!");
+                    return false;
+                }
+                if (!player.HasInputLock("Night1Cutscene"))
+                {
+                    Debug.LogError("[Test 71] Step 6 Failed: Player missing input lock 'Night1Cutscene' during re-triggered playback!");
+                    return false;
+                }
+
+                // Verify gameplay HUD panels are suppressed
+                foreach (var p in testHudPanels)
+                {
+                    if (p.activeSelf)
+                    {
+                        Debug.LogError($"[Test 71] Step 6 Failed: HUD panel '{p.name}' was not suppressed during cutscene playback!");
+                        return false;
+                    }
+                }
+
+                // Enqueue a deferred beat during mid-cutscene playback to verify queue unblocking upon teardown
+                var beatDuringTeardown = StoryBeatData.CreateRuntimeInstance(
+                    "TEST_TEARDOWN_BEAT", 1, StoryTriggerType.WaveStart, StoryDeliveryType.DialogueBox,
+                    "Teardown Title", "Teardown Message", day: 1, speaker: "Ucup");
+                typeof(StorylineManager).GetMethod("DeliverStoryBeat", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+                    ?.Invoke(storyManager, new object[] { beatDuringTeardown });
+
+                if (dlgPanel.activeSelf)
+                {
+                    Debug.LogError("[Test 71] Step 6 Failed: Modal beat was delivered to UI while cutscene was playing!");
+                    return false;
+                }
+
+                // Simulate mid-playback OnDisable() teardown
+                typeof(Night1CutsceneController).GetMethod("OnDisable", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+                    ?.Invoke(cutsceneController, null);
+
+                // Assertions after OnDisable():
+                if (cutsceneController.IsCutscenePlaying)
+                {
+                    Debug.LogError("[Test 71] Step 6 Failed: cutscene.IsCutscenePlaying remained TRUE after OnDisable() teardown!");
+                    return false;
+                }
+                if (storyManager.IsCutsceneActive())
+                {
+                    Debug.LogError("[Test 71] Step 6 Failed: StorylineManager.IsCutsceneActive() remained TRUE after OnDisable() teardown!");
+                    return false;
+                }
+                if (player.HasInputLock("Night1Cutscene"))
+                {
+                    Debug.LogError("[Test 71] Step 6 Failed: Input lock 'Night1Cutscene' was not removed after OnDisable() teardown!");
+                    return false;
+                }
+                if (letterboxUI.LetterboxRoot != null && letterboxUI.LetterboxRoot.activeSelf)
+                {
+                    var cg = letterboxUI.LetterboxRoot.GetComponent<CanvasGroup>();
+                    if (cg != null && cg.alpha > 0.01f)
+                    {
+                        Debug.LogError("[Test 71] Step 6 Failed: LetterboxRoot remained visible with non-zero alpha after OnDisable() teardown!");
+                        return false;
+                    }
+                }
+                foreach (var p in testHudPanels)
+                {
+                    if (!p.activeSelf)
+                    {
+                        Debug.LogError($"[Test 71] Step 6 Failed: HUD panel '{p.name}' was not restored after OnDisable() teardown!");
+                        return false;
+                    }
+                }
+
+                // Verify deferred Storyline queue unblocked and flushed
+                storyManager.FlushPendingModalBeats();
+                if (storyManager.Engine.HasPendingModalBeats)
+                {
+                    Debug.LogError("[Test 71] Step 6 Failed: Pending modal beats could not be flushed after cutscene teardown!");
+                    return false;
+                }
+                if (!dlgPanel.activeSelf)
+                {
+                    Debug.LogError("[Test 71] Step 6 Failed: Deferred dialogue beat failed to pop into UI after cutscene teardown!");
+                    return false;
+                }
+
+                // Verify OnDestroy idempotency and service cleanup
+                typeof(Night1CutsceneController).GetMethod("OnDestroy", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+                    ?.Invoke(cutsceneController, null);
+                if (player.HasInputLock("Night1Cutscene"))
+                {
+                    Debug.LogError("[Test 71] Step 6 Failed: Input lock 'Night1Cutscene' persisted after OnDestroy!");
+                    return false;
+                }
+
+                Debug.Log("✅ Test 71: Day 1 Day-to-Night Transition, Night 1 Cutscene, Canvas Sorting Hierarchy, and Teardown Lifecycle verified.");
+                return true;
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogError($"[Test 71] Exception during audit: {ex.Message}\n{ex.StackTrace}");
+                return false;
+            }
+            finally
+            {
+                if (origTimeService != null) ServiceLocator.Register<ITimeService>(origTimeService);
+                else ServiceLocator.Unregister<ITimeService>();
+
+                if (origPlayerContext != null) ServiceLocator.Register<IPlayerContext>(origPlayerContext);
+                else ServiceLocator.Unregister<IPlayerContext>();
+
+                if (origCameraService != null) ServiceLocator.Register<ICameraService>(origCameraService);
+                else ServiceLocator.Unregister<ICameraService>();
+
+                if (origFactBoard != null) ServiceLocator.Register<INarrativeFactBoard>(origFactBoard);
+                else ServiceLocator.Unregister<INarrativeFactBoard>();
+
+                if (origCutsceneService != null) ServiceLocator.Register<ICutsceneService>(origCutsceneService);
+                else ServiceLocator.Unregister<ICutsceneService>();
+
+                for (int i = cleanupList.Count - 1; i >= 0; i--)
+                {
+                    if (cleanupList[i] != null) Object.DestroyImmediate(cleanupList[i]);
+                }
+            }
+        }
+
+        
+        // Test 72: Opening Cutscene Dialogue Suppression, Vehicle Driving HUD Suppression, and Night 1 Camera Clearance Audit
+        private static bool Test_OpeningCutscene_DialogueSuppression_And_Night1CamClearance_Audit()
+        {
+            var cleanupList = new List<GameObject>();
+            ServiceLocator.TryResolve<ICutsceneService>(out var origCutscene);
+            ServiceLocator.TryResolve<IPlayerContext>(out var origPlayer);
+            ServiceLocator.TryResolve<ICameraService>(out var origCam);
+            ServiceLocator.TryResolve<INarrativeFactBoard>(out var origFacts);
+
+            try
+            {
+                // 1. Create Mock Services and Canvas
+                var mockCam = new MockCameraService();
+                ServiceLocator.Register<ICameraService>(mockCam);
+
+                var facts = new NarrativeFactBoard();
+                ServiceLocator.Register<INarrativeFactBoard>(facts);
+
+                var canvasGO = new GameObject("UI_Canvas", typeof(Canvas));
+                cleanupList.Add(canvasGO);
+                var storylineUI = canvasGO.AddComponent<FeaturesStoryline.UI.StorylineUI>();
+                var letterboxUI = canvasGO.AddComponent<CutsceneLetterboxUI>();
+
+                var dlgPanel = new GameObject("StoryDialoguePanel");
+                dlgPanel.transform.SetParent(canvasGO.transform, false);
+                dlgPanel.SetActive(false);
+
+                var playerGO = new GameObject("Player", typeof(Rigidbody), typeof(CapsuleCollider), typeof(PlayerControl));
+                cleanupList.Add(playerGO);
+                playerGO.tag = "Player";
+                playerGO.transform.position = new Vector3(27.20f, 0.04f, 13.00f); // Standing near warehouse wall & storage chest
+                var playerCtx = playerGO.GetComponent<PlayerControl>();
+                ServiceLocator.Register<IPlayerContext>(playerCtx);
+
+                var openingCtrl = FeaturesStoryline.Cutscenes.OpeningCutsceneController.Instance;
+                if (openingCtrl == null)
+                {
+                    var openingGO = new GameObject("OpeningCutsceneController", typeof(UnityEngine.Playables.PlayableDirector), typeof(FeaturesStoryline.Cutscenes.OpeningCutsceneController));
+                    cleanupList.Add(openingGO);
+                    openingCtrl = openingGO.GetComponent<FeaturesStoryline.Cutscenes.OpeningCutsceneController>();
+                }
+                ServiceLocator.Register<ICutsceneService>(openingCtrl);
+
+                // Verify Opening Cutscene blocks Dialogue Popup
+                openingCtrl.PlayOpeningCutscene();
+                if (!openingCtrl.IsCutscenePlaying)
+                {
+                    Debug.LogError("[Test 72] Opening cutscene failed to enter playing state!");
+                    return false;
+                }
+
+                // Attempt to show dialogue during opening cutscene
+                storylineUI.ShowDialogue("Ucup", "Morning already. Should be suppressed!");
+                if (dlgPanel.activeSelf)
+                {
+                    Debug.LogError("[Test 72] StoryDialoguePanel opened while opening cutscene was active!");
+                    return false;
+                }
+
+                // Verify VehicleDrivingHUD is suppressed during opening cutscene
+                var hudHost = new GameObject("VehicleDrivingHUD_Host", typeof(FarmBeware.Features.Vehicles.UI.VehicleDrivingHUD));
+                cleanupList.Add(hudHost);
+                var drivingHUD = hudHost.GetComponent<FarmBeware.Features.Vehicles.UI.VehicleDrivingHUD>();
+                drivingHUD.SetDrivingActive(true);
+                if (drivingHUD.ShouldBeVisible())
+                {
+                    Debug.LogError("[Test 72] VehicleDrivingHUD.ShouldBeVisible() was true during active opening cutscene!");
+                    return false;
+                }
+
+                openingCtrl.SkipCurrentCutscene();
+                if (openingCtrl.IsCutscenePlaying)
+                {
+                    Debug.LogError("[Test 72] Opening cutscene failed to stop on skip!");
+                    return false;
+                }
+
+                // 2. Verify Night 1 Cutscene Shot 4 Obstacle-Free Camera Framing
+                // Place a simulated obstacle (Warehouse Wall / Storage Chest) at player position + (-1.2, 1.4, -1.8)
+                var wallObj = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                cleanupList.Add(wallObj);
+                wallObj.name = "SimulatedWarehouseWall";
+                wallObj.transform.position = playerGO.transform.position + new Vector3(-1.2f, 1.4f, -1.8f);
+                wallObj.transform.localScale = new Vector3(2f, 3f, 0.5f);
+
+                Vector3 playerPos = playerGO.transform.position;
+                Vector3 emergencePoint = new Vector3(31.20f, 0.05f, 36.50f);
+                Vector3 lookDir = (emergencePoint - playerPos);
+                lookDir.y = 0f;
+                Vector3 playerForward = lookDir.normalized;
+                Vector3 playerRight = Vector3.Cross(Vector3.up, playerForward).normalized;
+                Vector3 playerHead = playerPos + Vector3.up * 1.35f;
+
+                Vector3 idealCamPosStart = playerHead + (playerForward * 1.55f) + (playerRight * 0.35f) + Vector3.up * 0.12f;
+                Vector3 safeCamPos = FeaturesStoryline.Cutscenes.Night1CutsceneController.CalculateObstacleFreeCamPos(playerHead, idealCamPosStart, playerGO);
+
+                // Verify camera is placed in front of player (dot product with playerForward > 0)
+                Vector3 camToHead = safeCamPos - playerHead;
+                float forwardDot = Vector3.Dot(camToHead, playerForward);
+                if (forwardDot <= 0.1f)
+                {
+                    Debug.LogError($"[Test 72] Night 1 Shot 4 camera is positioned behind player instead of in front! ForwardDot: {forwardDot}");
+                    return false;
+                }
+
+                // Verify camera is not inside the simulated wall obstacle
+                float distToWall = Vector3.Distance(safeCamPos, wallObj.transform.position);
+                if (distToWall < 1.0f)
+                {
+                    Debug.LogError($"[Test 72] Night 1 Shot 4 camera is too close to/inside wall! Distance: {distToWall}");
+                    return false;
+                }
+
+                Debug.Log("✅ Test 72: Opening Cutscene Dialogue Suppression, Vehicle Driving HUD Suppression, and Night 1 Camera Clearance Audit verified.");
+                return true;
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogError($"[Test 72] Exception: {ex.Message}\n{ex.StackTrace}");
+                return false;
+            }
+            finally
+            {
+                if (origCutscene != null) ServiceLocator.Register<ICutsceneService>(origCutscene);
+                else ServiceLocator.Unregister<ICutsceneService>();
+
+                if (origPlayer != null) ServiceLocator.Register<IPlayerContext>(origPlayer);
+                else ServiceLocator.Unregister<IPlayerContext>();
+
+                if (origCam != null) ServiceLocator.Register<ICameraService>(origCam);
+                else ServiceLocator.Unregister<ICameraService>();
+
+                if (origFacts != null) ServiceLocator.Register<INarrativeFactBoard>(origFacts);
+                else ServiceLocator.Unregister<INarrativeFactBoard>();
+
                 for (int i = cleanupList.Count - 1; i >= 0; i--)
                 {
                     if (cleanupList[i] != null) Object.DestroyImmediate(cleanupList[i]);

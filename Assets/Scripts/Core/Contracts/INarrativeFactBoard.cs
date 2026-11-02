@@ -31,6 +31,7 @@ namespace FarmBeware.Core.Runtime
         DeadCropsCount = 19,                 // Cumulative withered / dead crops
         TheRangerSlayed = 20,                // Final boss defeat state (0 or 1)
         WashedCount_Taro = 21,               // Cumulative washed taro crops in sink
+        Night1CutsceneCompleted = 22,        // Whether the Night Day 1 cinematic cutscene was completed/skipped (0 or 1)
         MaxCount = 128
     }
 
@@ -42,7 +43,8 @@ namespace FarmBeware.Core.Runtime
         Equal = 0,
         GreaterOrEqual = 1,
         LessOrEqual = 2,
-        NotEqual = 3
+        NotEqual = 3,
+        BitwiseAndNonZero = 4
     }
 
     /// <summary>
@@ -52,14 +54,16 @@ namespace FarmBeware.Core.Runtime
     {
         Set = 0,
         Add = 1,
-        Max = 2
+        Max = 2,
+        BitwiseOr = 3
     }
 
     /// <summary>
     /// Blittable condition criteria struct evaluating a specific fact key against a target value.
+    /// Implements IEquatable to eliminate boxing and reflection during test assertions and equality checks.
     /// </summary>
     [Serializable]
-    public struct NarrativeFactCondition
+    public struct NarrativeFactCondition : IEquatable<NarrativeFactCondition>
     {
         public NarrativeFactKey key;
         public FactOperator op;
@@ -75,13 +79,43 @@ namespace FarmBeware.Core.Runtime
             this.scoreWeight = scoreWeight;
             this.isRequired = isRequired;
         }
+
+        public bool Equals(NarrativeFactCondition other)
+        {
+            return key == other.key &&
+                   op == other.op &&
+                   targetValue == other.targetValue &&
+                   scoreWeight == other.scoreWeight &&
+                   isRequired == other.isRequired;
+        }
+
+        public override bool Equals(object obj)
+        {
+            return obj is NarrativeFactCondition other && Equals(other);
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine((int)key, (int)op, targetValue, scoreWeight, isRequired);
+        }
+
+        public static bool operator ==(NarrativeFactCondition left, NarrativeFactCondition right)
+        {
+            return left.Equals(right);
+        }
+
+        public static bool operator !=(NarrativeFactCondition left, NarrativeFactCondition right)
+        {
+            return !left.Equals(right);
+        }
     }
 
     /// <summary>
     /// Blittable mutation struct specifying a state change to apply to a fact key.
+    /// Implements IEquatable to eliminate boxing and reflection during test assertions and equality checks.
     /// </summary>
     [Serializable]
-    public struct NarrativeFactMutation
+    public struct NarrativeFactMutation : IEquatable<NarrativeFactMutation>
     {
         public NarrativeFactKey key;
         public FactMutationOp op;
@@ -92,6 +126,33 @@ namespace FarmBeware.Core.Runtime
             this.key = key;
             this.op = op;
             this.operandValue = operandValue;
+        }
+
+        public bool Equals(NarrativeFactMutation other)
+        {
+            return key == other.key &&
+                   op == other.op &&
+                   operandValue == other.operandValue;
+        }
+
+        public override bool Equals(object obj)
+        {
+            return obj is NarrativeFactMutation other && Equals(other);
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine((int)key, (int)op, operandValue);
+        }
+
+        public static bool operator ==(NarrativeFactMutation left, NarrativeFactMutation right)
+        {
+            return left.Equals(right);
+        }
+
+        public static bool operator !=(NarrativeFactMutation left, NarrativeFactMutation right)
+        {
+            return !left.Equals(right);
         }
     }
 

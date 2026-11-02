@@ -129,6 +129,12 @@ namespace FeaturesSaveSystem
                 TimeManager.Instance.SetTimeState(0, TimeManager.DayPhase.Day, false, notifyPhaseChanged: false, notifyDayChanged: false);
             }
 
+            var storyline = ServiceLocator.Resolve<IStorylineService>();
+            storyline?.ResetStorylineState();
+
+            var facts = ServiceLocator.Resolve<INarrativeFactBoard>();
+            facts?.ResetFacts();
+
             // 2. Play Opening Cutscene or Fallback Position
             var cutscene = ServiceLocator.Resolve<ICutsceneService>();
             if (cutscene == null)
@@ -723,6 +729,12 @@ namespace FeaturesSaveSystem
             IsPendingNewGameIntroCutscene = true;
             Time.timeScale = 1f;
 
+            var storyline = ServiceLocator.Resolve<IStorylineService>();
+            storyline?.ResetStorylineState();
+
+            var facts = ServiceLocator.Resolve<INarrativeFactBoard>();
+            facts?.ResetFacts();
+
             if (DailyEconomyManager.Instance != null)
             {
                 DailyEconomyManager.Instance.ResetEconomyState();
@@ -974,6 +986,7 @@ namespace FeaturesSaveSystem
                 }
 
                 storyService.ExportCooldowns(out data.lastPlayedBeatKeys, out data.lastPlayedDays);
+                storyService.ExportPendingModals(out data.pendingModalBeatIds);
             }
 
             // 11. Quest Progress Persistence
@@ -1276,7 +1289,8 @@ namespace FeaturesSaveSystem
                     data.isStoryComplete,
                     data.narrativeFacts,
                     data.lastPlayedBeatKeys,
-                    data.lastPlayedDays
+                    data.lastPlayedDays,
+                    data.pendingModalBeatIds
                 );
             }
 

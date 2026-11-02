@@ -30,6 +30,10 @@ namespace FeaturesInteraction
         {
             if (_instance == null)
             {
+                _instance = FindFirstObjectByType<BedSleepConfirmationUI>(FindObjectsInactive.Include);
+            }
+            if (_instance == null)
+            {
                 var go = new GameObject("BedSleepConfirmationUI");
                 _instance = go.AddComponent<BedSleepConfirmationUI>();
                 if (Application.isPlaying)
@@ -50,7 +54,7 @@ namespace FeaturesInteraction
 
             if (titleTextTmp != null)
             {
-                titleTextTmp.text = string.IsNullOrEmpty(cropSummary) ? "🌙 SLEEP UNTIL NIGHTFALL" : "⚠️ EARLY SLEEP WARNING";
+                titleTextTmp.text = string.IsNullOrEmpty(cropSummary) ? "SLEEP UNTIL NIGHTFALL" : "⚠️ EARLY SLEEP WARNING";
             }
 
             if (warningDetailsText != null)
@@ -101,6 +105,10 @@ namespace FeaturesInteraction
 
         private void OnDestroy()
         {
+            if (ModalStackManager.HasInstance && ModalStackManager.Instance != null)
+            {
+                ModalStackManager.Instance.PopSpecific(this);
+            }
             if (_instance == this)
             {
                 _instance = null;
@@ -148,6 +156,7 @@ namespace FeaturesInteraction
             var canvases = FindObjectsByType<Canvas>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
             foreach (var c in canvases)
             {
+                if (c.gameObject.name == "VehicleDrivingCanvas") continue;
                 if (c.isRootCanvas && c.renderMode != RenderMode.WorldSpace)
                 {
                     targetCanvas = c;

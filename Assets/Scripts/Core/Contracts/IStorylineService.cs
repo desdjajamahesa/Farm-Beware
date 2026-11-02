@@ -52,8 +52,17 @@ namespace FarmBeware.Core.Runtime
         /// <summary>Restores extended narrative state with facts and last-played maps.</summary>
         void RestoreState(int chapter, IEnumerable<string> beats, IEnumerable<string> journals, bool isComplete, int[] rawFacts, IList<string> lastPlayedKeys, IList<int> lastPlayedDays);
 
+        /// <summary>Restores extended narrative state with facts, last-played maps, and deferred modal beat IDs.</summary>
+        void RestoreState(int chapter, IEnumerable<string> beats, IEnumerable<string> journals, bool isComplete, int[] rawFacts, IList<string> lastPlayedKeys, IList<int> lastPlayedDays, IList<string> pendingModalBeatIds);
+
         /// <summary>Exports cooldown and repeat maps for persistence.</summary>
         void ExportCooldowns(out List<string> keys, out List<int> days);
+
+        /// <summary>Exports pending modal beat IDs queued for delivery post-combat.</summary>
+        void ExportPendingModals(out List<string> pendingBeats);
+
+        /// <summary>Fully resets narrative facts and story beats for a fresh new game session.</summary>
+        void ResetStorylineState();
 
         /// <summary>Fired when a story beat is triggered.</summary>
         event Action<string> OnStoryBeatTriggered;

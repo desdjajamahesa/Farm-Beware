@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using UnityEngine;
 
 namespace FarmBeware.Core.Runtime
 {
@@ -11,6 +12,15 @@ namespace FarmBeware.Core.Runtime
     {
         private static readonly Dictionary<Type, object> _services = new Dictionary<Type, object>();
         private static readonly object _lock = new object();
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        public static void Reset()
+        {
+            lock (_lock)
+            {
+                _services.Clear();
+            }
+        }
 
         public static void Register<T>(T service) where T : class
         {
@@ -51,14 +61,6 @@ namespace FarmBeware.Core.Runtime
             lock (_lock)
             {
                 _services.Remove(typeof(T));
-            }
-        }
-
-        public static void Reset()
-        {
-            lock (_lock)
-            {
-                _services.Clear();
             }
         }
     }

@@ -332,9 +332,31 @@ namespace FarmBeware.Features.Vehicles
                 engineAudio.Play();
             }
 
-            if (VehicleDrivingHUD.Instance != null)
+            bool isCutscenePlaying = false;
+            if (ServiceLocator.TryResolve<ICutsceneService>(out var cutscene) && cutscene != null)
+            {
+                isCutscenePlaying = cutscene.IsCutscenePlaying;
+            }
+            if (!isCutscenePlaying && FeaturesStoryline.Cutscenes.OpeningCutsceneController.HasInstance)
+            {
+                isCutscenePlaying = FeaturesStoryline.Cutscenes.OpeningCutsceneController.Instance.IsCutscenePlaying;
+            }
+            if (!isCutscenePlaying && FeaturesStoryline.Cutscenes.Night1CutsceneController.HasInstance)
+            {
+                isCutscenePlaying = FeaturesStoryline.Cutscenes.Night1CutsceneController.Instance.IsCutscenePlaying;
+            }
+            if (!isCutscenePlaying && FeaturesStoryline.StorylineManager.Instance != null)
+            {
+                isCutscenePlaying = FeaturesStoryline.StorylineManager.Instance.IsCutsceneActive();
+            }
+
+            if (!isCutscenePlaying && VehicleDrivingHUD.Instance != null)
             {
                 VehicleDrivingHUD.Instance.Show();
+            }
+            else if (VehicleDrivingHUD.Instance != null)
+            {
+                VehicleDrivingHUD.Instance.SnapHidden();
             }
 
             Debug.Log("[ArcadeVehicleController] Player entered vehicle. Driving mode active.");
@@ -342,7 +364,22 @@ namespace FarmBeware.Features.Vehicles
 
         public void ExitVehicle()
         {
-            if (!_isDriverOccupied || _occupantPlayer == null) return;
+            if (!_isDriverOccupied) return;
+
+            if (_occupantPlayer == null)
+            {
+                _isDriverOccupied = false;
+                _occupantPlayer = null;
+                _playerControl = null;
+                _occupantPlayerRb = null;
+                _playerEquipment = null;
+                _playerInteractor = null;
+                if (VehicleDrivingHUD.Instance != null)
+                {
+                    VehicleDrivingHUD.Instance.Hide();
+                }
+                return;
+            }
 
             _doorDebounceTimer = 0.4f;
 
@@ -728,7 +765,25 @@ namespace FarmBeware.Features.Vehicles
             }
 
             // 6. Update HUD Telemetry
-            if (_isDriverOccupied && VehicleDrivingHUD.Instance != null)
+            bool isCutsceneActive = false;
+            if (ServiceLocator.TryResolve<ICutsceneService>(out var cutsceneService) && cutsceneService != null)
+            {
+                isCutsceneActive = cutsceneService.IsCutscenePlaying;
+            }
+            if (!isCutsceneActive && FeaturesStoryline.Cutscenes.OpeningCutsceneController.HasInstance)
+            {
+                isCutsceneActive = FeaturesStoryline.Cutscenes.OpeningCutsceneController.Instance.IsCutscenePlaying;
+            }
+            if (!isCutsceneActive && FeaturesStoryline.Cutscenes.Night1CutsceneController.HasInstance)
+            {
+                isCutsceneActive = FeaturesStoryline.Cutscenes.Night1CutsceneController.Instance.IsCutscenePlaying;
+            }
+            if (!isCutsceneActive && FeaturesStoryline.StorylineManager.Instance != null)
+            {
+                isCutsceneActive = FeaturesStoryline.StorylineManager.Instance.IsCutsceneActive();
+            }
+
+            if (!isCutsceneActive && _isDriverOccupied && VehicleDrivingHUD.Instance != null)
             {
                 float throttle = 0f;
                 if (Keyboard.current != null)
@@ -738,6 +793,10 @@ namespace FarmBeware.Features.Vehicles
                 }
                 var gear = _dynamics.DetermineGear(_currentSpeedMps, throttle);
                 VehicleDrivingHUD.Instance.UpdateTelemetry(_currentSpeedMps, gear);
+            }
+            else if (isCutsceneActive && VehicleDrivingHUD.Instance != null)
+            {
+                VehicleDrivingHUD.Instance.SnapHidden();
             }
         }
 

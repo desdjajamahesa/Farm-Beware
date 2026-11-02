@@ -14,6 +14,9 @@ namespace FarmBeware.Core.Runtime
         /// <summary>Plays the initial New Game opening timeline cutscene.</summary>
         void PlayOpeningCutscene(Action onComplete = null);
 
+        /// <summary>Plays the Night Day 1 monster arrival in-engine cinematic cutscene.</summary>
+        void PlayNight1Cutscene(Action onComplete = null);
+
         /// <summary>Skips the active cutscene immediately, restoring player control and camera framing.</summary>
         void SkipCurrentCutscene();
 

@@ -44,9 +44,9 @@ namespace FarmBeware.Logic.Quests
         public event Action OnStateChanged;
 
         /// <summary>
-        /// Evaluates the player's current item collection against the required starter tools.
+        /// Evaluates the player's current item collection against the required starter tools using zero-allocation indexing.
         /// </summary>
-        public bool EvaluateInventory(IEnumerable<string> itemIds)
+        public bool EvaluateInventory(IReadOnlyList<string> itemIds)
         {
             if (CurrentStage == QuestStage.Completed) return false;
 
@@ -63,8 +63,10 @@ namespace FarmBeware.Logic.Quests
 
             if (itemIds != null)
             {
-                foreach (var rawId in itemIds)
+                int count = itemIds.Count;
+                for (int i = 0; i < count; i++)
                 {
+                    string rawId = itemIds[i];
                     if (string.IsNullOrEmpty(rawId)) continue;
                     string id = rawId.Trim();
 
@@ -102,6 +104,137 @@ namespace FarmBeware.Logic.Quests
             }
 
             return changed;
+        }
+
+        /// <summary>
+        /// Evaluates the player's current item collection against the required starter tools with zero boxing.
+        /// </summary>
+        public bool EvaluateInventory(List<string> itemIds)
+        {
+            return EvaluateInventory((IReadOnlyList<string>)itemIds);
+        }
+
+        /// <summary>
+        /// Evaluates the player's current item collection against the required starter tools.
+        /// </summary>
+        public bool EvaluateInventory(IEnumerable<string> itemIds)
+        {
+            if (itemIds is IReadOnlyList<string> readOnlyList)
+            {
+                return EvaluateInventory(readOnlyList);
+            }
+
+            if (itemIds is IList<string> list)
+            {
+                if (CurrentStage == QuestStage.Completed) return false;
+
+                bool hadHoe = HasHoe;
+                bool hadWaterer = HasPlantWaterer;
+                bool hadBottle = HasWaterBottle;
+                bool hadSeed = HasSweetPotatoSeed;
+                QuestStage previousStage = CurrentStage;
+
+                HasHoe = false;
+                HasPlantWaterer = false;
+                HasWaterBottle = false;
+                HasSweetPotatoSeed = false;
+
+                int count = list.Count;
+                for (int i = 0; i < count; i++)
+                {
+                    string rawId = list[i];
+                    if (string.IsNullOrEmpty(rawId)) continue;
+                    string id = rawId.Trim();
+
+                    if (IsHoeMatch(id))
+                    {
+                        HasHoe = true;
+                    }
+                    else if (IsPlantWatererMatch(id))
+                    {
+                        HasPlantWaterer = true;
+                    }
+                    else if (IsWaterBottleMatch(id))
+                    {
+                        HasWaterBottle = true;
+                    }
+                    else if (IsSweetPotatoSeedMatch(id))
+                    {
+                        HasSweetPotatoSeed = true;
+                    }
+                }
+
+                if (IsAllSuppliesGathered && CurrentStage == QuestStage.GatheringSupplies)
+                {
+                    CurrentStage = QuestStage.PlantingCrop;
+                }
+
+                bool changed = (hadHoe != HasHoe) || (hadWaterer != HasPlantWaterer) ||
+                               (hadBottle != HasWaterBottle) || (hadSeed != HasSweetPotatoSeed) ||
+                               (previousStage != CurrentStage);
+
+                if (changed)
+                {
+                    OnStateChanged?.Invoke();
+                }
+
+                return changed;
+            }
+
+            if (CurrentStage == QuestStage.Completed) return false;
+
+            bool fHadHoe = HasHoe;
+            bool fHadWaterer = HasPlantWaterer;
+            bool fHadBottle = HasWaterBottle;
+            bool fHadSeed = HasSweetPotatoSeed;
+            QuestStage fPreviousStage = CurrentStage;
+
+            HasHoe = false;
+            HasPlantWaterer = false;
+            HasWaterBottle = false;
+            HasSweetPotatoSeed = false;
+
+            if (itemIds != null)
+            {
+                foreach (var rawId in itemIds)
+                {
+                    if (string.IsNullOrEmpty(rawId)) continue;
+                    string id = rawId.Trim();
+
+                    if (IsHoeMatch(id))
+                    {
+                        HasHoe = true;
+                    }
+                    else if (IsPlantWatererMatch(id))
+                    {
+                        HasPlantWaterer = true;
+                    }
+                    else if (IsWaterBottleMatch(id))
+                    {
+                        HasWaterBottle = true;
+                    }
+                    else if (IsSweetPotatoSeedMatch(id))
+                    {
+                        HasSweetPotatoSeed = true;
+                    }
+                }
+            }
+
+            if (IsAllSuppliesGathered && CurrentStage == QuestStage.GatheringSupplies)
+            {
+                CurrentStage = QuestStage.PlantingCrop;
+            }
+
+            bool fChanged = (fHadHoe != HasHoe) || (fHadWaterer != HasPlantWaterer) ||
+                            (fHadBottle != HasWaterBottle) || (fHadSeed != HasSweetPotatoSeed) ||
+                            (fPreviousStage != CurrentStage);
+
+            if (fChanged)
+            {
+                OnStateChanged?.Invoke();
+            }
+
+            return fChanged;
         }
 
         /// <summary>

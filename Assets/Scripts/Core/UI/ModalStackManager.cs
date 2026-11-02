@@ -68,7 +68,8 @@ namespace FarmBeware.Core.Runtime
         {
             for (int i = _stack.Count - 1; i >= 0; i--)
             {
-                if (_stack[i] == null || !_stack[i].IsOpen)
+                var item = _stack[i];
+                if (item == null || (item is UnityEngine.Object uObj && uObj == null) || !item.IsOpen)
                 {
                     _stack.RemoveAt(i);
                 }
@@ -165,6 +166,15 @@ namespace FarmBeware.Core.Runtime
             {
                 Pop();
             }
+        }
+
+        /// <summary>
+        /// Clears all modals from the stack without invoking callbacks.
+        /// Useful during scene teardown and test harness resets.
+        /// </summary>
+        public void Clear()
+        {
+            _stack.Clear();
         }
 
         private void OnApplicationQuit()

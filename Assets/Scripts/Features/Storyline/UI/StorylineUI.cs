@@ -65,7 +65,7 @@ namespace FeaturesStoryline.UI
                 }
                 return _instance;
             }
-            private set => _instance = value;
+            set => _instance = value;
         }
 
         bool IModalWindow.IsOpen => (dialoguePanel != null && dialoguePanel.activeSelf) || (overlayPanel != null && overlayPanel.activeSelf);
@@ -121,6 +121,15 @@ namespace FeaturesStoryline.UI
         [Header("Dream Elements")]
         [SerializeField] private TextMeshProUGUI dreamBodyText;
         [SerializeField] private CanvasGroup dreamCanvasGroup;
+
+        public TextMeshProUGUI BannerTitleText => bannerTitleText;
+        public TextMeshProUGUI BannerBodyText => bannerBodyText;
+        public TextMeshProUGUI OverlayTitleText => overlayTitleText;
+        public TextMeshProUGUI OverlayBodyText => overlayBodyText;
+        public TextMeshProUGUI OverlayPromptText => overlayPromptText;
+        public TextMeshProUGUI DreamBodyText => dreamBodyText;
+        public AudioSource TypewriterAudioSource => typewriterAudioSource;
+        public AudioClip TypewriterAudioChit => typewriterAudioChit;
 
         private Coroutine _activeBannerRoutine;
         private Coroutine _activeOverlayRoutine;
@@ -321,6 +330,19 @@ namespace FeaturesStoryline.UI
                 return;
             }
 
+            // Gating: If DayTransitionUI is actively playing, defer banner presentation until transition completes
+            if (DayTransitionUI.Instance != null && DayTransitionUI.Instance.IsPlayingTransition)
+            {
+                void OnTransitionDone()
+                {
+                    if (DayTransitionUI.Instance != null)
+                        DayTransitionUI.Instance.OnTransitionCompleted -= OnTransitionDone;
+                    ShowBanner(title, message, duration, onComplete);
+                }
+                DayTransitionUI.Instance.OnTransitionCompleted += OnTransitionDone;
+                return;
+            }
+
             if (_activeBannerRoutine != null) StopCoroutine(_activeBannerRoutine);
             _activeBannerRoutine = StartCoroutine(RoutineBanner(title, message, duration, onComplete));
         }
@@ -368,6 +390,48 @@ namespace FeaturesStoryline.UI
             EnsureUIHierarchy();
             if (dialoguePanel == null)
             {
+                onDismiss?.Invoke();
+                return;
+            }
+
+            // Gating: If DayTransitionUI is actively playing, defer dialogue presentation until transition completes
+            if (DayTransitionUI.Instance != null && DayTransitionUI.Instance.IsPlayingTransition)
+            {
+                void OnTransitionDone()
+                {
+                    if (DayTransitionUI.Instance != null)
+                        DayTransitionUI.Instance.OnTransitionCompleted -= OnTransitionDone;
+                    ShowDialogue(speaker, message, onDismiss);
+                }
+                DayTransitionUI.Instance.OnTransitionCompleted += OnTransitionDone;
+                return;
+            }
+
+            // Gating 2: If any cutscene is actively playing, modal dialogue must not appear over cinematic framing
+            bool isCutscene = false;
+            if (StorylineManager.Instance != null && StorylineManager.Instance.IsCutsceneActive())
+            {
+                isCutscene = true;
+            }
+            else if (ServiceLocator.TryResolve<ICutsceneService>(out var cutsceneService) && cutsceneService != null && cutsceneService.IsCutscenePlaying)
+            {
+                isCutscene = true;
+            }
+            else if (Cutscenes.OpeningCutsceneController.HasInstance && Cutscenes.OpeningCutsceneController.Instance.IsCutscenePlaying)
+            {
+                isCutscene = true;
+            }
+            else if (Cutscenes.Night1CutsceneController.HasInstance && Cutscenes.Night1CutsceneController.Instance.IsCutscenePlaying)
+            {
+                isCutscene = true;
+            }
+
+            if (isCutscene || FarmBeware.Core.Runtime.GameSessionState.IsPendingNewGameIntroCutscene)
+            {
+                if (dialoguePanel != null && dialoguePanel.activeSelf)
+                {
+                    dialoguePanel.SetActive(false);
+                }
                 onDismiss?.Invoke();
                 return;
             }
@@ -420,6 +484,7 @@ namespace FeaturesStoryline.UI
             {
                 dialogueBodyText.text = message;
                 dialogueBodyText.maxVisibleCharacters = 0;
+                dialogueBodyText.rectTransform.anchorMax = new Vector2(1f, dialogueBodyText.rectTransform.anchorMax.y);
             }
 
             _typewriterTotalCharacters = !string.IsNullOrEmpty(message) ? message.Length : 0;
@@ -475,6 +540,10 @@ namespace FeaturesStoryline.UI
         private void PresentChoices(DialogueChoice[] choices)
         {
             EnsureChoiceUI();
+            if (dialogueBodyText != null)
+            {
+                dialogueBodyText.rectTransform.anchorMax = new Vector2(0.52f, dialogueBodyText.rectTransform.anchorMax.y);
+            }
             if (choiceContainer != null)
             {
                 choiceContainer.SetActive(true);
@@ -595,21 +664,28 @@ namespace FeaturesStoryline.UI
 
         public void DismissDialogue()
         {
-            if (dialoguePanel == null || !dialoguePanel.activeSelf) return;
+            if (dialoguePanel == null) return;
 
             _isTypewriterActive = false;
             _hasPendingChoices = false;
             _currentChoices = null;
             _onChoiceSelected = null;
             if (choiceContainer != null) choiceContainer.SetActive(false);
+            if (dialogueBodyText != null)
+            {
+                dialogueBodyText.rectTransform.anchorMax = new Vector2(1f, dialogueBodyText.rectTransform.anchorMax.y);
+            }
 
-            dialoguePanel.SetActive(false);
-            var modalStack = ServiceLocator.Resolve<IModalStackService>();
-            modalStack?.PopSpecific(this);
+            if (dialoguePanel.activeSelf)
+            {
+                dialoguePanel.SetActive(false);
+                var modalStack = ServiceLocator.Resolve<IModalStackService>();
+                modalStack?.PopSpecific(this);
 
-            var cb = _onDialogueDismissed;
-            _onDialogueDismissed = null;
-            cb?.Invoke();
+                var cb = _onDialogueDismissed;
+                _onDialogueDismissed = null;
+                cb?.Invoke();
+            }
         }
 
         public void ShowOverlay(string title, string message, float minDuration = 4f, Action onComplete = null)
@@ -618,6 +694,19 @@ namespace FeaturesStoryline.UI
             if (overlayPanel == null || overlayCanvasGroup == null)
             {
                 onComplete?.Invoke();
+                return;
+            }
+
+            // Gating: If DayTransitionUI is actively playing, defer overlay presentation until transition completes
+            if (DayTransitionUI.Instance != null && DayTransitionUI.Instance.IsPlayingTransition)
+            {
+                void OnTransitionDone()
+                {
+                    if (DayTransitionUI.Instance != null)
+                        DayTransitionUI.Instance.OnTransitionCompleted -= OnTransitionDone;
+                    ShowOverlay(title, message, minDuration, onComplete);
+                }
+                DayTransitionUI.Instance.OnTransitionCompleted += OnTransitionDone;
                 return;
             }
 
@@ -849,7 +938,7 @@ namespace FeaturesStoryline.UI
                     rt.anchorMin = new Vector2(0.5f, 1f);
                     rt.anchorMax = new Vector2(0.5f, 1f);
                     rt.pivot = new Vector2(0.5f, 1f);
-                    rt.anchoredPosition = new Vector2(0f, -40f);
+                    rt.anchoredPosition = new Vector2(0f, -85f);
                     rt.sizeDelta = new Vector2(700f, 100f);
 
                     var img = bannerPanel.GetComponent<Image>();
@@ -889,6 +978,22 @@ namespace FeaturesStoryline.UI
             }
             if (bannerPanel != null)
             {
+                if (bannerTitleText == null) bannerTitleText = bannerPanel.transform.Find("BannerTitle")?.GetComponent<TextMeshProUGUI>();
+                if (bannerBodyText == null) bannerBodyText = bannerPanel.transform.Find("BannerBody")?.GetComponent<TextMeshProUGUI>();
+                if (bannerTitleText == null || bannerBodyText == null)
+                {
+                    var tmps = bannerPanel.GetComponentsInChildren<TextMeshProUGUI>(true);
+                    for (int i = 0; i < tmps.Length; i++)
+                    {
+                        var t = tmps[i];
+                        if (bannerTitleText == null && t.name.IndexOf("Title", StringComparison.OrdinalIgnoreCase) >= 0) bannerTitleText = t;
+                        else if (bannerBodyText == null && t.name.IndexOf("Body", StringComparison.OrdinalIgnoreCase) >= 0) bannerBodyText = t;
+                    }
+                    if (bannerTitleText == null && tmps.Length > 0) bannerTitleText = tmps[0];
+                    if (bannerBodyText == null && tmps.Length > 1) bannerBodyText = tmps[1];
+                }
+                if (bannerCanvasGroup == null) bannerCanvasGroup = bannerPanel.GetComponent<CanvasGroup>() ?? bannerPanel.AddComponent<CanvasGroup>();
+
                 bannerPanel.SetActive(false);
                 if (bannerCanvasGroup != null) bannerCanvasGroup.alpha = 0f;
                 if (bannerTitleText != null)
@@ -1097,6 +1202,25 @@ namespace FeaturesStoryline.UI
             }
             if (overlayPanel != null)
             {
+                if (overlayTitleText == null) overlayTitleText = overlayPanel.transform.Find("OverlayTitle")?.GetComponent<TextMeshProUGUI>();
+                if (overlayBodyText == null) overlayBodyText = overlayPanel.transform.Find("OverlayBody")?.GetComponent<TextMeshProUGUI>();
+                if (overlayPromptText == null) overlayPromptText = overlayPanel.transform.Find("OverlayPrompt")?.GetComponent<TextMeshProUGUI>();
+                if (overlayTitleText == null || overlayBodyText == null || overlayPromptText == null)
+                {
+                    var tmps = overlayPanel.GetComponentsInChildren<TextMeshProUGUI>(true);
+                    for (int i = 0; i < tmps.Length; i++)
+                    {
+                        var t = tmps[i];
+                        if (overlayTitleText == null && t.name.IndexOf("Title", StringComparison.OrdinalIgnoreCase) >= 0) overlayTitleText = t;
+                        else if (overlayBodyText == null && t.name.IndexOf("Body", StringComparison.OrdinalIgnoreCase) >= 0) overlayBodyText = t;
+                        else if (overlayPromptText == null && t.name.IndexOf("Prompt", StringComparison.OrdinalIgnoreCase) >= 0) overlayPromptText = t;
+                    }
+                    if (overlayTitleText == null && tmps.Length > 0) overlayTitleText = tmps[0];
+                    if (overlayBodyText == null && tmps.Length > 1) overlayBodyText = tmps[1];
+                    if (overlayPromptText == null && tmps.Length > 2) overlayPromptText = tmps[2];
+                }
+                if (overlayCanvasGroup == null) overlayCanvasGroup = overlayPanel.GetComponent<CanvasGroup>() ?? overlayPanel.AddComponent<CanvasGroup>();
+
                 if (overlayTitleText != null) overlayTitleText.fontSize = 42;
                 if (overlayBodyText != null) overlayBodyText.fontSize = 24;
 
@@ -1158,7 +1282,41 @@ namespace FeaturesStoryline.UI
             }
             if (dreamPanel != null)
             {
+                if (dreamBodyText == null) dreamBodyText = dreamPanel.transform.Find("DreamBody")?.GetComponent<TextMeshProUGUI>() ?? dreamPanel.GetComponentInChildren<TextMeshProUGUI>(true);
+                if (dreamCanvasGroup == null) dreamCanvasGroup = dreamPanel.GetComponent<CanvasGroup>() ?? dreamPanel.AddComponent<CanvasGroup>();
                 dreamPanel.SetActive(false);
+            }
+
+            EnsureTypewriterAudio();
+        }
+
+        private void EnsureTypewriterAudio()
+        {
+            if (typewriterAudioSource == null)
+            {
+                if (!TryGetComponent<AudioSource>(out typewriterAudioSource))
+                {
+                    typewriterAudioSource = gameObject.AddComponent<AudioSource>();
+                }
+                typewriterAudioSource.playOnAwake = false;
+                typewriterAudioSource.spatialBlend = 0f;
+            }
+
+            if (typewriterAudioChit == null)
+            {
+                int sampleRate = 44100;
+                int sampleCount = (int)(sampleRate * 0.015f);
+                float[] samples = new float[sampleCount];
+                float freq = 880f;
+                for (int i = 0; i < sampleCount; i++)
+                {
+                    float t = (float)i / sampleRate;
+                    float env = 1f - ((float)i / sampleCount);
+                    samples[i] = Mathf.Sin(2f * Mathf.PI * freq * t) * env * 0.25f;
+                }
+                var clip = AudioClip.Create("TypewriterProceduralChit", sampleCount, 1, sampleRate, false);
+                clip.SetData(samples, 0);
+                typewriterAudioChit = clip;
             }
         }
     }

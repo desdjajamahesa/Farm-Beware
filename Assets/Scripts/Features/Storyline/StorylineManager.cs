@@ -8,6 +8,7 @@ using FeaturesTime;
 using FeaturesCombat;
 using FeaturesFarming;
 using FeaturesRendering.Lighting;
+using FeaturesStoryline.Cutscenes;
 
 namespace FeaturesStoryline
 {
@@ -43,6 +44,12 @@ namespace FeaturesStoryline
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void AutoBootstrap()
         {
+            var activeScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene();
+            if (activeScene.name == "MainMenuScene")
+            {
+                return;
+            }
+
             if (Instance == null && Application.isPlaying)
             {
                 var existing = FindFirstObjectByType<StorylineManager>(FindObjectsInactive.Include);
@@ -71,6 +78,7 @@ namespace FeaturesStoryline
         private bool _isAtmosphereOverridden = false;
 
         private readonly StorylineEngine _engine = new StorylineEngine();
+        private readonly Queue<StoryBeatData> _pendingNonModalBeats = new Queue<StoryBeatData>();
         private INarrativeFactBoard _facts;
         private bool _isInitialized = false;
 
@@ -81,6 +89,7 @@ namespace FeaturesStoryline
         public bool IsJournalOpen => JournalUI.Instance != null && JournalUI.Instance.IsOpen;
         public IReadOnlyCollection<string> TriggeredBeatIds => _engine.TriggeredBeatIds;
         public IReadOnlyCollection<string> UnlockedJournalIds => _engine.UnlockedJournalIds;
+        public int PendingNonModalBeatsCount => _pendingNonModalBeats.Count;
 
         public IReadOnlyList<StoryBeatData> AllStoryBeats => storyBeats;
         public IReadOnlyList<JournalEntryData> AllJournalEntries => journalEntries;
@@ -94,6 +103,12 @@ namespace FeaturesStoryline
 
         private void Awake()
         {
+            if (UnityEngine.SceneManagement.SceneManager.GetActiveScene().name == "MainMenuScene")
+            {
+                enabled = false;
+                return;
+            }
+
             if (Application.isPlaying && Instance != null && Instance != this)
             {
                 enabled = false;
@@ -209,6 +224,12 @@ namespace FeaturesStoryline
         public void HandleSceneLoaded(UnityEngine.SceneManagement.Scene scene, UnityEngine.SceneManagement.LoadSceneMode mode)
         {
             if (Instance != this) return;
+            if (scene.name == "MainMenuScene")
+            {
+                enabled = false;
+                return;
+            }
+            enabled = true;
 
             _baselineAtmosphereCached = false;
             _isAtmosphereOverridden = false;
@@ -233,17 +254,52 @@ namespace FeaturesStoryline
 
         private void Start()
         {
+            if (UnityEngine.SceneManagement.SceneManager.GetActiveScene().name == "MainMenuScene")
+            {
+                enabled = false;
+                return;
+            }
+
             // Failsafe re-subscription if DefaultExecutionOrder(-800) evaluated before Order 0 managers
             SubscribeToGameEvents();
 
             int currentDay = GetCurrentGameDay();
             _facts?.SetFact(NarrativeFactKey.CurrentDay, currentDay);
             AssignDailyStoryObjectives(currentDay);
-            EvaluateTrigger(StoryTriggerType.GameStart, currentDay);
-            if (currentDay >= 1)
+
+            bool isCutsceneRunningOrPending = currentDay == 0 ||
+                                              FarmBeware.Core.Runtime.GameSessionState.IsPendingNewGameIntroCutscene ||
+                                              IsCutsceneActive();
+
+            if (!isCutsceneRunningOrPending)
             {
-                EvaluateTrigger(StoryTriggerType.Dawn, currentDay);
+                EvaluateTrigger(StoryTriggerType.GameStart, currentDay);
+                if (currentDay >= 1)
+                {
+                    EvaluateTrigger(StoryTriggerType.Dawn, currentDay);
+                }
             }
+            else if (currentDay == 0)
+            {
+                EvaluateTrigger(StoryTriggerType.GameStart, 0);
+            }
+        }
+
+        /// <summary>
+        /// Fully resets the narrative engine, blackboard facts, and triggered beats for a fresh session.
+        /// Prevents stale facts (such as IntroCutsceneCompleted) from leaking into a New Game.
+        /// </summary>
+        public void ResetStorylineState()
+        {
+            _engine.Reset();
+            if (_facts != null)
+            {
+                _facts.ResetFacts();
+            }
+            _pendingNonModalBeats.Clear();
+            _isAtmosphereOverridden = false;
+            RestoreAtmosphere();
+            Debug.Log("[StorylineManager] 🔄 Narrative state and FactBoard fully reset for fresh session.");
         }
 
         private void InitializeContent()
@@ -310,6 +366,7 @@ namespace FeaturesStoryline
             {
                 DayNightTimeManager.Instance.OnTimePhaseChanged += HandleTimePhaseChanged;
                 DayNightTimeManager.Instance.OnDayChanged += HandleDayChanged;
+                DayNightTimeManager.Instance.OnDuskWarning += HandleDuskWarning;
             }
 
             // 2. Boss Deaths
@@ -351,6 +408,16 @@ namespace FeaturesStoryline
             NarrativeTelemetryHooks.OnTrophyInspected += HandleTrophyInspected;
             NarrativeTelemetryHooks.OnCookingCompleted += HandleCookingCompleted;
             NarrativeTelemetryHooks.OnCropWithered += HandleCropWithered;
+
+            // 11. Day/Night Environmental Transition Gating
+            if (DayTransitionUI.Instance != null)
+            {
+                DayTransitionUI.Instance.OnTransitionCompleted -= HandleDayTransitionCompleted;
+                DayTransitionUI.Instance.OnTransitionCompleted += HandleDayTransitionCompleted;
+            }
+
+            // 12. Cutscene Service Hook
+            SubscribeCutsceneEnded();
         }
 
         private void UnsubscribeFromGameEvents()
@@ -359,6 +426,7 @@ namespace FeaturesStoryline
             {
                 DayNightTimeManager.Instance.OnTimePhaseChanged -= HandleTimePhaseChanged;
                 DayNightTimeManager.Instance.OnDayChanged -= HandleDayChanged;
+                DayNightTimeManager.Instance.OnDuskWarning -= HandleDuskWarning;
             }
 
             EnemyBase.OnAnyEnemyDied -= HandleAnyEnemyDied;
@@ -385,9 +453,22 @@ namespace FeaturesStoryline
             NarrativeTelemetryHooks.OnTrophyInspected -= HandleTrophyInspected;
             NarrativeTelemetryHooks.OnCookingCompleted -= HandleCookingCompleted;
             NarrativeTelemetryHooks.OnCropWithered -= HandleCropWithered;
+
+            if (DayTransitionUI.Instance != null)
+            {
+                DayTransitionUI.Instance.OnTransitionCompleted -= HandleDayTransitionCompleted;
+            }
+
+            UnsubscribeCutsceneEnded();
         }
 
         #region Event Handlers
+
+        private void HandleDuskWarning()
+        {
+            int currentDay = GetCurrentGameDay();
+            EvaluateTrigger(StoryTriggerType.DuskApproaching, currentDay);
+        }
 
         private void HandleTimePhaseChanged(EnvironmentPhase phase)
         {
@@ -637,10 +718,50 @@ namespace FeaturesStoryline
             EvaluateTrigger(StoryTriggerType.FirstTill, currentDay);
         }
 
-        private void HandleCropPlanted(FarmlandTile tile, SeedItemData seed)
+        public void HandleCropPlanted(SeedItemData seed)
+        {
+            HandleCropPlanted(null, seed);
+        }
+
+        public void HandleCropPlanted(FarmlandTile tile, SeedItemData seed)
         {
             int currentDay = GetCurrentGameDay();
-            UpdatePlantedCropCounts();
+
+            if (tile != null)
+            {
+                UpdatePlantedCropCounts();
+            }
+            else if (_facts != null && seed != null)
+            {
+                string name = seed.itemName;
+                if (!string.IsNullOrEmpty(name))
+                {
+                    if (name.IndexOf("SweetPotato", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                        name.IndexOf("Sweet Potato", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                        name.IndexOf("sweet_potato", StringComparison.OrdinalIgnoreCase) >= 0)
+                    {
+                        _facts.SetFact(NarrativeFactKey.PlantedCount_SweetPotato, _facts.GetFact(NarrativeFactKey.PlantedCount_SweetPotato) + 1);
+                    }
+                    else if (name.IndexOf("Taro", StringComparison.OrdinalIgnoreCase) >= 0)
+                    {
+                        _facts.SetFact(NarrativeFactKey.PlantedCount_Taro, _facts.GetFact(NarrativeFactKey.PlantedCount_Taro) + 1);
+                    }
+                    else if (name.IndexOf("Corn", StringComparison.OrdinalIgnoreCase) >= 0)
+                    {
+                        _facts.SetFact(NarrativeFactKey.PlantedCount_Corn, _facts.GetFact(NarrativeFactKey.PlantedCount_Corn) + 1);
+                    }
+                }
+            }
+            else
+            {
+                UpdatePlantedCropCounts();
+            }
+
+            int sp = _facts != null ? _facts.GetFact(NarrativeFactKey.PlantedCount_SweetPotato) : 0;
+            var objService = ServiceLocator.Resolve<INarrativeObjectiveService>();
+            objService?.UpdateObjectiveProgress("OBJ_D1_FIRST_STEPS", sp);
+            objService?.ReportProgress(NarrativeFactKey.PlantedCount_SweetPotato, 1);
+
             EvaluateTrigger(StoryTriggerType.FirstPlant, currentDay);
         }
 
@@ -753,6 +874,40 @@ namespace FeaturesStoryline
                 _engine.UnlockJournal(beat.journalEntry.entryId);
             }
 
+            // Gating Invariant 1: Day/Night Environmental Transition & Cutscene Gating
+            // When DayTransitionUI is actively playing its cinematic day/night transition,
+            // or when an in-engine/timeline cutscene is active, all story deliveries (modal and non-modal)
+            // must be safely deferred to avoid visual clipping, text overlapping, and player input locking contention.
+            bool isTransitioning = DayTransitionUI.Instance != null && DayTransitionUI.Instance.IsPlayingTransition;
+            bool isCutscene = IsCutsceneActive();
+            if (isTransitioning || isCutscene)
+            {
+                if (isTransitioning && DayTransitionUI.Instance != null)
+                {
+                    DayTransitionUI.Instance.OnTransitionCompleted -= HandleDayTransitionCompleted;
+                    DayTransitionUI.Instance.OnTransitionCompleted += HandleDayTransitionCompleted;
+                }
+                if (isCutscene)
+                {
+                    SubscribeCutsceneEnded();
+                }
+
+                bool isNonModalItem = beat.deliveryType == StoryDeliveryType.HudBanner ||
+                                      beat.deliveryType == StoryDeliveryType.FloatingWorldText;
+
+                if (isNonModalItem)
+                {
+                    _pendingNonModalBeats.Enqueue(beat);
+                    Debug.Log($"[StorylineManager] ⏳ Gating Invariant: Deferred non-modal story beat '{beat.beatId}' ({beat.title}) until transition/cutscene finishes.");
+                }
+                else
+                {
+                    _engine.EnqueuePendingModalBeat(beat);
+                    Debug.Log($"[StorylineManager] ⏳ Gating Invariant: Deferred modal story beat '{beat.beatId}' ({beat.title}) until transition/cutscene finishes.");
+                }
+                return;
+            }
+
             // Non-modal channel (0.0s input lock, completely uninhibited movement)
             bool isNonModal = beat.deliveryType == StoryDeliveryType.HudBanner ||
                               beat.deliveryType == StoryDeliveryType.FloatingWorldText;
@@ -786,8 +941,102 @@ namespace FeaturesStoryline
             DispatchToUI(beat);
         }
 
+        /// <summary>
+        /// Returns true if any cinematic cutscene (Opening or Night 1) is currently playing.
+        /// Used by Storyline and Narrative subsystems to defer modal/dialogue presentations until the cutscene ends.
+        /// </summary>
+        public bool IsCutsceneActive()
+        {
+            if (ServiceLocator.TryResolve<ICutsceneService>(out var cutscene) && cutscene != null && cutscene.IsCutscenePlaying)
+            {
+                return true;
+            }
+            if (OpeningCutsceneController.HasInstance && OpeningCutsceneController.Instance.IsCutscenePlaying)
+            {
+                return true;
+            }
+            if (Night1CutsceneController.HasInstance && Night1CutsceneController.Instance.IsCutscenePlaying)
+            {
+                return true;
+            }
+            return false;
+        }
+
+        private void SubscribeCutsceneEnded()
+        {
+            if (ServiceLocator.TryResolve<ICutsceneService>(out var cutsceneService) && cutsceneService != null)
+            {
+                cutsceneService.OnCutsceneEnded -= HandleCutsceneEnded;
+                cutsceneService.OnCutsceneEnded += HandleCutsceneEnded;
+            }
+            if (Night1CutsceneController.HasInstance && Night1CutsceneController.Instance != null)
+            {
+                Night1CutsceneController.Instance.OnCutsceneEnded -= HandleCutsceneEnded;
+                Night1CutsceneController.Instance.OnCutsceneEnded += HandleCutsceneEnded;
+            }
+            if (OpeningCutsceneController.HasInstance && OpeningCutsceneController.Instance != null)
+            {
+                OpeningCutsceneController.Instance.OnCutsceneEnded -= HandleCutsceneEnded;
+                OpeningCutsceneController.Instance.OnCutsceneEnded += HandleCutsceneEnded;
+            }
+        }
+
+        private void UnsubscribeCutsceneEnded()
+        {
+            if (ServiceLocator.TryResolve<ICutsceneService>(out var cutsceneService) && cutsceneService != null)
+            {
+                cutsceneService.OnCutsceneEnded -= HandleCutsceneEnded;
+            }
+            if (Night1CutsceneController.HasInstance && Night1CutsceneController.Instance != null)
+            {
+                Night1CutsceneController.Instance.OnCutsceneEnded -= HandleCutsceneEnded;
+            }
+            if (OpeningCutsceneController.HasInstance && OpeningCutsceneController.Instance != null)
+            {
+                OpeningCutsceneController.Instance.OnCutsceneEnded -= HandleCutsceneEnded;
+            }
+        }
+
+        private void HandleCutsceneEnded()
+        {
+            // 1. Flush non-modal beats deferred during cutscene
+            while (_pendingNonModalBeats.Count > 0)
+            {
+                var nonModalBeat = _pendingNonModalBeats.Dequeue();
+                if (nonModalBeat != null)
+                {
+                    DispatchToUI(nonModalBeat);
+                }
+            }
+
+            // 2. Evaluate Dawn beat ONLY on Day 1+ when narrative facts indicate cutscene completed
+            int currentDay = GetCurrentGameDay();
+            if (currentDay >= 1 && !HasTriggered("D1_MANIFEST_FOUND") && _facts != null && _facts.GetFact(NarrativeFactKey.IntroCutsceneCompleted) == 1)
+            {
+                EvaluateTrigger(StoryTriggerType.Dawn, currentDay);
+            }
+
+            // 3. Flush pending modal beats if combat state is safe and no cutscene is active
+            int threats = _facts != null ? _facts.GetFact(NarrativeFactKey.ActiveCombatThreatCount) : 0;
+            if (threats == 0 && !IsCutsceneActive())
+            {
+                FlushPendingModalBeats();
+            }
+        }
+
         public void FlushPendingModalBeats()
         {
+            // Cannot flush if environmental transition is currently running
+            if (DayTransitionUI.Instance != null && DayTransitionUI.Instance.IsPlayingTransition)
+            {
+                return;
+            }
+
+            if (IsCutsceneActive())
+            {
+                return;
+            }
+
             int threats = _facts != null ? _facts.GetFact(NarrativeFactKey.ActiveCombatThreatCount) : 0;
 
             // Cannot flush if still in combat
@@ -801,6 +1050,32 @@ namespace FeaturesStoryline
                     DispatchToUI(beat);
                     break; // Deliver one modal window at a time to prevent modal stacking collisions
                 }
+            }
+        }
+
+        private void HandleDayTransitionCompleted()
+        {
+            int currentDay = GetCurrentGameDay();
+            bool isNight1Pending = currentDay == 1 && (_facts == null || _facts.GetFact(NarrativeFactKey.Night1CutsceneCompleted) == 0);
+
+            // 1. Flush non-modal beats deferred during environmental transition (if no cutscene running or pending)
+            if (!IsCutsceneActive() && !isNight1Pending)
+            {
+                while (_pendingNonModalBeats.Count > 0)
+                {
+                    var nonModalBeat = _pendingNonModalBeats.Dequeue();
+                    if (nonModalBeat != null)
+                    {
+                        DispatchToUI(nonModalBeat);
+                    }
+                }
+            }
+
+            // 2. Flush pending modal beats if combat state is safe, no cutscene is active, and Night 1 cutscene is not pending
+            int threats = _facts != null ? _facts.GetFact(NarrativeFactKey.ActiveCombatThreatCount) : 0;
+            if (threats == 0 && !IsCutsceneActive() && !isNight1Pending)
+            {
+                FlushPendingModalBeats();
             }
         }
 
@@ -825,6 +1100,24 @@ namespace FeaturesStoryline
                 }
             }
 
+            Action onBeatComplete = null;
+            if (string.Equals(beat.beatId, "D5_VICTORY", StringComparison.OrdinalIgnoreCase))
+            {
+                onBeatComplete = () =>
+                {
+                    TriggerBeat("EPILOGUE_STATS");
+                };
+            }
+
+            Action chainedBeatComplete = () =>
+            {
+                onBeatComplete?.Invoke();
+                if (_engine != null && _engine.HasPendingModalBeats)
+                {
+                    FlushPendingModalBeats();
+                }
+            };
+
             if (beat.deliveryType == StoryDeliveryType.BossIntro)
             {
                 var bossIntro = BossIntroSequence.Instance;
@@ -839,7 +1132,8 @@ namespace FeaturesStoryline
                         beat.title,
                         beat.speakerName,
                         beat.FormatNarrativeText(_facts),
-                        duration: beat.displayDuration
+                        duration: beat.displayDuration,
+                        onComplete: chainedBeatComplete
                     );
                     return;
                 }
@@ -851,20 +1145,11 @@ namespace FeaturesStoryline
                 targetUI = FindFirstObjectByType<StorylineUI>(FindObjectsInactive.Include);
             }
 
-            Action onBeatComplete = null;
-            if (string.Equals(beat.beatId, "D5_VICTORY", StringComparison.OrdinalIgnoreCase))
-            {
-                onBeatComplete = () =>
-                {
-                    TriggerBeat("EPILOGUE_STATS");
-                };
-            }
-
             if (targetUI != null)
             {
                 if (!targetUI.gameObject.activeInHierarchy) targetUI.gameObject.SetActive(true);
                 targetUI.enabled = true;
-                targetUI.DisplayBeat(beat, onBeatComplete);
+                targetUI.DisplayBeat(beat, chainedBeatComplete);
             }
             else
             {
@@ -912,6 +1197,8 @@ namespace FeaturesStoryline
                 return DayNightTimeManager.Instance.CurrentDay;
             if (TimeManager.Instance != null)
                 return TimeManager.Instance.currentDay;
+            if (ServiceLocator.TryResolve<ITimeService>(out var timeService) && timeService != null)
+                return timeService.CurrentDay;
             return _engine.CurrentChapter;
         }
 
@@ -1002,11 +1289,28 @@ namespace FeaturesStoryline
             IList<string> lastPlayedKeys,
             IList<int> lastPlayedDays)
         {
+            RestoreState(chapter, beats, journals, isComplete, rawFacts, lastPlayedKeys, lastPlayedDays, null);
+        }
+
+        public void RestoreState(
+            int chapter,
+            IEnumerable<string> beats,
+            IEnumerable<string> journals,
+            bool isComplete,
+            int[] rawFacts,
+            IList<string> lastPlayedKeys,
+            IList<int> lastPlayedDays,
+            IList<string> pendingModalBeatIds)
+        {
             var payload = new StorylineSavePayload(chapter, beats, journals, isComplete, rawFacts);
             if (lastPlayedKeys != null && lastPlayedDays != null)
             {
                 payload.lastPlayedBeatKeys = new List<string>(lastPlayedKeys);
                 payload.lastPlayedDays = new List<int>(lastPlayedDays);
+            }
+            if (pendingModalBeatIds != null)
+            {
+                payload.pendingModalBeatIds = new List<string>(pendingModalBeatIds);
             }
             _engine.RestoreState(payload, _facts, storyBeats);
 
@@ -1024,6 +1328,12 @@ namespace FeaturesStoryline
             days = new List<int>(payload.lastPlayedDays);
         }
 
+        public void ExportPendingModals(out List<string> pendingBeats)
+        {
+            var payload = _engine.CreateSavePayload(_facts);
+            pendingBeats = new List<string>(payload.pendingModalBeatIds);
+        }
+
         public void RegisterStoryBeat(StoryBeatData beat)
         {
             if (beat == null || storyBeats.Contains(beat)) return;
@@ -1035,6 +1345,22 @@ namespace FeaturesStoryline
         {
             if (entry == null || journalEntries.Contains(entry)) return;
             journalEntries.Add(entry);
+        }
+
+        /// <summary>
+        /// Resets the engine, narrative facts, and journal for fresh test or session state.
+        /// </summary>
+        public void ResetStorylineSession()
+        {
+            _engine?.Reset();
+            _facts?.ResetFacts();
+            _facts?.SetFact(NarrativeFactKey.CurrentDay, 1);
+            _facts?.SetFact(NarrativeFactKey.CurrentDayPhase, 0);
+            var jUI = JournalUI.Instance ?? FindFirstObjectByType<JournalUI>(FindObjectsInactive.Include);
+            if (jUI != null)
+            {
+                jUI.SetEntries(journalEntries, _engine != null ? _engine.UnlockedJournalIds : null);
+            }
         }
 
         #endregion

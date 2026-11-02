@@ -19,6 +19,24 @@ public class DayTransitionUI : MonoBehaviour
     #region Singleton & Accessors
 
     private static DayTransitionUI _instance;
+    public static bool HasInstance
+    {
+        get
+        {
+            if (_instance != null) return true;
+            _instance = FindFirstObjectByType<DayTransitionUI>(FindObjectsInactive.Include);
+            return _instance != null;
+        }
+    }
+    private static bool _isQuitting = false;
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    private static void ResetStaticState()
+    {
+        _instance = null;
+        _isQuitting = false;
+    }
+
     public static DayTransitionUI Instance
     {
         get
@@ -26,19 +44,20 @@ public class DayTransitionUI : MonoBehaviour
             if (_instance == null)
             {
                 _instance = FindFirstObjectByType<DayTransitionUI>(FindObjectsInactive.Include);
-                if (_instance == null)
+                if (_instance == null && Application.isPlaying && !_isQuitting)
                 {
-                    var go = new GameObject("DayTransitionUI");
-                    _instance = go.AddComponent<DayTransitionUI>();
-                    if (Application.isPlaying)
+                    var activeScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene();
+                    if (activeScene.isLoaded && activeScene.name != "MainMenuScene")
                     {
+                        var go = new GameObject("DayTransitionUI");
+                        _instance = go.AddComponent<DayTransitionUI>();
                         DontDestroyOnLoad(go);
                     }
                 }
             }
             return _instance;
         }
-        private set => _instance = value;
+        set => _instance = value;
     }
 
     public static DayTransitionUI EnsureInstance() => Instance;
@@ -100,6 +119,18 @@ public class DayTransitionUI : MonoBehaviour
     public bool IsPlayingTransition => transitionCoroutine != null;
     public Image VignetteOverlayRef => vignetteOverlay;
 
+    /// <summary>
+    /// Event dispatched when a Day/Night cinematic transition completes its entire entrance, hold, and exit cycle,
+    /// or when CancelTransition() is invoked.
+    /// Used by Storyline and Narrative subsystems to defer modal/banner presentations until the screen is clear.
+    /// </summary>
+    public event Action OnTransitionCompleted;
+
+    /// <summary>
+    /// Global inquiry helper returning true if any DayTransitionUI instance is currently running a transition.
+    /// </summary>
+    public static bool IsAnyTransitionActive => Instance != null && Instance.IsPlayingTransition;
+
     #endregion
 
     #region Unity Lifecycle
@@ -141,6 +172,19 @@ public class DayTransitionUI : MonoBehaviour
         if (DayNightTimeManager.Instance != null)
         {
             DayNightTimeManager.Instance.OnTimePhaseChanged -= HandleTimePhaseChanged;
+        }
+    }
+
+    private void OnApplicationQuit()
+    {
+        _isQuitting = true;
+    }
+
+    private void OnDestroy()
+    {
+        if (_instance == this)
+        {
+            _instance = null;
         }
     }
 
@@ -194,6 +238,7 @@ public class DayTransitionUI : MonoBehaviour
 
     public void CancelTransition()
     {
+        bool wasPlaying = transitionCoroutine != null;
         if (transitionCoroutine != null)
         {
             StopCoroutine(transitionCoroutine);
@@ -208,6 +253,11 @@ public class DayTransitionUI : MonoBehaviour
 
         ResetVisualElementsToRest();
         UnlockPlayer();
+
+        if (wasPlaying)
+        {
+            OnTransitionCompleted?.Invoke();
+        }
     }
 
     private void ResetVisualElementsToRest()
@@ -314,6 +364,9 @@ public class DayTransitionUI : MonoBehaviour
         lastPlayedPhase = TimeManager.DayPhase.Night;
         lastPlayedRealTime = Time.unscaledTime;
 
+        // Dismiss any active storyline dialogue so DayTransitionUI has full visual clarity
+        DismissActiveStoryDialogue();
+
         EnsureUIHierarchy();
         if (transitionCoroutine != null)
             StopCoroutine(transitionCoroutine);
@@ -340,11 +393,44 @@ public class DayTransitionUI : MonoBehaviour
         lastPlayedDay = dayNumber;
         lastPlayedRealTime = Time.unscaledTime;
 
+        // Dismiss any active storyline dialogue so DayTransitionUI has full visual clarity
+        DismissActiveStoryDialogue();
+
         EnsureUIHierarchy();
         if (transitionCoroutine != null)
             StopCoroutine(transitionCoroutine);
 
         transitionCoroutine = StartCoroutine(CinematicTransitionRoutine(isNight: false, dayNumber: dayNumber));
+    }
+
+    private void DismissActiveStoryDialogue()
+    {
+        // 1. Close through centralized ModalStackService
+        if (ServiceLocator.TryResolve<IModalStackService>(out var modalStack) && modalStack != null)
+        {
+            modalStack.CloseAll();
+        }
+
+        // 2. Direct message to StorylineUI without compile-time asmdef circular dependency
+        foreach (var mb in FindObjectsByType<MonoBehaviour>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+        {
+            if (mb.GetType().Name == "StorylineUI")
+            {
+                mb.SendMessage("DismissDialogue", SendMessageOptions.DontRequireReceiver);
+                break;
+            }
+        }
+
+        // 3. Ensure any active StoryDialoguePanel canvas group/object is hidden
+        var canvases = FindObjectsByType<Canvas>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        for (int i = 0; i < canvases.Length; i++)
+        {
+            var dlg = canvases[i].transform.Find("StoryDialoguePanel");
+            if (dlg != null && dlg.gameObject.activeSelf)
+            {
+                dlg.gameObject.SetActive(false);
+            }
+        }
     }
 
     #endregion
@@ -599,6 +685,7 @@ public class DayTransitionUI : MonoBehaviour
             ResetVisualElementsToRest();
             UnlockPlayer();
             transitionCoroutine = null;
+            OnTransitionCompleted?.Invoke();
         }
     }
 
@@ -947,7 +1034,7 @@ public class DayTransitionUI : MonoBehaviour
                 canvas = gameObject.AddComponent<Canvas>();
 
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-            canvas.sortingOrder = 92;
+            canvas.sortingOrder = 750;
 
             var scaler = GetComponent<CanvasScaler>();
             if (scaler == null)
@@ -963,11 +1050,8 @@ public class DayTransitionUI : MonoBehaviour
         else
         {
             var raycaster = GetComponent<GraphicRaycaster>();
-            if (raycaster != null)
-            {
-                if (Application.isPlaying) Destroy(raycaster);
-                else DestroyImmediate(raycaster);
-            }
+            if (raycaster == null)
+                raycaster = gameObject.AddComponent<GraphicRaycaster>();
 
             var scaler = GetComponent<CanvasScaler>();
             if (scaler != null)
@@ -977,11 +1061,11 @@ public class DayTransitionUI : MonoBehaviour
             }
 
             var canvas = GetComponent<Canvas>();
-            if (canvas != null)
-            {
-                if (Application.isPlaying) Destroy(canvas);
-                else DestroyImmediate(canvas);
-            }
+            if (canvas == null)
+                canvas = gameObject.AddComponent<Canvas>();
+
+            canvas.overrideSorting = true;
+            canvas.sortingOrder = 750;
 
             transform.SetAsLastSibling();
         }

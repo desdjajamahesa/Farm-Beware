@@ -117,6 +117,7 @@ namespace FeaturesSaveSystem
         public int[] narrativeFacts;
         public List<string> lastPlayedBeatKeys = new List<string>();
         public List<int> lastPlayedDays = new List<int>();
+        public List<string> pendingModalBeatIds = new List<string>();
 
         // Quest Progress Persistence
         public QuestSavePayload questPayload;

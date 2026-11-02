@@ -117,18 +117,56 @@ namespace FeaturesCombat
         [SerializeField] private float waveIntermissionDelay = 30f;
 
         [Header("Staggered Spawning Settings")]
-        [Tooltip("Interval minimum (detik) antar kemunculan monster dalam satu wave (default: 15 detik).")]
-        [SerializeField] private float spawnIntervalMin = 15f;
+        [Tooltip("Minimum interval in seconds between consecutive monster arrivals in a wave (6 to 10s range).")]
+        [SerializeField] private float spawnIntervalMin = 2.0f;
 
-        [Tooltip("Interval maksimum (detik) antar kemunculan monster dalam satu wave (default: 20 detik).")]
-        [SerializeField] private float spawnIntervalMax = 20f;
+        [Tooltip("Maximum interval in seconds between consecutive monster arrivals in a wave (6 to 10s range).")]
+        [SerializeField] private float spawnIntervalMax = 3.5f;
+
+        public float SpawnIntervalMin => spawnIntervalMin;
+        public float SpawnIntervalMax => spawnIntervalMax;
 
         private readonly List<EnemyBase> activeEnemies = new List<EnemyBase>();
         private readonly Wave.WaveProgressionEngine waveEngine = new Wave.WaveProgressionEngine();
         private bool isWaveInProgress = false;
         private bool isSpawningWave = false;
+        private bool _hasNight1CutscenePlayed = false;
         private Coroutine intermissionCoroutine;
         private Coroutine spawnCoroutine;
+        private Coroutine _night1CutsceneWaitingRoutine;
+
+        public bool HasNight1CutscenePlayed => _hasNight1CutscenePlayed;
+
+        public void ResetNight1CutsceneState()
+        {
+            _hasNight1CutscenePlayed = false;
+        }
+
+        /// <summary>
+        /// Configures the staggered spawn interval bounds with strict [6f, 10f] design envelope enforcement.
+        /// </summary>
+        public void SetSpawnIntervals(float min, float max)
+        {
+            spawnIntervalMin = Mathf.Clamp(min, 1.0f, 5.0f);
+            spawnIntervalMax = Mathf.Clamp(max, spawnIntervalMin, 5.0f);
+        }
+
+        private void ValidateSpawnIntervals()
+        {
+            // Auto-migrate legacy 15s-20s serialized scene values to the 6-10s specification
+            if (spawnIntervalMin > 4.0f || spawnIntervalMin < 1.0f)
+            {
+                spawnIntervalMin = 2.0f;
+            }
+            if (spawnIntervalMax > 5.0f || spawnIntervalMax < 1.0f)
+            {
+                spawnIntervalMax = 3.5f;
+            }
+            if (spawnIntervalMin > spawnIntervalMax)
+            {
+                spawnIntervalMin = spawnIntervalMax;
+            }
+        }
 
         public event System.Action<EnemyBase> OnEnemySpawned;
         public event System.Action<EnemyBase> OnEnemyDied;
@@ -158,6 +196,12 @@ namespace FeaturesCombat
                 return;
             }
             Instance = this;
+            ValidateSpawnIntervals();
+        }
+
+        private void OnValidate()
+        {
+            ValidateSpawnIntervals();
         }
 
         private void OnEnable()
@@ -190,6 +234,12 @@ namespace FeaturesCombat
             waveEngine.OnEnemiesRemainingChanged -= HandleEnemiesRemainingChanged;
 
             StopSpawnCoroutine();
+
+            if (_night1CutsceneWaitingRoutine != null)
+            {
+                StopCoroutine(_night1CutsceneWaitingRoutine);
+                _night1CutsceneWaitingRoutine = null;
+            }
 
             if (intermissionCoroutine != null)
             {
@@ -229,6 +279,21 @@ namespace FeaturesCombat
             }
         }
 
+        private bool ShouldPlayNight1Cutscene()
+        {
+            if (currentDay != 1 || _hasNight1CutscenePlayed) return false;
+
+            if (FarmBeware.Core.Runtime.ServiceLocator.TryResolve<FarmBeware.Core.Runtime.INarrativeFactBoard>(out var facts) && facts != null)
+            {
+                if (facts.GetFact(FarmBeware.Core.Runtime.NarrativeFactKey.Night1CutsceneCompleted) > 0)
+                {
+                    _hasNight1CutscenePlayed = true;
+                    return false;
+                }
+            }
+            return true;
+        }
+
         public void StartNightBrawl()
         {
             if (isWaveInProgress) return;
@@ -248,6 +313,56 @@ namespace FeaturesCombat
                 return;
             }
 
+            if (ShouldPlayNight1Cutscene())
+            {
+                _hasNight1CutscenePlayed = true;
+                if (_night1CutsceneWaitingRoutine != null)
+                {
+                    StopCoroutine(_night1CutsceneWaitingRoutine);
+                }
+                _night1CutsceneWaitingRoutine = StartCoroutine(RoutinePlayNight1CutsceneThenStartBrawl());
+                return;
+            }
+
+            BeginNightBrawlActive();
+        }
+
+        private IEnumerator RoutinePlayNight1CutsceneThenStartBrawl()
+        {
+            // 1. Await DayTransitionUI if currently displaying day/night transition card
+            while (DayTransitionUI.IsAnyTransitionActive)
+            {
+                yield return null;
+            }
+
+            yield return new WaitForEndOfFrame();
+
+            // 2. Play Night 1 in-engine cutscene via ICutsceneService
+            bool cutsceneFinished = false;
+            if (FarmBeware.Core.Runtime.ServiceLocator.TryResolve<FarmBeware.Core.Runtime.ICutsceneService>(out var cutsceneService) && cutsceneService != null)
+            {
+                cutsceneService.PlayNight1Cutscene(() =>
+                {
+                    cutsceneFinished = true;
+                });
+            }
+            else
+            {
+                cutsceneFinished = true;
+            }
+
+            while (!cutsceneFinished)
+            {
+                yield return null;
+            }
+
+            // 3. Clean handoff into Wave 1 active brawl
+            _night1CutsceneWaitingRoutine = null;
+            BeginNightBrawlActive();
+        }
+
+        private void BeginNightBrawlActive()
+        {
             EnforceNightFoodLimit();
             EnsureHealthBarManagers();
             EnsureWaveTrackerActive();
@@ -415,7 +530,7 @@ namespace FeaturesCombat
                     OnEnemySpawned?.Invoke(enemy);
                 }
 
-                // If not the last enemy in wave, wait 15-20 seconds before spawning the next monster
+                // If not the last enemy in wave, wait 6-10 seconds before spawning the next monster
                 if (i < totalCount - 1)
                 {
                     float interval = UnityEngine.Random.Range(spawnIntervalMin, spawnIntervalMax);
@@ -873,6 +988,12 @@ namespace FeaturesCombat
 
         public void EndNightBrawl(bool cleanupRemaining)
         {
+            if (_night1CutsceneWaitingRoutine != null)
+            {
+                StopCoroutine(_night1CutsceneWaitingRoutine);
+                _night1CutsceneWaitingRoutine = null;
+            }
+
             if (intermissionCoroutine != null)
             {
                 StopCoroutine(intermissionCoroutine);

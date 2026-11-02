@@ -105,7 +105,11 @@ namespace FeaturesStoryline
                         if (_lastPlayedDayMap.TryGetValue(beat.beatId, out int lastDay) && lastDay == currentDay) continue;
                         break;
                     case RepeatPolicy.CooldownDays:
-                        if (_lastPlayedDayMap.TryGetValue(beat.beatId, out int cooldownDay) && (currentDay - cooldownDay < beat.cooldownDays)) continue;
+                        if (_lastPlayedDayMap.TryGetValue(beat.beatId, out int cooldownDay))
+                        {
+                            int dayDiff = currentDay - cooldownDay;
+                            if (dayDiff >= 0 && dayDiff < beat.cooldownDays) continue;
+                        }
                         break;
                     case RepeatPolicy.AlwaysRepeatable:
                         break;
@@ -154,7 +158,7 @@ namespace FeaturesStoryline
 
                 // 9. Specificity Scoring: S(R_i) = P_base * 100 + conditionScore
                 int totalScore = (beat.saliencePriority * 100) + conditionScore;
-                if (totalScore > bestScore)
+                if (totalScore > bestScore || (totalScore == bestScore && bestBeat != null && string.CompareOrdinal(beat.beatId, bestBeat.beatId) < 0))
                 {
                     bestScore = totalScore;
                     bestBeat = beat;
@@ -207,7 +211,11 @@ namespace FeaturesStoryline
                     if (_lastPlayedDayMap.TryGetValue(beat.beatId, out int lastDay) && lastDay == day) return false;
                     break;
                 case RepeatPolicy.CooldownDays:
-                    if (_lastPlayedDayMap.TryGetValue(beat.beatId, out int cooldownDay) && (day - cooldownDay < beat.cooldownDays)) return false;
+                    if (_lastPlayedDayMap.TryGetValue(beat.beatId, out int cooldownDay))
+                    {
+                        int dayDiff = day - cooldownDay;
+                        if (dayDiff >= 0 && dayDiff < beat.cooldownDays) return false;
+                    }
                     break;
                 case RepeatPolicy.AlwaysRepeatable:
                     break;

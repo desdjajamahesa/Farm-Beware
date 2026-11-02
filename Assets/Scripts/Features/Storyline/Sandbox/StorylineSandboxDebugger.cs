@@ -221,6 +221,84 @@ namespace FarmBeware.Features.Storyline.Sandbox
         #region Public Sandbox QA Actions
 
         /// <summary>
+        /// Jumps time to 06:00 (Dawn) and applies atmospheric lighting and story triggers.
+        /// </summary>
+        public void JumpToDawn()
+        {
+            if (DayNightTimeManager.Instance != null)
+            {
+                DayNightTimeManager.Instance.SetTime(6.0f);
+            }
+            Debug.Log("[StorylineSandboxDebugger] 🌅 Jumped time to 06:00 (Dawn).");
+        }
+
+        /// <summary>
+        /// Jumps time to 12:00 (Noon).
+        /// </summary>
+        public void JumpToNoon()
+        {
+            if (DayNightTimeManager.Instance != null)
+            {
+                DayNightTimeManager.Instance.SetTime(12.0f);
+            }
+            Debug.Log("[StorylineSandboxDebugger] ☀️ Jumped time to 12:00 (Noon).");
+        }
+
+        /// <summary>
+        /// Jumps to a specific day at 06:00 (Dawn) and synchronizes the storyline chapter.
+        /// </summary>
+        public void JumpToDay(int day)
+        {
+            int targetDay = Mathf.Clamp(day, 1, 5);
+            if (DayNightTimeManager.Instance != null)
+            {
+                DayNightTimeManager.Instance.SetDayAndTime(targetDay, 6.0f);
+            }
+            if (StorylineManager.Instance != null)
+            {
+                StorylineManager.Instance.SetChapter(targetDay);
+            }
+            Debug.Log($"[StorylineSandboxDebugger] 📅 Jumped to Day {targetDay} (06:00 Dawn).");
+        }
+
+        /// <summary>
+        /// Resets the sandbox session to Day 1 Dawn with cleared storyline facts and pristine state.
+        /// </summary>
+        public void ResetDay1State()
+        {
+            if (StorylineManager.Instance != null)
+            {
+                StorylineManager.Instance.ResetStorylineSession();
+            }
+            if (DayNightTimeManager.Instance != null)
+            {
+                DayNightTimeManager.Instance.SetDayAndTime(1, 6.0f);
+            }
+            SetSimulatedThreats(0);
+            Debug.Log("[StorylineSandboxDebugger] 🔄 Reset sandbox session back to pristine Day 1 state.");
+        }
+
+        /// <summary>
+        /// Spawns a specific monster archetype for combat and boss testing.
+        /// </summary>
+        public void SpawnDebugEnemy(EnemyType type)
+        {
+            Vector3 spawnPos = NightBrawlManager.Instance != null
+                ? NightBrawlManager.Instance.CalculateRandomSpawnPoint()
+                : new Vector3(21.9f, 0.08f, 64.6f);
+
+            EnemyBase enemy = EnemyObjectPool.Instance != null
+                ? EnemyObjectPool.Instance.Spawn(type, spawnPos)
+                : EnemyPrefabFactory.CreateEnemy(type, spawnPos)?.GetComponent<EnemyBase>();
+
+            if (enemy != null && NightBrawlManager.Instance != null)
+            {
+                NightBrawlManager.Instance.RegisterDynamicEnemy(enemy);
+            }
+            Debug.Log($"[StorylineSandboxDebugger] 👾 Spawned debug enemy: {type} at {spawnPos}");
+        }
+
+        /// <summary>
         /// Jumps time forward to 15:00 real minutes (16:00 in-game hour), sounding the Dusk Bell audio stinger.
         /// </summary>
         public void JumpToDuskBellWarning()
@@ -452,8 +530,16 @@ namespace FarmBeware.Features.Storyline.Sandbox
             _scrollPosition = GUILayout.BeginScrollView(_scrollPosition);
 
             // 2. Time Control Section
-            GUILayout.Label("Time Simulation (Hotkeys)", _sectionLabelStyle);
+            GUILayout.Label("Time Simulation (Hotkeys & Phases)", _sectionLabelStyle);
             GUILayout.BeginHorizontal();
+            if (GUILayout.Button("06:00 Dawn", _buttonStyle))
+            {
+                JumpToDawn();
+            }
+            if (GUILayout.Button("12:00 Noon", _buttonStyle))
+            {
+                JumpToNoon();
+            }
             if (GUILayout.Button("15:00 Dusk Bell (F2)", _buttonStyle))
             {
                 JumpToDuskBellWarning();
@@ -479,6 +565,21 @@ namespace FarmBeware.Features.Storyline.Sandbox
             }
             GUILayout.EndHorizontal();
 
+            GUILayout.Space(6f);
+            GUILayout.Label("Day Progression Scrub (Day 1 - 5)", _sectionLabelStyle);
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("Day 1", _buttonStyle)) JumpToDay(1);
+            if (GUILayout.Button("Day 2", _buttonStyle)) JumpToDay(2);
+            if (GUILayout.Button("Day 3", _buttonStyle)) JumpToDay(3);
+            if (GUILayout.Button("Day 4", _buttonStyle)) JumpToDay(4);
+            if (GUILayout.Button("Day 5", _buttonStyle)) JumpToDay(5);
+            GUILayout.EndHorizontal();
+
+            if (GUILayout.Button("🔄 One-Click Day 1 State Reset", _buttonStyle))
+            {
+                ResetDay1State();
+            }
+
             GUILayout.Space(8f);
 
             // 3. Inventory & Equipment Section
@@ -490,7 +591,21 @@ namespace FarmBeware.Features.Storyline.Sandbox
 
             GUILayout.Space(8f);
 
-            // 4. Narrative Beat Invocators
+            // 4. Wave & Boss Spawner Section
+            GUILayout.Label("Wave & Boss Spawners", _sectionLabelStyle);
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("Spawn Tuber Maw", _buttonStyle)) SpawnDebugEnemy(EnemyType.CyclopsTuberMaw);
+            if (GUILayout.Button("Spawn Taro Brute", _buttonStyle)) SpawnDebugEnemy(EnemyType.TaroColossus);
+            GUILayout.EndHorizontal();
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("Boss: Cyclops C-1", _buttonStyle)) SpawnDebugEnemy(EnemyType.CyclopsTuberMaw);
+            if (GUILayout.Button("Boss: Taro Colossus", _buttonStyle)) SpawnDebugEnemy(EnemyType.TaroColossus);
+            if (GUILayout.Button("Boss: The Ranger", _buttonStyle)) SpawnDebugEnemy(EnemyType.TheRanger);
+            GUILayout.EndHorizontal();
+
+            GUILayout.Space(8f);
+
+            // 5. Narrative Beat Invocators
             GUILayout.Label("Narrative Beat Invocators", _sectionLabelStyle);
             DrawNarrativeBeatButton("PROLOGUE", "Prologue Cutscene (Gate Arrival)");
             DrawNarrativeBeatButton("D1_MANIFEST_FOUND", "D1: Manifest Found (Dawn Dialogue)");
@@ -502,7 +617,7 @@ namespace FarmBeware.Features.Storyline.Sandbox
 
             GUILayout.Space(8f);
 
-            // 5. Modal Combat Safety Testing
+            // 6. Modal Combat Safety Testing
             GUILayout.Label("Modal Combat Safety Invariant", _sectionLabelStyle);
             GUILayout.BeginHorizontal();
             if (GUILayout.Button("Simulate Combat (Threats = 3)", _buttonStyle))

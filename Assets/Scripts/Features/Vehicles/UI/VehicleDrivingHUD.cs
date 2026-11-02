@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using FarmBeware.Features.Vehicles.PureLogic;
+using FarmBeware.Core.Runtime;
 
 namespace FarmBeware.Features.Vehicles.UI
 {
@@ -15,6 +16,12 @@ namespace FarmBeware.Features.Vehicles.UI
         private static VehicleDrivingHUD _instance;
         public static VehicleDrivingHUD Instance => _instance;
 
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetStaticState()
+        {
+            _instance = null;
+        }
+
         private Canvas _hudCanvas;
         private CanvasGroup _canvasGroup;
         private TextMeshProUGUI _speedText;
@@ -24,21 +31,199 @@ namespace FarmBeware.Features.Vehicles.UI
 
         private float _targetAlpha = 0f;
         private bool _isInitialized = false;
+        private bool _isDrivingActive = false;
+        public bool IsDrivingActive => _isDrivingActive;
+
+        private ICutsceneService _subscribedCutsceneService;
+        private int _lastKmh = -1;
+        private VehicleDynamicsCore.GearState _lastGear = (VehicleDynamicsCore.GearState)(-1);
 
         private void Awake()
         {
             if (_instance != null && _instance != this)
             {
-                Destroy(gameObject);
+                if (Application.isPlaying) Destroy(gameObject);
+                else DestroyImmediate(gameObject);
                 return;
             }
             _instance = this;
 
             EnsureHUDHierarchy();
+            SnapHidden();
+        }
+
+        private void OnEnable()
+        {
+            EnsureHUDHierarchy();
+            SubscribeCutsceneEvents();
+            if (!ShouldBeVisible())
+            {
+                SnapHidden();
+            }
+        }
+
+        private void OnDisable()
+        {
+            UnsubscribeCutsceneEvents();
+        }
+
+        private void OnDestroy()
+        {
+            UnsubscribeCutsceneEvents();
+            if (_instance == this)
+            {
+                _instance = null;
+            }
+        }
+
+        private void SubscribeCutsceneEvents()
+        {
+            if (ServiceLocator.TryResolve<ICutsceneService>(out var cutscene) && cutscene != null)
+            {
+                if (_subscribedCutsceneService != cutscene)
+                {
+                    if (_subscribedCutsceneService != null)
+                    {
+                        _subscribedCutsceneService.OnCutsceneStarted -= HandleCutsceneStarted;
+                        _subscribedCutsceneService.OnCutsceneEnded -= HandleCutsceneEnded;
+                    }
+                    _subscribedCutsceneService = cutscene;
+                    _subscribedCutsceneService.OnCutsceneStarted += HandleCutsceneStarted;
+                    _subscribedCutsceneService.OnCutsceneEnded += HandleCutsceneEnded;
+                }
+            }
+
+            if (FeaturesStoryline.Cutscenes.OpeningCutsceneController.HasInstance)
+            {
+                var opening = FeaturesStoryline.Cutscenes.OpeningCutsceneController.Instance;
+                opening.OnCutsceneStarted -= HandleCutsceneStarted;
+                opening.OnCutsceneStarted += HandleCutsceneStarted;
+                opening.OnCutsceneEnded -= HandleCutsceneEnded;
+                opening.OnCutsceneEnded += HandleCutsceneEnded;
+            }
+
+            if (FeaturesStoryline.Cutscenes.Night1CutsceneController.HasInstance)
+            {
+                var night1 = FeaturesStoryline.Cutscenes.Night1CutsceneController.Instance;
+                night1.OnCutsceneStarted -= HandleCutsceneStarted;
+                night1.OnCutsceneStarted += HandleCutsceneStarted;
+                night1.OnCutsceneEnded -= HandleCutsceneEnded;
+                night1.OnCutsceneEnded += HandleCutsceneEnded;
+            }
+        }
+
+        private void UnsubscribeCutsceneEvents()
+        {
+            if (_subscribedCutsceneService != null)
+            {
+                _subscribedCutsceneService.OnCutsceneStarted -= HandleCutsceneStarted;
+                _subscribedCutsceneService.OnCutsceneEnded -= HandleCutsceneEnded;
+                _subscribedCutsceneService = null;
+            }
+
+            if (FeaturesStoryline.Cutscenes.OpeningCutsceneController.HasInstance)
+            {
+                var opening = FeaturesStoryline.Cutscenes.OpeningCutsceneController.Instance;
+                opening.OnCutsceneStarted -= HandleCutsceneStarted;
+                opening.OnCutsceneEnded -= HandleCutsceneEnded;
+            }
+
+            if (FeaturesStoryline.Cutscenes.Night1CutsceneController.HasInstance)
+            {
+                var night1 = FeaturesStoryline.Cutscenes.Night1CutsceneController.Instance;
+                night1.OnCutsceneStarted -= HandleCutsceneStarted;
+                night1.OnCutsceneEnded -= HandleCutsceneEnded;
+            }
+        }
+
+        private void HandleCutsceneStarted()
+        {
+            SnapHidden();
+        }
+
+        private void HandleCutsceneEnded()
+        {
+            if (ShouldBeVisible())
+            {
+                Show();
+            }
+        }
+
+        /// <summary>
+        /// Inquires whether any cutscene is currently running across known providers.
+        /// </summary>
+        public bool IsCutsceneActive()
+        {
+            if (ServiceLocator.TryResolve<ICutsceneService>(out var cutscene) && cutscene != null)
+            {
+                if (cutscene.IsCutscenePlaying) return true;
+            }
+            if (FeaturesStoryline.Cutscenes.OpeningCutsceneController.HasInstance &&
+                FeaturesStoryline.Cutscenes.OpeningCutsceneController.Instance.IsCutscenePlaying)
+            {
+                return true;
+            }
+            if (FeaturesStoryline.Cutscenes.Night1CutsceneController.HasInstance &&
+                FeaturesStoryline.Cutscenes.Night1CutsceneController.Instance.IsCutscenePlaying)
+            {
+                return true;
+            }
+            if (FeaturesStoryline.StorylineManager.Instance != null &&
+                FeaturesStoryline.StorylineManager.Instance.IsCutsceneActive())
+            {
+                return true;
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// True strictly when driving is active and no cutscene is currently executing.
+        /// </summary>
+        public bool ShouldBeVisible()
+        {
+            return _isDrivingActive && !IsCutsceneActive();
+        }
+
+        /// <summary>
+        /// Immediately forces the HUD canvas and canvas group completely invisible with zero delay.
+        /// </summary>
+        public void SnapHidden()
+        {
+            _targetAlpha = 0f;
+            if (_canvasGroup != null)
+            {
+                _canvasGroup.alpha = 0f;
+            }
+            if (_hudCanvas != null)
+            {
+                _hudCanvas.enabled = false;
+                if (_hudCanvas.gameObject.activeSelf)
+                {
+                    _hudCanvas.gameObject.SetActive(false);
+                }
+            }
         }
 
         private void Update()
         {
+            if (_subscribedCutsceneService == null)
+            {
+                SubscribeCutsceneEvents();
+            }
+
+            if (!ShouldBeVisible())
+            {
+                if (_canvasGroup != null && _canvasGroup.alpha > 0f)
+                {
+                    SnapHidden();
+                }
+                else if (_hudCanvas != null && _hudCanvas.enabled)
+                {
+                    _hudCanvas.enabled = false;
+                }
+                return;
+            }
+
             if (_canvasGroup != null)
             {
                 _canvasGroup.alpha = Mathf.MoveTowards(_canvasGroup.alpha, _targetAlpha, Time.deltaTime * 6f);
@@ -52,24 +237,60 @@ namespace FarmBeware.Features.Vehicles.UI
 
         public void Show()
         {
+            _isDrivingActive = true;
             EnsureHUDHierarchy();
+            SubscribeCutsceneEvents();
+
+            if (!ShouldBeVisible())
+            {
+                SnapHidden();
+                return;
+            }
+
             _targetAlpha = 1f;
-            if (_hudCanvas != null) _hudCanvas.enabled = true;
+            if (_hudCanvas != null)
+            {
+                if (!_hudCanvas.gameObject.activeSelf)
+                {
+                    _hudCanvas.gameObject.SetActive(true);
+                }
+                _hudCanvas.enabled = true;
+            }
         }
 
         public void Hide()
         {
+            _isDrivingActive = false;
             _targetAlpha = 0f;
+        }
+
+        public void SetDrivingActive(bool active)
+        {
+            _isDrivingActive = active;
+            if (!active)
+            {
+                Hide();
+            }
+            else
+            {
+                Show();
+            }
         }
 
         public void UpdateTelemetry(float speedMps, VehicleDynamicsCore.GearState gear)
         {
+            if (!ShouldBeVisible()) return;
+
             if (!_isInitialized) EnsureHUDHierarchy();
+            if (_hudCanvas == null || !_hudCanvas.enabled) return;
 
             float kmh = Mathf.Abs(speedMps) * 3.6f;
-            if (_speedText != null)
+            int roundedKmh = Mathf.RoundToInt(kmh);
+
+            if (_speedText != null && roundedKmh != _lastKmh)
             {
-                _speedText.text = $"{Mathf.RoundToInt(kmh)} <size=16>KM/H</size>";
+                _lastKmh = roundedKmh;
+                _speedText.text = $"{roundedKmh} <size=16>KM/H</size>";
             }
 
             if (_speedBarFill != null)
@@ -77,8 +298,9 @@ namespace FarmBeware.Features.Vehicles.UI
                 _speedBarFill.fillAmount = Mathf.Clamp01(kmh / 80f);
             }
 
-            if (_gearText != null)
+            if (_gearText != null && gear != _lastGear)
             {
+                _lastGear = gear;
                 switch (gear)
                 {
                     case VehicleDynamicsCore.GearState.Reverse:
@@ -98,11 +320,47 @@ namespace FarmBeware.Features.Vehicles.UI
         {
             if (_isInitialized && _hudCanvas != null) return;
 
-            var canvasGo = GameObject.Find("VehicleDrivingCanvas");
+            // Search for existing canvas even if inactive, and eliminate any duplicates
+            var allCanvases = Object.FindObjectsByType<Canvas>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            for (int i = 0; i < allCanvases.Length; i++)
+            {
+                if (allCanvases[i] != null && allCanvases[i].gameObject.name == "VehicleDrivingCanvas")
+                {
+                    if (_hudCanvas == null)
+                    {
+                        _hudCanvas = allCanvases[i];
+                    }
+                    else if (allCanvases[i] != _hudCanvas)
+                    {
+                        if (Application.isPlaying)
+                        {
+                            Destroy(allCanvases[i].gameObject);
+                        }
+                        else
+                        {
+                            DestroyImmediate(allCanvases[i].gameObject);
+                        }
+                    }
+                }
+            }
+
+            GameObject canvasGo = _hudCanvas != null ? _hudCanvas.gameObject : null;
             if (canvasGo == null)
             {
                 canvasGo = new GameObject("VehicleDrivingCanvas");
-                DontDestroyOnLoad(canvasGo);
+                var uiRoot = GameObject.Find("_UI");
+                if (uiRoot != null)
+                {
+                    canvasGo.transform.SetParent(uiRoot.transform, false);
+                }
+            }
+            else
+            {
+                var uiRoot = GameObject.Find("_UI");
+                if (uiRoot != null && canvasGo.transform.parent == null)
+                {
+                    canvasGo.transform.SetParent(uiRoot.transform, false);
+                }
             }
 
             _hudCanvas = canvasGo.GetComponent<Canvas>();
@@ -125,10 +383,11 @@ namespace FarmBeware.Features.Vehicles.UI
             if (_canvasGroup == null)
             {
                 _canvasGroup = canvasGo.AddComponent<CanvasGroup>();
-                _canvasGroup.alpha = 0f;
-                _canvasGroup.blocksRaycasts = false;
-                _canvasGroup.interactable = false;
             }
+            _canvasGroup.alpha = 0f;
+            _canvasGroup.blocksRaycasts = false;
+            _canvasGroup.interactable = false;
+            _targetAlpha = 0f;
 
             // HUD Container panel at bottom right
             var panelTransform = canvasGo.transform.Find("DrivingPanel");
@@ -258,6 +517,10 @@ namespace FarmBeware.Features.Vehicles.UI
             }
 
             _hudCanvas.enabled = false;
+            if (_hudCanvas.gameObject.activeSelf)
+            {
+                _hudCanvas.gameObject.SetActive(false);
+            }
             _isInitialized = true;
         }
     }
