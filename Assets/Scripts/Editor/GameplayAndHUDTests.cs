@@ -45,7 +45,7 @@ namespace FarmBeware.EditorTests
             }
 
             int passed = 0;
-            int total = 72;
+            int total = 74;
 
             if (Test_DayNight_PhaseProgression_DuskUntilNight()) passed++;
             if (Test_BedInteractable_Logic_AllowsDuskAndBlocksNightOnly()) passed++;
@@ -119,6 +119,8 @@ namespace FarmBeware.EditorTests
             if (Test_VehicleDrivingHUD_Suppression_And_KinematicEnemySafety_Audit()) passed++;
             if (Test_Day1_DayToNight_CutsceneAndStorylineDeconfliction_Audit()) passed++;
             if (Test_OpeningCutscene_DialogueSuppression_And_Night1CamClearance_Audit()) passed++;
+            if (Test_Day1_StorageChestStarterKit_And_SideQuestRetrieve_Audit()) passed++;
+            if (Test_CookingQuest_Progression_And_Double_Click_Audit()) passed++;
 
             Debug.Log("[AUDIT-SUITE] ========================================================");
             Debug.Log($"[AUDIT-SUITE] Complete! Passed: {passed}/{total}");
@@ -7043,7 +7045,319 @@ namespace FarmBeware.EditorTests
             }
         }
 
-        public static bool Test_Playable_Sandbox_Day1To5_NarrativeLoop_Audit() => Test_Storyline_SandboxPlayableLoop_E2E_Audit();
+        private static bool Test_Day1_StorageChestStarterKit_And_SideQuestRetrieve_Audit()
+        {
+            var cleanupList = new List<GameObject>();
+            var prevTime = FeaturesTime.DayNightTimeManager.Instance;
+            var prevService = ServiceLocator.Resolve<ITimeService>();
+            try
+            {
+                var timeGo = new GameObject("Test_TimeManager_Day1_ChestQuest");
+                cleanupList.Add(timeGo);
+                var timeMgr = timeGo.AddComponent<FeaturesTime.DayNightTimeManager>();
+                FeaturesTime.DayNightTimeManager.Instance = timeMgr;
+                ServiceLocator.Register<ITimeService>(timeMgr);
+                timeMgr.SetDayAndTime(0, 20.0f); // Day 0 Night
+
+                // 1. Create player with starter kit and equipment
+                var playerGo = new GameObject("Test_Player_ChestQuest");
+                cleanupList.Add(playerGo);
+                playerGo.tag = "Player";
+                var inv = playerGo.AddComponent<InventoryComponent>();
+                inv.ResetInventory(16);
+                var equip = playerGo.AddComponent<PlayerEquipment>();
+                var kit = playerGo.AddComponent<PlayerStarterKit>();
+                kit.EnsureStarterKit(0); // Day 0 empty
+
+                // 2. Create Storage Chest
+                var chestGo = new GameObject("StorageChest");
+                cleanupList.Add(chestGo);
+                var chestStorage = chestGo.AddComponent<FeaturesInteraction.StorageInteractable>();
+                var chestInv = chestGo.GetComponent<InventoryComponent>();
+                chestInv.ResetInventory(16);
+                kit.SetTargetStorageChest(chestInv);
+
+                // 3. Create Bed and execute Day 0 Sleep to transition to Day 1
+                var bedGo = new GameObject("Test_Bed_ChestQuest", typeof(BedInteractable));
+                cleanupList.Add(bedGo);
+                var bed = bedGo.GetComponent<BedInteractable>();
+                bed.Interact(playerGo);
+
+                if (timeMgr.CurrentDay != 1)
+                {
+                    Debug.LogError($"[Test 73] Expected Day 1 after sleeping, got Day {timeMgr.CurrentDay}!");
+                    return false;
+                }
+
+                // 4. Verify player woke up with completely empty hands and empty inventory
+                for (int i = 0; i < inv.slots.Count; i++)
+                {
+                    if (inv.slots[i] != null && !inv.slots[i].IsEmpty)
+                    {
+                        Debug.LogError($"[Test 73] Player inventory slot {i} was not empty upon waking on Day 1! Item: {inv.slots[i].item?.itemId}");
+                        return false;
+                    }
+                }
+                var weaponField = typeof(PlayerEquipment).GetField("currentWeaponModel", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+                if (weaponField != null && weaponField.GetValue(equip) != null)
+                {
+                    Debug.LogError("[Test 73] Player should not hold any weapon/tool visual upon waking on Day 1!");
+                    return false;
+                }
+
+                // 5. Verify Storage Chest contains all 4 starter items
+                var db = Resources.Load<ItemDatabase>("Database/ItemDatabase");
+                var hoeItem = db != null ? db.GetItem("tool_hoe") : null;
+                var watererItem = db != null ? db.GetItem("tool_plant_waterer") : null;
+                var bottleItem = db != null ? db.GetItem("food_bottle_water") : null;
+                var seedItem = db != null ? db.GetItem("seed_sweet_potato") : null;
+
+                if (chestInv.CountItem(hoeItem) < 1)
+                {
+                    Debug.LogError("[Test 73] Storage Chest missing Hoe tool!");
+                    return false;
+                }
+                if (chestInv.CountItem(watererItem) < 1)
+                {
+                    Debug.LogError("[Test 73] Storage Chest missing Plant Waterer!");
+                    return false;
+                }
+                if (chestInv.CountItem(bottleItem) < 1)
+                {
+                    Debug.LogError("[Test 73] Storage Chest missing Water Bottle!");
+                    return false;
+                }
+                if (chestInv.CountItem(seedItem) < 6)
+                {
+                    Debug.LogError($"[Test 73] Storage Chest missing 6x Sweet Potato Seeds! Found: {chestInv.CountItem(seedItem)}");
+                    return false;
+                }
+
+                // 6. Verify Side Quest model state and objective text
+                var questModel = new QuestProgressModel();
+                if (questModel.CurrentStage != QuestStage.GatheringSupplies)
+                {
+                    Debug.LogError($"[Test 73] Expected Side Quest stage GatheringSupplies, got {questModel.CurrentStage}!");
+                    return false;
+                }
+
+                string objectiveText = questModel.GetFormattedObjectiveDetails();
+                if (!objectiveText.Contains("Storage Chest"))
+                {
+                    Debug.LogError($"[Test 73] Side Quest objective text does not mention Storage Chest! Details:\n{objectiveText}");
+                    return false;
+                }
+
+                // 7. Simulate Player retrieving items from Storage Chest into inventory
+                inv.AddItem(hoeItem, 1);
+                inv.AddItem(watererItem, 1);
+                inv.AddItem(bottleItem, 1);
+                inv.AddItem(seedItem, 6);
+
+                questModel.EvaluateInventory(new[] { "tool_hoe", "tool_plant_waterer", "food_bottle_water", "seed_sweet_potato" });
+                if (!questModel.IsAllSuppliesGathered || questModel.CurrentStage != QuestStage.PlantingCrop)
+                {
+                    Debug.LogError($"[Test 73] Expected stage PlantingCrop after retrieving all supplies, got: {questModel.CurrentStage}!");
+                    return false;
+                }
+
+                Debug.Log("✅ Test 73: Day 1 Storage Chest starter kit placement, Player empty hands/inventory, and Side Quest retrieval progression verified.");
+                return true;
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogError($"[Test 73] Exception: {ex.Message}\n{ex.StackTrace}");
+                return false;
+            }
+            finally
+            {
+                DayNightTimeManager.Instance = prevTime;
+                if (prevService != null) ServiceLocator.Register<ITimeService>(prevService);
+                foreach (var go in cleanupList)
+                {
+                    if (go != null) Object.DestroyImmediate(go);
+                }
+            }
+        }
+
+        // Test 71: Home Cooking Side Quest progression (Enter Kitchen -> Retrieve Taro & Coconut -> Cook at Stove -> Double-click to Consume) Audit
+        private static bool Test_CookingQuest_Progression_And_Double_Click_Audit()
+        {
+            var cleanupList = new List<GameObject>();
+            try
+            {
+                // 1. POCO Model Progression Lifecycle
+                var model = new QuestProgressModel();
+
+                // Finish First Steps planting quest
+                model.EvaluateInventory(new[] { "tool_hoe", "tool_plant_waterer", "food_bottle_water", "seed_sweet_potato" });
+                model.OnCropPlanted("seed_sweet_potato");
+                model.OnCropWatered("seed_sweet_potato");
+
+                if (model.CurrentStage != QuestStage.Completed)
+                {
+                    Debug.LogError($"[Test 74] Expected stage Completed for First Steps, got {model.CurrentStage}!");
+                    return false;
+                }
+
+                // Advance to Cooking Quest: EnterKitchen
+                bool advanced = model.AdvanceToCookingQuest();
+                if (!advanced || model.CurrentStage != QuestStage.EnterKitchen || !model.IsCookingQuest)
+                {
+                    Debug.LogError($"[Test 74] Expected stage EnterKitchen after AdvanceToCookingQuest, got {model.CurrentStage}!");
+                    return false;
+                }
+
+                string enterDetails = model.GetFormattedObjectiveDetails();
+                if (!enterDetails.Contains("Kitchen"))
+                {
+                    Debug.LogError($"[Test 74] Objective details do not mention Kitchen! Got:\n{enterDetails}");
+                    return false;
+                }
+
+                // Player enters Kitchen -> RetrieveIngredients
+                bool enteredKitchen = model.OnEnteredKitchen();
+                if (!enteredKitchen || model.CurrentStage != QuestStage.RetrieveIngredients || !model.HasEnteredKitchen)
+                {
+                    Debug.LogError($"[Test 74] Expected stage RetrieveIngredients after entering kitchen, got {model.CurrentStage}!");
+                    return false;
+                }
+
+                string retrieveDetails = model.GetFormattedObjectiveDetails();
+                if (!retrieveDetails.Contains("Refrigerator") || !retrieveDetails.Contains("Taro") || !retrieveDetails.Contains("Coconut"))
+                {
+                    Debug.LogError($"[Test 74] Objective details do not mention Refrigerator, Taro, and Coconut! Got:\n{retrieveDetails}");
+                    return false;
+                }
+
+                // 2. Refrigerator Capacity & Coconut/Taro Acceptance
+                var fridgeGo = new GameObject("Test_Fridge_Audit");
+                cleanupList.Add(fridgeGo);
+                var fridgeInv = fridgeGo.AddComponent<InventoryComponent>();
+                fridgeInv.ResetInventory(16);
+                fridgeInv.SetAllowAllCropsAndFood(true);
+
+                var db = Resources.Load<ItemDatabase>("Database/ItemDatabase");
+                var taroItem = db != null ? db.GetItem("crop_taro") : null;
+                var coconutItem = db != null ? db.GetItem("mat_coconut") : null;
+                var stewItem = db != null ? db.GetItem("food_taro_coconut_stew") : null;
+
+                if (taroItem != null && !fridgeInv.CanAcceptItem(taroItem))
+                {
+                    Debug.LogError("[Test 74] Refrigerator failed to accept crop_taro!");
+                    return false;
+                }
+                if (coconutItem != null && !fridgeInv.CanAcceptItem(coconutItem))
+                {
+                    Debug.LogError("[Test 74] Refrigerator failed to accept mat_coconut!");
+                    return false;
+                }
+
+                // 3. Player Inventory Evaluation with Taro and Coconut -> Advance to CookStew
+                model.EvaluateInventory(new[] { "crop_taro" });
+                if (model.CurrentStage != QuestStage.RetrieveIngredients || !model.HasTaro || model.HasCoconut)
+                {
+                    Debug.LogError($"[Test 74] Model prematurely advanced with only Taro gathered! Stage: {model.CurrentStage}");
+                    return false;
+                }
+
+                model.EvaluateInventory(new[] { "crop_taro", "mat_coconut" });
+                if (model.CurrentStage != QuestStage.CookStew || !model.IsAllCookingIngredientsGathered)
+                {
+                    Debug.LogError($"[Test 74] Expected stage CookStew after retrieving Taro and Coconut, got {model.CurrentStage}!");
+                    return false;
+                }
+
+                string cookDetails = model.GetFormattedObjectiveDetails();
+                if (!cookDetails.Contains("Kitchen Stove") || !cookDetails.Contains("Taro Coconut Stew Bowl"))
+                {
+                    Debug.LogError($"[Test 74] Objective details do not mention Kitchen Stove and Taro Coconut Stew Bowl! Got:\n{cookDetails}");
+                    return false;
+                }
+
+                // 4. Cook at Stove -> Advance to ConsumeDish with double-click tip
+                bool stewCooked = model.OnStewCooked();
+                if (!stewCooked || model.CurrentStage != QuestStage.ConsumeDish || !model.HasCookedStew)
+                {
+                    Debug.LogError($"[Test 74] Expected stage ConsumeDish after cooking stew, got {model.CurrentStage}!");
+                    return false;
+                }
+
+                string consumeDetails = model.GetFormattedObjectiveDetails();
+                if (!consumeDetails.Contains("Double-click") && !consumeDetails.Contains("double-click"))
+                {
+                    Debug.LogError($"[Test 74] Objective details do not contain double-click instruction/tip! Got:\n{consumeDetails}");
+                    return false;
+                }
+
+                // 5. Inventory Consumption and Double-Click Event Integration
+                var playerGo = new GameObject("Test_Player_CookingQuest");
+                cleanupList.Add(playerGo);
+                playerGo.tag = "Player";
+                var playerInv = playerGo.AddComponent<InventoryComponent>();
+                playerInv.ResetInventory(16);
+
+                bool itemConsumedEventFired = false;
+                ItemData consumedItemReceived = null;
+                System.Action<ItemData> listener = (item) =>
+                {
+                    itemConsumedEventFired = true;
+                    consumedItemReceived = item;
+                };
+                InventoryComponent.OnItemConsumed += listener;
+
+                try
+                {
+                    if (stewItem != null)
+                    {
+                        playerInv.AddItem(stewItem, 1);
+                        playerInv.UseItem(0);
+
+                        if (!itemConsumedEventFired || consumedItemReceived != stewItem)
+                        {
+                            Debug.LogError("[Test 74] InventoryComponent.OnItemConsumed event was not fired upon UseItem!");
+                            return false;
+                        }
+
+                        // Complete quest by consuming dish
+                        bool consumedQuestDone = model.OnDishConsumed(consumedItemReceived.itemId);
+                        if (!consumedQuestDone || model.CurrentStage != QuestStage.CookingQuestCompleted || !model.IsCompleted)
+                        {
+                            Debug.LogError($"[Test 74] Expected stage CookingQuestCompleted after consuming stew, got {model.CurrentStage}!");
+                            return false;
+                        }
+
+                        string finalDetails = model.GetFormattedObjectiveDetails();
+                        if (!finalDetails.Contains("completed") || !finalDetails.Contains("Taro Coconut Stew Bowl"))
+                        {
+                            Debug.LogError($"[Test 74] Final objective details missing completion text! Got:\n{finalDetails}");
+                            return false;
+                        }
+                    }
+                }
+                finally
+                {
+                    InventoryComponent.OnItemConsumed -= listener;
+                }
+
+                Debug.Log("✅ Test 74: Home Cooking Side Quest progression (Enter Kitchen -> Retrieve Taro & Coconut -> Cook at Stove -> Double-click to Consume) and Refrigerator item storage verified.");
+                return true;
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogError($"[Test 74] Exception: {ex.Message}\n{ex.StackTrace}");
+                return false;
+            }
+            finally
+            {
+                foreach (var go in cleanupList)
+                {
+                    if (go != null) Object.DestroyImmediate(go);
+                }
+            }
+        }
+        
+                public static bool Test_Playable_Sandbox_Day1To5_NarrativeLoop_Audit() => Test_Storyline_SandboxPlayableLoop_E2E_Audit();
     }
 }
 
