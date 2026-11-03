@@ -314,10 +314,6 @@ namespace FeaturesStoryline.Cutscenes
             }
 
             OnCutsceneStarted?.Invoke();
-            if (Night1CutsceneController.HasInstance)
-            {
-                Night1CutsceneController.Instance.NotifyCutsceneStarted();
-            }
 
             // Immediately suppress all gameplay HUD and driving UI before staging actors
             SetGameplayHUDVisible(false);
@@ -867,10 +863,6 @@ namespace FeaturesStoryline.Cutscenes
             }
 
             OnCutsceneEnded?.Invoke();
-            if (Night1CutsceneController.HasInstance)
-            {
-                Night1CutsceneController.Instance.NotifyCutsceneEnded();
-            }
             _onCompleteCallback?.Invoke();
             _onCompleteCallback = null;
 

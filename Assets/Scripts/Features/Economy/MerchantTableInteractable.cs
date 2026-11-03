@@ -14,9 +14,14 @@ namespace FeaturesEconomy
     {
         [Header("Merchant Catalog")]
         [Tooltip("Custom items for sale at this table. If empty, all seeds are loaded automatically.")]
-        [SerializeField] private List<ItemData> stockItems = new List<ItemData>();
+        [SerializeField] protected List<ItemData> stockItems = new List<ItemData>();
 
-        private void Awake()
+        /// <summary>
+        /// Read-only view of current stock items for sale.
+        /// </summary>
+        public IReadOnlyList<ItemData> StockItems => stockItems;
+
+        protected virtual void Awake()
         {
             var label = GetComponent<WorldLabel>();
             if (label != null && string.IsNullOrEmpty(label.displayName))
@@ -29,7 +34,7 @@ namespace FeaturesEconomy
             }
         }
 
-        public void InitializeDefaultStock()
+        public virtual void InitializeDefaultStock()
         {
             if (stockItems == null) stockItems = new List<ItemData>();
             if (stockItems.Count > 0) return;
@@ -51,7 +56,9 @@ namespace FeaturesEconomy
             }
         }
 
-        public void Interact(GameObject interactor)
+        public virtual bool CanInteract(GameObject interactor) => true;
+
+        public virtual void Interact(GameObject interactor)
         {
             var timeService = FarmBeware.Core.Runtime.ServiceLocator.Resolve<FarmBeware.Core.Runtime.ITimeService>();
             int currentDay = timeService != null ? timeService.CurrentDay : 1;

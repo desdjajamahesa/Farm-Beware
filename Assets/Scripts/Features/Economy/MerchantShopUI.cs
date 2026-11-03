@@ -669,7 +669,15 @@ namespace FeaturesEconomy
                 return;
             }
 
-            // 2. Spend currency FIRST
+            // 2. Pre-flight inventory capacity check (blocks partial overflow item duplication exploit)
+            if (!playerInventory.HasSpaceFor(item, count))
+            {
+                ShowFloatingNotify("Backpack is full!", new Color(1f, 0.6f, 0.2f));
+                UpdateBuyButtonStates();
+                return;
+            }
+
+            // 3. Spend currency FIRST
             bool spent = PlayerWallet.Instance.SpendGold(totalCost);
             if (!spent)
             {
@@ -678,11 +686,14 @@ namespace FeaturesEconomy
                 return;
             }
 
-            // 3. Add to inventory
-            bool added = playerInventory.AddItem(item, count);
-            if (!added)
+            // 4. Add to inventory with atomic rollback defense-in-depth
+            int addedAmount = playerInventory.AddItemAmount(item, count);
+            if (addedAmount < count)
             {
-                // Automatic refund if inventory is full
+                if (addedAmount > 0)
+                {
+                    playerInventory.RemoveItem(item, addedAmount);
+                }
                 PlayerWallet.Instance.AddGold(totalCost);
                 ShowFloatingNotify("Backpack is full! Gold refunded.", new Color(1f, 0.6f, 0.2f));
                 UpdateBuyButtonStates();

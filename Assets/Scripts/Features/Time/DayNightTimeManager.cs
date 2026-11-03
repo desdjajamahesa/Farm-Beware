@@ -43,10 +43,10 @@ namespace FeaturesTime
                             _instance = tm.gameObject.AddComponent<DayNightTimeManager>();
                         }
                     }
-                }
-                if (_instance != null)
-                {
-                    FarmBeware.Core.Runtime.ServiceLocator.Register<FarmBeware.Core.Runtime.ITimeService>(_instance);
+                    if (_instance != null)
+                    {
+                        FarmBeware.Core.Runtime.ServiceLocator.Register<FarmBeware.Core.Runtime.ITimeService>(_instance);
+                    }
                 }
                 return _instance;
             }

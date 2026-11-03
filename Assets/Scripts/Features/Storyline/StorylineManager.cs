@@ -1193,12 +1193,12 @@ namespace FeaturesStoryline
 
         private int GetCurrentGameDay()
         {
+            if (ServiceLocator.TryResolve<ITimeService>(out var timeService) && timeService != null)
+                return timeService.CurrentDay;
             if (DayNightTimeManager.Instance != null)
                 return DayNightTimeManager.Instance.CurrentDay;
             if (TimeManager.Instance != null)
                 return TimeManager.Instance.currentDay;
-            if (ServiceLocator.TryResolve<ITimeService>(out var timeService) && timeService != null)
-                return timeService.CurrentDay;
             return _engine.CurrentChapter;
         }
 
