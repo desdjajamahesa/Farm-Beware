@@ -41,6 +41,7 @@ namespace FeaturesStoryline.Cutscenes
         {
             get
             {
+                if (!Application.isPlaying) _isQuitting = false;
                 if (_instance == null)
                 {
                     _instance = FindFirstObjectByType<OpeningCutsceneController>(FindObjectsInactive.Include);
@@ -209,6 +210,11 @@ namespace FeaturesStoryline.Cutscenes
         private void Update()
         {
             if (!_isCutscenePlaying) return;
+
+            if (FeaturesStoryline.UI.StorylineUI.HasInstance && FeaturesStoryline.UI.StorylineUI.Instance != null)
+            {
+                FeaturesStoryline.UI.StorylineUI.Instance.DismissDialogue();
+            }
 
             UpdateHoldToSkip();
         }

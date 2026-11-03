@@ -32,6 +32,50 @@ namespace FarmBeware.EditorTests
 {
     public static class GameplayAndHUDTests
     {
+        private static void ResetTestAuditHarness()
+        {
+            if (ModalStackManager.HasInstance && ModalStackManager.Instance != null)
+            {
+                ModalStackManager.Instance.Clear();
+            }
+
+            FarmBeware.Core.Runtime.GameSessionState.IsPendingNewGameIntroCutscene = false;
+
+            if (FeaturesStoryline.Cutscenes.Night1CutsceneController.HasInstance &&
+                FeaturesStoryline.Cutscenes.Night1CutsceneController.Instance != null)
+            {
+                var n1 = FeaturesStoryline.Cutscenes.Night1CutsceneController.Instance;
+                var f = typeof(FeaturesStoryline.Cutscenes.Night1CutsceneController).GetField("_isCutscenePlaying", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                f?.SetValue(n1, false);
+            }
+
+            if (FeaturesStoryline.Cutscenes.OpeningCutsceneController.HasInstance &&
+                FeaturesStoryline.Cutscenes.OpeningCutsceneController.Instance != null)
+            {
+                var op = FeaturesStoryline.Cutscenes.OpeningCutsceneController.Instance;
+                var f = typeof(FeaturesStoryline.Cutscenes.OpeningCutsceneController).GetField("_isCutscenePlaying", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                f?.SetValue(op, false);
+            }
+
+            var singletonTypes = new System.Type[]
+            {
+                typeof(FeaturesStoryline.Cutscenes.CutsceneLetterboxUI),
+                typeof(FeaturesStoryline.Cutscenes.Night1CutsceneController),
+                typeof(FeaturesStoryline.Cutscenes.OpeningCutsceneController),
+                typeof(FeaturesStoryline.UI.StorylineUI),
+                typeof(FeaturesStoryline.UI.BossIntroSequence),
+                typeof(FeaturesStoryline.UI.JournalUI),
+                typeof(DayTransitionUI),
+                typeof(FarmBeware.Features.Quest.QuestManager)
+            };
+
+            foreach (var t in singletonTypes)
+            {
+                var qf = t.GetField("_isQuitting", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+                qf?.SetValue(null, false);
+            }
+        }
+
         [MenuItem("FarmBeware/Tests/Run Comprehensive Audit Tests")]
         public static void RunAllTests()
         {
@@ -39,10 +83,7 @@ namespace FarmBeware.EditorTests
             Debug.Log("[AUDIT-SUITE] === STARTING DEEP AUDIT & AUTOMATED TEST VERIFICATION ===");
             Debug.Log("[AUDIT-SUITE] ========================================================");
 
-            if (ModalStackManager.HasInstance && ModalStackManager.Instance != null)
-            {
-                ModalStackManager.Instance.Clear();
-            }
+            ResetTestAuditHarness();
 
             int passed = 0;
             int total = 79;
@@ -6511,8 +6552,8 @@ namespace FarmBeware.EditorTests
             }
             finally
             {
-                if (opField != null && opening != null) opField.SetValue(opening, origOpPlaying);
-                if (n1Field != null && night1 != null) n1Field.SetValue(night1, origN1Playing);
+                if (opField != null && opening != null) opField.SetValue(opening, false);
+                if (n1Field != null && night1 != null) n1Field.SetValue(night1, false);
 
                 if (oldCutscene != null)
                 {
@@ -6542,6 +6583,7 @@ namespace FarmBeware.EditorTests
 
             try
             {
+                ResetTestAuditHarness();
                 // 1. Setup mock player context
                 var playerObj = new GameObject("Test_Player_DeconflictionAudit", typeof(Rigidbody), typeof(CapsuleCollider), typeof(PlayerControl));
                 playerObj.tag = "Player";
@@ -6961,6 +7003,8 @@ namespace FarmBeware.EditorTests
                 if (origCutsceneService != null) ServiceLocator.Register<ICutsceneService>(origCutsceneService);
                 else ServiceLocator.Unregister<ICutsceneService>();
 
+                ResetTestAuditHarness();
+
                 for (int i = cleanupList.Count - 1; i >= 0; i--)
                 {
                     if (cleanupList[i] != null) Object.DestroyImmediate(cleanupList[i]);
@@ -6980,6 +7024,7 @@ namespace FarmBeware.EditorTests
 
             try
             {
+                ResetTestAuditHarness();
                 // 1. Create Mock Services and Canvas
                 var mockCam = new MockCameraService();
                 ServiceLocator.Register<ICameraService>(mockCam);
@@ -7103,6 +7148,8 @@ namespace FarmBeware.EditorTests
 
                 if (origFacts != null) ServiceLocator.Register<INarrativeFactBoard>(origFacts);
                 else ServiceLocator.Unregister<INarrativeFactBoard>();
+
+                ResetTestAuditHarness();
 
                 for (int i = cleanupList.Count - 1; i >= 0; i--)
                 {

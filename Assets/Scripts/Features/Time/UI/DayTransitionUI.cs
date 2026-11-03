@@ -41,6 +41,7 @@ public class DayTransitionUI : MonoBehaviour
     {
         get
         {
+            if (!Application.isPlaying) _isQuitting = false;
             if (_instance == null)
             {
                 _instance = FindFirstObjectByType<DayTransitionUI>(FindObjectsInactive.Include);

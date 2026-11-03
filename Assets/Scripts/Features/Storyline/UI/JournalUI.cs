@@ -31,7 +31,8 @@ namespace FeaturesStoryline.UI
         {
             get
             {
-                if (_isQuitting) return null;
+                if (!Application.isPlaying) _isQuitting = false;
+                else if (_isQuitting) return null;
                 if (_instance == null)
                 {
                     _instance = FindFirstObjectByType<JournalUI>(FindObjectsInactive.Include);

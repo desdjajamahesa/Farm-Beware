@@ -478,7 +478,10 @@ namespace FeaturesStoryline
 
             if (phase == EnvironmentPhase.Dawn)
             {
-                EvaluateTrigger(StoryTriggerType.Dawn, currentDay);
+                if (!IsCutsceneActive() && !FarmBeware.Core.Runtime.GameSessionState.IsPendingNewGameIntroCutscene)
+                {
+                    EvaluateTrigger(StoryTriggerType.Dawn, currentDay);
+                }
                 ApplyAtmosphericEffects(currentDay);
             }
             else if (phase == EnvironmentPhase.Dusk)
@@ -504,8 +507,11 @@ namespace FeaturesStoryline
 
             if (newDay >= 1)
             {
-                EvaluateTrigger(StoryTriggerType.GameStart, newDay);
-                EvaluateTrigger(StoryTriggerType.Dawn, newDay);
+                if (!IsCutsceneActive() && !FarmBeware.Core.Runtime.GameSessionState.IsPendingNewGameIntroCutscene)
+                {
+                    EvaluateTrigger(StoryTriggerType.GameStart, newDay);
+                    EvaluateTrigger(StoryTriggerType.Dawn, newDay);
+                }
             }
         }
 

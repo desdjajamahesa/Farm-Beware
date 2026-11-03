@@ -44,7 +44,15 @@ namespace FeaturesStoryline.UI
     public class StorylineUI : MonoBehaviour, IModalWindow
     {
         private static StorylineUI _instance;
-        public static bool HasInstance => _instance != null;
+        public static bool HasInstance
+        {
+            get
+            {
+                if (_instance != null) return true;
+                _instance = FindFirstObjectByType<StorylineUI>(FindObjectsInactive.Include);
+                return _instance != null;
+            }
+        }
         private static bool _isQuitting = false;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
@@ -58,7 +66,8 @@ namespace FeaturesStoryline.UI
         {
             get
             {
-                if (_isQuitting) return null;
+                if (!Application.isPlaying) _isQuitting = false;
+                else if (_isQuitting) return null;
                 if (_instance == null)
                 {
                     _instance = FindFirstObjectByType<StorylineUI>(FindObjectsInactive.Include);
@@ -200,6 +209,23 @@ namespace FeaturesStoryline.UI
         private void Update()
         {
             SimulateFrame(Time.unscaledDeltaTime);
+
+            // Gating Invariant: If any cutscene is active, ensure dialoguePanel remains unconditionally hidden
+            if (dialoguePanel != null && dialoguePanel.activeSelf)
+            {
+                bool cutsceneActive = false;
+                if (StorylineManager.Instance != null && StorylineManager.Instance.IsCutsceneActive()) cutsceneActive = true;
+                else if (Cutscenes.OpeningCutsceneController.HasInstance && Cutscenes.OpeningCutsceneController.Instance.IsCutscenePlaying) cutsceneActive = true;
+                else if (Cutscenes.Night1CutsceneController.HasInstance && Cutscenes.Night1CutsceneController.Instance.IsCutscenePlaying) cutsceneActive = true;
+                else if (ServiceLocator.TryResolve<ICutsceneService>(out var cs) && cs != null && cs.IsCutscenePlaying) cutsceneActive = true;
+
+                if (cutsceneActive || FarmBeware.Core.Runtime.GameSessionState.IsPendingNewGameIntroCutscene)
+                {
+                    dialoguePanel.SetActive(false);
+                    _isTypewriterActive = false;
+                    return;
+                }
+            }
 
             // Allow Space, Enter, or Click to advance dialogue if open
             if (dialoguePanel != null && dialoguePanel.activeSelf)
@@ -432,7 +458,7 @@ namespace FeaturesStoryline.UI
                 {
                     dialoguePanel.SetActive(false);
                 }
-                onDismiss?.Invoke();
+                _isTypewriterActive = false;
                 return;
             }
 

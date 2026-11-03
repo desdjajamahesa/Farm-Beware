@@ -46,6 +46,7 @@ namespace FeaturesStoryline.Cutscenes
         {
             get
             {
+                if (!Application.isPlaying) _isQuitting = false;
                 if (_instance == null)
                 {
                     _instance = FindFirstObjectByType<Night1CutsceneController>(FindObjectsInactive.Include);
@@ -250,10 +251,6 @@ namespace FeaturesStoryline.Cutscenes
 
                 // Dispatch cutscene termination events so deferred story beats unblock
                 OnCutsceneEnded?.Invoke();
-                if (OpeningCutsceneController.HasInstance)
-                {
-                    OpeningCutsceneController.Instance.NotifyCutsceneEnded();
-                }
 
                 // Unblock any asynchronous callers awaiting cutscene completion
                 if (!_isQuitting)
@@ -602,6 +599,7 @@ namespace FeaturesStoryline.Cutscenes
         /// <summary>
         /// Mathematically calculates an obstacle-free camera position between focus point and target,
         /// ensuring zero occlusion by walls, chests, fences, or props during cinematic framing.
+        /// Performs full 360-degree radial ray-probing if direct line of sight is obstructed.
         /// </summary>
         public static Vector3 CalculateObstacleFreeCamPos(Vector3 focusPoint, Vector3 idealCamPos, GameObject playerObj)
         {
@@ -612,7 +610,7 @@ namespace FeaturesStoryline.Cutscenes
             Vector3 dir = offset / maxDist;
             int mask = ~LayerMask.GetMask("Ignore Raycast", "UI", "TransparentFX", "PreviewLayer");
 
-            RaycastHit[] hits = Physics.SphereCastAll(focusPoint, 0.20f, dir, maxDist, mask, QueryTriggerInteraction.Ignore);
+            RaycastHit[] hits = Physics.SphereCastAll(focusPoint, 0.18f, dir, maxDist, mask, QueryTriggerInteraction.Ignore);
             float closestValidDist = maxDist;
 
             for (int i = 0; i < hits.Length; i++)
@@ -632,37 +630,80 @@ namespace FeaturesStoryline.Cutscenes
                 }
             }
 
-            if (closestValidDist < maxDist)
+            // If direct line-of-sight has ample clearance (>= 1.25m), maintain preferred framing
+            if (closestValidDist >= 1.25f && closestValidDist >= maxDist * 0.85f)
             {
-                float safeDist = Mathf.Clamp(closestValidDist - 0.20f, 0.35f, maxDist);
+                return idealCamPos;
+            }
 
-                // If safe distance along current ray is cramped (< 0.90m) due to wall or chest,
-                // evaluate alternate clear elevated vantage points in front of player
-                if (safeDist < 0.90f)
+            // Direct path is cramped (< 1.25m) or occluded by wall, wardrobe, or storage chest.
+            // Execute omnidirectional radial probe (16 horizontal azimuths x 22.5 deg + elevated pitch)
+            // to find the guaranteed obstacle-free vantage point with maximum clear clearance.
+            Vector3 bestPos = Vector3.zero;
+            float bestClearance = 0f;
+            float bestScore = -9999f;
+            Vector3 idealHorizDir = new Vector3(dir.x, 0f, dir.z).normalized;
+            if (idealHorizDir.sqrMagnitude < 0.001f) idealHorizDir = Vector3.forward;
+
+            for (int i = 0; i < 16; i++)
+            {
+                float angle = i * 22.5f;
+                float rad = angle * Mathf.Deg2Rad;
+                Vector3 horizDir = new Vector3(Mathf.Sin(rad), 0f, Mathf.Cos(rad));
+                Vector3 testDir = (horizDir + Vector3.up * 0.35f).normalized;
+                float testDist = Mathf.Max(1.80f, maxDist);
+
+                float candClearance = testDist;
+                RaycastHit[] candHits = Physics.SphereCastAll(focusPoint, 0.18f, testDir, testDist, mask, QueryTriggerInteraction.Ignore);
+                for (int hIdx = 0; hIdx < candHits.Length; hIdx++)
                 {
-                    Vector3[] candidateOffsets = new Vector3[]
+                    var ch = candHits[hIdx];
+                    if (ch.collider == null) continue;
+                    if (playerObj != null && (ch.collider.gameObject == playerObj || ch.collider.transform.IsChildOf(playerObj.transform)))
+                        continue;
+                    if (ch.distance < candClearance)
                     {
-                        dir * safeDist + Vector3.up * 0.85f, // Elevate above chest/bed/wall
-                        dir * safeDist + Vector3.up * 1.35f, // High-angle dramatic look
-                        Vector3.up * 1.50f + dir * 0.45f     // Overlooking down at player
-                    };
-
-                    for (int c = 0; c < candidateOffsets.Length; c++)
-                    {
-                        Vector3 candPos = focusPoint + candidateOffsets[c];
-                        Vector3 candDir = (candPos - focusPoint).normalized;
-                        float candDist = candidateOffsets[c].magnitude;
-                        if (!Physics.SphereCast(focusPoint, 0.15f, candDir, out _, candDist, mask, QueryTriggerInteraction.Ignore))
-                        {
-                            return candPos;
-                        }
+                        candClearance = ch.distance;
                     }
                 }
 
-                return focusPoint + dir * safeDist;
+                if (candClearance >= 1.15f)
+                {
+                    float alignment = Vector3.Dot(horizDir, idealHorizDir);
+                    float score = candClearance + alignment * 0.6f;
+                    if (score > bestScore)
+                    {
+                        bestScore = score;
+                        bestClearance = candClearance;
+                        bestPos = focusPoint + testDir * (candClearance - 0.15f);
+                    }
+                }
             }
 
-            return idealCamPos;
+            if (bestScore > -9990f && bestClearance >= 1.15f)
+            {
+                return bestPos;
+            }
+
+            // High-angle top-down fallback for extremely tight closets/corners
+            Vector3 highAngleFallback = focusPoint + Vector3.up * 1.85f + idealHorizDir * 0.50f;
+            RaycastHit[] highHits = Physics.SphereCastAll(focusPoint, 0.15f, (highAngleFallback - focusPoint).normalized, 1.90f, mask, QueryTriggerInteraction.Ignore);
+            bool highHit = false;
+            for (int hIdx = 0; hIdx < highHits.Length; hIdx++)
+            {
+                var ch = highHits[hIdx];
+                if (ch.collider == null) continue;
+                if (playerObj != null && (ch.collider.gameObject == playerObj || ch.collider.transform.IsChildOf(playerObj.transform))) continue;
+                highHit = true;
+                break;
+            }
+            if (!highHit)
+            {
+                return highAngleFallback;
+            }
+
+            float safeDist = Mathf.Clamp(closestValidDist - 0.20f, 0.35f, maxDist);
+            return focusPoint + dir * safeDist;
         }
 
         private void CompleteCutscene()
@@ -729,10 +770,6 @@ namespace FeaturesStoryline.Cutscenes
             }
 
             OnCutsceneEnded?.Invoke();
-            if (OpeningCutsceneController.HasInstance)
-            {
-                OpeningCutsceneController.Instance.NotifyCutsceneEnded();
-            }
 
             Debug.Log("[Night1CutsceneController] ✅ Night 1 Cutscene completed. Launching Wave 1 combat.");
             _onCompleteCallback?.Invoke();

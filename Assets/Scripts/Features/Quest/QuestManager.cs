@@ -29,7 +29,8 @@ namespace FarmBeware.Features.Quest
         {
             get
             {
-                if (_isQuitting) return null;
+                if (!Application.isPlaying) _isQuitting = false;
+                else if (_isQuitting) return null;
                 if (_instance == null)
                 {
                     QuestManager[] found = FindObjectsByType<QuestManager>(FindObjectsInactive.Include, FindObjectsSortMode.None);
