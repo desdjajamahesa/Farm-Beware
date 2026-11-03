@@ -7968,7 +7968,8 @@ namespace FarmBeware.EditorTests
                 return false;
             }
 
-            var bayCenter = new Vector3(63.0f, 0.0f, 68.0f);
+            var marker = yard.Find("TurnaroundBay_Marker");
+            var bayCenter = marker != null ? marker.position : new Vector3(198.0f, 0.0f, 248.0f);
             float radius = 8.0f;
             var hits = Physics.OverlapSphere(bayCenter, radius, ~0, QueryTriggerInteraction.Collide);
             foreach (var h in hits)
