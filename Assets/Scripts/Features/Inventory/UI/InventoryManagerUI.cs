@@ -394,7 +394,15 @@ public class InventoryManagerUI : MonoBehaviour, IModalWindow
 
         if (isPlayerOpen && playerStatsPanel != null)
         {
-            playerStatsPanel.SendMessage("UpdateAllStats", SendMessageOptions.DontRequireReceiver);
+            var statsUI = playerStatsPanel.GetComponent("PlayerStatsDisplayUI");
+            if (statsUI != null)
+            {
+                statsUI.GetType().GetMethod("UpdateAllStats", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance)?.Invoke(statsUI, null);
+            }
+            else if (Application.isPlaying && playerStatsPanel.activeInHierarchy)
+            {
+                playerStatsPanel.SendMessage("UpdateAllStats", SendMessageOptions.DontRequireReceiver);
+            }
         }
 
         // Ensure hotbar visibility respects game phase and cutscene state

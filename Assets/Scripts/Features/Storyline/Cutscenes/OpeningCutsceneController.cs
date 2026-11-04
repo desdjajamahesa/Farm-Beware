@@ -1082,7 +1082,15 @@ namespace FeaturesStoryline.Cutscenes
                 var hudHost = GameObject.Find("VehicleDrivingHUD_Host");
                 if (hudHost != null)
                 {
-                    hudHost.SendMessage("SnapHidden", SendMessageOptions.DontRequireReceiver);
+                    var hud = hudHost.GetComponent("VehicleDrivingHUD");
+                    if (hud != null)
+                    {
+                        hud.GetType().GetMethod("SnapHidden", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance)?.Invoke(hud, null);
+                    }
+                    else if (Application.isPlaying && hudHost.activeInHierarchy)
+                    {
+                        hudHost.SendMessage("SnapHidden", SendMessageOptions.DontRequireReceiver);
+                    }
                 }
 
                 var allCanvases = UnityEngine.Object.FindObjectsByType<Canvas>(FindObjectsInactive.Include, FindObjectsSortMode.None);
@@ -1092,11 +1100,19 @@ namespace FeaturesStoryline.Cutscenes
 
                     if (allCanvases[i].gameObject.name == "VehicleDrivingCanvas")
                     {
+                        var hud = allCanvases[i].GetComponent("VehicleDrivingHUD");
+                        if (hud != null)
+                        {
+                            hud.GetType().GetMethod("SnapHidden", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance)?.Invoke(hud, null);
+                        }
+                        else if (Application.isPlaying && allCanvases[i].gameObject.activeInHierarchy)
+                        {
+                            allCanvases[i].gameObject.SendMessage("SnapHidden", SendMessageOptions.DontRequireReceiver);
+                        }
                         allCanvases[i].gameObject.SetActive(false);
                         allCanvases[i].enabled = false;
                         var cg = allCanvases[i].GetComponent<CanvasGroup>();
                         if (cg != null) cg.alpha = 0f;
-                        allCanvases[i].gameObject.SendMessage("SnapHidden", SendMessageOptions.DontRequireReceiver);
                     }
 
                     string[] modalPanelNames = { "BossIntroPanel", "StoryBannerPanel", "StoryDialoguePanel", "StoryOverlayPanel", "StoryDreamPanel" };

@@ -412,12 +412,20 @@ public class DayTransitionUI : MonoBehaviour
             modalStack.CloseAll();
         }
 
-        // 2. Direct message to StorylineUI without compile-time asmdef circular dependency
+        // 2. Direct invocation to StorylineUI without compile-time asmdef circular dependency
         foreach (var mb in FindObjectsByType<MonoBehaviour>(FindObjectsInactive.Include, FindObjectsSortMode.None))
         {
-            if (mb.GetType().Name == "StorylineUI")
+            if (mb != null && mb.GetType().Name == "StorylineUI")
             {
-                mb.SendMessage("DismissDialogue", SendMessageOptions.DontRequireReceiver);
+                var method = mb.GetType().GetMethod("DismissDialogue", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
+                if (method != null)
+                {
+                    method.Invoke(mb, null);
+                }
+                else if (Application.isPlaying && mb.gameObject.activeInHierarchy)
+                {
+                    mb.SendMessage("DismissDialogue", SendMessageOptions.DontRequireReceiver);
+                }
                 break;
             }
         }
