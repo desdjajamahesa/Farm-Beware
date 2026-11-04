@@ -6,53 +6,39 @@ Testing strategies, automated verification scripts, manual Play Mode checklists,
 
 ## 1. Quality Assurance Standards
 
-1. **MCP Automated Verification (Editor Mode)**: Fast in-memory Roslyn C# validation via `execute_code` (`compiler: "roslyn"`, `safety_checks: false`) to test pure POCO logic, registries, and scene hierarchies.
-2. **Clean Console Mandate**: Every commit must leave the Editor console with **0 Errors** and **0 Exceptions** via `read_console`.
-3. **Play Mode Verification**: Check combat responsiveness, input buffering, camera transitions, and modal priority.
+1. **Official Verification Suite**: Run the comprehensive audit suite via Unity MCP:
+   `FarmBeware.EditorTests.GameplayAndHUDTests.RunAllTests()`
+   **Target**: All 79 audit tests must pass (**79/79 Passed**).
+2. **Clean Console Mandate**: Every turn must leave the Editor console with **0 Errors**, **0 Warnings**, and **0 Exceptions** via `read_console`.
+3. **Native Assertion Safety**: Never call raw `SendMessage` on inactive objects or during EditMode tests to prevent `Assertion failed on expression: 'ShouldRunBehaviour()'`.
 
 ---
 
-## 2. Core Automated Verification Suites (MCP Roslyn C#)
+## 2. Core Automated Audit Coverage (79 Comprehensive Tests)
 
-### 2.1 POCO Combat Suite
-Execute in-memory unit tests validating pure combat logic:
-- `PoiseTracker`: Super armor mitigation, poise damage, knockdown tier-upgrade invariant, and automatic super armor restoration upon full regen.
-- `AttackTokenDispatcher`: Melee/ranged slot limits, priority allocation (`Minion < Elite < Boss`), and preemptive minion eviction preventing boss starvation.
-- `DefenseEvaluator`: Precision parry window (350ms), dodge i-frames (300ms), whiff recovery lockout (350ms) on natural expiration, and lockout cancellation on success.
-- `CombatStateEvaluator`: 3-hit combo progression, branch cancel windows, and `InterruptCombatSequence()` timestamp resets.
-
-### 2.2 Scene & Component Integrity
-- **Singletons**: Verify `CameraManager`, `DayNightTimeManager`, `NightBrawlManager`, `ItemDatabase`, and `Player` exist.
-- **NavMesh Boundaries**: Validate that Campfire, Natural Pond, and Farmland Plots are carved non-walkable.
-- **Spawn Hierarchy**: Ensure all `MonsterSpawnPoints` children are positioned outside front gate (`Z >= 50m`).
-- **Shaders**: Verify `MonsterFresnelLit` and `DitheredBuildingLit` compile cleanly; verify `Camera.main.nearClipPlane` is between `0.07f` and `0.10f`.
+- **Combat & Night Brawl (Tests 1–27)**: Poise damage, knockdown invariants, attack token dispatching, 360° perimeter fence boundary, food buff purge on sleep, multi-source input lock, enemy/boss health bars, wave spawning, seed consumption priority, and combat FSM pacing.
+- **Narrative & Vehicles (Tests 28–50)**: Storyline FSM, 5-day Monte Carlo reachability (1,000 runs), `OpeningCutsceneController` truck arrival and clean dismount, `VehicleDynamicsCore` kinematics, dual-channel vehicle entry/exit, `NarrativeFactBoard` tokens, Day 0 arrival HUD suppression, and driver visibility synchronization.
+- **Agriculture, UI & Quests (Tests 51–70)**: Farmland plot interact gating, crop growth countdown night suppression, fridge food storage, pointer click input lock bypass, Journal UI `[J]` toggle, side quest *First Steps* progression, zero-GC update loop audit, player combat rig, and dummy sword hand socket alignment.
+- **Commercial Economy & Trading Post (Tests 71–79)**: Day-to-night cutscene deconfliction, home cooking progression, `ShopInteractable` Day 0 gating & Day 1+ `MerchantShopUI` modal, `PlayerWallet` balance deductions/refunds, `DailyEconomyManager` fluctuating price rolling & dirty produce discount, and Trading Post architectural clearances & 16m turnaround bay (Test 79).
 
 ---
 
 ## 3. Manual Play Mode Verification Checklist
 
-### 3.1 Combat & Defensive Feel
-1. **3-Hit Combo & Buffering**: Equip weapon, click 3 times. Verify Hit 1 → Hit 2 → Hit 3 scale (1.0x → 1.2x → 1.5x) and clicks during swings buffer seamlessly.
-2. **Defensive Actions**:
-   - Dodge Roll (`C` / `Left Alt`): Verify directional roll matches input direction with 300ms i-frames.
-   - Precision Parry (`V` / `Left Ctrl`): Deflecting an enemy hit triggers "PARRY!" text and hitstop. Whiffing triggers 350ms lockout where parry cannot be spammed.
-3. **Special Attacks**: Sprint Dash Attack, Charged Heavy (Hold > 0.35s), Front Kick (`F`), Jump Slam (`Space` + Click).
-
-### 3.2 UI, Navigation & Stations
-1. **Health Bars**: Overhead bars show ghost damage lag; top boss HUD displays title, health, and `DEFEATED` badge.
-2. **Boundaries**: Monsters and player cannot walk through campfire, pond, or farmland plots.
-3. **ESC Modal Priority**: ESC closes active panels (`Stove`, `Wardrobe`, `Chest`, `Inventory`) without opening Pause Menu.
-4. **Station Rollback**: Closing stove mid-cook refunds 100% of ingredients and water atomically.
+1. **Vehicle & Arrival**: Day 0 pickup truck arrives at homestead gate. Player dismounts with empty hands and zero inventory.
+2. **Agriculture Loop**: Till soil with Hoe (`1`), plant seeds (`Sweet Potato`, `Taro`, `Corn`), water using `PlayerWaterBottle`. Crops grow across day transitions.
+3. **Western Corridor & Trading Post**: Drive or walk West from Homestead Gate past fence line along 225m cobblestone road to Valley Trading Post at `(-175, 0, 70)`.
+4. **Trading Interaction**: Walk up South-facing veranda steps to `TradingPost_ShopCounter`. Press `E` to open `MerchantShopUI` and sell dirty/clean crops for Gold.
+5. **Night Combat**: Defend homestead gate against night brawlers. Use combos, parries (`V`), and dodges (`C`).
 
 ---
 
-## 4. Key Troubleshooting Matrix
+## 4. Troubleshooting Matrix
 
 | Symptom | Root Cause | Resolution |
 |---|---|---|
-| Mesh invisible in Deferred+ | Pass uses `UniversalForward` | Set `Tags { "LightMode" = "UniversalForwardOnly" }` |
-| BRG instancing broken | Shader lacks instancing macros | Use `#pragma multi_compile_instancing` & `UNITY_INSTANCING_BUFFER_START(Props)` |
-| Monster clips through fences | Discrete physics during knockback | Enable CCD ContinuousDynamic & predictive raycasts in `AirborneHazardEntity` |
-| `Warp` console error on monster | Monster warped off NavMesh | Sample valid ground with `NavMesh.SamplePosition` before calling `Warp` |
-| Boss starved of attack tokens | Minions occupy all token slots | Dispatch with `AttackTokenPriority.Boss` to trigger preemptive eviction |
-| Parry spammable without penalty | Missing whiff recovery lockout | Enforce `CanInitiateParry` and 350ms whiff timer in `DefenseEvaluator` |
+| `Assertion failed: ShouldRunBehaviour()` | Raw `SendMessage` called on inactive object or in EditMode | Use direct type-safe method or C# reflection (`MethodInfo.Invoke`) |
+| Vehicle flips on road | Active mesh colliders on road ribbon or shoulders | Disable colliders; ride 100% on native `TerrainCollider` |
+| Trading post occluded by roof | Facade facing North/East under SW isometric camera | Rotate building/counter so front facade faces South (`rot=[0,0,0]`) |
+| Turnaround bay obstacle in Test 79 | Colliders inside 8m radius of `TurnaroundBay_Marker` | Reposition marker to open yard center (`[-175, 0, 50]`) |
+| Parries spammable without penalty | Missing whiff recovery lockout | Enforce `CanInitiateParry` and 350ms whiff timer in `DefenseEvaluator` |
