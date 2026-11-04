@@ -273,13 +273,16 @@ namespace FeaturesStoryline
 
             if (!isCutsceneRunningOrPending)
             {
-                EvaluateTrigger(StoryTriggerType.GameStart, currentDay);
-                if (currentDay >= 1)
+                if (currentDay == 0)
+                {
+                    EvaluateTrigger(StoryTriggerType.GameStart, 0);
+                }
+                else
                 {
                     EvaluateTrigger(StoryTriggerType.Dawn, currentDay);
                 }
             }
-            else if (currentDay == 0)
+            else if (currentDay == 0 && !HasTriggered("PROLOGUE"))
             {
                 EvaluateTrigger(StoryTriggerType.GameStart, 0);
             }
@@ -509,7 +512,6 @@ namespace FeaturesStoryline
             {
                 if (!IsCutsceneActive() && !FarmBeware.Core.Runtime.GameSessionState.IsPendingNewGameIntroCutscene)
                 {
-                    EvaluateTrigger(StoryTriggerType.GameStart, newDay);
                     EvaluateTrigger(StoryTriggerType.Dawn, newDay);
                 }
             }
@@ -888,6 +890,14 @@ namespace FeaturesStoryline
             bool isCutscene = IsCutsceneActive();
             if (isTransitioning || isCutscene)
             {
+                // Invariant: If a cutscene is already running or intro cutscene completed,
+                // do not enqueue redundant timeline cutscene beats into the modal queue.
+                if (beat.deliveryType == StoryDeliveryType.TimelineCutscene)
+                {
+                    Debug.LogWarning($"[StorylineManager] Suppressed redundant cutscene beat '{beat.beatId}' while another cutscene or transition is active.");
+                    return;
+                }
+
                 if (isTransitioning && DayTransitionUI.Instance != null)
                 {
                     DayTransitionUI.Instance.OnTransitionCompleted -= HandleDayTransitionCompleted;
@@ -1091,6 +1101,14 @@ namespace FeaturesStoryline
 
             if (beat.deliveryType == StoryDeliveryType.TimelineCutscene)
             {
+                int currentDay = GetCurrentGameDay();
+                int introFact = _facts != null ? _facts.GetFact(NarrativeFactKey.IntroCutsceneCompleted) : 0;
+                if (currentDay >= 1 || introFact == 1)
+                {
+                    Debug.Log($"[StorylineManager] TimelineCutscene '{beat.beatId}' suppressed on Day {currentDay} (IntroCutsceneCompleted={introFact}).");
+                    return;
+                }
+
                 var cutscene = ServiceLocator.Resolve<ICutsceneService>();
                 if (cutscene != null)
                 {
@@ -1236,6 +1254,12 @@ namespace FeaturesStoryline
                 }
             }
 
+            return _engine.RecordBeatTriggered(beatId);
+        }
+
+        public bool RecordBeatTriggered(string beatId)
+        {
+            if (_engine == null) return false;
             return _engine.RecordBeatTriggered(beatId);
         }
 

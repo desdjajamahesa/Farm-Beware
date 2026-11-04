@@ -307,6 +307,37 @@ namespace FeaturesStoryline.Cutscenes
                 return;
             }
 
+            // Invariant: Opening Cutscene is Day 0 arrival ONLY. Never replay on Day 1+ or if already completed.
+            if (Application.isPlaying)
+            {
+                if (ServiceLocator.TryResolve<INarrativeFactBoard>(out var facts) && facts != null)
+                {
+                    if (facts.GetFact(NarrativeFactKey.IntroCutsceneCompleted) == 1)
+                    {
+                        Debug.Log("[OpeningCutsceneController] Opening cutscene already completed. Suppressing replay.");
+                        onComplete?.Invoke();
+                        return;
+                    }
+                }
+
+                int currentDay = 0;
+                if (ServiceLocator.TryResolve<ITimeService>(out var timeSvc) && timeSvc != null)
+                {
+                    currentDay = timeSvc.CurrentDay;
+                }
+                else if (FeaturesTime.DayNightTimeManager.Instance != null)
+                {
+                    currentDay = FeaturesTime.DayNightTimeManager.Instance.CurrentDay;
+                }
+
+                if (currentDay >= 1)
+                {
+                    Debug.Log($"[OpeningCutsceneController] Opening cutscene skipped (Day {currentDay}). Only permitted on Day 0.");
+                    onComplete?.Invoke();
+                    return;
+                }
+            }
+
             _onCompleteCallback = onComplete;
             EnsureTimelineAssetLoaded();
 
@@ -843,7 +874,7 @@ namespace FeaturesStoryline.Cutscenes
                 player.RemoveInputLock("OpeningCutscene");
             }
 
-            // 6. Update Narrative Fact Blackboard
+            // 6. Update Narrative Fact Blackboard & Storyline State
             if (ServiceLocator.TryResolve<INarrativeFactBoard>(out var facts) && facts != null)
             {
                 facts.SetFact(NarrativeFactKey.IntroCutsceneCompleted, 1);
@@ -853,6 +884,15 @@ namespace FeaturesStoryline.Cutscenes
             {
                 StorylineManager.Instance.FactBoard.SetFact(NarrativeFactKey.IntroCutsceneCompleted, 1);
                 StorylineManager.Instance.FactBoard.SetFact(NarrativeFactKey.NexaPhytoTruthLevel, 1);
+            }
+
+            if (ServiceLocator.TryResolve<IStorylineService>(out var storySvc) && storySvc != null)
+            {
+                storySvc.RecordBeatTriggered("PROLOGUE");
+            }
+            else if (StorylineManager.Instance != null)
+            {
+                StorylineManager.Instance.RecordBeatTriggered("PROLOGUE");
             }
 
             // 7. Stop audio fadeout

@@ -132,9 +132,15 @@ namespace FeaturesStoryline
                 "A Quiet Life",
                 "After years in the military, this remote farm is finally yours. Head inside the cabin and get some rest. Tomorrow, the real farm work begins.",
                 day: 0,
-                mutations: new[] {
-                    new NarrativeFactMutation(NarrativeFactKey.NexaPhytoTruthLevel, FactMutationOp.Set, 1)
+                criteria: new[] {
+                    new NarrativeFactCondition(NarrativeFactKey.CurrentDay, FactOperator.Equal, 0, 10),
+                    new NarrativeFactCondition(NarrativeFactKey.IntroCutsceneCompleted, FactOperator.Equal, 0, 10)
                 },
+                mutations: new[] {
+                    new NarrativeFactMutation(NarrativeFactKey.NexaPhytoTruthLevel, FactMutationOp.Set, 1),
+                    new NarrativeFactMutation(NarrativeFactKey.IntroCutsceneCompleted, FactMutationOp.Set, 1)
+                },
+                repeatPolicy: RepeatPolicy.MatchOnce,
                 saliencePriority: 5
             ));
 

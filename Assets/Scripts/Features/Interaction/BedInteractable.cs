@@ -193,6 +193,15 @@ namespace FeaturesInteraction
                 SafeHeal(interactor, sleepHealAmount);
             }
 
+            if (ServiceLocator.TryResolve<INarrativeFactBoard>(out var factsInstant) && factsInstant != null)
+            {
+                factsInstant.SetFact(NarrativeFactKey.IntroCutsceneCompleted, 1);
+            }
+            if (ServiceLocator.TryResolve<IStorylineService>(out var storyInstant) && storyInstant != null)
+            {
+                storyInstant.RecordBeatTriggered("PROLOGUE");
+            }
+
             timeService.AdvanceToNextDay();
 
             var playerObj = interactor != null ? interactor : GameObject.FindWithTag("Player");
@@ -234,6 +243,15 @@ namespace FeaturesInteraction
             {
                 SafeClearBuffs(interactor);
                 SafeHeal(interactor, sleepHealAmount);
+            }
+
+            if (ServiceLocator.TryResolve<INarrativeFactBoard>(out var facts) && facts != null)
+            {
+                facts.SetFact(NarrativeFactKey.IntroCutsceneCompleted, 1);
+            }
+            if (ServiceLocator.TryResolve<IStorylineService>(out var storySvc) && storySvc != null)
+            {
+                storySvc.RecordBeatTriggered("PROLOGUE");
             }
 
             timeService.AdvanceToNextDay();

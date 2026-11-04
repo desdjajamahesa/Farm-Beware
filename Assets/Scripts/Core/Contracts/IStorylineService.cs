@@ -16,6 +16,9 @@ namespace FarmBeware.Core.Runtime
         /// <summary>Whether a specific story beat has been triggered.</summary>
         bool HasTriggered(string beatId);
 
+        /// <summary>Directly records a story beat as triggered without delivering its UI.</summary>
+        bool RecordBeatTriggered(string beatId);
+
         /// <summary>Trigger a story beat by ID. Returns false if already triggered or conditions unmet.</summary>
         bool TriggerBeat(string beatId);
 
