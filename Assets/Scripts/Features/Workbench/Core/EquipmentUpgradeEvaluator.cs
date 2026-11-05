@@ -70,6 +70,12 @@ namespace FeaturesWorkbench.Core
         public const int MaxWeaponLevel = 10;
         public const int MaxArmorLevel = 10;
         public const int MaxSpecializationNodeLevel = 6; // 1 to 5 + 6 (Ultimate)
+        public const float ShadowDashResetICD = 5.0f; // 5.0s internal cooldown on Shadow Dash reset on kill
+
+        public static bool CanTriggerShadowDashReset(float lastTriggerTime, float currentTime, float icd = ShadowDashResetICD)
+        {
+            return (currentTime - lastTriggerTime) >= icd;
+        }
 
         // Material IDs matching ItemDatabase / Monster drops
         public const string MatCyclopsEye = "mat_cyclops_eye";

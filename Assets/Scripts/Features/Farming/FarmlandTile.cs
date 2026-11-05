@@ -54,6 +54,12 @@ namespace FeaturesFarming
         [SerializeField] private TileState currentState = TileState.Untilled;
         public TileState CurrentState => currentState;
 
+        [Header("Plot Progression & Gating")]
+        [SerializeField] private int plotIndex = -1;
+        [SerializeField] private bool isLocked = false;
+        public int PlotIndex => plotIndex;
+        public bool IsLocked => isLocked;
+
         [Header("Data Tanaman")]
         [SerializeField] private SeedItemData plantedSeed;
         public SeedItemData PlantedSeed => plantedSeed;
@@ -120,9 +126,29 @@ namespace FeaturesFarming
 
         private void Start()
         {
+            RefreshLockState();
             UpdateVisuals();
             UpdateLabelText(null);
             UpdateCountdownUI();
+        }
+
+        public void RefreshLockState()
+        {
+            if (plotIndex <= 0)
+            {
+                plotIndex = FarmlandExpansionManager.ParsePlotIndex(gameObject.name);
+            }
+
+            if (FarmlandExpansionManager.Instance != null)
+            {
+                isLocked = !FarmlandExpansionManager.Instance.IsPlotUnlocked(plotIndex);
+            }
+            else
+            {
+                isLocked = plotIndex > FarmlandExpansionManager.InitialPlotCount;
+            }
+
+            UpdateLabelText(null);
         }
 
         private int lastVisualStage = -1;
@@ -190,6 +216,7 @@ namespace FeaturesFarming
         public bool CanInteract(GameObject interactor)
         {
             if (interactor == null) return false;
+            if (isLocked) return false;
 
             int currentDay = FeaturesTime.DayNightTimeManager.Instance != null 
                 ? FeaturesTime.DayNightTimeManager.Instance.CurrentDay 
@@ -229,6 +256,15 @@ namespace FeaturesFarming
         public void Interact(GameObject interactor)
         {
             if (interactor == null) return;
+
+            if (isLocked)
+            {
+                ServiceLocator.Resolve<IFloatingTextService>()?.SpawnText(
+                    transform.position + Vector3.up * 1.2f,
+                    "Locked farmland plot! Purchase Land Expansion at the Workbench (2,500 G).",
+                    new Color(1f, 0.5f, 0.4f));
+                return;
+            }
 
             int currentDay = FeaturesTime.DayNightTimeManager.Instance != null 
                 ? FeaturesTime.DayNightTimeManager.Instance.CurrentDay 
@@ -664,6 +700,12 @@ namespace FeaturesFarming
         {
             if (worldLabel == null) worldLabel = GetComponent<WorldLabel>();
             if (worldLabel == null) return;
+
+            if (isLocked)
+            {
+                worldLabel.displayName = "[Locked Plot] Expand at Workbench (2,500 G)";
+                return;
+            }
 
             int currentDay = FeaturesTime.DayNightTimeManager.Instance != null 
                 ? FeaturesTime.DayNightTimeManager.Instance.CurrentDay 

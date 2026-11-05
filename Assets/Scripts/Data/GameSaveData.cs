@@ -90,7 +90,8 @@ namespace FeaturesSaveSystem
         public List<SavedInventorySlot> inventorySlots = new List<SavedInventorySlot>();
         public List<SavedContainerInventory> containerInventories = new List<SavedContainerInventory>();
 
-        // Farmland Crops
+        // Farmland Crops & Capacity
+        public int unlockedFarmlandPlots = 6;
         public List<SavedFarmlandTile> farmlandTiles = new List<SavedFarmlandTile>();
 
         // Wardrobe

@@ -885,7 +885,10 @@ namespace FeaturesSaveSystem
                 data.currentHour = data.currentPhase == 1 ? 18.0f : 6.0f;
             }
 
-            // 5. Farmland Crops
+            // 5. Farmland Crops & Capacity
+            data.unlockedFarmlandPlots = FeaturesFarming.FarmlandExpansionManager.Instance != null
+                ? FeaturesFarming.FarmlandExpansionManager.Instance.UnlockedPlotCount
+                : 6;
             var tiles = FindObjectsByType<FarmlandTile>(FindObjectsInactive.Include, FindObjectsSortMode.None);
             if (tiles != null)
             {
@@ -1253,7 +1256,12 @@ namespace FeaturesSaveSystem
                 }
             }
 
-            // 12. Farmland Crops
+            // 12. Farmland Crops & Capacity
+            if (FeaturesFarming.FarmlandExpansionManager.Instance != null && data.unlockedFarmlandPlots >= 6)
+            {
+                FeaturesFarming.FarmlandExpansionManager.Instance.SetUnlockedPlotCount(data.unlockedFarmlandPlots);
+            }
+
             var tiles = FindObjectsByType<FarmlandTile>(FindObjectsInactive.Include, FindObjectsSortMode.None);
             if (tiles != null && data.farmlandTiles != null)
             {

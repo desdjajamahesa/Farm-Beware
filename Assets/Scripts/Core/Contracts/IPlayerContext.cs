@@ -20,6 +20,7 @@ namespace FarmBeware.Core.Runtime
         void RemoveInputLock(string source);
         void ClearAllInputLocks();
         bool HasInputLock(string source);
+        bool HasLockOtherThan(string excludedSource);
         bool IsGodMode { get; }
         void StopMovement();
         void Teleport(Vector3 position, Quaternion rotation);

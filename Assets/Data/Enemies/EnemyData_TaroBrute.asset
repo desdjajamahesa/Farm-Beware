@@ -29,6 +29,10 @@ MonoBehaviour:
     minQuantity: 1
     maxQuantity: 3
     dropChance: 0.6
+  - item: {fileID: 11400000, guid: 1555ed878052ac44c8b9e2fe43cbdf9a, type: 2}
+    minQuantity: 1
+    maxQuantity: 3
+    dropChance: 0.7
   minGold: 250
   maxGold: 600
   goldChance: 0.6

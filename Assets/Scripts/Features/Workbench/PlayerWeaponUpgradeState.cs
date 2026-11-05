@@ -246,6 +246,12 @@ namespace FeaturesWorkbench
             if (activeSpecialization == SpecializationPath.None) return false;
             if (specializationNodeLevel >= EquipmentUpgradeEvaluator.MaxSpecializationNodeLevel) return false;
 
+            if (!HasDummySword(inv))
+            {
+                Debug.LogWarning("[PlayerWeaponUpgradeState] Cannot upgrade specialization doctrine: Player does not possess weapon!");
+                return false;
+            }
+
             int nextNodeLevel = specializationNodeLevel + 1;
             var nodeInfo = EquipmentUpgradeEvaluator.GetNodeInfo(activeSpecialization, nextNodeLevel);
 
@@ -288,6 +294,19 @@ namespace FeaturesWorkbench
 
             specializationNodeLevel = nextNodeLevel;
             RecalculateStats();
+
+            // Corn Doctrine Node 1 rewards the Homestead Slingshot
+            if (activeSpecialization == SpecializationPath.Corn && specializationNodeLevel == 1)
+            {
+                var db = ItemDatabase.Instance ?? Resources.Load<ItemDatabase>("Database/ItemDatabase");
+                var slingshot = db?.GetItem("tool_weapon_corn_repeater") 
+                    ?? Resources.Load<ItemData>("Items/Equipment/Tool_CornRepeater");
+                if (slingshot != null && inv != null)
+                {
+                    inv.AddItem(slingshot, 1);
+                    Debug.Log("[PlayerWeaponUpgradeState] 🏹 Awarded Homestead Slingshot for unlocking Corn Doctrine Node 1!");
+                }
+            }
 
             var fct = ServiceLocator.Resolve<IFloatingTextService>();
             if (fct != null)

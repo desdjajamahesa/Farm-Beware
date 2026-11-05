@@ -5,6 +5,7 @@ using UnityEngine.InputSystem;
 using TMPro;
 using FarmBeware.Core.Runtime;
 using FeaturesWorkbench.Core;
+using FeaturesFarming;
 
 namespace FeaturesWorkbench.UI
 {
@@ -26,7 +27,8 @@ namespace FeaturesWorkbench.UI
         {
             Weapon = 0,
             Armor = 1,
-            Overdrive = 2
+            Farmland = 2,
+            Overdrive = 3
         }
 
         // --- TasteSkill Tactical Color Palette (Dark Anodized Slate, Warm Amber Forge, Crisp Telemetry) ---
@@ -70,13 +72,24 @@ namespace FeaturesWorkbench.UI
         private TextMeshProUGUI tabArmorButtonText;
         private Image tabArmorIndicator;
 
+        private Button tabFarmlandButton;
+        private TextMeshProUGUI tabFarmlandButtonText;
+        private Image tabFarmlandIndicator;
+
         private Button tabOverdriveButton;
         private TextMeshProUGUI tabOverdriveButtonText;
         private Image tabOverdriveIndicator;
 
         private GameObject weaponTabContent;
         private GameObject armorTabContent;
+        private GameObject farmlandTabContent;
         private GameObject overdriveTabContent;
+
+        // Tab: Farmland Progression Elements
+        private TextMeshProUGUI farmlandStatusBannerText;
+        private TextMeshProUGUI farmlandTelemetryText;
+        private Button expandFarmlandButton;
+        private TextMeshProUGUI expandFarmlandButtonText;
 
         // Tab 01: Weapon & Arsenal Elements
         private Image weaponIconImage;
@@ -272,11 +285,13 @@ namespace FeaturesWorkbench.UI
             currentTab = tab;
             if (weaponTabContent != null) weaponTabContent.SetActive(currentTab == WorkbenchTab.Weapon);
             if (armorTabContent != null) armorTabContent.SetActive(currentTab == WorkbenchTab.Armor);
+            if (farmlandTabContent != null) farmlandTabContent.SetActive(currentTab == WorkbenchTab.Farmland);
             if (overdriveTabContent != null) overdriveTabContent.SetActive(currentTab == WorkbenchTab.Overdrive);
 
             UpdateTabVisual(tabWeaponButton, tabWeaponIndicator, tabWeaponButtonText, currentTab == WorkbenchTab.Weapon, ColAccentAmber);
             UpdateTabVisual(tabArmorButton, tabArmorIndicator, tabArmorButtonText, currentTab == WorkbenchTab.Armor, ColAccentCyan);
-            UpdateTabVisual(tabOverdriveButton, tabOverdriveIndicator, tabOverdriveButtonText, currentTab == WorkbenchTab.Overdrive, ColAccentEmerald);
+            UpdateTabVisual(tabFarmlandButton, tabFarmlandIndicator, tabFarmlandButtonText, currentTab == WorkbenchTab.Farmland, ColAccentEmerald);
+            UpdateTabVisual(tabOverdriveButton, tabOverdriveIndicator, tabOverdriveButtonText, currentTab == WorkbenchTab.Overdrive, ColAccentViolet);
 
             RefreshView();
         }
@@ -312,6 +327,10 @@ namespace FeaturesWorkbench.UI
             else if (currentTab == WorkbenchTab.Armor)
             {
                 RefreshArmorTab(currentGold);
+            }
+            else if (currentTab == WorkbenchTab.Farmland)
+            {
+                RefreshFarmlandTab(currentGold);
             }
             else
             {
@@ -669,18 +688,28 @@ namespace FeaturesWorkbench.UI
             }
 
             // Bottom Action Bar: Commit Path vs Advance Active Node
+            bool hasWeapon = weaponState != null && weaponState.HasDummySword(playerInventory);
             if (commitPathButton != null)
             {
                 commitPathButton.gameObject.SetActive(!hasLockedPath);
                 if (!hasLockedPath && commitPathButtonText != null)
                 {
-                    var node1 = EquipmentUpgradeEvaluator.GetNodeInfo(inspectedPath, 1);
-                    bool canAffordLv1 = currentGold >= node1.GoldCost;
-                    commitPathButton.interactable = true;
-                    commitPathButton.GetComponent<Image>().color = ColBtnPrimary;
-                    commitPathButtonText.text = canAffordLv1
-                        ? $"★ COMMIT TO {GetPathDisplayName(inspectedPath)} & UNLOCK NODE 1 ({node1.GoldCost:N0} GOLD)"
-                        : $"★ COMMIT TO {GetPathDisplayName(inspectedPath)} DOCTRINE (LOCKS PATH PERMANENTLY)";
+                    if (!hasWeapon)
+                    {
+                        commitPathButton.interactable = false;
+                        commitPathButton.GetComponent<Image>().color = ColBtnDisabled;
+                        commitPathButtonText.text = "WEAPON REQUIRED IN BAG OR SLOT TO COMMIT DOCTRINE";
+                    }
+                    else
+                    {
+                        var node1 = EquipmentUpgradeEvaluator.GetNodeInfo(inspectedPath, 1);
+                        bool canAffordLv1 = currentGold >= node1.GoldCost;
+                        commitPathButton.interactable = true;
+                        commitPathButton.GetComponent<Image>().color = ColBtnPrimary;
+                        commitPathButtonText.text = canAffordLv1
+                            ? $"★ COMMIT TO {GetPathDisplayName(inspectedPath)} & UNLOCK NODE 1 ({node1.GoldCost:N0} GOLD)"
+                            : $"★ COMMIT TO {GetPathDisplayName(inspectedPath)} DOCTRINE (LOCKS PATH PERMANENTLY)";
+                    }
                 }
             }
 
@@ -689,7 +718,13 @@ namespace FeaturesWorkbench.UI
                 advanceSpecButton.gameObject.SetActive(hasLockedPath);
                 if (hasLockedPath && advanceSpecButtonText != null)
                 {
-                    if (inspectedPath != weaponState.activeSpecialization)
+                    if (!hasWeapon)
+                    {
+                        advanceSpecButtonText.text = "WEAPON REQUIRED IN BAG OR SLOT TO ADVANCE DOCTRINE";
+                        advanceSpecButton.interactable = false;
+                        advanceSpecButton.GetComponent<Image>().color = ColBtnDisabled;
+                    }
+                    else if (inspectedPath != weaponState.activeSpecialization)
                     {
                         advanceSpecButtonText.text = $"SWITCH VIEW BACK TO ACTIVE {weaponState.activeSpecialization.ToString().ToUpper()} DOCTRINE";
                         advanceSpecButton.interactable = true;
@@ -785,11 +820,18 @@ namespace FeaturesWorkbench.UI
                     $"<color=#B0B8C4>Reduces all incoming physical & projectile damage during Night Brawl waves.</color>";
             }
 
+            bool hasArmor = armorState.HasAnyArmorPiece(playerInventory);
             if (upgradeArmorButton != null && upgradeArmorButtonText != null)
             {
                 if (isMax)
                 {
                     upgradeArmorButtonText.text = "✓ MAXIMUM ARMOR PLATING REACHED (LV. 10)";
+                    upgradeArmorButton.interactable = false;
+                    upgradeArmorButton.GetComponent<Image>().color = ColBtnDisabled;
+                }
+                else if (!hasArmor)
+                {
+                    upgradeArmorButtonText.text = "ARMOR REQUIRED IN BAG OR SLOT (CRAFT OR BUY FIRST)";
                     upgradeArmorButton.interactable = false;
                     upgradeArmorButton.GetComponent<Image>().color = ColBtnDisabled;
                 }
@@ -882,6 +924,64 @@ namespace FeaturesWorkbench.UI
                         bp.ActionButtonText.text = canAfford ? "<b>CRAFT & EQUIP</b>" : "INSUFFICIENT MATS";
                     }
                 }
+            }
+        }
+
+        private void RefreshFarmlandTab(int currentGold)
+        {
+            var mgr = FeaturesFarming.FarmlandExpansionManager.Instance;
+            int unlocked = mgr != null ? mgr.UnlockedPlotCount : 6;
+            bool isMax = unlocked >= FeaturesFarming.FarmlandExpansionManager.MaxPlotCount;
+            int nextCount = Mathf.Min(FeaturesFarming.FarmlandExpansionManager.MaxPlotCount, unlocked + FeaturesFarming.FarmlandExpansionManager.PlotsPerExpansion);
+            int cost = FeaturesFarming.FarmlandExpansionManager.ExpansionCostGold;
+            bool canAfford = currentGold >= cost;
+
+            if (farmlandStatusBannerText != null)
+            {
+                farmlandStatusBannerText.text =
+                    $"<size=18><color=#38C773><b>FARMLAND EXPANSION & LAND DEEDS // CAPACITY PROGRESSION</b></color></size>\n" +
+                    $"<color=#B0B8C4>Currently Arable: <b>{unlocked} / 16 Farmland Plots</b> active and ready for crop sowing.</color>";
+            }
+
+            if (farmlandTelemetryText != null)
+            {
+                string pips = BuildPipBar(unlocked, FeaturesFarming.FarmlandExpansionManager.MaxPlotCount, "#38C773");
+                string nextPair = isMax ? "None (Full Capacity)" : $"FarmlandPlot_{unlocked + 1} & FarmlandPlot_{unlocked + 2}";
+
+                farmlandTelemetryText.text =
+                    $"<b>HOMESTEAD LAND SURVEY TELEMETRY</b>\n\n" +
+                    $"• <color=#8A94A6>ACTIVE ARABLE PLOTS:</color>      {pips}  <b>{unlocked} / 16</b>\n\n" +
+                    $"• <color=#8A94A6>INITIAL DAY 1 CAPACITY:</color>   6 Plots (FarmlandPlot_1 .. 6)\n\n" +
+                    $"• <color=#8A94A6>NEXT EXPANSION DEED:</color>      <b>+2 Arable Plots</b> ({nextPair})\n\n" +
+                    $"• <color=#8A94A6>EXPANSION DEED PRICE:</color>     <color=#FFD54F><b>{cost:N0} Gold</b></color> per 2 plots\n\n" +
+                    $"• <color=#8A94A6>MAXIMUM POTENTIAL YIELD:</color>  Up to 16 plots producing continuous crop harvests.";
+            }
+
+            if (expandFarmlandButton != null && expandFarmlandButtonText != null)
+            {
+                if (isMax)
+                {
+                    expandFarmlandButtonText.text = "✓ MAXIMUM FARMLAND EXPANDED (16 / 16 PLOTS)";
+                    expandFarmlandButton.interactable = false;
+                    expandFarmlandButton.GetComponent<Image>().color = ColBtnDisabled;
+                }
+                else
+                {
+                    expandFarmlandButtonText.text = canAfford
+                        ? $"▲ PURCHASE LAND DEED (+2 PLOTS: {unlocked} ➔ {nextCount})   [{cost:N0} GOLD]"
+                        : $"LOCKED: LAND DEED (+2 PLOTS) [{cost:N0} G] — <color=#FF8A80>NEED {cost - currentGold:N0} MORE GOLD</color>";
+                    expandFarmlandButton.interactable = canAfford;
+                    expandFarmlandButton.GetComponent<Image>().color = canAfford ? ColBtnPrimary : ColBtnDisabled;
+                }
+            }
+        }
+
+        private void OnClickExpandFarmland()
+        {
+            var mgr = FeaturesFarming.FarmlandExpansionManager.Instance;
+            if (mgr != null && mgr.TryExpand())
+            {
+                RefreshView();
             }
         }
 
@@ -1190,17 +1290,21 @@ namespace FeaturesWorkbench.UI
             var closeBtnObj = CreateButton(headerBar.transform, new Vector2(0.935f, 0.20f), new Vector2(0.985f, 0.82f), "<b>ESC ✕</b>", Close, ColAccentCrimson, 13f);
             closeBtnObj.name = "CloseX";
 
-            // 4. Primary Navigation Strip (3 Tactical Module Tabs: 0.825 to 0.895)
-            tabWeaponButton = CreateNavTab(dialog.transform, new Vector2(0.025f, 0.825f), new Vector2(0.335f, 0.892f),
-                "<b>01 // WEAPONRY & DOCTRINE TREE</b>\n<size=11>Forging, Homestead Slingshot & 6-Node Mastery</size>",
+            // 4. Primary Navigation Strip (4 Tactical Module Tabs: 0.825 to 0.895)
+            tabWeaponButton = CreateNavTab(dialog.transform, new Vector2(0.020f, 0.825f), new Vector2(0.255f, 0.892f),
+                "<b>01 // WEAPONRY</b>\n<size=11>Forging & 6-Node Mastery</size>",
                 () => SetTab(WorkbenchTab.Weapon), out tabWeaponButtonText, out tabWeaponIndicator);
 
-            tabArmorButton = CreateNavTab(dialog.transform, new Vector2(0.345f, 0.825f), new Vector2(0.655f, 0.892f),
-                "<b>02 // ARMOR & COMBAT SETS</b>\n<size=11>Plating Mitigation & 5-Piece Sweet Potato Set</size>",
+            tabArmorButton = CreateNavTab(dialog.transform, new Vector2(0.265f, 0.825f), new Vector2(0.495f, 0.892f),
+                "<b>02 // ARMOR SETS</b>\n<size=11>Plating & 5-Piece Combat Set</size>",
                 () => SetTab(WorkbenchTab.Armor), out tabArmorButtonText, out tabArmorIndicator);
 
-            tabOverdriveButton = CreateNavTab(dialog.transform, new Vector2(0.665f, 0.825f), new Vector2(0.975f, 0.892f),
-                "<b>03 // BIO-CATALYST OVERDRIVE</b>\n<size=11>Nocturnal Crop Growth & Loot Escalation Reactor</size>",
+            tabFarmlandButton = CreateNavTab(dialog.transform, new Vector2(0.505f, 0.825f), new Vector2(0.735f, 0.892f),
+                "<b>03 // LAND DEEDS</b>\n<size=11>Arable Plots Expansion (6 ➔ 16)</size>",
+                () => SetTab(WorkbenchTab.Farmland), out tabFarmlandButtonText, out tabFarmlandIndicator);
+
+            tabOverdriveButton = CreateNavTab(dialog.transform, new Vector2(0.745f, 0.825f), new Vector2(0.980f, 0.892f),
+                "<b>04 // BIO-REACTOR</b>\n<size=11>Nocturnal Growth Overdrive</size>",
                 () => SetTab(WorkbenchTab.Overdrive), out tabOverdriveButtonText, out tabOverdriveIndicator);
 
             // =================================================================
@@ -1368,7 +1472,28 @@ namespace FeaturesWorkbench.UI
             armorTabContent.SetActive(false);
 
             // =================================================================
-            // TAB 03 CONTENT: BIO-CATALYST NIGHT OVERDRIVE REACTOR
+            // TAB 03 CONTENT: FARMLAND EXPANSION & LAND DEEDS
+            // =================================================================
+            farmlandTabContent = CreateContainer("FarmlandTabContent", dialog.transform, new Vector2(0.025f, 0.03f), new Vector2(0.975f, 0.805f));
+
+            var flBanner = CreatePanel("FarmlandBanner", farmlandTabContent.transform, new Vector2(0f, 0.78f), new Vector2(1f, 1f), ColCardBg);
+            CreatePanel("FlAccent", flBanner.transform, new Vector2(0f, 0f), new Vector2(0.008f, 1f), ColAccentEmerald);
+            farmlandStatusBannerText = CreateLabel("FlBannerText", flBanner.transform, new Vector2(0.03f, 0.10f), new Vector2(0.97f, 0.90f),
+                "", 14f, TextAlignmentOptions.MidlineLeft);
+
+            var flBodyCard = CreateCard("FarmlandTelemetryCard", farmlandTabContent.transform, new Vector2(0f, 0.18f), new Vector2(1f, 0.75f));
+            farmlandTelemetryText = CreateLabel("FlTelemetryText", flBodyCard.transform, new Vector2(0.04f, 0.08f), new Vector2(0.96f, 0.92f),
+                "", 14f, TextAlignmentOptions.MidlineLeft);
+
+            var expandBtnObj = CreateButton(farmlandTabContent.transform, new Vector2(0f, 0.01f), new Vector2(1f, 0.14f),
+                "PURCHASE LAND DEED (+2 PLOTS)", OnClickExpandFarmland, ColBtnPrimary, 15f);
+            expandFarmlandButton = expandBtnObj.GetComponent<Button>();
+            expandFarmlandButtonText = expandBtnObj.GetComponentInChildren<TextMeshProUGUI>();
+
+            farmlandTabContent.SetActive(false);
+
+            // =================================================================
+            // TAB 04 CONTENT: BIO-CATALYST NIGHT OVERDRIVE REACTOR
             // =================================================================
             overdriveTabContent = CreateContainer("OverdriveTabContent", dialog.transform, new Vector2(0.025f, 0.03f), new Vector2(0.975f, 0.805f));
 

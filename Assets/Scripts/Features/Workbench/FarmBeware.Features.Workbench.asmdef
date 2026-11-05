@@ -7,6 +7,7 @@
         "FarmBeware.Features.Inventory",
         "FarmBeware.Features.Interaction",
         "FarmBeware.Features.Combat",
+        "FarmBeware.Features.Farming",
         "Unity.InputSystem",
         "Unity.TextMeshPro"
     ],

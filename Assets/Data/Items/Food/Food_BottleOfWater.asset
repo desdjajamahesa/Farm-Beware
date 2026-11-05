@@ -20,7 +20,7 @@ MonoBehaviour:
   description: Literally a fresh bottle of clean drinking water. Restores 50 Hydration.
   maxStack: 20
   type: 1
-  buyPrice: 100
+  buyPrice: 2000
   sellPrice: 50
   isDirty: 0
   cleanVariant: {fileID: 0}

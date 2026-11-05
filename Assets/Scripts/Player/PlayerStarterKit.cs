@@ -8,13 +8,12 @@ using FeaturesWorkbench;
 namespace Player
 {
     /// <summary>
-    /// Guarantees that on Day 1+ the Storage Chest contains the official starter kit:
+    /// Guarantees that on Day 1+ the Storage Chest contains the official starter farming kit:
     /// - Slot 0: Hoe (Tool_Hoe)
     /// - Slot 1: Plant Waterer (Tool_PlantWaterer 100L)
     /// - Slot 2: Bottle of Water (Food_BottleOfWater 4 charges)
-    /// - Slot 3: 6x Sweet Potato Seeds (Seed_SweetPotato)
-    /// - Slot 4: Homestead Slingshot (tool_weapon_corn_repeater)
-    /// - Slots 5..9: Sweet Potato Combat Armor Set (Burrow Hood, Swift Root Armor, Fang Grips, Underground Striders, Sweet Potato Heart)
+    /// - Slot 3: 3x Sweet Potato Seeds (Seed_SweetPotato)
+    /// Combat armor and slingshot must be earned, crafted at Workbench, or purchased from Merchant.
     /// </summary>
     public class PlayerStarterKit : MonoBehaviour
     {
@@ -23,7 +22,7 @@ namespace Player
         [SerializeField] private ItemData plantWatererItem;
         [SerializeField] private ItemData waterBottleItem;
         [SerializeField] private ItemData sweetPotatoSeedItem;
-        [SerializeField] private int starterSeedCount = 6;
+        [SerializeField] private int starterSeedCount = 3;
 
         [Header("Day 1 Combat & Armor Starter Pack (Auto-loaded if null)")]
         [SerializeField] private ItemData slingshotItem;
@@ -270,14 +269,6 @@ namespace Player
             TryAddStarterItemToChest(chestInv, playerInv, armorState, plantWatererItem, 1);
             TryAddStarterItemToChest(chestInv, playerInv, armorState, waterBottleItem, 1);
             TryAddStarterItemToChest(chestInv, playerInv, armorState, sweetPotatoSeedItem, starterSeedCount);
-
-            // 2. Homestead Slingshot & Sweet Potato Combat Armor Set (Slots 4..9)
-            TryAddStarterItemToChest(chestInv, playerInv, armorState, slingshotItem, 1);
-            TryAddStarterItemToChest(chestInv, playerInv, armorState, burrowHoodItem, 1);
-            TryAddStarterItemToChest(chestInv, playerInv, armorState, swiftRootArmorItem, 1);
-            TryAddStarterItemToChest(chestInv, playerInv, armorState, fangGripsItem, 1);
-            TryAddStarterItemToChest(chestInv, playerInv, armorState, undergroundStridersItem, 1);
-            TryAddStarterItemToChest(chestInv, playerInv, armorState, sweetPotatoHeartItem, 1);
 
             chestInv.OnInventoryChanged?.Invoke();
         }

@@ -120,6 +120,7 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
     void IPlayerContext.RemoveInputLock(string source) => RemoveInputLock(source);
     void IPlayerContext.ClearAllInputLocks() => ClearAllInputLocks();
     bool IPlayerContext.HasInputLock(string source) => HasInputLock(source);
+    bool IPlayerContext.HasLockOtherThan(string excludedSource) => HasLockOtherThan(excludedSource);
     public bool IsGodMode => playerStats != null && playerStats.isGodMode;
     public void PlayAnimation(string triggerName)
     {
@@ -1779,6 +1780,15 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
     {
         if (string.IsNullOrEmpty(source)) return _inputLockSources.Count > 0;
         return _inputLockSources.Contains(source);
+    }
+
+    public bool HasLockOtherThan(string excludedSource)
+    {
+        foreach (var src in _inputLockSources)
+        {
+            if (src != excludedSource) return true;
+        }
+        return false;
     }
 
     private void ApplyLockState(bool locked)

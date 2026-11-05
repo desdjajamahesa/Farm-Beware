@@ -40,7 +40,7 @@ namespace FarmBeware.Features.Vehicles
         [Header("Player Entry & Seating")]
         [SerializeField] private Transform driverSeatAnchor;
         [SerializeField] private Transform safeDismountAnchor;
-        [SerializeField] private float interactionRadius = 5.5f;
+        [SerializeField] private float interactionRadius = 2.4f;
 
         [Header("Homestead Parking (Day 1+)")]
         [SerializeField] private Vector3 homesteadParkPosition = new Vector3(30.550905f, 0.000355f, 54.140785f);
@@ -116,6 +116,12 @@ namespace FarmBeware.Features.Vehicles
             _dynamics = new VehicleDynamicsCore();
             _truckLighting = GetComponent<FeaturesEnvironment.FarmTruckController>();
 
+            // Auto-migrate legacy serialized scene values
+            if (interactionRadius > 3.0f)
+            {
+                interactionRadius = 2.4f;
+            }
+
             EnsureSubAssemblies();
             SetupEngineAudio();
             SetupHornAudio();
@@ -169,41 +175,76 @@ namespace FarmBeware.Features.Vehicles
             }
         }
 
+        /// <summary>
+        /// Centrally evaluates whether any cutscene, story modal, UI window, or external player input lock is active.
+        /// When true, all driving forces, steering inputs, and vehicle interaction transitions are strictly halted.
+        /// </summary>
+        public bool IsCutsceneOrInputBlocked()
+        {
+            if (ServiceLocator.TryResolve<ICutsceneService>(out var cutscene) && cutscene != null && cutscene.IsCutscenePlaying)
+                return true;
+
+            if (FeaturesStoryline.Cutscenes.OpeningCutsceneController.HasInstance && FeaturesStoryline.Cutscenes.OpeningCutsceneController.Instance.IsCutscenePlaying)
+                return true;
+
+            if (FeaturesStoryline.Cutscenes.Night1CutsceneController.HasInstance && FeaturesStoryline.Cutscenes.Night1CutsceneController.Instance.IsCutscenePlaying)
+                return true;
+
+            if (FeaturesStoryline.StorylineManager.Instance != null && FeaturesStoryline.StorylineManager.Instance.IsCutsceneActive())
+                return true;
+
+            if (ModalStackManager.HasInstance && ModalStackManager.Instance.HasActiveModal)
+                return true;
+
+            if (UIModalHelper.IsSaveUIOpen)
+                return true;
+
+            if (_playerControl != null && _playerControl.HasLockOtherThan("VehicleDriving"))
+                return true;
+
+            if (ServiceLocator.TryResolve<IPlayerContext>(out var playerCtx) && playerCtx != null && playerCtx.HasLockOtherThan("VehicleDriving"))
+                return true;
+
+            return false;
+        }
+
         #region IInteractable Implementation
         public bool CanInteract(GameObject interactor)
         {
             if (_isDriverOccupied) return false;
             if (interactor == null) return false;
+            if (IsCutsceneOrInputBlocked()) return false;
 
-            // 1. Check distance to vehicle transform root
-            float dist = Vector3.Distance(transform.position, interactor.transform.position);
-            if (dist <= interactionRadius) return true;
+            Vector3 interactorPos = interactor.transform.position;
 
-            // 2. Check distance to driver seat anchor
+            // 1. Check distance to driver seat anchor
             if (driverSeatAnchor != null)
             {
-                float distSeat = Vector3.Distance(driverSeatAnchor.position, interactor.transform.position);
+                float distSeat = Vector3.Distance(driverSeatAnchor.position, interactorPos);
                 if (distSeat <= interactionRadius) return true;
             }
 
-            // 3. Check distance to safe dismount anchor
+            // 2. Check distance to safe dismount anchor
             if (safeDismountAnchor != null)
             {
-                float distDismount = Vector3.Distance(safeDismountAnchor.position, interactor.transform.position);
+                float distDismount = Vector3.Distance(safeDismountAnchor.position, interactorPos);
                 if (distDismount <= interactionRadius) return true;
             }
 
-            // 4. Check distance to any child collider or trigger volume
-            var colliders = GetComponentsInChildren<Collider>();
-            foreach (var col in colliders)
-            {
-                if (col.isTrigger && col.bounds.Contains(interactor.transform.position))
-                    return true;
+            // 3. Check distance to driver cabin door anchor (local X=-1.1f, Y=0.5f, Z=0.2f)
+            Vector3 driverDoorWorld = transform.TransformPoint(new Vector3(-1.1f, 0.5f, 0.2f));
+            float distDoor = Vector3.Distance(driverDoorWorld, interactorPos);
+            if (distDoor <= interactionRadius) return true;
 
-                Vector3 closest = col.ClosestPoint(interactor.transform.position);
-                if (Vector3.Distance(closest, interactor.transform.position) <= 4.0f)
+            // 4. Check dedicated InteractionTrigger volume bounds
+            var triggerTransform = transform.Find("InteractionTrigger");
+            if (triggerTransform != null)
+            {
+                var box = triggerTransform.GetComponent<BoxCollider>();
+                if (box != null && box.bounds.Contains(interactorPos))
                     return true;
             }
+
             return false;
         }
 
@@ -574,6 +615,36 @@ namespace FarmBeware.Features.Vehicles
         {
             if (_dynamics == null) _dynamics = new VehicleDynamicsCore();
 
+            bool isBlocked = IsCutsceneOrInputBlocked();
+
+            if (isBlocked)
+            {
+                // Strictly immobilize vehicle while any cutscene, story modal, UI, or input lock is active
+                _currentSpeedMps = 0f;
+                _currentSteerAngle = 0f;
+                _currentPitch = 0f;
+                _currentRoll = 0f;
+                _lastForwardSpeed = 0f;
+
+                if (_rb != null)
+                {
+                    _rb.linearVelocity = Vector3.zero;
+                    _rb.angularVelocity = Vector3.zero;
+                }
+
+                // Synchronize occupant player Rigidbody if occupied
+                if (_isDriverOccupied && _occupantPlayer != null)
+                {
+                    Transform dockTarget = driverSeatAnchor != null ? driverSeatAnchor : transform;
+                    if (_occupantPlayerRb != null)
+                    {
+                        _occupantPlayerRb.MovePosition(dockTarget.position);
+                        _occupantPlayerRb.MoveRotation(dockTarget.rotation);
+                    }
+                }
+                return;
+            }
+
             float throttleInput = 0f;
             float steerInput = 0f;
             bool handbrake = false;
@@ -662,16 +733,15 @@ namespace FarmBeware.Features.Vehicles
         #region Visual & Audio Update (Update)
         private void Update()
         {
-            var cutscene = ServiceLocator.Resolve<ICutsceneService>();
-            bool isCutscenePlaying = cutscene != null && cutscene.IsCutscenePlaying;
+            bool isBlocked = IsCutsceneOrInputBlocked();
 
             if (_doorDebounceTimer > 0f)
             {
                 _doorDebounceTimer -= Time.deltaTime;
             }
 
-            // Direct Entry Fallback: If player is near the truck and presses E (blocked during cutscenes)
-            if (!isCutscenePlaying && !_isDriverOccupied && _doorDebounceTimer <= 0f && Keyboard.current != null && Keyboard.current.eKey.wasPressedThisFrame)
+            // Direct Entry Fallback: If player is near the truck and presses E (strictly blocked during cutscenes)
+            if (!isBlocked && !_isDriverOccupied && _doorDebounceTimer <= 0f && Keyboard.current != null && Keyboard.current.eKey.wasPressedThisFrame)
             {
                 var player = GameObject.FindWithTag("Player") ?? GameObject.Find("Player");
                 if (player != null && CanInteract(player))
@@ -681,8 +751,8 @@ namespace FarmBeware.Features.Vehicles
                 }
             }
 
-            // Enter / Exit Trigger on E (blocked during cutscenes)
-            if (!isCutscenePlaying && _isDriverOccupied && _doorDebounceTimer <= 0f && Keyboard.current != null)
+            // Enter / Exit Trigger on E (strictly blocked during cutscenes)
+            if (!isBlocked && _isDriverOccupied && _doorDebounceTimer <= 0f && Keyboard.current != null)
             {
                 if (Keyboard.current.eKey.wasPressedThisFrame)
                 {
@@ -765,25 +835,7 @@ namespace FarmBeware.Features.Vehicles
             }
 
             // 6. Update HUD Telemetry
-            bool isCutsceneActive = false;
-            if (ServiceLocator.TryResolve<ICutsceneService>(out var cutsceneService) && cutsceneService != null)
-            {
-                isCutsceneActive = cutsceneService.IsCutscenePlaying;
-            }
-            if (!isCutsceneActive && FeaturesStoryline.Cutscenes.OpeningCutsceneController.HasInstance)
-            {
-                isCutsceneActive = FeaturesStoryline.Cutscenes.OpeningCutsceneController.Instance.IsCutscenePlaying;
-            }
-            if (!isCutsceneActive && FeaturesStoryline.Cutscenes.Night1CutsceneController.HasInstance)
-            {
-                isCutsceneActive = FeaturesStoryline.Cutscenes.Night1CutsceneController.Instance.IsCutscenePlaying;
-            }
-            if (!isCutsceneActive && FeaturesStoryline.StorylineManager.Instance != null)
-            {
-                isCutsceneActive = FeaturesStoryline.StorylineManager.Instance.IsCutsceneActive();
-            }
-
-            if (!isCutsceneActive && _isDriverOccupied && VehicleDrivingHUD.Instance != null)
+            if (!isBlocked && _isDriverOccupied && VehicleDrivingHUD.Instance != null)
             {
                 float throttle = 0f;
                 if (Keyboard.current != null)
@@ -794,7 +846,7 @@ namespace FarmBeware.Features.Vehicles
                 var gear = _dynamics.DetermineGear(_currentSpeedMps, throttle);
                 VehicleDrivingHUD.Instance.UpdateTelemetry(_currentSpeedMps, gear);
             }
-            else if (isCutsceneActive && VehicleDrivingHUD.Instance != null)
+            else if (isBlocked && VehicleDrivingHUD.Instance != null)
             {
                 VehicleDrivingHUD.Instance.SnapHidden();
             }
@@ -908,18 +960,19 @@ namespace FarmBeware.Features.Vehicles
                 {
                     var triggerGo = new GameObject("InteractionTrigger");
                     triggerGo.transform.SetParent(transform, false);
-                    triggerGo.transform.localPosition = new Vector3(-0.4f, 0.75f, 0.2f);
+                    triggerGo.transform.localPosition = new Vector3(-1.1f, 0.65f, 0.2f);
                     box = triggerGo.AddComponent<BoxCollider>();
                 }
             }
             else
             {
+                triggerTransform.localPosition = new Vector3(-1.1f, 0.65f, 0.2f);
                 box = triggerTransform.GetComponent<BoxCollider>();
             }
             if (box != null)
             {
                 box.isTrigger = true;
-                box.size = new Vector3(6.5f, 3.0f, 7.0f);
+                box.size = new Vector3(2.2f, 2.0f, 2.4f);
             }
         }
 

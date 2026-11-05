@@ -111,9 +111,66 @@ namespace FeaturesWorkbench
             return EquipmentUpgradeEvaluator.GetArmorUpgradeCost(armorLevel);
         }
 
-        public bool UpgradeArmor(IWalletService wallet = null)
+        /// <summary>
+        /// Checks whether the player owns or has equipped at least one armor piece.
+        /// Strict equipment ownership gating: plating cannot be upgraded without owning armor.
+        /// </summary>
+        public bool HasAnyArmorPiece(InventoryComponent inv = null)
+        {
+            // Check equipped armor slots (excluding weapon)
+            foreach (var kvp in _equippedMap)
+            {
+                if (kvp.Key != EquipmentSlotType.MainWeapon && kvp.Value != null)
+                {
+                    return true;
+                }
+            }
+
+            if (inv == null)
+            {
+                inv = GetComponent<InventoryComponent>();
+            }
+            if (inv == null)
+            {
+                var player = GameObject.FindWithTag("Player") ?? GameObject.Find("Player");
+                if (player != null)
+                {
+                    inv = player.GetComponent<InventoryComponent>();
+                }
+            }
+
+            if (inv != null && inv.slots != null)
+            {
+                for (int i = 0; i < inv.slots.Count; i++)
+                {
+                    var slot = inv.slots[i];
+                    if (slot != null && !slot.IsEmpty && slot.item != null)
+                    {
+                        if (slot.item is EquipmentItemData ||
+                            string.Equals(slot.item.itemId, "item_burrow_hood", StringComparison.OrdinalIgnoreCase) ||
+                            string.Equals(slot.item.itemId, "item_swift_root_armor", StringComparison.OrdinalIgnoreCase) ||
+                            string.Equals(slot.item.itemId, "item_fang_grips", StringComparison.OrdinalIgnoreCase) ||
+                            string.Equals(slot.item.itemId, "item_underground_striders", StringComparison.OrdinalIgnoreCase) ||
+                            string.Equals(slot.item.itemId, "item_sweet_potato_heart", StringComparison.OrdinalIgnoreCase))
+                        {
+                            return true;
+                        }
+                    }
+                }
+            }
+
+            return false;
+        }
+
+        public bool UpgradeArmor(IWalletService wallet = null, InventoryComponent inv = null)
         {
             if (armorLevel >= EquipmentUpgradeEvaluator.MaxArmorLevel) return false;
+
+            if (!HasAnyArmorPiece(inv))
+            {
+                Debug.LogWarning("[PlayerArmorUpgradeState] Cannot upgrade armor plating: Player does not possess any armor pieces!");
+                return false;
+            }
 
             int cost = GetNextUpgradeCost();
             if (cost <= 0) return false;
@@ -142,6 +199,16 @@ namespace FeaturesWorkbench
                 if (kvp.Value is EquipmentItemData eq && string.Equals(eq.setName, targetSetName, StringComparison.OrdinalIgnoreCase))
                 {
                     matchCount++;
+                }
+                else if (string.Equals(targetSetName, "Sweet Potato", StringComparison.OrdinalIgnoreCase) &&
+                         kvp.Key == EquipmentSlotType.MainWeapon && kvp.Value != null)
+                {
+                    // Root Cleaver counts toward the Sweet Potato combat set
+                    if (string.Equals(kvp.Value.itemId, "tool_weapon_root_cleaver", StringComparison.OrdinalIgnoreCase) ||
+                        string.Equals(kvp.Value.itemId, "dummysword", StringComparison.OrdinalIgnoreCase))
+                    {
+                        matchCount++;
+                    }
                 }
             }
 
