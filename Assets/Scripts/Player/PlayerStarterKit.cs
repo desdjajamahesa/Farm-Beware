@@ -3,17 +3,18 @@ using FarmBeware.Core.Runtime;
 using FeaturesFarming;
 using FeaturesKitchen;
 using FeaturesEconomy;
+using FeaturesWorkbench;
 
 namespace Player
 {
     /// <summary>
-    /// Guarantees that the player starts with the official MVP starter kit:
+    /// Guarantees that on Day 1+ the Storage Chest contains the official starter kit:
     /// - Slot 0: Hoe (Tool_Hoe)
     /// - Slot 1: Plant Waterer (Tool_PlantWaterer 100L)
     /// - Slot 2: Bottle of Water (Food_BottleOfWater 4 charges)
     /// - Slot 3: 6x Sweet Potato Seeds (Seed_SweetPotato)
-    /// - Dummy Sword is NOT in starter kit; must be bought from merchant table.
-    /// - Full capacity for PlantWaterer and PlayerWaterBottle.
+    /// - Slot 4: Homestead Slingshot (tool_weapon_corn_repeater)
+    /// - Slots 5..9: Sweet Potato Combat Armor Set (Burrow Hood, Swift Root Armor, Fang Grips, Underground Striders, Sweet Potato Heart)
     /// </summary>
     public class PlayerStarterKit : MonoBehaviour
     {
@@ -23,6 +24,14 @@ namespace Player
         [SerializeField] private ItemData waterBottleItem;
         [SerializeField] private ItemData sweetPotatoSeedItem;
         [SerializeField] private int starterSeedCount = 6;
+
+        [Header("Day 1 Combat & Armor Starter Pack (Auto-loaded if null)")]
+        [SerializeField] private ItemData slingshotItem;
+        [SerializeField] private ItemData burrowHoodItem;
+        [SerializeField] private ItemData swiftRootArmorItem;
+        [SerializeField] private ItemData fangGripsItem;
+        [SerializeField] private ItemData undergroundStridersItem;
+        [SerializeField] private ItemData sweetPotatoHeartItem;
 
         [Header("Target Storage Chest (Auto-found if null)")]
         [SerializeField] private InventoryComponent storageChestInventory;
@@ -204,7 +213,7 @@ namespace Player
             }
 
             // On Day 1+: Player wakes up with empty hands/pockets.
-            // Starter tools are stored in the Storage Chest per design to be retrieved via Side Quest.
+            // Starter tools, Homestead Slingshot, and Sweet Potato Armor set are stored in the Storage Chest.
             var targetChest = FindTargetStorageChest();
             if (targetChest != null)
             {
@@ -254,26 +263,53 @@ namespace Player
             chestInv.EnsureSlotsAllocated();
 
             var playerInv = GetComponent<InventoryComponent>();
+            var armorState = GetComponent<PlayerArmorUpgradeState>() ?? PlayerArmorUpgradeState.Instance;
 
-            // Ensure starter items in chest only if neither the chest nor the player currently possesses them
-            if (hoeItem != null && chestInv.CountItem(hoeItem) == 0 && (playerInv == null || playerInv.CountItem(hoeItem) == 0))
-            {
-                chestInv.AddItem(hoeItem, 1);
-            }
-            if (plantWatererItem != null && chestInv.CountItem(plantWatererItem) == 0 && (playerInv == null || playerInv.CountItem(plantWatererItem) == 0))
-            {
-                chestInv.AddItem(plantWatererItem, 1);
-            }
-            if (waterBottleItem != null && chestInv.CountItem(waterBottleItem) == 0 && (playerInv == null || playerInv.CountItem(waterBottleItem) == 0))
-            {
-                chestInv.AddItem(waterBottleItem, 1);
-            }
-            if (sweetPotatoSeedItem != null && chestInv.CountItem(sweetPotatoSeedItem) == 0 && (playerInv == null || playerInv.CountItem(sweetPotatoSeedItem) == 0))
-            {
-                chestInv.AddItem(sweetPotatoSeedItem, starterSeedCount);
-            }
+            // 1. Core Starter Farming Pack (Slots 0..3)
+            TryAddStarterItemToChest(chestInv, playerInv, armorState, hoeItem, 1);
+            TryAddStarterItemToChest(chestInv, playerInv, armorState, plantWatererItem, 1);
+            TryAddStarterItemToChest(chestInv, playerInv, armorState, waterBottleItem, 1);
+            TryAddStarterItemToChest(chestInv, playerInv, armorState, sweetPotatoSeedItem, starterSeedCount);
+
+            // 2. Homestead Slingshot & Sweet Potato Combat Armor Set (Slots 4..9)
+            TryAddStarterItemToChest(chestInv, playerInv, armorState, slingshotItem, 1);
+            TryAddStarterItemToChest(chestInv, playerInv, armorState, burrowHoodItem, 1);
+            TryAddStarterItemToChest(chestInv, playerInv, armorState, swiftRootArmorItem, 1);
+            TryAddStarterItemToChest(chestInv, playerInv, armorState, fangGripsItem, 1);
+            TryAddStarterItemToChest(chestInv, playerInv, armorState, undergroundStridersItem, 1);
+            TryAddStarterItemToChest(chestInv, playerInv, armorState, sweetPotatoHeartItem, 1);
 
             chestInv.OnInventoryChanged?.Invoke();
+        }
+
+        private static void TryAddStarterItemToChest(
+            InventoryComponent chestInv,
+            InventoryComponent playerInv,
+            PlayerArmorUpgradeState armorState,
+            ItemData item,
+            int quantity)
+        {
+            if (item == null || chestInv == null || quantity <= 0) return;
+
+            if (chestInv.CountItem(item) > 0) return;
+            if (playerInv != null && playerInv.CountItem(item) > 0) return;
+            if (IsItemCurrentlyEquipped(armorState, item)) return;
+
+            chestInv.AddItem(item, quantity);
+        }
+
+        private static bool IsItemCurrentlyEquipped(PlayerArmorUpgradeState armorState, ItemData item)
+        {
+            if (armorState == null || item == null) return false;
+            foreach (EquipmentSlotType st in System.Enum.GetValues(typeof(EquipmentSlotType)))
+            {
+                var eq = armorState.GetEquippedItem(st);
+                if (eq != null && (eq == item || string.Equals(eq.itemId, item.itemId, System.StringComparison.OrdinalIgnoreCase)))
+                {
+                    return true;
+                }
+            }
+            return false;
         }
 
         public void PopulateRefrigerator(InventoryComponent fridgeInv = null)
@@ -318,7 +354,29 @@ namespace Player
                 if (plantWatererItem == null) plantWatererItem = db.GetItem("tool_plant_waterer");
                 if (waterBottleItem == null) waterBottleItem = db.GetItem("food_bottle_water");
                 if (sweetPotatoSeedItem == null) sweetPotatoSeedItem = db.GetItem("seed_sweet_potato");
+
+                if (slingshotItem == null) slingshotItem = db.GetItem("tool_weapon_corn_repeater");
+                if (burrowHoodItem == null) burrowHoodItem = db.GetItem("item_burrow_hood");
+                if (swiftRootArmorItem == null) swiftRootArmorItem = db.GetItem("item_swift_root_armor");
+                if (fangGripsItem == null) fangGripsItem = db.GetItem("item_fang_grips");
+                if (undergroundStridersItem == null) undergroundStridersItem = db.GetItem("item_underground_striders");
+                if (sweetPotatoHeartItem == null) sweetPotatoHeartItem = db.GetItem("item_sweet_potato_heart");
             }
+
+#if UNITY_EDITOR
+            if (slingshotItem == null)
+                slingshotItem = UnityEditor.AssetDatabase.LoadAssetAtPath<ItemData>("Assets/Data/Items/Equipment/Tool_CornRepeater.asset");
+            if (burrowHoodItem == null)
+                burrowHoodItem = UnityEditor.AssetDatabase.LoadAssetAtPath<ItemData>("Assets/Data/Items/Equipment/item_burrow_hood.asset");
+            if (swiftRootArmorItem == null)
+                swiftRootArmorItem = UnityEditor.AssetDatabase.LoadAssetAtPath<ItemData>("Assets/Data/Items/Equipment/item_swift_root_armor.asset");
+            if (fangGripsItem == null)
+                fangGripsItem = UnityEditor.AssetDatabase.LoadAssetAtPath<ItemData>("Assets/Data/Items/Equipment/item_fang_grips.asset");
+            if (undergroundStridersItem == null)
+                undergroundStridersItem = UnityEditor.AssetDatabase.LoadAssetAtPath<ItemData>("Assets/Data/Items/Equipment/item_underground_striders.asset");
+            if (sweetPotatoHeartItem == null)
+                sweetPotatoHeartItem = UnityEditor.AssetDatabase.LoadAssetAtPath<ItemData>("Assets/Data/Items/Equipment/item_sweet_potato_heart.asset");
+#endif
         }
     }
 }

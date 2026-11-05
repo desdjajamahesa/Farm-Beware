@@ -136,6 +136,82 @@ namespace FeaturesCombat
         private Coroutine _night1CutsceneWaitingRoutine;
 
         public bool HasNight1CutscenePlayed => _hasNight1CutscenePlayed;
+        public bool IsOverdriveNightActive { get; private set; }
+
+        public void SetOverdriveNightActive(bool active)
+        {
+            IsOverdriveNightActive = active;
+        }
+
+        /// <summary>
+        /// Attempts to arm Bio-Catalyst Night Overdrive by consuming 2 monster materials.
+        /// Enables 50% nocturnal crop growth, automatic Clean Harvest purification, +25% gold, and +30% material drops.
+        /// </summary>
+        public bool TryActivateNightOverdrive(InventoryComponent playerInv = null)
+        {
+            if (playerInv == null)
+            {
+                var player = GameObject.FindWithTag("Player") ?? GameObject.Find("Player");
+                if (player != null) playerInv = player.GetComponent<InventoryComponent>();
+            }
+
+            int availableCatalysts = 0;
+            if (playerInv != null && playerInv.slots != null)
+            {
+                for (int i = 0; i < playerInv.slots.Count; i++)
+                {
+                    var slot = playerInv.slots[i];
+                    if (slot != null && !slot.IsEmpty && slot.item != null)
+                    {
+                        if (slot.item.category == ItemCategory.Material ||
+                            (slot.item.itemId != null && slot.item.itemId.StartsWith("mat_", System.StringComparison.OrdinalIgnoreCase)))
+                        {
+                            availableCatalysts += slot.quantity;
+                        }
+                    }
+                }
+            }
+
+            if (!Core.PureLogic.NightOverdriveEvaluator.CanActivateOverdrive(IsOverdriveNightActive, availableCatalysts))
+            {
+                return false;
+            }
+
+            int remainingToConsume = Core.PureLogic.NightOverdriveEvaluator.RequiredCatalystMaterialCount;
+            if (playerInv != null && playerInv.slots != null)
+            {
+                for (int i = 0; i < playerInv.slots.Count && remainingToConsume > 0; i++)
+                {
+                    var slot = playerInv.slots[i];
+                    if (slot != null && !slot.IsEmpty && slot.item != null)
+                    {
+                        if (slot.item.category == ItemCategory.Material ||
+                            (slot.item.itemId != null && slot.item.itemId.StartsWith("mat_", System.StringComparison.OrdinalIgnoreCase)))
+                        {
+                            int take = Mathf.Min(slot.quantity, remainingToConsume);
+                            slot.quantity -= take;
+                            if (slot.quantity <= 0) { slot.item = null; slot.quantity = 0; }
+                            remainingToConsume -= take;
+                        }
+                    }
+                }
+                playerInv.OnInventoryChanged?.Invoke();
+            }
+
+            IsOverdriveNightActive = true;
+
+            if (FloatingCombatTextManager.Instance != null)
+            {
+                var player = GameObject.FindWithTag("Player");
+                Vector3 notifPos = player != null ? player.transform.position + Vector3.up * 2f : arenaCenter;
+                FloatingCombatTextManager.Instance.SpawnText(
+                    notifPos,
+                    "🔥 BIO-CATALYST OVERDRIVE ARMED! (+50% Night Growth & Clean Harvest)",
+                    new Color(1f, 0.45f, 0.15f));
+            }
+
+            return true;
+        }
 
         public void ResetNight1CutsceneState()
         {
@@ -526,6 +602,15 @@ namespace FeaturesCombat
                 if (enemy != null)
                 {
                     enemy.isSummonedMinion = false;
+                    if (IsOverdriveNightActive)
+                    {
+                        float speedMult = Core.PureLogic.NightOverdriveEvaluator.GetEnemySpeedMultiplier(true);
+                        enemy.moveSpeed *= speedMult;
+                        if (enemy.TryGetComponent<NavMeshAgent>(out var navAgent) && navAgent != null)
+                        {
+                            navAgent.speed = enemy.moveSpeed;
+                        }
+                    }
                     activeEnemies.Add(enemy);
                     OnEnemySpawned?.Invoke(enemy);
                 }
@@ -1003,6 +1088,7 @@ namespace FeaturesCombat
             StopSpawnCoroutine();
 
             isWaveInProgress = false;
+            IsOverdriveNightActive = false;
             waveEngine.EndNight();
 
             if (cleanupRemaining)

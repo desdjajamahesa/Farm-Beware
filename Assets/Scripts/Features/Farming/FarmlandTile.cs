@@ -126,11 +126,14 @@ namespace FeaturesFarming
         }
 
         private int lastVisualStage = -1;
+        private bool _ripenedDuringOverdrive = false;
+        public bool RipenedDuringOverdrive => _ripenedDuringOverdrive;
 
         private void Update()
         {
             // Sesuai MVP Version Guideline V0.1:
             // "Crop growth: Only counts during the Day phase (night does not count)."
+            // Module C Exception: Bio-Catalyst Night Overdrive allows 50% nocturnal growth + Clean Harvest purification.
             var timeService = ServiceLocator.Resolve<ITimeService>();
             bool isNight = (timeService != null && timeService.IsNight) ||
                            (TimeManager.Instance != null && TimeManager.Instance.currentPhase == TimeManager.DayPhase.Night);
@@ -138,13 +141,25 @@ namespace FeaturesFarming
             // 1. Logika pertumbuhan jika tanah dalam kondisi tersiram air
             if (currentState == TileState.PlantedWatered && plantedSeed != null)
             {
+                float timeMultiplier = FeaturesTime.DayNightTimeManager.Instance != null
+                    ? FeaturesTime.DayNightTimeManager.Instance.FastForwardMultiplier
+                    : 1f;
+
                 if (!isNight)
                 {
-                    float timeMultiplier = FeaturesTime.DayNightTimeManager.Instance != null
-                        ? FeaturesTime.DayNightTimeManager.Instance.FastForwardMultiplier
-                        : 1f;
-
                     currentTimer += Time.deltaTime * timeMultiplier;
+                }
+                else
+                {
+                    bool isOverdrive = FeaturesCombat.NightBrawlManager.Instance != null &&
+                                       FeaturesCombat.NightBrawlManager.Instance.IsOverdriveNightActive;
+                    float nightDelta = FeaturesCombat.Core.PureLogic.NightOverdriveEvaluator.EvaluateCropNightGrowthDelta(
+                        Time.deltaTime, timeMultiplier, isOverdrive);
+                    if (nightDelta > 0f)
+                    {
+                        currentTimer += nightDelta;
+                        _ripenedDuringOverdrive = true;
+                    }
                 }
                 growthProgress = Mathf.Clamp01(currentTimer / Mathf.Max(1f, growthDuration));
 
@@ -321,6 +336,7 @@ namespace FeaturesFarming
                     growthDuration = seed.growthDuration > 0f ? seed.growthDuration : 30f;
                     currentTimer = 0f;
                     growthProgress = 0f;
+                    _ripenedDuringOverdrive = false;
 
                     SetState(TileState.PlantedDry);
                     OnAnyCropPlanted?.Invoke(this, seed);
@@ -402,7 +418,7 @@ namespace FeaturesFarming
             {
                 ItemData dropItem = plantedSeed.cropYield;
 
-                if (yieldDirtyVariant)
+                if (yieldDirtyVariant && !_ripenedDuringOverdrive)
                 {
                     ItemData dirtyVariant = ResolveDirtyVariant(dropItem);
                     if (dirtyVariant != null)
@@ -410,6 +426,7 @@ namespace FeaturesFarming
                         dropItem = dirtyVariant;
                     }
                 }
+                _ripenedDuringOverdrive = false;
 
                 if (dropItem != null)
                 {

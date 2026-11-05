@@ -107,7 +107,12 @@ public class InventorySlotUI : MonoBehaviour, IDropHandler, IPointerClickHandler
         iconRT.offsetMax = new Vector2(-8, -8);
 
         Image img = iconGO.AddComponent<Image>();
-        img.sprite = slot.item.itemIcon;
+        Sprite resolvedSprite = slot.item.itemIcon;
+        if (resolvedSprite == null && slot.item is ToolItemData rangedTool && rangedTool.isRangedWeapon)
+        {
+            resolvedSprite = ToolItemData.GetDefaultRangedSlingshotSprite();
+        }
+        img.sprite = resolvedSprite;
         img.preserveAspect = true;
         img.raycastTarget = true;
         iconGO.AddComponent<DraggableItem>();
@@ -201,11 +206,21 @@ public class InventorySlotUI : MonoBehaviour, IDropHandler, IPointerClickHandler
 
     public void OnPointerClick(PointerEventData eventData)
     {
-        if (eventData.button != PointerEventData.InputButton.Left)
-            return;
-
         // Ignore clicks that ended a drag operation.
         if (eventData.dragging)
+            return;
+
+        // RIGHT-CLICK: quick-use / quick-equip item from player inventory
+        if (eventData.button == PointerEventData.InputButton.Right)
+        {
+            if (ownerInventory != null && (ownerInventory.CompareTag("Player") || ownerInventory.HasHotbar || (manager != null && ownerInventory == manager.playerInventory)))
+            {
+                ownerInventory.UseItem(SlotIndex);
+            }
+            return;
+        }
+
+        if (eventData.button != PointerEventData.InputButton.Left)
             return;
 
         // Reliable double-click detection combining eventData.clickCount with unscaled timestamp fallback
@@ -216,7 +231,7 @@ public class InventorySlotUI : MonoBehaviour, IDropHandler, IPointerClickHandler
         _lastClickSlotIndex = SlotIndex;
         _lastClickOwner = ownerInventory;
 
-        // DOUBLE-CLICK: use the item (eat/drink consumable, only for player inventory items).
+        // DOUBLE-CLICK: use the item (eat/drink consumable or equip armor/weapon, only for player inventory items).
         if (isDoubleClick)
         {
             if (ownerInventory != null && (ownerInventory.CompareTag("Player") || ownerInventory.HasHotbar || (manager != null && ownerInventory == manager.playerInventory)))

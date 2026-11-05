@@ -300,9 +300,10 @@ namespace FeaturesStoryline.Cutscenes
         public void PlayOpeningCutscene(Action onComplete = null)
         {
             if (_isCutscenePlaying) return;
-            if (UnityEngine.SceneManagement.SceneManager.GetActiveScene().name != "StagingScene")
+            string activeSceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+            if (activeSceneName != "MainScene" && activeSceneName != "StagingScene")
             {
-                Debug.LogWarning("[OpeningCutsceneController] Opening cutscene only permitted in StagingScene.");
+                Debug.LogWarning("[OpeningCutsceneController] Opening cutscene only permitted in MainScene.");
                 onComplete?.Invoke();
                 return;
             }
@@ -492,6 +493,8 @@ namespace FeaturesStoryline.Cutscenes
         /// </summary>
         public void SkipCurrentCutscene()
         {
+            UIModalHelper.LastFrameUIPanelClosed = Time.frameCount;
+
             if (!_isCutscenePlaying)
             {
                 if (Night1CutsceneController.HasInstance && Night1CutsceneController.Instance.IsCutscenePlaying)

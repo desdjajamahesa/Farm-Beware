@@ -3477,7 +3477,7 @@ MonoBehaviour:
   settingsBtnDelay: 0.65
   quitBtnDelay: 0.8
   elementFadeDuration: 0.35
-  targetSceneName: StagingScene
+  targetSceneName: MainScene
   loadSceneOnStart: 0
   useLegacyCodeStyling: 0
   settingsMenuScale: 1.25

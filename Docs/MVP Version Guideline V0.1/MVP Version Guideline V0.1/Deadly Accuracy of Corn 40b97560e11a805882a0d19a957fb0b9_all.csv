@@ -1,0 +1,8 @@
+﻿Upgrade,Cost,Description,Effect
+Lv.1 – Golden Kernel,10k gold,Increase ranged damage,+10% Projectile Damage
+Lv.2 – Sharp Kernel,20k + 1 Corn Boss Core,Improve critical hit probability,+5% Critical Chance
+Lv.3 – Piercing Shot,40k,Projectiles pass through one additional enemy,Piercing
+Lv.4 – Rapid Harvest,45k + 2 Corn Boss Core,Faster projectile travel,+15% Projectile Speed
+Lv.5 – Kernel Explosion,60k,Critical hits create a small explosion,Area Damage
+"Ultimate Specialization
+(Golden Storm)",100k + 3 Corn Boss Core + REQ: 0/5 Boss Kill,,-Projectiles deal 150% weapon damage.                                                   -Critical hits trigger an explosion dealing 50% weapon damage to nearby enemies.                                       -Projectiles pierce up to 3 enemies.

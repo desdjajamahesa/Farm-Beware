@@ -28,26 +28,27 @@ namespace FeaturesEconomy
             {
                 label.displayName = "Merchant Table (Trade)";
             }
-            if (stockItems == null || stockItems.Count == 0)
-            {
-                InitializeDefaultStock();
-            }
+            InitializeDefaultStock();
         }
 
         public virtual void InitializeDefaultStock()
         {
             if (stockItems == null) stockItems = new List<ItemData>();
-            if (stockItems.Count > 0) return;
 
             var db = Resources.Load<ItemDatabase>("Database/ItemDatabase");
             if (db != null && db.GetAllItems() != null)
             {
                 foreach (var item in db.GetAllItems())
                 {
-                    if (item == null) continue;
+                    if (item == null || item.isDirty || (item.itemId != null && item.itemId.Contains("dirty"))) continue;
                     if (item.category == ItemCategory.Seed ||
+                        item.category == ItemCategory.Tool ||
+                        item.category == ItemCategory.Weapon ||
+                        item is EquipmentItemData ||
                         (item.category == ItemCategory.Material && item.buyPrice > 0) ||
-                        item.itemId == "dummysword" || item.itemId == "food_bottle_water")
+                        item.itemId == "dummysword" ||
+                        item.itemId == "food_bottle_water" ||
+                        (item.buyPrice > 0 && item.category != ItemCategory.Crop && item.category != ItemCategory.MonsterDrop))
                     {
                         if (!stockItems.Contains(item))
                             stockItems.Add(item);

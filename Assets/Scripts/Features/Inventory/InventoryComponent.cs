@@ -53,18 +53,17 @@ public class InventoryComponent : MonoBehaviour
     [SerializeField] private List<ItemData.FoodCategory> allowedFoodCategories;
 
     // Akses baca publik untuk rule backend lain (mis. alur Trophy Cabinet / stasiun dapur).
-    public bool BlocksTrophyItems { get { return blockTrophyItems; } }
-    public List<ItemData.FoodCategory> AllowedFoodCategories { get { return allowedFoodCategories; } }
+    public bool BlockTrophyItems => blockTrophyItems;
+    public void SetBlockTrophyItems(bool block) => blockTrophyItems = block;
+    public IReadOnlyList<ItemData.FoodCategory> AllowedFoodCategories => allowedFoodCategories;
 
-    /// <summary>
-    /// Set pembatasan kategori makanan (meng-inisialisasi list bila masih null).
-    /// Dipakai Kulkas untuk membatasi hanya sayur+buah.
-    /// </summary>
-    public void SetAllowedFoodCategories(List<ItemData.FoodCategory> categories)
+    public void SetAllowedFoodCategories(IEnumerable<ItemData.FoodCategory> categories)
     {
         if (allowedFoodCategories == null)
             allowedFoodCategories = new List<ItemData.FoodCategory>();
-        allowedFoodCategories.Clear();
+        else
+            allowedFoodCategories.Clear();
+
         if (categories != null)
             allowedFoodCategories.AddRange(categories);
     }
@@ -124,6 +123,7 @@ public class InventoryComponent : MonoBehaviour
     // Listener hooking (tanpa mengubah struktur data) untuk memberi tahu UI ketika slot berubah.
     public System.Action OnInventoryChanged;
     public static event System.Action<ItemData> OnItemConsumed;
+    public static event System.Func<InventoryComponent, int, bool> OnEquipmentUseRequested;
 
     // State & event Hotbar (4 slot pertama).
     public int selectedHotbarIndex = 0;
@@ -501,6 +501,18 @@ public class InventoryComponent : MonoBehaviour
             return;
 
         ItemData item = slot.item;
+
+        if (item is EquipmentItemData ||
+            (item is ToolItemData toolItem && (toolItem.isWeapon || toolItem.isRangedWeapon) && !toolItem.isHoe) ||
+            item.category == ItemCategory.Weapon ||
+            string.Equals(item.itemId, "dummysword", System.StringComparison.OrdinalIgnoreCase))
+        {
+            if (OnEquipmentUseRequested != null)
+            {
+                OnEquipmentUseRequested.Invoke(this, slotIndex);
+                return;
+            }
+        }
 
         if (item.type == ItemData.ItemType.Consumable && item is FoodItemData food)
         {

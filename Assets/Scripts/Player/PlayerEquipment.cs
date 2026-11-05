@@ -182,21 +182,123 @@ public class PlayerEquipment : MonoBehaviour
     public float AttackSpeedMultiplier => buffManager != null ? buffManager.GetAttackSpeedMultiplier() : 1f;
     public float AttackHitRange => attackHitRange;
 
+    public bool IsRangedWeaponEquipped => CurrentEquippedItem is ToolItemData t && t.isWeapon && t.isRangedWeapon;
+
     public ItemData CurrentEquippedItem
     {
         get
         {
-            if (inventory == null) inventory = GetComponent<InventoryComponent>();
-            if (inventory == null) return null;
-            int idx = inventory.selectedHotbarIndex;
-            if (idx >= 0 && idx < inventory.slots.Count)
+            var stance = GetComponent<PlayerStanceManager>() ?? PlayerStanceManager.Instance;
+            if (stance != null && stance.IsInCombatStance)
             {
-                var slot = inventory.slots[idx];
-                if (slot != null && !slot.IsEmpty)
-                    return slot.item;
+                return stance.GetActiveCombatWeapon();
             }
+            if (inventory == null) inventory = GetComponent<InventoryComponent>();
+            if (inventory != null)
+            {
+                int idx = inventory.selectedHotbarIndex;
+                if (idx >= 0 && idx < inventory.slots.Count)
+                {
+                    var slot = inventory.slots[idx];
+                    if (slot != null && !slot.IsEmpty)
+                        return slot.item;
+                }
+            }
+
+            // Fallback when hotbar slot is empty: if a ranged weapon (Slingshot) is equipped in MainWeapon slot,
+            // return it so daytime/dusk attacks fire the Slingshot instead of bare-hands melee punching.
+            var armorState = GetComponent<FeaturesWorkbench.PlayerArmorUpgradeState>() ?? FeaturesWorkbench.PlayerArmorUpgradeState.Instance;
+            if (armorState != null)
+            {
+                var mainWep = armorState.GetEquippedItem(FarmBeware.Core.Runtime.EquipmentSlotType.MainWeapon);
+                if (mainWep is ToolItemData rangedMain && rangedMain.isWeapon && rangedMain.isRangedWeapon)
+                {
+                    return mainWep;
+                }
+            }
+
             return null;
         }
+    }
+
+    /// <summary>
+    /// Resolves the horizontal world-space direction from the player toward the mouse cursor,
+    /// and rotates the player character horizontally to face the cursor target.
+    /// </summary>
+    public Vector3 ResolveCursorAimDirection(out Vector3 targetWorldPoint)
+    {
+        Vector3 fallbackForward = transform.forward.sqrMagnitude > 0.001f ? transform.forward.normalized : Vector3.forward;
+        targetWorldPoint = transform.position + fallbackForward * 6f;
+
+        Camera cam = Camera.main;
+        if (cam == null)
+        {
+            return fallbackForward;
+        }
+
+        Vector2 screenPos = Vector2.zero;
+        bool hasScreenPos = false;
+
+        if (UnityEngine.InputSystem.Mouse.current != null)
+        {
+            screenPos = UnityEngine.InputSystem.Mouse.current.position.ReadValue();
+            hasScreenPos = true;
+        }
+#if ENABLE_LEGACY_INPUT_MANAGER
+        else
+        {
+            screenPos = Input.mousePosition;
+            hasScreenPos = true;
+        }
+#endif
+
+        if (!hasScreenPos)
+        {
+            return fallbackForward;
+        }
+
+        Ray ray = cam.ScreenPointToRay(screenPos);
+        Plane aimPlane = new Plane(Vector3.up, new Vector3(0f, transform.position.y + 0.55f, 0f));
+
+        Vector3 hitPoint = targetWorldPoint;
+        bool foundHit = false;
+
+        if (Physics.Raycast(ray, out RaycastHit hitInfo, 250f, ~0, QueryTriggerInteraction.Ignore))
+        {
+            if (hitInfo.transform != transform && !hitInfo.transform.IsChildOf(transform))
+            {
+                var enemy = hitInfo.collider.GetComponentInParent<FeaturesCombat.EnemyBase>();
+                if (enemy != null)
+                {
+                    hitPoint = hitInfo.collider.bounds.center;
+                    foundHit = true;
+                }
+            }
+        }
+
+        if (!foundHit && aimPlane.Raycast(ray, out float enterDist) && enterDist > 0f)
+        {
+            hitPoint = ray.GetPoint(enterDist);
+            foundHit = true;
+        }
+
+        if (!foundHit)
+        {
+            return fallbackForward;
+        }
+
+        targetWorldPoint = hitPoint;
+        Vector3 flatDelta = hitPoint - transform.position;
+        flatDelta.y = 0f;
+
+        if (flatDelta.sqrMagnitude < 0.005f)
+        {
+            return fallbackForward;
+        }
+
+        Vector3 aimDir = flatDelta.normalized;
+        transform.rotation = Quaternion.LookRotation(aimDir, Vector3.up);
+        return aimDir;
     }
 
     public bool IsAttackState(AnimatorStateInfo state)
@@ -231,12 +333,14 @@ public class PlayerEquipment : MonoBehaviour
 
         currentComboIndex = comboStep;
 
-        float staminaCost = (comboStaminaCosts != null && currentComboIndex < comboStaminaCosts.Length)
-            ? comboStaminaCosts[currentComboIndex]
-            : attackStaminaCost;
-
         if (playerStats == null) playerStats = GetComponent<PlayerStats>();
-        if (playerStats != null && (playerStats.currentStamina < staminaCost || playerStats.IsExhausted))
+        bool isRiposte = playerStats != null && playerStats.DefenseEvaluator != null && playerStats.DefenseEvaluator.TryConsumeRiposte();
+
+        float staminaCost = isRiposte ? 0f : ((comboStaminaCosts != null && currentComboIndex < comboStaminaCosts.Length)
+            ? comboStaminaCosts[currentComboIndex]
+            : attackStaminaCost);
+
+        if (!isRiposte && playerStats != null && (playerStats.currentStamina < staminaCost || playerStats.IsExhausted))
         {
             Debug.Log("[PlayerEquipment] Stamina tidak cukup untuk menyerang!");
             combatStateMachine.ResetToIdle();
@@ -267,6 +371,17 @@ public class PlayerEquipment : MonoBehaviour
             }
         }
 
+        // Ranged Weapon Execution Path (e.g. Corn Cob Repeater)
+        if (item is ToolItemData rangedTool && rangedTool.isRangedWeapon)
+        {
+            if (staminaCost > 0f && playerStats != null)
+            {
+                playerStats.UseStamina(staminaCost);
+            }
+            ExecuteRangedWeaponVolley(rangedTool, isHeavyVolley: false, isSkillBarrage: false, isRiposte: isRiposte);
+            return true;
+        }
+
         if (animator != null && !string.IsNullOrEmpty(attackTriggerName))
         {
             float atkSpdMultiplier = buffManager != null ? buffManager.GetAttackSpeedMultiplier() : 1f;
@@ -285,7 +400,7 @@ public class PlayerEquipment : MonoBehaviour
 
             lastAttackTime = Time.time;
 
-            if (playerStats != null)
+            if (staminaCost > 0f && playerStats != null)
             {
                 playerStats.UseStamina(staminaCost);
             }
@@ -311,12 +426,23 @@ public class PlayerEquipment : MonoBehaviour
             {
                 dmgMultiplier *= statMods.FinisherDamageMultiplier;
             }
+            if (isRiposte)
+            {
+                dmgMultiplier *= 2.5f;
+                if (PlayerUI.FloatingCombatTextManager.Instance != null)
+                {
+                    PlayerUI.FloatingCombatTextManager.Instance.SpawnText(
+                        transform.position + Vector3.up * 2.1f,
+                        "⚡ RIPOSTE CLEAVE!",
+                        new Color(1f, 0.9f, 0.2f));
+                }
+            }
             int finalDamage = Mathf.RoundToInt(baseDmg * dmgMultiplier);
 
-            // Combo ke-3 (Finisher) adalah putaran 360 derajat
-            bool is360 = (currentComboIndex == 2);
+            // Combo ke-3 (Finisher) atau Riposte adalah putaran/sapuan lebar
+            bool is360 = (currentComboIndex == 2) || isRiposte;
             float activeRange = is360 ? attackHitRange * 1.15f : attackHitRange;
-            float finalKnockback = knockback * combatStateMachine.GetCurrentKnockbackMultiplier() * statMods.KnockbackMultiplier;
+            float finalKnockback = knockback * combatStateMachine.GetCurrentKnockbackMultiplier() * statMods.KnockbackMultiplier * (isRiposte ? 2.0f : 1.0f);
 
             if (currentSwingCoroutine != null)
             {
@@ -324,12 +450,222 @@ public class PlayerEquipment : MonoBehaviour
                 currentSwingCoroutine = null;
             }
 
-            currentSwingCoroutine = StartCoroutine(RoutineSwingHitbox(finalDamage, finalKnockback, atkSpdMultiplier, is360, activeRange, isFinisher: is360));
+            currentSwingCoroutine = StartCoroutine(RoutineSwingHitbox(finalDamage, finalKnockback, atkSpdMultiplier, is360, activeRange, isFinisher: is360, isHeavy: isRiposte));
 
             return true;
         }
 
         return false;
+    }
+
+    public bool TryPerformBranchingHeavyFinisher()
+    {
+        if (animator == null) animator = GetComponentInChildren<Animator>();
+        if (isExecutingSkill) return false;
+
+        float normTime = 1.0f;
+        if (animator != null)
+        {
+            var state = animator.IsInTransition(0) ? animator.GetNextAnimatorStateInfo(0) : animator.GetCurrentAnimatorStateInfo(0);
+            if (IsAttackState(state))
+            {
+                normTime = state.normalizedTime;
+            }
+        }
+
+        if (!combatStateMachine.TryTriggerHeavyFinisher(Time.time, normTime, out var nextState))
+        {
+            return false;
+        }
+
+        float staminaCost = attackStaminaCost * 1.4f;
+        if (playerStats == null) playerStats = GetComponent<PlayerStats>();
+        if (playerStats != null && (playerStats.currentStamina < staminaCost || playerStats.IsExhausted))
+        {
+            combatStateMachine.ResetToIdle();
+            return false;
+        }
+
+        ItemData item = CurrentEquippedItem;
+        if (item is ToolItemData rangedTool && rangedTool.isRangedWeapon)
+        {
+            if (playerStats != null) playerStats.UseStamina(staminaCost);
+            ExecuteRangedWeaponVolley(rangedTool, isHeavyVolley: true, isSkillBarrage: false, isRiposte: false);
+            return true;
+        }
+
+        float atkSpdMultiplier = buffManager != null ? buffManager.GetAttackSpeedMultiplier() : 1f;
+        var upgradeState = FeaturesWorkbench.PlayerWeaponUpgradeState.Instance ?? GetComponent<FeaturesWorkbench.PlayerWeaponUpgradeState>();
+        if (upgradeState != null && upgradeState.sweetPotatoPathUnlocked) atkSpdMultiplier *= 1.20f;
+        atkSpdMultiplier *= attackAnimationSpeed;
+
+        currentComboIndex = 3;
+
+        if (animator != null)
+        {
+            animator.speed = atkSpdMultiplier;
+            animator.ResetTrigger(attackTriggerName);
+            animator.ResetTrigger("HeavyAttack");
+            animator.SetInteger("ComboIndex", 3);
+            animator.SetTrigger("HeavyAttack");
+        }
+
+        lastAttackTime = Time.time;
+        if (playerStats != null) playerStats.UseStamina(staminaCost);
+
+        int baseDmg = 8;
+        float knockback = 4.0f;
+        if (item is ToolItemData toolData)
+        {
+            baseDmg = (upgradeState != null) ? upgradeState.baseDamage : toolData.baseDamage;
+            knockback = (upgradeState != null) ? upgradeState.baseKnockback : toolData.knockbackForce;
+        }
+
+        var statMods = playerStats != null ? playerStats.GetCombatStatModifiers() : FeaturesCombat.Core.PureLogic.CombatStatModifiers.Default;
+        float dmgMult = (buffManager != null ? buffManager.GetAttackDamageMultiplier() : 1f) * combatStateMachine.GetCurrentDamageMultiplier() * statMods.DamageMultiplier * statMods.FinisherDamageMultiplier;
+        int finalDamage = Mathf.RoundToInt(baseDmg * dmgMult);
+        float finalKnockback = knockback * combatStateMachine.GetCurrentKnockbackMultiplier() * statMods.KnockbackMultiplier;
+
+        if (currentSwingCoroutine != null)
+        {
+            StopCoroutine(currentSwingCoroutine);
+            currentSwingCoroutine = null;
+        }
+
+        currentSwingCoroutine = StartCoroutine(RoutineSwingHitbox(finalDamage, finalKnockback, atkSpdMultiplier, is360: true, rangeOverride: attackHitRange * 1.25f, isFinisher: true, isHeavy: true));
+        return true;
+    }
+
+    public void ExecuteRangedWeaponVolley(ToolItemData rangedTool, bool isHeavyVolley, bool isSkillBarrage, bool isRiposte = false)
+    {
+        if (rangedTool == null) return;
+
+        // Guarantee zero melee hitbox or melee swing coroutine overlap
+        if (currentSwingCoroutine != null)
+        {
+            StopCoroutine(currentSwingCoroutine);
+            currentSwingCoroutine = null;
+        }
+        if (bareHandsTrail != null)
+        {
+            bareHandsTrail.EndTrail();
+        }
+        if (currentWeaponTrail != null)
+        {
+            currentWeaponTrail.EndTrail();
+        }
+        if (currentWeaponModel != null)
+        {
+            var accidentalHitbox = currentWeaponModel.GetComponentInChildren<FeaturesCombat.WeaponHitbox>();
+            if (accidentalHitbox != null)
+            {
+                accidentalHitbox.Deactivate();
+            }
+        }
+
+        // Prevent full-body melee sword slash animations from playing when firing the Slingshot
+        if (animator != null)
+        {
+            if (!string.IsNullOrEmpty(attackTriggerName))
+            {
+                animator.ResetTrigger(attackTriggerName);
+            }
+            animator.ResetTrigger("HeavyAttack");
+            if (!string.IsNullOrEmpty(skillTriggerName))
+            {
+                animator.ResetTrigger(skillTriggerName);
+            }
+            animator.SetBool("IsAttacking", false);
+        }
+
+        lastAttackTime = Time.time;
+
+        var upgradeState = GetComponent<FeaturesWorkbench.PlayerWeaponUpgradeState>() ?? FeaturesWorkbench.PlayerWeaponUpgradeState.Instance;
+        var statMods = playerStats != null ? playerStats.GetCombatStatModifiers() : FeaturesCombat.Core.PureLogic.CombatStatModifiers.Default;
+        float playerDmgMult = (buffManager != null ? buffManager.GetAttackDamageMultiplier() : 1f) * statMods.DamageMultiplier * (isRiposte ? 2.5f : 1.0f);
+
+        int weaponLevel = upgradeState != null ? upgradeState.weaponLevel : 1;
+        bool activePath = upgradeState != null && upgradeState.activeSpecialization == FeaturesWorkbench.Core.SpecializationPath.Corn;
+        int specNodeLevel = upgradeState != null ? upgradeState.specializationNodeLevel : 0;
+
+        var profile = FeaturesCombat.Core.PureLogic.RangedWeaponEvaluator.EvaluateShot(
+            rangedTool.baseDamage,
+            weaponLevel,
+            playerDmgMult,
+            rangedTool.projectileSpeed,
+            rangedTool.knockbackForce,
+            activePath,
+            specNodeLevel,
+            currentComboIndex,
+            isHeavyVolley,
+            isSkillBarrage);
+
+        // Aim toward cursor and rotate player to face target
+        Vector3 baseForward = ResolveCursorAimDirection(out _);
+        Vector3 muzzlePos = transform.position + Vector3.up * 1.0f + baseForward * 0.72f;
+
+        int count = Mathf.Max(1, profile.ProjectileCount);
+        for (int i = 0; i < count; i++)
+        {
+            float angleOffset = 0f;
+            if (count > 1 && profile.SpreadAngleDeg > 0.01f)
+            {
+                float t = (float)i / (count - 1) - 0.5f;
+                angleOffset = t * profile.SpreadAngleDeg;
+            }
+
+            Vector3 shotDir = Quaternion.Euler(0f, angleOffset, 0f) * baseForward;
+            bool isCrit = isRiposte || (Random.value <= profile.CritChance);
+            int projDmg = isCrit ? Mathf.RoundToInt(profile.DamagePerProjectile * 1.5f) : profile.DamagePerProjectile;
+
+            var proj = FeaturesCombat.Projectiles.CombatProjectile.Spawn(
+                gameObject,
+                muzzlePos,
+                shotDir,
+                projDmg,
+                profile.ProjectileSpeed,
+                rangedTool.projectileColor);
+
+            if (proj != null)
+            {
+                proj.ConfigureRangedModifiers(
+                    profile.MaxPierceCount,
+                    profile.KnockbackForce,
+                    profile.HasCritExplosion,
+                    profile.ExplosionRadius,
+                    isCrit);
+            }
+        }
+
+        if (currentWeaponModel != null && gameObject.activeInHierarchy)
+        {
+            StartCoroutine(RoutineSlingshotRecoil());
+        }
+
+        PlayAttackSwingSound(false, isHeavyVolley, isHeavyVolley, isSkillBarrage);
+        TriggerRangeIndicatorPulse(0.20f);
+    }
+
+    private System.Collections.IEnumerator RoutineSlingshotRecoil()
+    {
+        if (currentWeaponModel == null) yield break;
+        Transform modelTr = currentWeaponModel.transform;
+        Quaternion baseRot = Quaternion.identity;
+        Quaternion recoilRot = Quaternion.Euler(-18f, 0f, 0f);
+
+        float elapsed = 0f;
+        const float snapDuration = 0.12f;
+        while (elapsed < snapDuration && modelTr != null)
+        {
+            elapsed += Time.deltaTime;
+            float t = Mathf.Clamp01(elapsed / snapDuration);
+            modelTr.localRotation = Quaternion.Slerp(recoilRot, baseRot, t);
+            yield return null;
+        }
+        if (modelTr != null)
+        {
+            modelTr.localRotation = baseRot;
+        }
     }
 
     public bool TryPerformHeavyAttack(float chargeRatio = 1.0f)
@@ -351,6 +687,15 @@ public class PlayerEquipment : MonoBehaviour
         if (item != null && !(item is ToolItemData tool && tool.isWeapon) && !allowBareHandsAttack) return false;
 
         combatStateMachine.ReleaseHeavy(Time.time, out _);
+
+        if (item is ToolItemData rangedHeavyTool && rangedHeavyTool.isRangedWeapon)
+        {
+            lastAttackTime = Time.time;
+            currentComboIndex = 3;
+            if (playerStats != null) playerStats.UseStamina(staminaCost);
+            ExecuteRangedWeaponVolley(rangedHeavyTool, isHeavyVolley: true, isSkillBarrage: false, isRiposte: false);
+            return true;
+        }
 
         float atkSpdMultiplier = buffManager != null ? buffManager.GetAttackSpeedMultiplier() : 1f;
         var upgradeState = FeaturesWorkbench.PlayerWeaponUpgradeState.Instance ?? GetComponent<FeaturesWorkbench.PlayerWeaponUpgradeState>();
@@ -412,6 +757,15 @@ public class PlayerEquipment : MonoBehaviour
         if (item != null && !(item is ToolItemData tool && tool.isWeapon) && !allowBareHandsAttack) return false;
 
         if (!combatStateMachine.TryTriggerDashAttack(Time.time)) return false;
+
+        if (item is ToolItemData rangedDashTool && rangedDashTool.isRangedWeapon)
+        {
+            lastAttackTime = Time.time;
+            currentComboIndex = 1;
+            if (playerStats != null) playerStats.UseStamina(staminaCost);
+            ExecuteRangedWeaponVolley(rangedDashTool, isHeavyVolley: false, isSkillBarrage: false, isRiposte: false);
+            return true;
+        }
 
         float atkSpdMultiplier = buffManager != null ? buffManager.GetAttackSpeedMultiplier() : 1f;
         var upgradeState = FeaturesWorkbench.PlayerWeaponUpgradeState.Instance ?? GetComponent<FeaturesWorkbench.PlayerWeaponUpgradeState>();
@@ -489,6 +843,15 @@ public class PlayerEquipment : MonoBehaviour
                 Debug.Log($"[PlayerEquipment] Item '{item.itemName}' bukan senjata, tidak bisa melancarkan jurus.");
                 return false;
             }
+        }
+
+        if (item is ToolItemData rangedSkillTool && rangedSkillTool.isRangedWeapon)
+        {
+            lastAttackTime = Time.time;
+            currentComboIndex = 0;
+            if (playerStats != null) playerStats.UseStamina(skillStaminaCost);
+            ExecuteRangedWeaponVolley(rangedSkillTool, isHeavyVolley: false, isSkillBarrage: true, isRiposte: false);
+            return true;
         }
 
         if (animator != null && !string.IsNullOrEmpty(skillTriggerName))
@@ -745,6 +1108,20 @@ public class PlayerEquipment : MonoBehaviour
 
                 target.TakeDamage(effectiveDamage, hitPoint, hitDir);
 
+                if (FeaturesCombat.Adapters.CombatHitVfxEngine.Instance != null)
+                {
+                    var impactTier = isExecutingSkill
+                        ? FeaturesCombat.Core.PureLogic.AttackImpactTier.RiposteStrike
+                        : (isHeavy ? FeaturesCombat.Core.PureLogic.AttackImpactTier.HeavyCleave : FeaturesCombat.Core.PureLogic.AttackImpactTier.ComboFinisher);
+                    FeaturesCombat.Adapters.CombatHitVfxEngine.Instance.TriggerHit(
+                        hitPoint,
+                        hitDir,
+                        c.gameObject,
+                        gameObject,
+                        isCrit: isFinisher || isHeavy || isExecutingSkill,
+                        impactTier: impactTier);
+                }
+
                 Rigidbody targetRb = c.GetComponent<Rigidbody>() ?? c.GetComponentInParent<Rigidbody>();
                 if (targetRb != null && !targetRb.isKinematic)
                 {
@@ -810,6 +1187,12 @@ public class PlayerEquipment : MonoBehaviour
     private void Update()
     {
         combatStateMachine.Update(Time.time);
+        ItemData current = CurrentEquippedItem;
+        if (current != lastEquippedItem)
+        {
+            lastEquippedItem = current;
+            RefreshEquipmentForStance();
+        }
         UpdateRangeIndicatorState();
     }
 
@@ -823,6 +1206,10 @@ public class PlayerEquipment : MonoBehaviour
             inventory.OnInventoryChanged += RefreshCurrentEquipment;
             inventory.OnHotbarSelected += OnHotbarSlotChanged;
         }
+        if (FeaturesWorkbench.PlayerArmorUpgradeState.Instance != null)
+        {
+            FeaturesWorkbench.PlayerArmorUpgradeState.Instance.OnEquipmentChanged += HandleArmorEquipmentChanged;
+        }
         UpdateRangeIndicatorState();
     }
 
@@ -832,6 +1219,10 @@ public class PlayerEquipment : MonoBehaviour
         {
             inventory.OnInventoryChanged -= RefreshCurrentEquipment;
             inventory.OnHotbarSelected -= OnHotbarSlotChanged;
+        }
+        if (FeaturesWorkbench.PlayerArmorUpgradeState.Instance != null)
+        {
+            FeaturesWorkbench.PlayerArmorUpgradeState.Instance.OnEquipmentChanged -= HandleArmorEquipmentChanged;
         }
         if (rangeIndicatorObj == null)
         {
@@ -1069,30 +1460,152 @@ public class PlayerEquipment : MonoBehaviour
         UpdateRangeIndicatorState();
     }
 
+    private void HandleArmorEquipmentChanged(FarmBeware.Core.Runtime.EquipmentSlotType slot, ItemData item)
+    {
+        if (slot == FarmBeware.Core.Runtime.EquipmentSlotType.MainWeapon)
+        {
+            lastEquippedItem = CurrentEquippedItem;
+            RefreshEquipmentForStance();
+        }
+    }
+
+    public void RefreshEquipmentForStance()
+    {
+        var stance = GetComponent<PlayerStanceManager>() ?? PlayerStanceManager.Instance;
+        if (stance != null && stance.IsInCombatStance)
+        {
+            SpawnCombatWeaponVisual();
+        }
+        else
+        {
+            int slotIdx = inventory != null ? inventory.selectedHotbarIndex : 0;
+            UpdateEquipmentVisual(slotIdx);
+        }
+        UpdateRangeIndicatorState();
+    }
+
+    public void SpawnCombatWeaponVisual()
+    {
+        DestroyCurrentWeapon();
+
+        var stance = GetComponent<PlayerStanceManager>() ?? PlayerStanceManager.Instance;
+        ItemData weapon = stance != null ? stance.GetActiveCombatWeapon() : null;
+
+        if (weapon == null) return;
+
+        FindHandSocketIfNeeded();
+        if (handSocket == null) return;
+
+        if (weapon is ToolItemData rangedTool && rangedTool.isRangedWeapon)
+        {
+            currentWeaponModel = FeaturesCombat.Adapters.SlingshotVisualFactory.CreateSlingshot3DModel(handSocket);
+            return;
+        }
+
+        GameObject prefabToSpawn = null;
+        if (weapon is ToolItemData tool && tool.equipPrefab != null)
+        {
+            prefabToSpawn = tool.equipPrefab;
+        }
+
+        if (prefabToSpawn == null && ItemDatabase.Instance != null)
+        {
+            var fallbackItem = ItemDatabase.Instance.GetItem("tool_weapon_root_cleaver") as ToolItemData 
+                ?? ItemDatabase.Instance.GetItem("dummysword") as ToolItemData;
+            if (fallbackItem != null && fallbackItem.equipPrefab != null)
+            {
+                prefabToSpawn = fallbackItem.equipPrefab;
+            }
+        }
+
+        if (prefabToSpawn != null)
+        {
+            SpawnWeaponPrefab(prefabToSpawn);
+        }
+    }
+
+    public void SpawnWeaponPrefab(GameObject prefab)
+    {
+        FindHandSocketIfNeeded();
+        if (handSocket == null || prefab == null) return;
+
+        GameObject spawned = Instantiate(prefab, handSocket);
+        spawned.transform.localPosition = Vector3.zero;
+        spawned.transform.localRotation = Quaternion.identity;
+        currentWeaponModel = spawned;
+
+        Vector3 prefabScale = prefab.transform.localScale;
+        Vector3 parentLossy = handSocket.lossyScale;
+        Vector3 resolvedScale = new Vector3(
+            Mathf.Abs(parentLossy.x) > 0.0001f ? prefabScale.x / parentLossy.x : prefabScale.x,
+            Mathf.Abs(parentLossy.y) > 0.0001f ? prefabScale.y / parentLossy.y : prefabScale.y,
+            Mathf.Abs(parentLossy.z) > 0.0001f ? prefabScale.z / parentLossy.z : prefabScale.z
+        );
+        currentWeaponModel.transform.localScale = resolvedScale;
+
+        var hitbox = currentWeaponModel.GetComponentInChildren<FeaturesCombat.WeaponHitbox>();
+        if (hitbox == null)
+        {
+            var col = currentWeaponModel.GetComponent<Collider>() ?? currentWeaponModel.AddComponent<BoxCollider>();
+            col.isTrigger = true;
+            hitbox = currentWeaponModel.AddComponent<FeaturesCombat.WeaponHitbox>();
+        }
+
+        if (hitbox != null)
+        {
+            hitbox.ConfigureHitRange(attackHitRange);
+        }
+
+        var rb = currentWeaponModel.GetComponent<Rigidbody>();
+        if (rb == null)
+        {
+            rb = currentWeaponModel.AddComponent<Rigidbody>();
+        }
+        rb.isKinematic = true;
+        rb.useGravity = false;
+
+        currentWeaponTrail = currentWeaponModel.GetComponentInChildren<FeaturesCombat.Adapters.WeaponTrailController>();
+        if (currentWeaponTrail == null)
+        {
+            currentWeaponTrail = currentWeaponModel.AddComponent<FeaturesCombat.Adapters.WeaponTrailController>();
+        }
+        currentWeaponTrail.InitializeForWeapon(currentWeaponModel);
+    }
+
     public void UpdateEquipmentVisual(int hotbarIndex)
     {
         DestroyCurrentWeapon();
 
+        var stance = GetComponent<PlayerStanceManager>() ?? PlayerStanceManager.Instance;
+        if (stance != null && stance.IsInCombatStance)
+        {
+            SpawnCombatWeaponVisual();
+            return;
+        }
+
         if (inventory == null)
             inventory = GetComponent<InventoryComponent>();
 
-        if (inventory == null)
-            return;
+        InventorySlot slot = (inventory != null && hotbarIndex >= 0 && hotbarIndex < inventory.slots.Count)
+            ? inventory.slots[hotbarIndex]
+            : null;
 
-        if (hotbarIndex < 0 || hotbarIndex >= inventory.slots.Count)
-            return;
-
-        InventorySlot slot = inventory.slots[hotbarIndex];
-
-        if (slot == null || slot.item == null)
+        ItemData itemToDisplay = (slot != null && !slot.IsEmpty) ? slot.item : CurrentEquippedItem;
+        if (itemToDisplay == null)
             return;
 
         FindHandSocketIfNeeded();
         if (handSocket == null)
             return;
 
+        if (itemToDisplay is ToolItemData rangedHotbarTool && rangedHotbarTool.isRangedWeapon)
+        {
+            currentWeaponModel = FeaturesCombat.Adapters.SlingshotVisualFactory.CreateSlingshot3DModel(handSocket);
+            return;
+        }
+
         // Jika item bukan Tool atau belum punya prefab 3D (equipPrefab null), lewati spawning model
-        if (slot.item is not ToolItemData tool || tool.equipPrefab == null)
+        if (itemToDisplay is not ToolItemData tool || tool.equipPrefab == null)
             return;
 
         GameObject spawned = Instantiate(tool.equipPrefab, handSocket);

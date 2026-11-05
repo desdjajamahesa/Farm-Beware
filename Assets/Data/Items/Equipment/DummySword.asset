@@ -29,3 +29,7 @@ MonoBehaviour:
   isHoe: 0
   baseDamage: 25
   knockbackForce: 7
+  isRangedWeapon: 0
+  projectileSpeed: 22
+  projectileRange: 12
+  projectileColor: {r: 1, g: 0.85, b: 0.2, a: 1}

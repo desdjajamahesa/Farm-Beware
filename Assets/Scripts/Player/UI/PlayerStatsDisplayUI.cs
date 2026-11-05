@@ -99,6 +99,12 @@ namespace PlayerUI
             {
                 FeaturesFarming.PlantWaterer.Instance.OnWaterChanged += HandleWaterChanged;
             }
+
+            if (PlayerArmorUpgradeState.Instance != null)
+            {
+                PlayerArmorUpgradeState.Instance.OnEquipmentChanged += HandleEquipmentChanged;
+                PlayerArmorUpgradeState.Instance.OnArmorUpgraded += HandleArmorUpgraded;
+            }
         }
 
         private void UnsubscribeEvents()
@@ -125,6 +131,12 @@ namespace PlayerUI
             {
                 FeaturesFarming.PlantWaterer.Instance.OnWaterChanged -= HandleWaterChanged;
             }
+
+            if (PlayerArmorUpgradeState.Instance != null)
+            {
+                PlayerArmorUpgradeState.Instance.OnEquipmentChanged -= HandleEquipmentChanged;
+                PlayerArmorUpgradeState.Instance.OnArmorUpgraded -= HandleArmorUpgraded;
+            }
         }
 
         private void HandleHealthChanged(int cur, int max) => UpdateCoreStats();
@@ -133,6 +145,8 @@ namespace PlayerUI
         private void HandleThirstChanged(float cur, float max) => UpdateCoreStats();
         private void HandleGoldChanged(int newGold) => UpdateGeneralStats();
         private void HandleWaterChanged(float cur, float max) => UpdateGeneralStats();
+        private void HandleEquipmentChanged(FarmBeware.Core.Runtime.EquipmentSlotType slot, ItemData item) => UpdateAllStats();
+        private void HandleArmorUpgraded() => UpdateAllStats();
 
         public void UpdateAllStats()
         {
@@ -146,8 +160,24 @@ namespace PlayerUI
         {
             if (playerStats == null) return;
 
+            int gearBonusHp = 0;
+            if (PlayerArmorUpgradeState.Instance != null)
+            {
+                foreach (FarmBeware.Core.Runtime.EquipmentSlotType st in System.Enum.GetValues(typeof(FarmBeware.Core.Runtime.EquipmentSlotType)))
+                {
+                    if (PlayerArmorUpgradeState.Instance.GetEquippedItem(st) is EquipmentItemData eq)
+                    {
+                        gearBonusHp += eq.bonusHealth;
+                    }
+                }
+            }
+
             if (txtHealth != null)
-                txtHealth.text = $"{playerStats.currentHealth} / {playerStats.maxHealth}";
+            {
+                txtHealth.text = gearBonusHp > 0
+                    ? $"{playerStats.currentHealth} / {playerStats.maxHealth} (+{gearBonusHp})"
+                    : $"{playerStats.currentHealth} / {playerStats.maxHealth}";
+            }
 
             if (txtStamina != null)
                 txtStamina.text = $"{Mathf.CeilToInt(playerStats.currentStamina)} / {Mathf.CeilToInt(playerStats.maxStamina)} (+{playerStats.staminaRegenRate:0}/s)";
@@ -162,7 +192,7 @@ namespace PlayerUI
         private void UpdateCombatStats()
         {
             // Active weapon & Level
-            string weaponName = "Unarmed";
+            string weaponName = "Root Cleaver";
             int level = 1;
             int baseDmg = 10;
 
@@ -170,12 +200,20 @@ namespace PlayerUI
             {
                 level = weaponUpgradeState.weaponLevel;
                 baseDmg = weaponUpgradeState.baseDamage;
-                weaponName = $"Hoe (Lv {level})";
+                weaponName = $"Root Cleaver (Lv {level})";
             }
 
-            if (playerEquipment != null && !playerEquipment.IsHoldingWeapon)
+            if (PlayerArmorUpgradeState.Instance != null)
             {
-                weaponName = "Unarmed";
+                var eqWeapon = PlayerArmorUpgradeState.Instance.GetEquippedItem(FarmBeware.Core.Runtime.EquipmentSlotType.MainWeapon);
+                if (eqWeapon != null)
+                {
+                    if (eqWeapon is ToolItemData toolWeapon && toolWeapon.baseDamage > 0)
+                    {
+                        baseDmg = FeaturesWorkbench.Core.EquipmentUpgradeEvaluator.CalculateWeaponDamage(toolWeapon.baseDamage, level);
+                    }
+                    weaponName = $"{eqWeapon.itemName} (Lv {level})";
+                }
             }
 
             if (txtWeaponName != null) txtWeaponName.text = weaponName;

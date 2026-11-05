@@ -1396,7 +1396,7 @@ MonoBehaviour:
   settingsBtnDelay: 0.65
   quitBtnDelay: 0.8
   elementFadeDuration: 0.35
-  targetSceneName: StagingScene
+  targetSceneName: MainScene
   loadSceneOnStart: 1
   useLegacyCodeStyling: 0
 --- !u!114 &6273855013666404332

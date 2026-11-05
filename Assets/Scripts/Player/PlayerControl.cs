@@ -673,6 +673,12 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
         if (playerEquipment == null)
             playerEquipment = GetComponent<PlayerEquipment>() ?? gameObject.AddComponent<PlayerEquipment>();
 
+        if (playerEquipment != null && playerEquipment.IsRangedWeaponEquipped)
+        {
+            HandleRangedSlingshotInput(attackPressed, attackHeld, attackReleased, rightClick || rKey);
+            return;
+        }
+
         // Priority Special Actions (Leap Strike)
         if ((rightClick || rKey) && !isSkillLeaping)
         {
@@ -696,11 +702,29 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
             return;
         }
 
-        // --- COMBO ADVANCEMENT / BUFFERING DURING LIGHT ATTACK ---
+        // --- COMBO ADVANCEMENT / BUFFERING / BRANCHING HEAVY FINISHER DURING LIGHT ATTACK ---
         if (isLightAttacking)
         {
+            if (attackHeld)
+            {
+                attackHoldDuration += Time.deltaTime;
+            }
+
+            if (attackReleased && attackHoldDuration >= 0.30f)
+            {
+                attackHoldDuration = 0f;
+                hasBufferedAttack = false;
+                if (playerEquipment != null && playerEquipment.TryPerformBranchingHeavyFinisher())
+                {
+                    if (attackCoroutine != null) { StopCoroutine(attackCoroutine); }
+                    attackCoroutine = StartCoroutine(RoutineHeavyAttack());
+                    return;
+                }
+            }
+
             if (attackPressed)
             {
+                attackHoldDuration = 0f;
                 if (playerEquipment != null && playerEquipment.TryPerformAttack())
                 {
                     StartLightAttack();
@@ -793,6 +817,115 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
                 attackHoldDuration = 0f;
             }
         }
+    }
+
+    private void HandleRangedSlingshotInput(bool attackPressed, bool attackHeld, bool attackReleased, bool skillPressed)
+    {
+        if (skillPressed && !isSkillLeaping && !isAttacking)
+        {
+            isChargingAttack = false;
+            attackHoldDuration = 0f;
+            hasBufferedAttack = false;
+            if (playerEquipment != null && playerEquipment.TryPerformSkillAttack())
+            {
+                if (attackCoroutine != null)
+                {
+                    StopCoroutine(attackCoroutine);
+                    attackCoroutine = null;
+                }
+                attackCoroutine = StartCoroutine(RoutineRangedShotRecovery(0.20f));
+            }
+            return;
+        }
+
+        if (isAttacking)
+        {
+            if (attackPressed)
+            {
+                hasBufferedAttack = true;
+                bufferedAttackTime = Time.time;
+            }
+            return;
+        }
+
+        if (hasBufferedAttack)
+        {
+            hasBufferedAttack = false;
+            if (Time.time - bufferedAttackTime <= 0.35f && playerEquipment != null && playerEquipment.TryPerformAttack())
+            {
+                if (attackCoroutine != null) StopCoroutine(attackCoroutine);
+                attackCoroutine = StartCoroutine(RoutineRangedShotRecovery(0.14f));
+                return;
+            }
+        }
+
+        if (attackPressed)
+        {
+            isChargingAttack = true;
+            attackHoldDuration = 0f;
+            playerEquipment.ResolveCursorAimDirection(out _);
+        }
+
+        if (isChargingAttack)
+        {
+            if (attackHeld)
+            {
+                attackHoldDuration += Time.deltaTime;
+                playerEquipment.ResolveCursorAimDirection(out _);
+                if (attackHoldDuration >= 0.35f)
+                {
+                    playerEquipment.CombatStateMachine.StartHeavyCharge(Time.time);
+                    playerEquipment.CombatStateMachine.UpdateCharge(Time.deltaTime);
+                }
+            }
+
+            if (attackReleased)
+            {
+                isChargingAttack = false;
+                if (attackHoldDuration >= 0.35f)
+                {
+                    if (playerEquipment.TryPerformHeavyAttack(playerEquipment.CombatStateMachine.ChargeRatio))
+                    {
+                        if (attackCoroutine != null) StopCoroutine(attackCoroutine);
+                        attackCoroutine = StartCoroutine(RoutineRangedShotRecovery(0.18f));
+                    }
+                }
+                else
+                {
+                    if (playerEquipment.TryPerformAttack())
+                    {
+                        if (attackCoroutine != null) StopCoroutine(attackCoroutine);
+                        attackCoroutine = StartCoroutine(RoutineRangedShotRecovery(0.14f));
+                    }
+                }
+                attackHoldDuration = 0f;
+            }
+        }
+    }
+
+    private IEnumerator RoutineRangedShotRecovery(float lockDuration)
+    {
+        isAttacking = true;
+        isLightAttacking = false;
+        if (animator != null)
+        {
+            animator.SetBool("IsAttacking", false);
+        }
+
+        float elapsed = 0f;
+        while (elapsed < lockDuration)
+        {
+            elapsed += Time.deltaTime;
+            if (playerEquipment != null)
+            {
+                playerEquipment.ResolveCursorAimDirection(out _);
+            }
+            yield return null;
+        }
+
+        isAttacking = false;
+        isLightAttacking = false;
+        attackCoroutine = null;
     }
 
     private IEnumerator RoutineDashAttack()

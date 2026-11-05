@@ -13,10 +13,13 @@ namespace FeaturesCombat
         {
             if (enemy == null) return;
 
+            bool isOverdrive = NightBrawlManager.Instance != null && NightBrawlManager.Instance.IsOverdriveNightActive;
+
             // 1. Drop Gold
             if (Random.value <= enemy.goldChance)
             {
-                int goldAmount = Random.Range(enemy.minGold, enemy.maxGold + 1);
+                int baseGold = Random.Range(enemy.minGold, enemy.maxGold + 1);
+                int goldAmount = Core.PureLogic.NightOverdriveEvaluator.CalculateOverdriveGold(baseGold, isOverdrive);
                 var wallet = ServiceLocator.Resolve<IWalletService>();
                 if (wallet != null)
                 {
@@ -42,7 +45,8 @@ namespace FeaturesCombat
                 for (int i = 0; i < enemy.EnemyData.lootDrops.Count; i++)
                 {
                     var entry = enemy.EnemyData.lootDrops[i];
-                    if (entry.item != null && Random.value <= entry.dropChance)
+                    float effectiveChance = Core.PureLogic.NightOverdriveEvaluator.CalculateOverdriveDropChance(entry.dropChance, isOverdrive);
+                    if (entry.item != null && Random.value <= effectiveChance)
                     {
                         int dropCount = Mathf.Clamp(entry.RollQuantity(), 1, 20); // Strict maxStack = 20 invariant
                         for (int d = 0; d < dropCount; d++)
@@ -54,7 +58,7 @@ namespace FeaturesCombat
                     }
                 }
             }
-            else if (enemy.dropMaterial != null && Random.value <= enemy.dropChance)
+            else if (enemy.dropMaterial != null && Random.value <= Core.PureLogic.NightOverdriveEvaluator.CalculateOverdriveDropChance(enemy.dropChance, isOverdrive))
             {
                 // Fallback legacy drop path
                 int dropCount = Mathf.Clamp(Random.Range(enemy.minDropCount, enemy.maxDropCount + 1), 1, 20);

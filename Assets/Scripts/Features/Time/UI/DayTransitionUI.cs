@@ -9,9 +9,9 @@ using FarmBeware.Core.Runtime;
 
 /// <summary>
 /// AAA Cinematic Day/Night Environmental Transition System.
-/// Orchestrates Prestige CinemaScope letterbox bars, anamorphic horizon flare beams,
-/// glassmorphic obsidian titlecards, atmospheric solar dust/crimson ember motes,
-/// procedural orchestral/doom bell acoustic synthesis, and organic ease-curve animations.
+/// Features a feathered widescreen anamorphic veil (zero boxy cards), procedural Celestial Crest Medallions
+/// (Radiant Sunburst for Dawn, Blood-Moon Eclipse Crescent for Nightfall), rotating runic halo rings,
+/// tapered metallic filigree rules, expanding editorial typography, and procedural orchestral/doom-bell synthesis.
 /// Fully decoupled and compliant with Clean Architecture, Zero-GC runtime ticks, and 100% English mandate.
 /// </summary>
 public class DayTransitionUI : MonoBehaviour
@@ -72,11 +72,20 @@ public class DayTransitionUI : MonoBehaviour
     [SerializeField] private Image vignetteOverlay;
     [SerializeField] private RectTransform bannerRoot;
     [SerializeField] private Image bannerBackgroundImage;
+    [SerializeField] private Image bannerInnerGlowImage;
     [SerializeField] private Image bannerAccentLine;
     [SerializeField] private Image bannerTopAccentLine;
     [SerializeField] private Image horizonFlareBeam;
     [SerializeField] private RectTransform cinematicBarTop;
     [SerializeField] private RectTransform cinematicBarBottom;
+    [SerializeField] private Image topBarEdgeLine;
+    [SerializeField] private Image bottomBarEdgeLine;
+
+    [Header("Celestial Medallion & Filigree")]
+    [SerializeField] private Image celestialMedallionImage;
+    [SerializeField] private Image celestialHaloImage;
+    [SerializeField] private Image leftTitleWingImage;
+    [SerializeField] private Image rightTitleWingImage;
 
     [Header("Typography")]
     [SerializeField] private TextMeshProUGUI categoryTagText;
@@ -85,6 +94,7 @@ public class DayTransitionUI : MonoBehaviour
     [SerializeField] private TextMeshProUGUI subtitleText;
     [SerializeField] private TextMeshProUGUI statusPillText;
     [SerializeField] private Image statusPillBg;
+    [SerializeField] private Image statusPillTopRule;
 
     [Header("Atmospheric Particles")]
     [SerializeField] private RectTransform motesContainer;
@@ -101,9 +111,9 @@ public class DayTransitionUI : MonoBehaviour
     [SerializeField] private float sfxVolume = 0.75f;
 
     [Header("Cinematic Timings")]
-    [SerializeField] private float entranceDuration = 0.55f;
-    [SerializeField] private float displayDuration = 2.20f;
-    [SerializeField] private float exitDuration = 0.55f;
+    [SerializeField] private float entranceDuration = 0.60f;
+    [SerializeField] private float displayDuration = 2.35f;
+    [SerializeField] private float exitDuration = 0.60f;
 
     // State tracking
     private Coroutine transitionCoroutine;
@@ -112,7 +122,7 @@ public class DayTransitionUI : MonoBehaviour
     private TimeManager.DayPhase lastPlayedPhase = (TimeManager.DayPhase)(-1);
     private float lastPlayedRealTime = -999f;
     private int lastTransitionFrame = -1;
-    private Vector2 baseBannerPosition = new Vector2(0f, -135f);
+    private Vector2 baseBannerPosition = new Vector2(0f, -110f);
 
     public CanvasGroup CanvasGroupRef => transitionCanvasGroup;
     public TextMeshProUGUI TitleTextRef => titleText;
@@ -123,7 +133,6 @@ public class DayTransitionUI : MonoBehaviour
     /// <summary>
     /// Event dispatched when a Day/Night cinematic transition completes its entire entrance, hold, and exit cycle,
     /// or when CancelTransition() is invoked.
-    /// Used by Storyline and Narrative subsystems to defer modal/banner presentations until the screen is clear.
     /// </summary>
     public event Action OnTransitionCompleted;
 
@@ -285,7 +294,7 @@ public class DayTransitionUI : MonoBehaviour
 
         if (horizonFlareBeam != null)
         {
-            horizonFlareBeam.rectTransform.sizeDelta = new Vector2(0f, 8f);
+            horizonFlareBeam.rectTransform.sizeDelta = new Vector2(0f, 14f);
             Color fc = horizonFlareBeam.color;
             fc.a = 0f;
             horizonFlareBeam.color = fc;
@@ -293,12 +302,12 @@ public class DayTransitionUI : MonoBehaviour
 
         if (cinematicBarTop != null)
         {
-            cinematicBarTop.anchoredPosition = new Vector2(0f, 75f);
+            cinematicBarTop.anchoredPosition = new Vector2(0f, 64f);
         }
 
         if (cinematicBarBottom != null)
         {
-            cinematicBarBottom.anchoredPosition = new Vector2(0f, -75f);
+            cinematicBarBottom.anchoredPosition = new Vector2(0f, -64f);
         }
 
         HideMotes();
@@ -365,7 +374,6 @@ public class DayTransitionUI : MonoBehaviour
         lastPlayedPhase = TimeManager.DayPhase.Night;
         lastPlayedRealTime = Time.unscaledTime;
 
-        // Dismiss any active storyline dialogue so DayTransitionUI has full visual clarity
         DismissActiveStoryDialogue();
 
         EnsureUIHierarchy();
@@ -376,7 +384,7 @@ public class DayTransitionUI : MonoBehaviour
     }
 
     /// <summary>
-    /// Plays the AAA cinematic transition from Night to Day (Sunrise, dawn renewal, and homestead awaking).
+    /// Plays the AAA cinematic transition from Night to Day (Sunrise, dawn renewal, and homestead awakening).
     /// </summary>
     public void PlayDayTransition(int dayNumber)
     {
@@ -394,7 +402,6 @@ public class DayTransitionUI : MonoBehaviour
         lastPlayedDay = dayNumber;
         lastPlayedRealTime = Time.unscaledTime;
 
-        // Dismiss any active storyline dialogue so DayTransitionUI has full visual clarity
         DismissActiveStoryDialogue();
 
         EnsureUIHierarchy();
@@ -406,13 +413,11 @@ public class DayTransitionUI : MonoBehaviour
 
     private void DismissActiveStoryDialogue()
     {
-        // 1. Close through centralized ModalStackService
         if (ServiceLocator.TryResolve<IModalStackService>(out var modalStack) && modalStack != null)
         {
             modalStack.CloseAll();
         }
 
-        // 2. Direct invocation to StorylineUI without compile-time asmdef circular dependency
         foreach (var mb in FindObjectsByType<MonoBehaviour>(FindObjectsInactive.Include, FindObjectsSortMode.None))
         {
             if (mb != null && mb.GetType().Name == "StorylineUI")
@@ -430,7 +435,6 @@ public class DayTransitionUI : MonoBehaviour
             }
         }
 
-        // 3. Ensure any active StoryDialoguePanel canvas group/object is hidden
         var canvases = FindObjectsByType<Canvas>(FindObjectsInactive.Include, FindObjectsSortMode.None);
         for (int i = 0; i < canvases.Length; i++)
         {
@@ -460,59 +464,69 @@ public class DayTransitionUI : MonoBehaviour
 
         try
         {
-            // 1. Theme Configuration
-            Color titleColor;
-            Color subtitleColor;
-            Color categoryColor;
             Color accentColor;
             Color flareColor;
             Color vignetteTargetColor;
-            Color cardBgColor;
+            Color veilColor;
+            Color innerGlowColor;
 
             if (isNight)
             {
                 if (iconText != null) iconText.text = "";
+
+                if (celestialMedallionImage != null)
+                {
+                    celestialMedallionImage.sprite = GetOrCreateBloodMoonCrestSprite();
+                    celestialMedallionImage.color = new Color(1.0f, 0.34f, 0.36f, 1.0f);
+                }
+                if (celestialHaloImage != null)
+                {
+                    celestialHaloImage.color = new Color(0.95f, 0.22f, 0.28f, 0.55f);
+                }
+
                 if (categoryTagText != null)
                 {
-                    categoryTagText.text = "—   T H E   B L O O D   M O O N   E C L I P S E   —";
-                    categoryTagText.color = new Color(0.98f, 0.45f, 0.45f, 0.90f);
+                    categoryTagText.text = "BLOOD MOON ECLIPSE   •   NOCTURNAL SIEGE";
+                    categoryTagText.color = new Color(1.0f, 0.52f, 0.52f, 0.92f);
                 }
 
                 if (titleText != null)
                 {
                     titleText.text = "NIGHTFALL";
-                    titleText.color = new Color(1.0f, 0.35f, 0.35f); // Deep Crimson
+                    titleText.color = new Color(1.0f, 0.90f, 0.90f, 1.0f);
+                    titleText.characterSpacing = 7f;
                 }
 
                 if (subtitleText != null)
                 {
-                    subtitleText.text = "The crimson shadows awaken. Defend the homestead!";
-                    subtitleText.color = new Color(0.98f, 0.72f, 0.72f);
+                    subtitleText.text = "Ravenous shadows converge upon the homestead. Wield your arms and survive until dawn.";
+                    subtitleText.color = new Color(0.92f, 0.74f, 0.76f, 0.95f);
                 }
 
                 if (statusPillText != null)
                 {
-                    statusPillText.text = "⚔️ NIGHT BRAWL COMMENCED   •   DEFEND BARRICADES";
-                    statusPillText.color = new Color(1f, 0.82f, 0.82f);
+                    statusPillText.text =
+                        "<color=#FF5252>◆</color>  <b>STANCE: COMBAT BRAWL</b>     <color=#5A3A42>|</color>     " +
+                        "<color=#FFB74D>◆</color>  <b>FARM TOOLS LOCKED</b>     <color=#5A3A42>|</color>     " +
+                        "<color=#FF8A80>◆</color>  <b>DEFEND THE BARRICADES</b>";
+                    statusPillText.color = new Color(0.96f, 0.86f, 0.88f, 1.0f);
                 }
 
                 if (statusPillBg != null)
                 {
-                    statusPillBg.color = new Color(0.40f, 0.08f, 0.12f, 0.75f);
+                    statusPillBg.color = new Color(0.18f, 0.03f, 0.05f, 0.82f);
                 }
 
-                titleColor = new Color(1.0f, 0.35f, 0.35f);
-                subtitleColor = new Color(0.98f, 0.72f, 0.72f);
-                categoryColor = new Color(0.98f, 0.45f, 0.45f);
-                accentColor = new Color(0.95f, 0.24f, 0.24f, 0.95f);
-                flareColor = new Color(1.0f, 0.30f, 0.30f, 0.85f);
-                vignetteTargetColor = new Color(0.32f, 0.02f, 0.05f, 0.46f); // Blood Vignette
-                cardBgColor = new Color(0.09f, 0.03f, 0.05f, 0.95f); // Deep Plum Obsidian
+                accentColor = new Color(0.96f, 0.24f, 0.28f, 0.90f);
+                flareColor = new Color(1.0f, 0.24f, 0.28f, 0.78f);
+                vignetteTargetColor = new Color(0.28f, 0.01f, 0.04f, 0.52f);
+                veilColor = new Color(0.06f, 0.015f, 0.025f, 0.92f);
+                innerGlowColor = new Color(0.55f, 0.06f, 0.10f, 0.34f);
 
                 PlaySound(isNight: true);
                 if (Application.isPlaying)
                 {
-                    cameraShakeCoroutine = StartCoroutine(RoutineCameraMicroShake(0.20f, 0.06f));
+                    cameraShakeCoroutine = StartCoroutine(RoutineCameraMicroShake(0.22f, 0.055f));
                 }
             }
             else
@@ -521,72 +535,88 @@ public class DayTransitionUI : MonoBehaviour
                 string roman = ToRomanNumeral(safeDay);
 
                 if (iconText != null) iconText.text = "";
+
+                if (celestialMedallionImage != null)
+                {
+                    celestialMedallionImage.sprite = GetOrCreateSunCrestSprite();
+                    celestialMedallionImage.color = new Color(1.0f, 0.86f, 0.36f, 1.0f);
+                }
+                if (celestialHaloImage != null)
+                {
+                    celestialHaloImage.color = new Color(1.0f, 0.82f, 0.30f, 0.55f);
+                }
+
                 if (categoryTagText != null)
                 {
-                    categoryTagText.text = $"—   D A Y   {roman}   •   A   N E W   D A W N   A W A K E N S   —";
-                    categoryTagText.color = new Color(1.0f, 0.85f, 0.40f, 0.90f);
+                    categoryTagText.text = $"CHAPTER  {roman}   •   DAWN OF THE HOMESTEAD";
+                    categoryTagText.color = new Color(1.0f, 0.84f, 0.42f, 0.92f);
                 }
 
                 if (titleText != null)
                 {
                     titleText.text = $"DAY {safeDay}";
-                    titleText.color = new Color(1.0f, 0.82f, 0.25f); // Sunlight Amber Gold
+                    titleText.color = new Color(1.0f, 0.96f, 0.84f, 1.0f);
+                    titleText.characterSpacing = 7f;
                 }
 
                 if (subtitleText != null)
                 {
-                    subtitleText.text = "A gentle golden dawn breaks over the soil. Tend to your farm!";
-                    subtitleText.color = new Color(0.99f, 0.92f, 0.75f);
+                    subtitleText.text = "A golden dawn breaks over the fertile soil. Tend your crops and prepare before dusk.";
+                    subtitleText.color = new Color(0.94f, 0.89f, 0.76f, 0.95f);
                 }
 
                 if (statusPillText != null)
                 {
-                    statusPillText.text = "🌱 CROPS GROWING   •   💧 WELLS REFILLED   •   💰 SHOP OPEN";
-                    statusPillText.color = new Color(1.0f, 0.95f, 0.80f);
+                    statusPillText.text =
+                        "<color=#FFD54F>◆</color>  <b>STANCE: AGRICULTURAL</b>     <color=#4A5568>|</color>     " +
+                        "<color=#66BB6A>◆</color>  <b>CROPS GROWING</b>     <color=#4A5568>|</color>     " +
+                        "<color=#4FC3F7>◆</color>  <b>WELL & MARKET OPEN</b>";
+                    statusPillText.color = new Color(0.96f, 0.94f, 0.86f, 1.0f);
                 }
 
                 if (statusPillBg != null)
                 {
-                    statusPillBg.color = new Color(0.35f, 0.25f, 0.05f, 0.70f);
+                    statusPillBg.color = new Color(0.08f, 0.11f, 0.16f, 0.82f);
                 }
 
-                titleColor = new Color(1.0f, 0.82f, 0.25f);
-                subtitleColor = new Color(0.99f, 0.92f, 0.75f);
-                categoryColor = new Color(1.0f, 0.85f, 0.40f);
-                accentColor = new Color(1.0f, 0.82f, 0.25f, 0.95f);
-                flareColor = new Color(1.0f, 0.90f, 0.45f, 0.85f);
-                vignetteTargetColor = new Color(0.95f, 0.80f, 0.35f, 0.28f); // Golden Dawn Glow
-                cardBgColor = new Color(0.05f, 0.07f, 0.11f, 0.94f); // Midnight Slate Obsidian
+                accentColor = new Color(0.98f, 0.78f, 0.28f, 0.90f);
+                flareColor = new Color(1.0f, 0.86f, 0.38f, 0.75f);
+                vignetteTargetColor = new Color(0.85f, 0.65f, 0.20f, 0.24f);
+                veilColor = new Color(0.035f, 0.05f, 0.085f, 0.90f);
+                innerGlowColor = new Color(0.55f, 0.38f, 0.08f, 0.30f);
 
                 PlaySound(isNight: false);
             }
 
-            if (bannerBackgroundImage != null) bannerBackgroundImage.color = cardBgColor;
+            if (bannerBackgroundImage != null) bannerBackgroundImage.color = veilColor;
+            if (bannerInnerGlowImage != null) bannerInnerGlowImage.color = innerGlowColor;
             if (bannerAccentLine != null) bannerAccentLine.color = accentColor;
             if (bannerTopAccentLine != null) bannerTopAccentLine.color = accentColor;
+            if (leftTitleWingImage != null) leftTitleWingImage.color = accentColor;
+            if (rightTitleWingImage != null) rightTitleWingImage.color = accentColor;
+            if (statusPillTopRule != null) statusPillTopRule.color = new Color(accentColor.r, accentColor.g, accentColor.b, 0.65f);
+            if (topBarEdgeLine != null) topBarEdgeLine.color = new Color(accentColor.r, accentColor.g, accentColor.b, 0.55f);
+            if (bottomBarEdgeLine != null) bottomBarEdgeLine.color = new Color(accentColor.r, accentColor.g, accentColor.b, 0.55f);
             if (horizonFlareBeam != null) horizonFlareBeam.color = new Color(flareColor.r, flareColor.g, flareColor.b, 0f);
 
             ConfigureMotes(isNight);
 
-            // 2. Entrance Phase (0.55s): CinemaScope Letterbox + Horizon Flare Expansion + Titlecard Spring
+            // 2. Entrance Phase (0.60s): CinemaScope Letterbox + Anamorphic Light Sweep + Veil Reveal
             float inDuration = Mathf.Max(entranceDuration, 0.1f);
             for (float t = 0f; t < inDuration; t += Time.unscaledDeltaTime)
             {
                 float norm = Mathf.Clamp01(t / inDuration);
                 float easeOutCubic = 1f - Mathf.Pow(1f - norm, 3f);
-                float springScale = Mathf.LerpUnclamped(0.85f, 1.0f, EaseOutBack(norm));
+                float easeOutQuint = 1f - Mathf.Pow(1f - norm, 5f);
 
-                // Alpha Ramp
                 if (transitionCanvasGroup != null)
-                    transitionCanvasGroup.alpha = norm;
+                    transitionCanvasGroup.alpha = easeOutCubic;
 
-                // Letterbox Bars
                 if (cinematicBarTop != null)
-                    cinematicBarTop.anchoredPosition = new Vector2(0f, Mathf.Lerp(75f, 0f, easeOutCubic));
+                    cinematicBarTop.anchoredPosition = new Vector2(0f, Mathf.Lerp(64f, 0f, easeOutCubic));
                 if (cinematicBarBottom != null)
-                    cinematicBarBottom.anchoredPosition = new Vector2(0f, Mathf.Lerp(-75f, 0f, easeOutCubic));
+                    cinematicBarBottom.anchoredPosition = new Vector2(0f, Mathf.Lerp(-64f, 0f, easeOutCubic));
 
-                // Vignette
                 if (vignetteOverlay != null)
                 {
                     Color vc = vignetteTargetColor;
@@ -594,91 +624,108 @@ public class DayTransitionUI : MonoBehaviour
                     vignetteOverlay.color = vc;
                 }
 
-                // Anamorphic Lens Flare Expansion
                 if (horizonFlareBeam != null)
                 {
-                    float flareWidth = Mathf.Lerp(0f, 1500f, easeOutCubic);
-                    horizonFlareBeam.rectTransform.sizeDelta = new Vector2(flareWidth, 8f);
+                    float flareWidth = Mathf.Lerp(120f, 1680f, easeOutQuint);
+                    horizonFlareBeam.rectTransform.sizeDelta = new Vector2(flareWidth, 14f);
                     Color fc = flareColor;
                     fc.a = Mathf.Lerp(0f, flareColor.a, Mathf.Sin(norm * Mathf.PI * 0.5f));
                     horizonFlareBeam.color = fc;
                 }
 
-                // Banner Scale & Vertical Rise
                 if (bannerRoot != null)
                 {
-                    bannerRoot.localScale = new Vector3(springScale, springScale, 1f);
-                    float yPos = Mathf.Lerp(baseBannerPosition.y - 25f, baseBannerPosition.y, easeOutCubic);
+                    float scaleX = Mathf.Lerp(0.92f, 1.0f, easeOutQuint);
+                    float scaleY = Mathf.Lerp(0.88f, 1.0f, easeOutCubic);
+                    bannerRoot.localScale = new Vector3(scaleX, scaleY, 1f);
+                    float yPos = Mathf.Lerp(baseBannerPosition.y + 18f, baseBannerPosition.y, easeOutCubic);
                     bannerRoot.anchoredPosition = new Vector2(0f, yPos);
+                }
+
+                if (titleText != null)
+                {
+                    titleText.characterSpacing = Mathf.Lerp(3f, 8.5f, easeOutCubic);
+                }
+
+                if (celestialHaloImage != null)
+                {
+                    celestialHaloImage.rectTransform.localRotation = Quaternion.Euler(0f, 0f, t * 28f);
                 }
 
                 yield return null;
             }
 
-            // Snap entrance values
             if (transitionCanvasGroup != null) transitionCanvasGroup.alpha = 1f;
             if (cinematicBarTop != null) cinematicBarTop.anchoredPosition = Vector2.zero;
             if (cinematicBarBottom != null) cinematicBarBottom.anchoredPosition = Vector2.zero;
             if (bannerRoot != null) bannerRoot.localScale = Vector3.one;
 
-            // 3. Hold Phase & Ken Burns Breathing (2.2s)
+            // 3. Hold Phase: Subtle Typographic Tracking Expansion & Rotating Celestial Halo
             float holdDuration = Mathf.Max(displayDuration, 0.5f);
             for (float t = 0f; t < holdDuration; t += Time.unscaledDeltaTime)
             {
-                // Organic Floating Drift
-                float floatOffset = Mathf.Sin(t * 2.8f) * 3.5f;
+                float holdNorm = Mathf.Clamp01(t / holdDuration);
+                float floatOffset = Mathf.Sin(t * 2.2f) * 2.5f;
                 if (bannerRoot != null)
                 {
                     bannerRoot.anchoredPosition = baseBannerPosition + new Vector2(0f, floatOffset);
                 }
 
-                // Horizon Flare Gentle Breath
+                if (titleText != null)
+                {
+                    titleText.characterSpacing = Mathf.Lerp(8.5f, 11.5f, holdNorm);
+                }
+
+                if (celestialHaloImage != null)
+                {
+                    celestialHaloImage.rectTransform.localRotation = Quaternion.Euler(0f, 0f, (inDuration + t) * 28f);
+                    float haloPulse = 0.45f + 0.18f * Mathf.Sin(t * 3.5f);
+                    Color hc = celestialHaloImage.color;
+                    hc.a = haloPulse;
+                    celestialHaloImage.color = hc;
+                }
+
                 if (horizonFlareBeam != null)
                 {
-                    float breathAlpha = flareColor.a * (0.80f + 0.20f * Mathf.Sin(t * 3.2f));
+                    float breathAlpha = flareColor.a * (0.72f + 0.28f * Mathf.Sin(t * 3.0f));
                     Color fc = flareColor;
                     fc.a = breathAlpha;
                     horizonFlareBeam.color = fc;
                 }
 
-                // Atmospheric Particle Motes Animation
                 AnimateMotes(t, isNight);
 
                 yield return null;
             }
 
-            // 4. Resolve & Exit Phase (0.55s)
+            // 4. Resolve & Exit Phase (0.60s)
             float outDuration = Mathf.Max(exitDuration, 0.1f);
             for (float t = 0f; t < outDuration; t += Time.unscaledDeltaTime)
             {
                 float norm = Mathf.Clamp01(t / outDuration);
                 float easeInCubic = norm * norm * norm;
                 float currentAlpha = 1f - norm;
-                float scaleDrift = Mathf.Lerp(1.0f, 1.05f, norm);
+                float scaleDrift = Mathf.Lerp(1.0f, 1.035f, norm);
 
                 if (transitionCanvasGroup != null)
                     transitionCanvasGroup.alpha = currentAlpha;
 
-                // Letterbox Bars retreat
                 if (cinematicBarTop != null)
-                    cinematicBarTop.anchoredPosition = new Vector2(0f, Mathf.Lerp(0f, 75f, easeInCubic));
+                    cinematicBarTop.anchoredPosition = new Vector2(0f, Mathf.Lerp(0f, 64f, easeInCubic));
                 if (cinematicBarBottom != null)
-                    cinematicBarBottom.anchoredPosition = new Vector2(0f, Mathf.Lerp(0f, -75f, easeInCubic));
+                    cinematicBarBottom.anchoredPosition = new Vector2(0f, Mathf.Lerp(0f, -64f, easeInCubic));
 
-                // Flare collapse
                 if (horizonFlareBeam != null)
                 {
-                    float flareWidth = Mathf.Lerp(1500f, 0f, easeInCubic);
-                    horizonFlareBeam.rectTransform.sizeDelta = new Vector2(flareWidth, 8f);
+                    float flareWidth = Mathf.Lerp(1680f, 0f, easeInCubic);
+                    horizonFlareBeam.rectTransform.sizeDelta = new Vector2(flareWidth, 14f);
                 }
 
-                // Banner expansion dissolve
                 if (bannerRoot != null)
                 {
                     bannerRoot.localScale = new Vector3(scaleDrift, scaleDrift, 1f);
                 }
 
-                // Vignette fade
                 if (vignetteOverlay != null)
                 {
                     Color vc = vignetteTargetColor;
@@ -698,13 +745,6 @@ public class DayTransitionUI : MonoBehaviour
         }
     }
 
-    private static float EaseOutBack(float x)
-    {
-        const float c1 = 1.70158f;
-        const float c3 = c1 + 1f;
-        return 1f + c3 * Mathf.Pow(x - 1f, 3) + c1 * Mathf.Pow(x - 1f, 2);
-    }
-
     private static string ToRomanNumeral(int number)
     {
         return number switch
@@ -716,6 +756,9 @@ public class DayTransitionUI : MonoBehaviour
             5 => "V",
             6 => "VI",
             7 => "VII",
+            8 => "VIII",
+            9 => "IX",
+            10 => "X",
             _ => number.ToString()
         };
     }
@@ -752,8 +795,8 @@ public class DayTransitionUI : MonoBehaviour
         if (_moteImages == null || _moteImages.Length == 0) return;
 
         Color moteColor = isNight
-            ? new Color(0.98f, 0.28f, 0.28f, 0.75f)  // Crimson Cinder
-            : new Color(1.00f, 0.88f, 0.35f, 0.70f); // Golden Sun Dust
+            ? new Color(1.00f, 0.32f, 0.34f, 0.78f)
+            : new Color(1.00f, 0.88f, 0.42f, 0.74f);
 
         for (int i = 0; i < _moteImages.Length; i++)
         {
@@ -779,16 +822,15 @@ public class DayTransitionUI : MonoBehaviour
             float phase = _motePhaseOffsets[i];
 
             float yOffset = isNight
-                ? -((elapsed * speed * 25f + phase * 40f) % 90f) // Falling embers
-                : ((elapsed * speed * 25f + phase * 40f) % 90f);  // Rising sun motes
+                ? -((elapsed * speed * 24f + phase * 40f) % 105f)
+                : ((elapsed * speed * 24f + phase * 40f) % 105f);
 
-            float xSway = Mathf.Sin((elapsed + phase) * 2.5f) * 12f;
+            float xSway = Mathf.Sin((elapsed + phase) * 2.4f) * 14f;
 
             rt.anchoredPosition = basePos + new Vector2(xSway, yOffset);
 
-            // Shimmer alpha
             Color c = _moteImages[i].color;
-            c.a = 0.30f + 0.45f * Mathf.Sin((elapsed + phase) * 4f);
+            c.a = 0.25f + 0.50f * Mathf.Sin((elapsed + phase) * 3.8f);
             _moteImages[i].color = c;
         }
     }
@@ -835,8 +877,6 @@ public class DayTransitionUI : MonoBehaviour
         int sampleCount = Mathf.RoundToInt(sampleRate * duration);
         float[] samples = new float[sampleCount];
 
-        // 4-Layer Harmonic Awakening:
-        // Warm C3 130.8Hz body + 6-note Celesta/Harp Arpeggio (C4, E4, G4, B4, D5, G5) + Bell resonance
         float[] freqs = { 261.63f, 329.63f, 392.00f, 493.88f, 587.33f, 783.99f };
 
         for (int i = 0; i < sampleCount; i++)
@@ -875,8 +915,6 @@ public class DayTransitionUI : MonoBehaviour
         int sampleCount = Mathf.RoundToInt(sampleRate * duration);
         float[] samples = new float[sampleCount];
 
-        // 4-Layer Nightfall Doom Toll:
-        // 50Hz sub-bass shockwave + D2 73.4Hz Cathedral Bell with tritone partials + dread drone rumble
         for (int i = 0; i < sampleCount; i++)
         {
             float t = (float)i / sampleRate;
@@ -923,7 +961,7 @@ public class DayTransitionUI : MonoBehaviour
             {
                 float dist = Vector2.Distance(new Vector2(x, y), center);
                 float normDist = Mathf.Clamp01(dist / maxRadius);
-                float alpha = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01((normDist - 0.35f) / 0.65f));
+                float alpha = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01((normDist - 0.32f) / 0.68f));
                 pixels[y * size + x] = new Color(1f, 1f, 1f, alpha);
             }
         }
@@ -931,6 +969,46 @@ public class DayTransitionUI : MonoBehaviour
         tex.Apply();
         _cachedVignetteSprite = Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f));
         return _cachedVignetteSprite;
+    }
+
+    private static Sprite _cachedFeatheredRibbonSprite;
+    /// <summary>
+    /// Generates an anamorphic widescreen ribbon sprite that feathers smoothly to 0% alpha
+    /// on both horizontal edges and subtle vertical edges (eliminating ugly boxy rectangular cards).
+    /// </summary>
+    private static Sprite GetOrCreateFeatheredRibbonSprite()
+    {
+        if (_cachedFeatheredRibbonSprite != null) return _cachedFeatheredRibbonSprite;
+
+        const int w = 256;
+        const int h = 64;
+        var tex = new Texture2D(w, h, TextureFormat.RGBA32, false)
+        {
+            wrapMode = TextureWrapMode.Clamp,
+            filterMode = FilterMode.Bilinear
+        };
+
+        Color[] pixels = new Color[w * h];
+        for (int y = 0; y < h; y++)
+        {
+            float ny = (y + 0.5f) / h;
+            float distY = Mathf.Abs(ny - 0.5f) * 2f;
+            float verticalMask = 1f - Mathf.SmoothStep(0.76f, 1.0f, distY);
+
+            for (int x = 0; x < w; x++)
+            {
+                float nx = (x + 0.5f) / w;
+                float distX = Mathf.Abs(nx - 0.5f) * 2f;
+                float horizontalMask = 1f - Mathf.SmoothStep(0.28f, 0.98f, distX);
+                float alpha = horizontalMask * verticalMask;
+                pixels[y * w + x] = new Color(1f, 1f, 1f, alpha);
+            }
+        }
+
+        tex.SetPixels(pixels);
+        tex.Apply();
+        _cachedFeatheredRibbonSprite = Sprite.Create(tex, new Rect(0, 0, w, h), new Vector2(0.5f, 0.5f));
+        return _cachedFeatheredRibbonSprite;
     }
 
     private static Sprite _cachedFlareSprite;
@@ -950,7 +1028,7 @@ public class DayTransitionUI : MonoBehaviour
             for (int x = 0; x < w; x++)
             {
                 float nx = 1f - Mathf.Abs((x - (w * 0.5f)) / (w * 0.5f));
-                float alpha = Mathf.Pow(nx, 2.4f) * Mathf.Pow(ny, 1.4f);
+                float alpha = Mathf.Pow(nx, 2.2f) * Mathf.Pow(ny, 1.5f);
                 pixels[y * w + x] = new Color(1f, 1f, 1f, alpha);
             }
         }
@@ -960,32 +1038,150 @@ public class DayTransitionUI : MonoBehaviour
         return _cachedFlareSprite;
     }
 
-    private static Sprite _cachedRoundedCardSprite;
-    private static Sprite GetOrCreateRoundedCardSprite()
+    private static Sprite _cachedSunCrestSprite;
+    /// <summary>
+    /// Generates a crisp 96x96 Radiant Sunburst Crest medallion for the Daybreak transition.
+    /// </summary>
+    private static Sprite GetOrCreateSunCrestSprite()
     {
-        if (_cachedRoundedCardSprite != null) return _cachedRoundedCardSprite;
+        if (_cachedSunCrestSprite != null) return _cachedSunCrestSprite;
 
-        int size = 128;
-        int radius = 22;
-        var tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
-        tex.wrapMode = TextureWrapMode.Clamp;
+        const int size = 96;
+        var tex = new Texture2D(size, size, TextureFormat.RGBA32, false)
+        {
+            wrapMode = TextureWrapMode.Clamp,
+            filterMode = FilterMode.Bilinear
+        };
+
+        Vector2 center = new Vector2(size * 0.5f, size * 0.5f);
+        float maxR = size * 0.5f;
         Color[] pixels = new Color[size * size];
 
         for (int y = 0; y < size; y++)
         {
             for (int x = 0; x < size; x++)
             {
-                int cx = x < radius ? radius : (x > size - 1 - radius ? size - 1 - radius : x);
-                int cy = y < radius ? radius : (y > size - 1 - radius ? size - 1 - radius : y);
-                float dist = Vector2.Distance(new Vector2(x, y), new Vector2(cx, cy));
-                float alpha = 1f - Mathf.Clamp01(dist - radius + 0.5f);
-                pixels[y * size + x] = new Color(1f, 1f, 1f, alpha);
+                Vector2 d = new Vector2(x + 0.5f, y + 0.5f) - center;
+                float r = d.magnitude / maxR;
+                float angle = Mathf.Atan2(d.y, d.x);
+
+                // Inner solar disc
+                float core = 1f - Mathf.SmoothStep(0.24f, 0.30f, r);
+
+                // Concentric inner ring
+                float ring = (1f - Mathf.SmoothStep(0.0f, 0.035f, Mathf.Abs(r - 0.42f))) * 0.85f;
+
+                // 8-point geometric sunburst rays
+                float rayWave = Mathf.Max(0f, Mathf.Cos(angle * 8f));
+                float rayReach = 0.32f + Mathf.Pow(rayWave, 3f) * 0.56f;
+                float rays = (r > 0.28f && r < rayReach)
+                    ? (1f - Mathf.SmoothStep(0.28f, rayReach, r)) * Mathf.Pow(rayWave, 2f) * 0.90f
+                    : 0f;
+
+                // Soft ambient corona
+                float corona = Mathf.Pow(Mathf.Clamp01(1f - r), 2.6f) * 0.45f;
+
+                float a = Mathf.Clamp01(core + ring + rays + corona);
+                pixels[y * size + x] = new Color(1f, 1f, 1f, a);
             }
         }
+
         tex.SetPixels(pixels);
         tex.Apply();
-        _cachedRoundedCardSprite = Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), 100f, 0, SpriteMeshType.FullRect, new Vector4(radius, radius, radius, radius));
-        return _cachedRoundedCardSprite;
+        _cachedSunCrestSprite = Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f));
+        return _cachedSunCrestSprite;
+    }
+
+    private static Sprite _cachedBloodMoonCrestSprite;
+    /// <summary>
+    /// Generates a crisp 96x96 Blood-Moon Eclipse Crescent medallion for the Nightfall transition.
+    /// </summary>
+    private static Sprite GetOrCreateBloodMoonCrestSprite()
+    {
+        if (_cachedBloodMoonCrestSprite != null) return _cachedBloodMoonCrestSprite;
+
+        const int size = 96;
+        var tex = new Texture2D(size, size, TextureFormat.RGBA32, false)
+        {
+            wrapMode = TextureWrapMode.Clamp,
+            filterMode = FilterMode.Bilinear
+        };
+
+        Vector2 center = new Vector2(size * 0.5f, size * 0.5f);
+        Vector2 shadowCenter = center + new Vector2(size * 0.13f, size * 0.06f);
+        float maxR = size * 0.5f;
+        Color[] pixels = new Color[size * size];
+
+        for (int y = 0; y < size; y++)
+        {
+            for (int x = 0; x < size; x++)
+            {
+                Vector2 p = new Vector2(x + 0.5f, y + 0.5f);
+                float rMain = Vector2.Distance(p, center) / maxR;
+                float rShadow = Vector2.Distance(p, shadowCenter) / maxR;
+
+                float outerDisc = 1f - Mathf.SmoothStep(0.54f, 0.60f, rMain);
+                float shadowCutout = 1f - Mathf.SmoothStep(0.44f, 0.50f, rShadow);
+                float crescent = Mathf.Clamp01(outerDisc - shadowCutout * 0.96f);
+
+                // Thin eclipse outer ring
+                float eclipseRing = (1f - Mathf.SmoothStep(0f, 0.03f, Mathf.Abs(rMain - 0.68f))) * 0.65f;
+
+                // Soft blood corona glow
+                float corona = Mathf.Pow(Mathf.Clamp01(1f - rMain), 2.4f) * 0.40f;
+
+                float a = Mathf.Clamp01(crescent + eclipseRing + corona);
+                pixels[y * size + x] = new Color(1f, 1f, 1f, a);
+            }
+        }
+
+        tex.SetPixels(pixels);
+        tex.Apply();
+        _cachedBloodMoonCrestSprite = Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f));
+        return _cachedBloodMoonCrestSprite;
+    }
+
+    private static Sprite _cachedHaloRingSprite;
+    /// <summary>
+    /// Generates a dashed geometric halo ring that rotates slowly behind the celestial medallion.
+    /// </summary>
+    private static Sprite GetOrCreateHaloRingSprite()
+    {
+        if (_cachedHaloRingSprite != null) return _cachedHaloRingSprite;
+
+        const int size = 128;
+        var tex = new Texture2D(size, size, TextureFormat.RGBA32, false)
+        {
+            wrapMode = TextureWrapMode.Clamp,
+            filterMode = FilterMode.Bilinear
+        };
+
+        Vector2 center = new Vector2(size * 0.5f, size * 0.5f);
+        float maxR = size * 0.5f;
+        Color[] pixels = new Color[size * size];
+
+        for (int y = 0; y < size; y++)
+        {
+            for (int x = 0; x < size; x++)
+            {
+                Vector2 d = new Vector2(x + 0.5f, y + 0.5f) - center;
+                float r = d.magnitude / maxR;
+                float angle = Mathf.Atan2(d.y, d.x);
+
+                float ringBand = 1f - Mathf.SmoothStep(0f, 0.025f, Mathf.Abs(r - 0.82f));
+                float dashMask = Mathf.SmoothStep(-0.2f, 0.3f, Mathf.Cos(angle * 12f));
+                float cardinalDiamond = (1f - Mathf.SmoothStep(0f, 0.045f, Mathf.Abs(r - 0.82f)))
+                    * Mathf.Pow(Mathf.Max(0f, Mathf.Cos(angle * 4f)), 16f);
+
+                float a = Mathf.Clamp01(ringBand * dashMask * 0.75f + cardinalDiamond);
+                pixels[y * size + x] = new Color(1f, 1f, 1f, a);
+            }
+        }
+
+        tex.SetPixels(pixels);
+        tex.Apply();
+        _cachedHaloRingSprite = Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f));
+        return _cachedHaloRingSprite;
     }
 
     private static Sprite _cachedSparkleMoteSprite;
@@ -1030,7 +1226,8 @@ public class DayTransitionUI : MonoBehaviour
     #region Procedural UI Hierarchy Generation
 
     /// <summary>
-    /// Builds the AAA luxury UI hierarchy if not already configured in the Inspector.
+    /// Builds the redesigned widescreen anamorphic transition hierarchy.
+    /// Automatically upgrades any existing scene hierarchy to the new layout.
     /// </summary>
     public void EnsureUIHierarchy()
     {
@@ -1079,7 +1276,6 @@ public class DayTransitionUI : MonoBehaviour
             transform.SetAsLastSibling();
         }
 
-        // Clean up legacy unused DayText child if present
         var legacyDayText = transform.Find("DayText");
         if (legacyDayText != null)
         {
@@ -1087,7 +1283,6 @@ public class DayTransitionUI : MonoBehaviour
             else DestroyImmediate(legacyDayText.gameObject);
         }
 
-        // CanvasGroup
         transitionCanvasGroup = GetComponent<CanvasGroup>();
         if (transitionCanvasGroup == null)
             transitionCanvasGroup = gameObject.AddComponent<CanvasGroup>();
@@ -1096,7 +1291,6 @@ public class DayTransitionUI : MonoBehaviour
         transitionCanvasGroup.blocksRaycasts = false;
         transitionCanvasGroup.interactable = false;
 
-        // AudioSource
         audioSource = GetComponent<AudioSource>();
         if (audioSource == null)
         {
@@ -1105,13 +1299,8 @@ public class DayTransitionUI : MonoBehaviour
             audioSource.spatialBlend = 0f;
         }
 
-        // 2. Fullscreen Vignette Overlay
-        var vignetteGO = transform.Find("VignetteOverlay")?.gameObject;
-        if (vignetteGO == null)
-        {
-            vignetteGO = new GameObject("VignetteOverlay", typeof(RectTransform), typeof(Image));
-            vignetteGO.transform.SetParent(transform, false);
-        }
+        // 2. Fullscreen Atmospheric Vignette Overlay
+        var vignetteGO = GetOrCreateChild(transform, "VignetteOverlay", typeof(Image));
         var vignetteRect = vignetteGO.GetComponent<RectTransform>();
         vignetteRect.anchorMin = Vector2.zero;
         vignetteRect.anchorMax = Vector2.one;
@@ -1122,195 +1311,232 @@ public class DayTransitionUI : MonoBehaviour
         vignetteOverlay.color = new Color(0f, 0f, 0f, 0f);
         vignetteOverlay.raycastTarget = false;
 
-        // 3. CinemaScope Letterbox Bars
-        var barTopGO = transform.Find("CinematicBar_Top")?.gameObject;
-        if (barTopGO == null)
-        {
-            barTopGO = new GameObject("CinematicBar_Top", typeof(RectTransform), typeof(Image));
-            barTopGO.transform.SetParent(transform, false);
-        }
+        // 3. CinemaScope Letterbox Bars (64px with Feathered Metallic Edge Lines)
+        var barTopGO = GetOrCreateChild(transform, "CinematicBar_Top", typeof(Image));
         cinematicBarTop = barTopGO.GetComponent<RectTransform>();
         cinematicBarTop.anchorMin = new Vector2(0f, 1f);
         cinematicBarTop.anchorMax = new Vector2(1f, 1f);
         cinematicBarTop.pivot = new Vector2(0.5f, 1f);
-        cinematicBarTop.sizeDelta = new Vector2(0f, 75f);
-        cinematicBarTop.anchoredPosition = new Vector2(0f, 75f); // Initially off-screen
+        cinematicBarTop.sizeDelta = new Vector2(0f, 64f);
+        cinematicBarTop.anchoredPosition = new Vector2(0f, 64f);
         var barTopImg = barTopGO.GetComponent<Image>();
-        barTopImg.color = new Color(0.02f, 0.03f, 0.05f, 1f);
+        barTopImg.color = new Color(0.015f, 0.02f, 0.035f, 0.98f);
         barTopImg.raycastTarget = false;
 
-        var barBottomGO = transform.Find("CinematicBar_Bottom")?.gameObject;
-        if (barBottomGO == null)
-        {
-            barBottomGO = new GameObject("CinematicBar_Bottom", typeof(RectTransform), typeof(Image));
-            barBottomGO.transform.SetParent(transform, false);
-        }
+        var topEdgeGO = GetOrCreateChild(cinematicBarTop, "TopBarEdgeLine", typeof(Image));
+        var topEdgeRt = topEdgeGO.GetComponent<RectTransform>();
+        topEdgeRt.anchorMin = new Vector2(0f, 0f);
+        topEdgeRt.anchorMax = new Vector2(1f, 0f);
+        topEdgeRt.pivot = new Vector2(0.5f, 0f);
+        topEdgeRt.sizeDelta = new Vector2(0f, 2f);
+        topEdgeRt.anchoredPosition = Vector2.zero;
+        topBarEdgeLine = topEdgeGO.GetComponent<Image>();
+        topBarEdgeLine.sprite = GetOrCreateFlareSprite();
+        topBarEdgeLine.raycastTarget = false;
+
+        var barBottomGO = GetOrCreateChild(transform, "CinematicBar_Bottom", typeof(Image));
         cinematicBarBottom = barBottomGO.GetComponent<RectTransform>();
         cinematicBarBottom.anchorMin = new Vector2(0f, 0f);
         cinematicBarBottom.anchorMax = new Vector2(1f, 0f);
         cinematicBarBottom.pivot = new Vector2(0.5f, 0f);
-        cinematicBarBottom.sizeDelta = new Vector2(0f, 75f);
-        cinematicBarBottom.anchoredPosition = new Vector2(0f, -75f); // Initially off-screen
+        cinematicBarBottom.sizeDelta = new Vector2(0f, 64f);
+        cinematicBarBottom.anchoredPosition = new Vector2(0f, -64f);
         var barBottomImg = barBottomGO.GetComponent<Image>();
-        barBottomImg.color = new Color(0.02f, 0.03f, 0.05f, 1f);
+        barBottomImg.color = new Color(0.015f, 0.02f, 0.035f, 0.98f);
         barBottomImg.raycastTarget = false;
 
-        // 4. Horizon Flare Beam
-        var flareGO = transform.Find("HorizonFlareBeam")?.gameObject;
-        if (flareGO == null)
-        {
-            flareGO = new GameObject("HorizonFlareBeam", typeof(RectTransform), typeof(Image));
-            flareGO.transform.SetParent(transform, false);
-        }
+        var botEdgeGO = GetOrCreateChild(cinematicBarBottom, "BottomBarEdgeLine", typeof(Image));
+        var botEdgeRt = botEdgeGO.GetComponent<RectTransform>();
+        botEdgeRt.anchorMin = new Vector2(0f, 1f);
+        botEdgeRt.anchorMax = new Vector2(1f, 1f);
+        botEdgeRt.pivot = new Vector2(0.5f, 1f);
+        botEdgeRt.sizeDelta = new Vector2(0f, 2f);
+        botEdgeRt.anchoredPosition = Vector2.zero;
+        bottomBarEdgeLine = botEdgeGO.GetComponent<Image>();
+        bottomBarEdgeLine.sprite = GetOrCreateFlareSprite();
+        bottomBarEdgeLine.raycastTarget = false;
+
+        // 4. Anamorphic Horizon Flare Beam (sweeps behind the title veil)
+        var flareGO = GetOrCreateChild(transform, "HorizonFlareBeam", typeof(Image));
         var flareRt = flareGO.GetComponent<RectTransform>();
         flareRt.anchorMin = new Vector2(0.5f, 1f);
         flareRt.anchorMax = new Vector2(0.5f, 1f);
         flareRt.pivot = new Vector2(0.5f, 0.5f);
-        flareRt.anchoredPosition = new Vector2(0f, -135f);
-        flareRt.sizeDelta = new Vector2(0f, 8f);
+        flareRt.anchoredPosition = new Vector2(0f, -215f);
+        flareRt.sizeDelta = new Vector2(0f, 14f);
         horizonFlareBeam = flareGO.GetComponent<Image>();
         horizonFlareBeam.sprite = GetOrCreateFlareSprite();
         horizonFlareBeam.color = new Color(1f, 1f, 1f, 0f);
         horizonFlareBeam.raycastTarget = false;
 
-        // 5. Banner Root Container
-        var bannerGO = transform.Find("BannerRoot")?.gameObject;
-        if (bannerGO == null)
-        {
-            bannerGO = new GameObject("BannerRoot", typeof(RectTransform), typeof(Image));
-            bannerGO.transform.SetParent(transform, false);
-        }
+        // 5. Feathered Widescreen Banner Veil (1360x220, horizontally feathered to 0% alpha at ends)
+        var bannerGO = GetOrCreateChild(transform, "BannerRoot", typeof(Image));
         bannerRoot = bannerGO.GetComponent<RectTransform>();
         bannerRoot.anchorMin = new Vector2(0.5f, 1f);
         bannerRoot.anchorMax = new Vector2(0.5f, 1f);
         bannerRoot.pivot = new Vector2(0.5f, 1f);
         bannerRoot.anchoredPosition = baseBannerPosition;
-        bannerRoot.sizeDelta = new Vector2(680f, 130f);
+        bannerRoot.sizeDelta = new Vector2(1360f, 224f);
 
         bannerBackgroundImage = bannerGO.GetComponent<Image>();
-        bannerBackgroundImage.sprite = GetOrCreateRoundedCardSprite();
-        bannerBackgroundImage.type = Image.Type.Sliced;
-        bannerBackgroundImage.color = new Color(0.05f, 0.07f, 0.11f, 0.94f);
+        bannerBackgroundImage.sprite = GetOrCreateFeatheredRibbonSprite();
+        bannerBackgroundImage.type = Image.Type.Simple;
+        bannerBackgroundImage.color = new Color(0.035f, 0.05f, 0.085f, 0.90f);
         bannerBackgroundImage.raycastTarget = false;
 
-        // 6. Accent Lines (Top & Bottom)
-        var topAccentGO = bannerRoot.Find("TopAccentLine")?.gameObject;
-        if (topAccentGO == null)
-        {
-            topAccentGO = new GameObject("TopAccentLine", typeof(RectTransform), typeof(Image));
-            topAccentGO.transform.SetParent(bannerRoot, false);
-        }
+        // Soft inner core glow behind medallion & title
+        var innerGlowGO = GetOrCreateChild(bannerRoot, "InnerCoreGlow", typeof(Image));
+        var innerGlowRt = innerGlowGO.GetComponent<RectTransform>();
+        innerGlowRt.anchorMin = new Vector2(0.22f, 0.15f);
+        innerGlowRt.anchorMax = new Vector2(0.78f, 0.88f);
+        innerGlowRt.offsetMin = Vector2.zero;
+        innerGlowRt.offsetMax = Vector2.zero;
+        bannerInnerGlowImage = innerGlowGO.GetComponent<Image>();
+        bannerInnerGlowImage.sprite = GetOrCreateFeatheredRibbonSprite();
+        bannerInnerGlowImage.color = new Color(0.55f, 0.38f, 0.08f, 0.28f);
+        bannerInnerGlowImage.raycastTarget = false;
+
+        // 6. Tapered Filigree Rules (Top & Bottom of Veil)
+        var topAccentGO = GetOrCreateChild(bannerRoot, "TopAccentLine", typeof(Image));
         var topAccentRect = topAccentGO.GetComponent<RectTransform>();
-        topAccentRect.anchorMin = new Vector2(0.04f, 1f);
-        topAccentRect.anchorMax = new Vector2(0.96f, 1f);
-        topAccentRect.pivot = new Vector2(0.5f, 1f);
+        topAccentRect.anchorMin = new Vector2(0.10f, 0.985f);
+        topAccentRect.anchorMax = new Vector2(0.90f, 0.985f);
+        topAccentRect.pivot = new Vector2(0.5f, 0.5f);
         topAccentRect.anchoredPosition = Vector2.zero;
-        topAccentRect.sizeDelta = new Vector2(0f, 2f);
+        topAccentRect.sizeDelta = new Vector2(0f, 2.5f);
         bannerTopAccentLine = topAccentGO.GetComponent<Image>();
-        bannerTopAccentLine.color = new Color(1f, 0.82f, 0.25f, 0.95f);
+        bannerTopAccentLine.sprite = GetOrCreateFlareSprite();
         bannerTopAccentLine.raycastTarget = false;
 
-        var accentGO = bannerRoot.Find("AccentLine")?.gameObject;
-        if (accentGO == null)
-        {
-            accentGO = new GameObject("AccentLine", typeof(RectTransform), typeof(Image));
-            accentGO.transform.SetParent(bannerRoot, false);
-        }
+        var accentGO = GetOrCreateChild(bannerRoot, "AccentLine", typeof(Image));
         var accentRect = accentGO.GetComponent<RectTransform>();
-        accentRect.anchorMin = new Vector2(0.04f, 0f);
-        accentRect.anchorMax = new Vector2(0.96f, 0f);
-        accentRect.pivot = new Vector2(0.5f, 0f);
+        accentRect.anchorMin = new Vector2(0.10f, 0.015f);
+        accentRect.anchorMax = new Vector2(0.90f, 0.015f);
+        accentRect.pivot = new Vector2(0.5f, 0.5f);
         accentRect.anchoredPosition = Vector2.zero;
         accentRect.sizeDelta = new Vector2(0f, 2.5f);
         bannerAccentLine = accentGO.GetComponent<Image>();
-        bannerAccentLine.color = new Color(1f, 0.82f, 0.25f, 0.95f);
+        bannerAccentLine.sprite = GetOrCreateFlareSprite();
         bannerAccentLine.raycastTarget = false;
+
+        // 7. Celestial Crest Medallion & Rotating Runic Halo (Top Center of Veil)
+        var haloGO = GetOrCreateChild(bannerRoot, "CelestialHaloRing", typeof(Image));
+        var haloRt = haloGO.GetComponent<RectTransform>();
+        haloRt.anchorMin = new Vector2(0.5f, 1f);
+        haloRt.anchorMax = new Vector2(0.5f, 1f);
+        haloRt.pivot = new Vector2(0.5f, 0.5f);
+        haloRt.anchoredPosition = new Vector2(0f, -34f);
+        haloRt.sizeDelta = new Vector2(78f, 78f);
+        celestialHaloImage = haloGO.GetComponent<Image>();
+        celestialHaloImage.sprite = GetOrCreateHaloRingSprite();
+        celestialHaloImage.raycastTarget = false;
+
+        var medallionGO = GetOrCreateChild(bannerRoot, "CelestialMedallion", typeof(Image));
+        var medallionRt = medallionGO.GetComponent<RectTransform>();
+        medallionRt.anchorMin = new Vector2(0.5f, 1f);
+        medallionRt.anchorMax = new Vector2(0.5f, 1f);
+        medallionRt.pivot = new Vector2(0.5f, 0.5f);
+        medallionRt.anchoredPosition = new Vector2(0f, -34f);
+        medallionRt.sizeDelta = new Vector2(52f, 52f);
+        celestialMedallionImage = medallionGO.GetComponent<Image>();
+        celestialMedallionImage.sprite = GetOrCreateSunCrestSprite();
+        celestialMedallionImage.raycastTarget = false;
 
         var defaultFont = GetFontAsset();
 
-        // 7. Category Tag Text (Pre-Header)
-        var catGO = bannerRoot.Find("CategoryTagText")?.gameObject;
-        if (catGO == null)
-        {
-            catGO = new GameObject("CategoryTagText", typeof(RectTransform), typeof(TextMeshProUGUI));
-            catGO.transform.SetParent(bannerRoot, false);
-        }
+        // 8. Category Tag Text (Chapter / Eclipse Kicker Overline)
+        var catGO = GetOrCreateChild(bannerRoot, "CategoryTagText", typeof(TextMeshProUGUI));
         var catRect = catGO.GetComponent<RectTransform>();
-        catRect.anchorMin = new Vector2(0.05f, 0.76f);
-        catRect.anchorMax = new Vector2(0.95f, 0.96f);
+        catRect.anchorMin = new Vector2(0.10f, 0.63f);
+        catRect.anchorMax = new Vector2(0.90f, 0.74f);
         catRect.offsetMin = Vector2.zero;
         catRect.offsetMax = Vector2.zero;
         categoryTagText = catGO.GetComponent<TextMeshProUGUI>();
         if (defaultFont != null) categoryTagText.font = defaultFont;
-        categoryTagText.fontSize = 11f;
+        categoryTagText.fontSize = 11.5f;
         categoryTagText.fontStyle = FontStyles.Bold;
-        categoryTagText.characterSpacing = 3.5f;
+        categoryTagText.characterSpacing = 8.5f;
         categoryTagText.alignment = TextAlignmentOptions.Center;
         categoryTagText.raycastTarget = false;
 
-        // 8. Main Title Text (DAY X / NIGHTFALL)
-        var titleGO = bannerRoot.Find("TitleText")?.gameObject;
-        if (titleGO == null)
-        {
-            titleGO = new GameObject("TitleText", typeof(RectTransform), typeof(TextMeshProUGUI));
-            titleGO.transform.SetParent(bannerRoot, false);
-        }
+        // 9. Main Hero Display Title ("DAY X" / "NIGHTFALL") + Left/Right Filigree Wings
+        var titleGO = GetOrCreateChild(bannerRoot, "TitleText", typeof(TextMeshProUGUI));
         var titleRect = titleGO.GetComponent<RectTransform>();
-        titleRect.anchorMin = new Vector2(0.05f, 0.44f);
-        titleRect.anchorMax = new Vector2(0.95f, 0.78f);
+        titleRect.anchorMin = new Vector2(0.15f, 0.36f);
+        titleRect.anchorMax = new Vector2(0.85f, 0.64f);
         titleRect.offsetMin = Vector2.zero;
         titleRect.offsetMax = Vector2.zero;
         titleText = titleGO.GetComponent<TextMeshProUGUI>();
         if (defaultFont != null) titleText.font = defaultFont;
-        titleText.fontSize = 28f;
+        titleText.fontSize = 44f;
         titleText.fontStyle = FontStyles.Bold;
-        titleText.characterSpacing = 4f;
+        titleText.characterSpacing = 8f;
         titleText.alignment = TextAlignmentOptions.Center;
         titleText.raycastTarget = false;
 
-        // 9. Subtitle Text
-        var subGO = bannerRoot.Find("SubtitleText")?.gameObject;
-        if (subGO == null)
-        {
-            subGO = new GameObject("SubtitleText", typeof(RectTransform), typeof(TextMeshProUGUI));
-            subGO.transform.SetParent(bannerRoot, false);
-        }
+        var leftWingGO = GetOrCreateChild(bannerRoot, "LeftTitleWing", typeof(Image));
+        var leftWingRt = leftWingGO.GetComponent<RectTransform>();
+        leftWingRt.anchorMin = new Vector2(0.16f, 0.50f);
+        leftWingRt.anchorMax = new Vector2(0.36f, 0.50f);
+        leftWingRt.pivot = new Vector2(1f, 0.5f);
+        leftWingRt.anchoredPosition = Vector2.zero;
+        leftWingRt.sizeDelta = new Vector2(0f, 2f);
+        leftTitleWingImage = leftWingGO.GetComponent<Image>();
+        leftTitleWingImage.sprite = GetOrCreateFlareSprite();
+        leftTitleWingImage.raycastTarget = false;
+
+        var rightWingGO = GetOrCreateChild(bannerRoot, "RightTitleWing", typeof(Image));
+        var rightWingRt = rightWingGO.GetComponent<RectTransform>();
+        rightWingRt.anchorMin = new Vector2(0.64f, 0.50f);
+        rightWingRt.anchorMax = new Vector2(0.84f, 0.50f);
+        rightWingRt.pivot = new Vector2(0f, 0.5f);
+        rightWingRt.anchoredPosition = Vector2.zero;
+        rightWingRt.sizeDelta = new Vector2(0f, 2f);
+        rightTitleWingImage = rightWingGO.GetComponent<Image>();
+        rightTitleWingImage.sprite = GetOrCreateFlareSprite();
+        rightTitleWingImage.raycastTarget = false;
+
+        // 10. Editorial Narrative Subtitle
+        var subGO = GetOrCreateChild(bannerRoot, "SubtitleText", typeof(TextMeshProUGUI));
         var subRect = subGO.GetComponent<RectTransform>();
-        subRect.anchorMin = new Vector2(0.05f, 0.22f);
-        subRect.anchorMax = new Vector2(0.95f, 0.44f);
+        subRect.anchorMin = new Vector2(0.12f, 0.21f);
+        subRect.anchorMax = new Vector2(0.88f, 0.36f);
         subRect.offsetMin = Vector2.zero;
         subRect.offsetMax = Vector2.zero;
         subtitleText = subGO.GetComponent<TextMeshProUGUI>();
         if (defaultFont != null) subtitleText.font = defaultFont;
-        subtitleText.fontSize = 12.5f;
-        subtitleText.fontStyle = FontStyles.Normal;
+        subtitleText.fontSize = 14f;
+        subtitleText.fontStyle = FontStyles.Italic;
+        subtitleText.characterSpacing = 1.2f;
         subtitleText.alignment = TextAlignmentOptions.Center;
         subtitleText.raycastTarget = false;
 
-        // 10. Status Pill Container & Text
-        var pillGO = bannerRoot.Find("StatusPill")?.gameObject;
-        if (pillGO == null)
-        {
-            pillGO = new GameObject("StatusPill", typeof(RectTransform), typeof(Image));
-            pillGO.transform.SetParent(bannerRoot, false);
-        }
+        // 11. Sleek Tactical Phase Telemetry Ribbon (StatusPill)
+        var pillGO = GetOrCreateChild(bannerRoot, "StatusPill", typeof(Image));
         var pillRt = pillGO.GetComponent<RectTransform>();
-        pillRt.anchorMin = new Vector2(0.5f, 0.05f);
-        pillRt.anchorMax = new Vector2(0.5f, 0.05f);
+        pillRt.anchorMin = new Vector2(0.5f, 0.045f);
+        pillRt.anchorMax = new Vector2(0.5f, 0.045f);
         pillRt.pivot = new Vector2(0.5f, 0f);
-        pillRt.sizeDelta = new Vector2(480f, 18f);
+        pillRt.anchoredPosition = Vector2.zero;
+        pillRt.sizeDelta = new Vector2(760f, 26f);
         statusPillBg = pillGO.GetComponent<Image>();
-        statusPillBg.sprite = GetOrCreateRoundedCardSprite();
-        statusPillBg.type = Image.Type.Sliced;
-        statusPillBg.color = new Color(0f, 0f, 0f, 0.50f);
+        statusPillBg.sprite = GetOrCreateFeatheredRibbonSprite();
+        statusPillBg.type = Image.Type.Simple;
+        statusPillBg.color = new Color(0.05f, 0.07f, 0.12f, 0.82f);
         statusPillBg.raycastTarget = false;
 
-        var pillTextGO = pillGO.transform.Find("Text")?.gameObject;
-        if (pillTextGO == null)
-        {
-            pillTextGO = new GameObject("Text", typeof(RectTransform), typeof(TextMeshProUGUI));
-            pillTextGO.transform.SetParent(pillGO.transform, false);
-        }
+        var pillRuleGO = GetOrCreateChild(pillRt, "TopRule", typeof(Image));
+        var pillRuleRt = pillRuleGO.GetComponent<RectTransform>();
+        pillRuleRt.anchorMin = new Vector2(0.1f, 1f);
+        pillRuleRt.anchorMax = new Vector2(0.9f, 1f);
+        pillRuleRt.pivot = new Vector2(0.5f, 1f);
+        pillRuleRt.anchoredPosition = Vector2.zero;
+        pillRuleRt.sizeDelta = new Vector2(0f, 1.5f);
+        statusPillTopRule = pillRuleGO.GetComponent<Image>();
+        statusPillTopRule.sprite = GetOrCreateFlareSprite();
+        statusPillTopRule.raycastTarget = false;
+
+        var pillTextGO = GetOrCreateChild(pillRt, "Text", typeof(TextMeshProUGUI));
         var pillTextRt = pillTextGO.GetComponent<RectTransform>();
         pillTextRt.anchorMin = Vector2.zero;
         pillTextRt.anchorMax = Vector2.one;
@@ -1318,43 +1544,60 @@ public class DayTransitionUI : MonoBehaviour
         pillTextRt.offsetMax = Vector2.zero;
         statusPillText = pillTextGO.GetComponent<TextMeshProUGUI>();
         if (defaultFont != null) statusPillText.font = defaultFont;
-        statusPillText.fontSize = 9f;
-        statusPillText.fontStyle = FontStyles.Bold;
-        statusPillText.characterSpacing = 1.2f;
+        statusPillText.fontSize = 11f;
+        statusPillText.richText = true;
+        statusPillText.characterSpacing = 2.0f;
         statusPillText.alignment = TextAlignmentOptions.Center;
         statusPillText.raycastTarget = false;
 
-        // 11. Legacy IconText compatibility (hidden/clear)
-        var iconGO = bannerRoot.Find("IconText")?.gameObject;
-        if (iconGO == null)
-        {
-            iconGO = new GameObject("IconText", typeof(RectTransform), typeof(TextMeshProUGUI));
-            iconGO.transform.SetParent(bannerRoot, false);
-        }
+        // 12. Legacy IconText compatibility (hidden/clear)
+        var iconGO = GetOrCreateChild(bannerRoot, "IconText", typeof(TextMeshProUGUI));
         iconText = iconGO.GetComponent<TextMeshProUGUI>();
         iconText.raycastTarget = false;
         iconText.text = "";
 
-        // 12. Atmospheric Motes Container
-        var motesGO = transform.Find("AtmosphereMotes")?.gameObject;
-        if (motesGO == null)
-        {
-            motesGO = new GameObject("AtmosphereMotes", typeof(RectTransform));
-            motesGO.transform.SetParent(transform, false);
-        }
+        // 13. Atmospheric Motes Container
+        var motesGO = GetOrCreateChild(transform, "AtmosphereMotes");
         motesContainer = motesGO.GetComponent<RectTransform>();
         motesContainer.anchorMin = new Vector2(0.5f, 1f);
         motesContainer.anchorMax = new Vector2(0.5f, 1f);
         motesContainer.pivot = new Vector2(0.5f, 1f);
         motesContainer.anchoredPosition = baseBannerPosition;
-        motesContainer.sizeDelta = new Vector2(700f, 130f);
+        motesContainer.sizeDelta = new Vector2(1100f, 220f);
 
         BuildParticleMotes(motesContainer);
     }
 
+    private static GameObject GetOrCreateChild(Transform parent, string childName, params Type[] components)
+    {
+        var existing = parent.Find(childName);
+        if (existing != null)
+        {
+            for (int i = 0; i < components.Length; i++)
+            {
+                if (existing.GetComponent(components[i]) == null)
+                {
+                    existing.gameObject.AddComponent(components[i]);
+                }
+            }
+            return existing.gameObject;
+        }
+
+        var go = new GameObject(childName, typeof(RectTransform));
+        go.transform.SetParent(parent, false);
+        for (int i = 0; i < components.Length; i++)
+        {
+            if (go.GetComponent(components[i]) == null)
+            {
+                go.AddComponent(components[i]);
+            }
+        }
+        return go;
+    }
+
     private void BuildParticleMotes(RectTransform container)
     {
-        const int count = 10;
+        const int count = 14;
         _moteImages = new Image[count];
         _moteBasePositions = new Vector2[count];
         _moteSpeeds = new float[count];
@@ -1365,22 +1608,17 @@ public class DayTransitionUI : MonoBehaviour
         for (int i = 0; i < count; i++)
         {
             var moteName = $"Mote_{i}";
-            var moteChild = container.Find(moteName)?.gameObject;
-            if (moteChild == null)
-            {
-                moteChild = new GameObject(moteName, typeof(RectTransform), typeof(Image));
-                moteChild.transform.SetParent(container, false);
-            }
+            var moteChild = GetOrCreateChild(container, moteName, typeof(Image));
 
             var rt = moteChild.GetComponent<RectTransform>();
-            float size = UnityEngine.Random.Range(4f, 7.5f);
+            float size = UnityEngine.Random.Range(4.5f, 8.5f);
             rt.sizeDelta = new Vector2(size, size);
             rt.anchorMin = new Vector2(0.5f, 0.5f);
             rt.anchorMax = new Vector2(0.5f, 0.5f);
 
             Vector2 rndPos = new Vector2(
-                UnityEngine.Random.Range(-320f, 320f),
-                UnityEngine.Random.Range(-55f, 55f)
+                UnityEngine.Random.Range(-460f, 460f),
+                UnityEngine.Random.Range(-85f, 85f)
             );
             rt.anchoredPosition = rndPos;
 

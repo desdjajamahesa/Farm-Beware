@@ -97,11 +97,16 @@ namespace FeaturesSaveSystem
         public string outfitName;
         public bool isHatEquipped = true;
 
-        // Weapon Upgrades
+        // Weapon & Armor Upgrades
         public int weaponLevel = 1;
+        public int armorLevel = 1;
+        public int activeSpecialization = 0; // 0=None, 1=SweetPotato, 2=Taro, 3=Corn
+        public int specializationNodeLevel = 0;
+        public int totalBossesDefeated = 0;
         public bool sweetPotatoPathUnlocked;
         public bool taroPathUnlocked;
         public bool cornPathUnlocked;
+        public List<SavedEquippedSlot> equippedSlots = new List<SavedEquippedSlot>();
 
         // Combat & Night Brawl
         public int nightCurrentWave;
@@ -121,6 +126,13 @@ namespace FeaturesSaveSystem
 
         // Quest Progress Persistence
         public QuestSavePayload questPayload;
+    }
+
+    [Serializable]
+    public class SavedEquippedSlot
+    {
+        public int slotType;
+        public string itemId;
     }
 
     [Serializable]

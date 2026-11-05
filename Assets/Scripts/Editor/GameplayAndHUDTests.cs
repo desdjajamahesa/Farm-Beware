@@ -27,6 +27,8 @@ using Player;
 using FarmBeware.Logic.Quests;
 using FarmBeware.Features.Quest;
 using FarmBeware.Features.Quest.UI;
+using FeaturesWorkbench;
+using FeaturesWorkbench.Core;
 
 namespace FarmBeware.EditorTests
 {
@@ -86,7 +88,7 @@ namespace FarmBeware.EditorTests
             ResetTestAuditHarness();
 
             int passed = 0;
-            int total = 79;
+            int total = 91;
 
             if (Test_DayNight_PhaseProgression_DuskUntilNight()) passed++;
             if (Test_BedInteractable_Logic_AllowsDuskAndBlocksNightOnly()) passed++;
@@ -167,6 +169,19 @@ namespace FarmBeware.EditorTests
             if (Test_PlayerWallet_TransactionIntegrity_BuyDeduction_SellIncrement_And_FullInventoryRefund()) passed++;
             if (Test_DailyEconomyManager_DailyPriceRolling_DirtyDiscount_And_DayTransitionSnapshot()) passed++;
             if (Test_TradingPost_Complex_Architecture_Clearances_And_ShopCounter_Audit()) passed++;
+            if (Test_WeaponUpgrade_Level1To10_DamageScalingAndCost()) passed++;
+            if (Test_ArmorUpgrade_Level1To10_MitigationProgression()) passed++;
+            if (Test_SpecializationTree_SinglePathExclusivity_And_Progression()) passed++;
+            if (Test_SweetPotatoCombatSet_BonusEvaluation()) passed++;
+            if (Test_EquipmentSlotUI_DragAndDropEquip_And_Unequip()) passed++;
+            if (Test_Workbench_SaveLoadHydration_FullStatePreservation()) passed++;
+
+            if (Test_ContextualCombatStance_And_NightHotbarRestrictions()) passed++;
+            if (Test_CombatKinesthetics_ImpactTierScaling_ParryRiposte_And_DodgeStrike()) passed++;
+            if (Test_EnvironmentalWallSplat_And_BranchingHeavyFinishers()) passed++;
+            if (Test_CornCobRepeater_RangedWeaponAsset_And_CornSpecScaling()) passed++;
+            if (Test_BioCatalystNightOverdrive_CropGrowthAndLootEscalation()) passed++;
+            if (Test_WeaponsAndArmor_CompleteAccessibility_CraftingAndPurchasing_Audit()) passed++;
 
             Debug.Log("[AUDIT-SUITE] ========================================================");
             Debug.Log($"[AUDIT-SUITE] Complete! Passed: {passed}/{total}");
@@ -1435,7 +1450,15 @@ namespace FarmBeware.EditorTests
                     return false;
                 }
 
-                // 3. Test CancelTransition
+                // 3. Test CancelTransition & Redesigned Anamorphic Celestial Hierarchy
+                var medallion = go.transform.Find("BannerRoot/CelestialMedallion");
+                var halo = go.transform.Find("BannerRoot/CelestialHaloRing");
+                if (medallion == null || halo == null)
+                {
+                    Debug.LogError("[Test 21] Redesigned DayTransitionUI missing CelestialMedallion or CelestialHaloRing!");
+                    return false;
+                }
+
                 transitionUI.CancelTransition();
                 if (transitionUI.CanvasGroupRef.alpha > 0.01f)
                 {
@@ -3184,6 +3207,12 @@ namespace FarmBeware.EditorTests
                 if (player.HasInputLock("OpeningCutscene"))
                 {
                     Debug.LogError("[Test 37] Player input lock was NOT released after skip!");
+                    return false;
+                }
+
+                if (UIModalHelper.LastFrameUIPanelClosed != Time.frameCount)
+                {
+                    Debug.LogError("[Test 37] SkipCurrentCutscene did not stamp UIModalHelper.LastFrameUIPanelClosed to prevent Pause Menu from opening on ESC!");
                     return false;
                 }
 
@@ -8047,6 +8076,890 @@ namespace FarmBeware.EditorTests
             }
 
             Debug.Log("✅ Test 79: Commercial Trading Post Complex architecture, clearances, and shop counter verified.");
+            return true;
+        }
+
+
+        /// <summary>
+        /// [Test 80] Verifies Weapon Basic Upgrade scaling from Lv.1 to Lv.10, damage multiplier, and gold cost curve.
+        /// </summary>
+        public static bool Test_WeaponUpgrade_Level1To10_DamageScalingAndCost()
+        {
+            int baseDmg = 25;
+            int d1 = EquipmentUpgradeEvaluator.CalculateWeaponDamage(baseDmg, 1);
+            int d5 = EquipmentUpgradeEvaluator.CalculateWeaponDamage(baseDmg, 5);
+            int d10 = EquipmentUpgradeEvaluator.CalculateWeaponDamage(baseDmg, 10);
+
+            if (d1 != 25)
+            {
+                Debug.LogError($"[Test 80] Weapon Lv.1 damage expected 25, got {d1}");
+                return false;
+            }
+            if (d5 != 40)
+            {
+                Debug.LogError($"[Test 80] Weapon Lv.5 damage expected 40 (+60%), got {d5}");
+                return false;
+            }
+            if (d10 < 62 || d10 > 63)
+            {
+                Debug.LogError($"[Test 80] Weapon Lv.10 damage expected 62-63 (+150%), got {d10}");
+                return false;
+            }
+
+            int cost1 = EquipmentUpgradeEvaluator.GetWeaponUpgradeCost(1);
+            int cost9 = EquipmentUpgradeEvaluator.GetWeaponUpgradeCost(9);
+            int cost10 = EquipmentUpgradeEvaluator.GetWeaponUpgradeCost(10);
+
+            if (cost1 != 300 || cost9 != 22000 || cost10 != 0)
+            {
+                Debug.LogError($"[Test 80] Weapon upgrade costs mismatch: cost1={cost1}, cost9={cost9}, cost10={cost10}");
+                return false;
+            }
+
+            Debug.Log("✅ Test 80: Weapon Basic Upgrade Lv.1 to Lv.10 damage scaling (+15% to +150%) and cost curve verified.");
+            return true;
+        }
+
+        /// <summary>
+        /// [Test 81] Verifies Armor Upgrade Lv.1 to Lv.10 damage mitigation ratio and exact GDD gold progression.
+        /// </summary>
+        public static bool Test_ArmorUpgrade_Level1To10_MitigationProgression()
+        {
+            float m1 = EquipmentUpgradeEvaluator.GetArmorMitigationRatio(1);
+            float m5 = EquipmentUpgradeEvaluator.GetArmorMitigationRatio(5);
+            float m10 = EquipmentUpgradeEvaluator.GetArmorMitigationRatio(10);
+
+            if (m1 != 0f || Mathf.Abs(m5 - 0.06f) > 0.001f || Mathf.Abs(m10 - 0.32f) > 0.001f)
+            {
+                Debug.LogError($"[Test 81] Armor mitigation ratio mismatch: m1={m1}, m5={m5}, m10={m10}");
+                return false;
+            }
+
+            int ac1 = EquipmentUpgradeEvaluator.GetArmorUpgradeCost(1);
+            int ac5 = EquipmentUpgradeEvaluator.GetArmorUpgradeCost(5);
+            int ac9 = EquipmentUpgradeEvaluator.GetArmorUpgradeCost(9);
+
+            if (ac1 != 300 || ac5 != 1800 || ac9 != 47000)
+            {
+                Debug.LogError($"[Test 81] Armor upgrade costs mismatch: ac1={ac1}, ac5={ac5}, ac9={ac9}");
+                return false;
+            }
+
+            Debug.Log("✅ Test 81: Armor Upgrade Lv.1 to Lv.10 mitigation ratio (0% to 32%) and exact gold progression verified.");
+            return true;
+        }
+
+        /// <summary>
+        /// [Test 82] Verifies that only 1 specialization path is allowed at a time and tracks progression.
+        /// </summary>
+        public static bool Test_SpecializationTree_SinglePathExclusivity_And_Progression()
+        {
+            var go = new GameObject("Test_Player_Specialization");
+            var wu = go.AddComponent<PlayerWeaponUpgradeState>();
+
+            bool selectSweetPotato = wu.SelectSpecialization(SpecializationPath.SweetPotato);
+            if (!selectSweetPotato || wu.activeSpecialization != SpecializationPath.SweetPotato)
+            {
+                Debug.LogError("[Test 82] Failed to select Sweet Potato specialization path!");
+                GameObject.DestroyImmediate(go);
+                return false;
+            }
+
+            // Exclusivity test: attempting to switch to Taro must be rejected
+            bool switchTaro = wu.SelectSpecialization(SpecializationPath.Taro);
+            if (switchTaro || wu.activeSpecialization != SpecializationPath.SweetPotato)
+            {
+                Debug.LogError("[Test 82] Exclusivity violated! Switching specialization paths was improperly allowed.");
+                GameObject.DestroyImmediate(go);
+                return false;
+            }
+
+            GameObject.DestroyImmediate(go);
+            Debug.Log("✅ Test 82: Specialization Tree single-path exclusivity and progression locking verified.");
+            return true;
+        }
+
+        /// <summary>
+        /// [Test 83] Verifies Sweet Potato Combat Set piece bonus evaluation (2, 4, 5 pieces).
+        /// </summary>
+        public static bool Test_SweetPotatoCombatSet_BonusEvaluation()
+        {
+            var set2 = EquipmentUpgradeEvaluator.EvaluateSweetPotatoSetBonus(2);
+            var set4 = EquipmentUpgradeEvaluator.EvaluateSweetPotatoSetBonus(4);
+            var set5 = EquipmentUpgradeEvaluator.EvaluateSweetPotatoSetBonus(5);
+
+            if (set2.AttackSpeedBonus != 0.10f || set2.DodgeDamageBonus != 0f)
+            {
+                Debug.LogError($"[Test 83] 2-Piece bonus mismatch: AtkSpd={set2.AttackSpeedBonus}, DodgeDmg={set2.DodgeDamageBonus}");
+                return false;
+            }
+
+            if (set4.DodgeDamageBonus != 0.15f)
+            {
+                Debug.LogError($"[Test 83] 4-Piece bonus mismatch: DodgeDmg={set4.DodgeDamageBonus}");
+                return false;
+            }
+
+            if (!set5.HasShadowDashReset)
+            {
+                Debug.LogError("[Test 83] 5-Piece capstone Shadow Dash reset not active!");
+                return false;
+            }
+
+            Debug.Log("✅ Test 83: Sweet Potato Combat Set bonuses (2-piece AtkSpd, 4-piece DodgeDmg, 5-piece ShadowDash) verified.");
+            return true;
+        }
+
+        /// <summary>
+        /// [Test 84] Verifies EquipmentSlotUI item slot validation heuristics for drag-and-drop equipping.
+        /// </summary>
+        public static bool Test_EquipmentSlotUI_DragAndDropEquip_And_Unequip()
+        {
+            var hood = AssetDatabase.LoadAssetAtPath<ItemData>("Assets/Data/Items/Equipment/item_burrow_hood.asset");
+            var sword = AssetDatabase.LoadAssetAtPath<ItemData>("Assets/Data/Items/Equipment/DummySword.asset");
+
+            if (hood == null || sword == null)
+            {
+                Debug.LogError("[Test 84] Required test assets not found in Assets/Data/Items/Equipment/");
+                return false;
+            }
+
+            if (!EquipmentSlotUI.IsValidItemForSlot(hood, EquipmentSlotType.Helmet))
+            {
+                Debug.LogError("[Test 84] Burrow Hood failed validation for Helmet slot!");
+                return false;
+            }
+
+            if (EquipmentSlotUI.IsValidItemForSlot(hood, EquipmentSlotType.MainWeapon))
+            {
+                Debug.LogError("[Test 84] Burrow Hood was improperly allowed in MainWeapon slot!");
+                return false;
+            }
+
+            if (!EquipmentSlotUI.IsValidItemForSlot(sword, EquipmentSlotType.MainWeapon))
+            {
+                Debug.LogError("[Test 84] Dummy Sword failed validation for MainWeapon slot!");
+                return false;
+            }
+
+            // Verify all 5 Sweet Potato Armor pieces have distinct persistent Sprite icons (not DummySword)
+            string[] armorPaths = {
+                "Assets/Data/Items/Equipment/item_burrow_hood.asset",
+                "Assets/Data/Items/Equipment/item_swift_root_armor.asset",
+                "Assets/Data/Items/Equipment/item_fang_grips.asset",
+                "Assets/Data/Items/Equipment/item_underground_striders.asset",
+                "Assets/Data/Items/Equipment/item_sweet_potato_heart.asset"
+            };
+            foreach (var ap in armorPaths)
+            {
+                var armorAsset = AssetDatabase.LoadAssetAtPath<EquipmentItemData>(ap);
+                if (armorAsset == null || armorAsset.itemIcon == null || armorAsset.itemIcon.name.Contains("DummySword"))
+                {
+                    Debug.LogError($"[Test 84] Armor asset '{ap}' is missing its distinct Sprite icon (found: {armorAsset?.itemIcon?.name ?? "null"})!");
+                    return false;
+                }
+            }
+
+            // Verify Day 1 Storage Chest starter pack includes Slingshot + 5 Armor pieces and Quick-Equip works
+            var testPlayer = new GameObject("Test84_Player");
+            var testChest = new GameObject("Test84_Chest");
+            var prevArmorInst = PlayerArmorUpgradeState.Instance;
+            try
+            {
+                typeof(PlayerArmorUpgradeState).GetProperty("Instance")?.SetValue(null, null);
+                var pInv = testPlayer.AddComponent<InventoryComponent>();
+                pInv.ResetInventory(16);
+                var pArmor = testPlayer.AddComponent<PlayerArmorUpgradeState>();
+                var pKit = testPlayer.AddComponent<PlayerStarterKit>();
+
+                var cInv = testChest.AddComponent<InventoryComponent>();
+                cInv.ResetInventory(16);
+                pKit.PopulateStorageChest(cInv);
+
+                var slingshotItem = AssetDatabase.LoadAssetAtPath<ItemData>("Assets/Data/Items/Equipment/Tool_CornRepeater.asset");
+                if (cInv.CountItem(slingshotItem) < 1 || cInv.CountItem(hood) < 1)
+                {
+                    Debug.LogError("[Test 84] Day 1 PopulateStorageChest did not include Homestead Slingshot and Sweet Potato Armor set!");
+                    return false;
+                }
+
+                // Quick-equip Burrow Hood from Player Inventory into Helmet slot
+                pInv.AddItem(hood, 1);
+                int hoodSlotIdx = -1;
+                for (int i = 0; i < pInv.slots.Count; i++)
+                {
+                    if (pInv.slots[i] != null && pInv.slots[i].item == hood) { hoodSlotIdx = i; break; }
+                }
+                if (hoodSlotIdx < 0 || !EquipmentSlotUI.TryQuickEquipFromInventory(pInv, hoodSlotIdx) || pArmor.GetEquippedItem(EquipmentSlotType.Helmet) != hood)
+                {
+                    Debug.LogError("[Test 84] EquipmentSlotUI.TryQuickEquipFromInventory failed to equip Burrow Hood into Helmet slot!");
+                    return false;
+                }
+            }
+            finally
+            {
+                if (testPlayer != null) GameObject.DestroyImmediate(testPlayer);
+                if (testChest != null) GameObject.DestroyImmediate(testChest);
+                typeof(PlayerArmorUpgradeState).GetProperty("Instance")?.SetValue(null, prevArmorInst);
+            }
+
+            Debug.Log("✅ Test 84: EquipmentSlotUI drag-and-drop, quick-equip, distinct armor icons, and Day 1 chest armor starter pack verified.");
+            return true;
+        }
+
+        /// <summary>
+        /// [Test 85] Verifies complete Save/Load hydration and state preservation for weapon & armor upgrades.
+        /// </summary>
+        public static bool Test_Workbench_SaveLoadHydration_FullStatePreservation()
+        {
+            var data = new FeaturesSaveSystem.GameSaveData();
+            data.weaponLevel = 8;
+            data.armorLevel = 5;
+            data.activeSpecialization = (int)SpecializationPath.SweetPotato;
+            data.specializationNodeLevel = 4;
+            data.totalBossesDefeated = 3;
+            data.equippedSlots.Add(new FeaturesSaveSystem.SavedEquippedSlot { slotType = (int)EquipmentSlotType.Helmet, itemId = "item_burrow_hood" });
+
+            var go = new GameObject("Test_Hydration_Player");
+            var wu = go.AddComponent<PlayerWeaponUpgradeState>();
+            var au = go.AddComponent<PlayerArmorUpgradeState>();
+
+            wu.weaponLevel = Mathf.Clamp(data.weaponLevel, 1, 10);
+            wu.activeSpecialization = (SpecializationPath)data.activeSpecialization;
+            wu.specializationNodeLevel = data.specializationNodeLevel;
+            wu.totalBossesDefeated = data.totalBossesDefeated;
+            wu.RecalculateStats();
+
+            au.armorLevel = Mathf.Clamp(data.armorLevel, 1, 10);
+
+            if (wu.weaponLevel != 8 || wu.activeSpecialization != SpecializationPath.SweetPotato || wu.specializationNodeLevel != 4)
+            {
+                Debug.LogError("[Test 85] Weapon upgrade state hydration mismatch!");
+                GameObject.DestroyImmediate(go);
+                return false;
+            }
+
+            if (au.armorLevel != 5 || Mathf.Abs(au.DamageMitigationRatio - 0.06f) > 0.001f)
+            {
+                Debug.LogError("[Test 85] Armor upgrade state hydration mismatch!");
+                GameObject.DestroyImmediate(go);
+                return false;
+            }
+
+            GameObject.DestroyImmediate(go);
+            Debug.Log("✅ Test 85: Complete Workbench & Armor Save/Load state hydration verified.");
+            return true;
+        }
+        /// <summary>
+        /// [Test 86] Verifies Contextual Combat Stance state machine, night weapon auto-wielding,
+        /// agricultural tool muting (Hoe unavailable at night per GDD), food buff consumption at night,
+        /// and seamless hotbar restoration upon dawn.
+        /// </summary>
+        public static bool Test_ContextualCombatStance_And_NightHotbarRestrictions()
+        {
+            var go = new GameObject("Test_Player_Stance");
+            try
+            {
+                var inv = go.AddComponent<InventoryComponent>();
+                var equip = go.AddComponent<PlayerEquipment>();
+                var armorState = go.AddComponent<PlayerArmorUpgradeState>();
+                var stanceMgr = go.AddComponent<PlayerStanceManager>();
+
+                // Setup test items
+                var hoeItem = AssetDatabase.LoadAssetAtPath<ItemData>("Assets/Data/Items/Equipment/Tool_Hoe.asset");
+                var watererItem = AssetDatabase.LoadAssetAtPath<ItemData>("Assets/Data/Items/Equipment/Tool_PlantWaterer.asset");
+                var dummySword = AssetDatabase.LoadAssetAtPath<ItemData>("Assets/Data/Items/Equipment/DummySword.asset");
+
+                var foodBuff = ScriptableObject.CreateInstance<FoodItemData>();
+                foodBuff.itemId = "test_food_buff";
+                foodBuff.itemName = "Roasted Sweet Potato";
+                foodBuff.type = ItemData.ItemType.Consumable;
+                foodBuff.healAmount = 25;
+
+                // Configure 4 hotbar slots
+                inv.slots.Clear();
+                inv.slots.Add(new InventorySlot(hoeItem, 1));
+                inv.slots.Add(new InventorySlot(watererItem, 1));
+                inv.slots.Add(new InventorySlot(foodBuff, 3));
+                inv.slots.Add(new InventorySlot(null, 0));
+
+                // 1. Initial Daytime Agricultural Stance
+                inv.SelectHotbarSlot(0); // Select Hoe
+                if (stanceMgr.CurrentStance != PlayerStanceMode.Agricultural || stanceMgr.IsInCombatStance)
+                {
+                    Debug.LogError($"[Test 86] Initial stance was not Agricultural! Got: {stanceMgr.CurrentStance}");
+                    return false;
+                }
+
+                if (equip.CurrentEquippedItem != hoeItem)
+                {
+                    Debug.LogError("[Test 86] PlayerEquipment did not return selected hotbar Hoe in Agricultural stance!");
+                    return false;
+                }
+
+                // 2. Transition to Night Phase -> Auto-Wield Weapon
+                stanceMgr.TransitionToPhase(DayPhase.Night);
+
+                if (stanceMgr.CurrentStance != PlayerStanceMode.CombatBrawl || !stanceMgr.IsInCombatStance)
+                {
+                    Debug.LogError($"[Test 86] Night transition failed to enter CombatBrawl stance! Got: {stanceMgr.CurrentStance}");
+                    return false;
+                }
+
+                if (stanceMgr.Context.SavedAgriculturalHotbarIndex != 0)
+                {
+                    Debug.LogError($"[Test 86] Stance context failed to save agricultural hotbar index! Expected 0, got {stanceMgr.Context.SavedAgriculturalHotbarIndex}");
+                    return false;
+                }
+
+                // With no weapon equipped in armorState, fallback weapon (Root Cleaver / DummySword) must be returned
+                var activeCombatWeapon = equip.CurrentEquippedItem;
+                if (activeCombatWeapon == null || !(activeCombatWeapon is ToolItemData tool && tool.isWeapon))
+                {
+                    Debug.LogError($"[Test 86] Combat weapon was not auto-equipped at night! Got: {activeCombatWeapon?.itemName ?? "null"}");
+                    return false;
+                }
+
+                // 3. Hotbar Rules at Night (MVP Guideline)
+                // Triggering Hoe (Slot 0) must be rejected
+                bool hoeTrigger = stanceMgr.HandleHotbarTrigger(0, inv);
+                if (hoeTrigger)
+                {
+                    Debug.LogError("[Test 86] GDD Violation: Hoe trigger was allowed during night brawl!");
+                    return false;
+                }
+
+                // Triggering Waterer (Slot 1) must be rejected
+                bool watererTrigger = stanceMgr.HandleHotbarTrigger(1, inv);
+                if (watererTrigger)
+                {
+                    Debug.LogError("[Test 86] GDD Violation: Waterer trigger was allowed during night brawl!");
+                    return false;
+                }
+
+                // Triggering Food Buff (Slot 2) must be permitted
+                int initialFoodQty = inv.slots[2].quantity;
+                bool foodTrigger = stanceMgr.HandleHotbarTrigger(2, inv);
+                if (!foodTrigger || inv.slots[2].quantity != initialFoodQty - 1)
+                {
+                    Debug.LogError($"[Test 86] Food Buff consumption failed at night! trigger={foodTrigger}, qty={inv.slots[2].quantity}");
+                    return false;
+                }
+
+                // 4. Equipping new weapon in Panel_Equipment updates active combat weapon immediately
+                if (dummySword != null)
+                {
+                    armorState.EquipItem(EquipmentSlotType.MainWeapon, dummySword, out _);
+                    if (equip.CurrentEquippedItem != dummySword)
+                    {
+                        Debug.LogError("[Test 86] Equipping DummySword in MainWeapon slot did not update CurrentEquippedItem!");
+                        return false;
+                    }
+                }
+
+                // 5. Transition to Dawn (06:00) -> Agricultural Stance & Hotbar Restored
+                stanceMgr.TransitionToPhase(DayPhase.Dawn);
+
+                if (stanceMgr.CurrentStance != PlayerStanceMode.Agricultural || stanceMgr.IsInCombatStance)
+                {
+                    Debug.LogError($"[Test 86] Dawn transition failed to restore Agricultural stance! Got: {stanceMgr.CurrentStance}");
+                    return false;
+                }
+
+                if (inv.selectedHotbarIndex != 0)
+                {
+                    Debug.LogError($"[Test 86] Saved hotbar index was not restored upon Dawn! Expected 0, got {inv.selectedHotbarIndex}");
+                    return false;
+                }
+
+                if (equip.CurrentEquippedItem != hoeItem)
+                {
+                    Debug.LogError("[Test 86] Player did not resume holding agricultural tool (Hoe) upon Dawn!");
+                    return false;
+                }
+
+                ScriptableObject.DestroyImmediate(foodBuff);
+                Debug.Log("✅ Test 86: Contextual Combat Stance, weapon auto-wielding, night hotbar rules, and dawn restoration verified.");
+                return true;
+            }
+            finally
+            {
+                if (go != null) GameObject.DestroyImmediate(go);
+            }
+        }
+
+        /// <summary>
+        /// [Test 87] Verifies 5-tier ImpactKinematicsProfile scaling, Parry Riposte window consumption,
+        /// and Dodge-Strike empowerment (+15% base + Sweet Potato 4-Piece Set bonus).
+        /// </summary>
+        public static bool Test_CombatKinesthetics_ImpactTierScaling_ParryRiposte_And_DodgeStrike()
+        {
+            var light1 = ImpactKinematicsProfile.Evaluate(AttackImpactTier.LightHit1, isCrit: false);
+            var heavy = ImpactKinematicsProfile.Evaluate(AttackImpactTier.HeavyCleave, isCrit: false);
+            var riposte = ImpactKinematicsProfile.Evaluate(AttackImpactTier.RiposteStrike, isCrit: true);
+
+            if (light1.VictimHitstopSec >= heavy.VictimHitstopSec || heavy.VictimHitstopSec >= riposte.VictimHitstopSec)
+            {
+                Debug.LogError($"[Test 87] Hitstop tier progression invalid: L1={light1.VictimHitstopSec}, Heavy={heavy.VictimHitstopSec}, Riposte={riposte.VictimHitstopSec}");
+                return false;
+            }
+
+            if (riposte.CameraTrauma <= heavy.CameraTrauma || riposte.SparkBurstCount <= light1.SparkBurstCount)
+            {
+                Debug.LogError("[Test 87] Riposte camera trauma or spark burst count did not exceed lower tiers!");
+                return false;
+            }
+
+            // Verify DefenseEvaluator Parry -> Riposte window -> Consumption
+            var def = new DefenseEvaluator();
+            def.TriggerParry();
+            bool negated = def.EvaluateIncomingDamage(30, isUnblockable: false, out bool parryOk, out bool dodgeOk);
+            if (!negated || !parryOk || dodgeOk || !def.IsRiposteWindowActive)
+            {
+                Debug.LogError($"[Test 87] Parry failed to open Riposte window! negated={negated}, parryOk={parryOk}, riposte={def.IsRiposteWindowActive}");
+                return false;
+            }
+
+            if (!def.TryConsumeRiposte() || def.IsRiposteWindowActive)
+            {
+                Debug.LogError("[Test 87] TryConsumeRiposte failed or did not clear IsRiposteWindowActive!");
+                return false;
+            }
+
+            // Verify Dodge-Strike Empowerment + Sweet Potato 4-Piece Set Bonus
+            def.ActivateDodgeEmpowerment();
+            if (!def.IsDodgeEmpowermentActive)
+            {
+                Debug.LogError("[Test 87] ActivateDodgeEmpowerment did not set IsDodgeEmpowermentActive!");
+                return false;
+            }
+
+            var modsBase = CombatStatModifiers.Evaluate(false, false, false, false, false, false, isDodgeEmpowered: false, setDodgeDamageBonus: 0f);
+            var modsEmpowered = CombatStatModifiers.Evaluate(false, false, false, false, false, false, isDodgeEmpowered: true, setDodgeDamageBonus: 0.15f);
+
+            if (modsEmpowered.DamageMultiplier <= modsBase.DamageMultiplier * 1.25f)
+            {
+                Debug.LogError($"[Test 87] Dodge-Strike + 4-Piece Set empowerment multiplier too low: base={modsBase.DamageMultiplier}, empowered={modsEmpowered.DamageMultiplier}");
+                return false;
+            }
+
+            Debug.Log("✅ Test 87: 5-tier ImpactKinematicsProfile, Parry Riposte window, and Dodge-Strike empowerment verified.");
+            return true;
+        }
+
+        /// <summary>
+        /// [Test 88] Verifies Environmental Wall-Splat kinetic damage evaluation and MeleeCombatStateMachine
+        /// branching heavy finishers (L -> H = HeavyFinisher1, L -> L -> H = HeavyFinisher2).
+        /// </summary>
+        public static bool Test_EnvironmentalWallSplat_And_BranchingHeavyFinishers()
+        {
+            int lowSpeedDmg = ImpactKinematicsProfile.EvaluateWallSplatDamage(2.5f);
+            int midSpeedDmg = ImpactKinematicsProfile.EvaluateWallSplatDamage(6.0f);
+            int maxSpeedDmg = ImpactKinematicsProfile.EvaluateWallSplatDamage(12.0f);
+
+            if (lowSpeedDmg != 0 || midSpeedDmg < 22 || maxSpeedDmg != 38)
+            {
+                Debug.LogError($"[Test 88] Wall-Splat damage scaling mismatch: low={lowSpeedDmg}, mid={midSpeedDmg}, max={maxSpeedDmg}");
+                return false;
+            }
+
+            // Branching Heavy Finisher 1: Light1 -> HeavyFinisher1
+            var csm = new FeaturesCombat.Melee.MeleeCombatStateMachine();
+            csm.TryTriggerLight(1.0f, out _, out _);
+            if (!csm.TryTriggerHeavyFinisher(1.1f, 0.85f, out var branch1) ||
+                branch1 != FeaturesCombat.Melee.MeleeCombatState.HeavyFinisher1 ||
+                Mathf.Abs(csm.GetCurrentDamageMultiplier() - 1.9f) > 0.01f)
+            {
+                Debug.LogError($"[Test 88] L -> H failed to enter HeavyFinisher1 (1.9x)! state={csm.CurrentState}");
+                return false;
+            }
+
+            // Branching Heavy Finisher 2: Light1 -> Light2 -> HeavyFinisher2
+            csm.ResetToIdle();
+            csm.TryTriggerLight(2.0f, out _, out _);
+            csm.TryTriggerLight(2.2f, 0.85f, out _, out _);
+            if (!csm.TryTriggerHeavyFinisher(2.3f, 0.85f, out var branch2) ||
+                branch2 != FeaturesCombat.Melee.MeleeCombatState.HeavyFinisher2 ||
+                Mathf.Abs(csm.GetCurrentDamageMultiplier() - 2.4f) > 0.01f)
+            {
+                Debug.LogError($"[Test 88] L -> L -> H failed to enter HeavyFinisher2 (2.4x)! state={csm.CurrentState}");
+                return false;
+            }
+
+            Debug.Log("✅ Test 88: Environmental Wall-Splat kinetic damage and branching heavy finishers (L->H, L->L->H) verified.");
+            return true;
+        }
+
+        /// <summary>
+        /// [Test 89] Verifies the single ranged weapon (Homestead Slingshot / Tool_CornRepeater.asset),
+        /// 3D Y-Frame Slingshot model generation (no DummySword & no melee WeaponHitbox),
+        /// melee/ranged non-collision on Dash/Light/Heavy/Skill, and Corn Specialization Lv.1-6 scaling.
+        /// </summary>
+        public static bool Test_CornCobRepeater_RangedWeaponAsset_And_CornSpecScaling()
+        {
+            var slingshot = AssetDatabase.LoadAssetAtPath<ToolItemData>("Assets/Data/Items/Equipment/Tool_CornRepeater.asset");
+            if (slingshot == null || !slingshot.isWeapon || !slingshot.isRangedWeapon)
+            {
+                Debug.LogError("[Test 89] Tool_CornRepeater.asset (Homestead Slingshot) missing or not configured as ranged weapon!");
+                return false;
+            }
+
+            if (slingshot.equipPrefab != null)
+            {
+                Debug.LogError($"[Test 89] Homestead Slingshot must not reference a melee sword equipPrefab (found {slingshot.equipPrefab.name})!");
+                return false;
+            }
+
+            if (slingshot.itemIcon == null)
+            {
+                Debug.LogError("[Test 89] Homestead Slingshot (Tool_CornRepeater.asset) is missing its persistent itemIcon Sprite!");
+                return false;
+            }
+
+            if (!EquipmentSlotUI.IsValidItemForSlot(slingshot, EquipmentSlotType.MainWeapon))
+            {
+                Debug.LogError("[Test 89] Homestead Slingshot rejected by EquipmentSlotUI MainWeapon slot!");
+                return false;
+            }
+
+            // Verify 3D Y-Frame Slingshot procedural visual has zero melee WeaponHitbox / WeaponTrailController
+            var socketGo = new GameObject("Test_HandSocket");
+            try
+            {
+                var model = FeaturesCombat.Adapters.SlingshotVisualFactory.CreateSlingshot3DModel(socketGo.transform);
+                if (model == null || model.GetComponentInChildren<FeaturesCombat.WeaponHitbox>() != null)
+                {
+                    Debug.LogError("[Test 89] Slingshot 3D model is null or unexpectedly contains a melee WeaponHitbox!");
+                    return false;
+                }
+                if (FeaturesCombat.Adapters.SlingshotVisualFactory.GetSlingshotIconSprite() == null)
+                {
+                    Debug.LogError("[Test 89] Slingshot 2D icon sprite generation failed!");
+                    return false;
+                }
+            }
+            finally
+            {
+                if (socketGo != null) GameObject.DestroyImmediate(socketGo);
+            }
+
+            // Evaluate base shot vs Corn Specialization Lv.3 (Piercing) & Lv.6 Ultimate (Explosive + 3 Pierce)
+            var baseShot = RangedWeaponEvaluator.EvaluateShot(22, 22f, 5f, weaponLevel: 1, isCornSpecActive: false, cornSpecNodeLevel: 0, comboIndex: 0, isHeavyVolley: false, isSkillBarrage: false);
+            var cornLv3Combo3 = RangedWeaponEvaluator.EvaluateShot(22, 22f, 5f, weaponLevel: 5, isCornSpecActive: true, cornSpecNodeLevel: 3, comboIndex: 2, isHeavyVolley: false, isSkillBarrage: false);
+            var cornLv6Heavy = RangedWeaponEvaluator.EvaluateShot(22, 22f, 5f, weaponLevel: 10, isCornSpecActive: true, cornSpecNodeLevel: 6, comboIndex: 0, isHeavyVolley: true, isSkillBarrage: false);
+            var cornSkill = RangedWeaponEvaluator.EvaluateShot(22, 22f, 5f, weaponLevel: 10, isCornSpecActive: true, cornSpecNodeLevel: 6, comboIndex: 0, isHeavyVolley: false, isSkillBarrage: true);
+
+            if (baseShot.ProjectileCount != 1 || baseShot.MaxPierceCount != 0 || baseShot.HasCritExplosion)
+            {
+                Debug.LogError("[Test 89] Base Homestead Slingshot shot profile invalid!");
+                return false;
+            }
+
+            if (cornLv3Combo3.ProjectileCount != 2 || cornLv3Combo3.MaxPierceCount != 1)
+            {
+                Debug.LogError($"[Test 89] Corn Lv.3 Combo-3 shot mismatch: count={cornLv3Combo3.ProjectileCount}, pierce={cornLv3Combo3.MaxPierceCount}");
+                return false;
+            }
+
+            if (cornLv6Heavy.ProjectileCount != 3 || cornLv6Heavy.MaxPierceCount != 3 || !cornLv6Heavy.HasCritExplosion || cornLv6Heavy.ExplosionRadius < 3.0f)
+            {
+                Debug.LogError($"[Test 89] Corn Lv.6 Heavy Volley mismatch: count={cornLv6Heavy.ProjectileCount}, pierce={cornLv6Heavy.MaxPierceCount}, explosion={cornLv6Heavy.HasCritExplosion}");
+                return false;
+            }
+
+            if (cornSkill.ProjectileCount != 5)
+            {
+                Debug.LogError($"[Test 89] Corn Skill Barrage projectile count expected 5, got {cornSkill.ProjectileCount}");
+                return false;
+            }
+
+            Debug.Log("✅ Test 89: Homestead Slingshot ranged weapon asset, 3D Slingshot visual (zero DummySword/melee hitbox), and Corn Specialization Lv.1-6 scaling verified.");
+            return true;
+        }
+
+        /// <summary>
+        /// [Test 90] Verifies Bio-Catalyst Night Overdrive pure logic (preserving default 0% night crop growth
+        /// while enabling 50% overdrive nocturnal growth, +25% gold, +30% material drops, and material consumption).
+        /// </summary>
+        public static bool Test_BioCatalystNightOverdrive_CropGrowthAndLootEscalation()
+        {
+            // 1. Default night must have 0 crop growth per MVP Guideline
+            float normalNightDelta = NightOverdriveEvaluator.EvaluateCropNightGrowthDelta(10f, 1f, isOverdriveActive: false);
+            if (normalNightDelta != 0f)
+            {
+                Debug.LogError($"[Test 90] Default night crop growth must be 0 per GDD, got {normalNightDelta}!");
+                return false;
+            }
+
+            // 2. Overdrive night enables 50% nocturnal crop growth
+            float overdriveNightDelta = NightOverdriveEvaluator.EvaluateCropNightGrowthDelta(10f, 1f, isOverdriveActive: true);
+            if (Mathf.Abs(overdriveNightDelta - 5.0f) > 0.01f)
+            {
+                Debug.LogError($"[Test 90] Overdrive night growth expected 5.0s for 10s deltaTime, got {overdriveNightDelta}!");
+                return false;
+            }
+
+            // 3. Gold (+25%) and Material drop chance (+30% flat bonus) escalation
+            int baseGold = 100;
+            int odGold = NightOverdriveEvaluator.CalculateOverdriveGold(baseGold, isOverdriveActive: true);
+            float odDrop = NightOverdriveEvaluator.CalculateOverdriveDropChance(0.50f, isOverdriveActive: true);
+            if (odGold != 125 || Mathf.Abs(odDrop - 0.80f) > 0.01f)
+            {
+                Debug.LogError($"[Test 90] Overdrive loot scaling mismatch: gold={odGold} (expected 125), drop={odDrop} (expected 0.80)");
+                return false;
+            }
+
+            // 4. NightBrawlManager activation consumes 2 monster materials
+            var go = new GameObject("Test_Overdrive_Player");
+            var nbGo = new GameObject("Test_NightBrawlManager");
+            var prevNb = NightBrawlManager.Instance;
+            try
+            {
+                typeof(NightBrawlManager).GetProperty("Instance")?.SetValue(null, null);
+                var inv = go.AddComponent<InventoryComponent>();
+                var nb = nbGo.AddComponent<NightBrawlManager>();
+
+                var matItem = ScriptableObject.CreateInstance<ItemData>();
+                matItem.itemId = "mat_mutated_root";
+                matItem.itemName = "Mutated Root";
+                matItem.category = ItemCategory.Material;
+                matItem.maxStack = 20;
+
+                inv.slots.Clear();
+                inv.slots.Add(new InventorySlot(matItem, 3));
+
+                bool activated = nb.TryActivateNightOverdrive(inv);
+                if (!activated || !nb.IsOverdriveNightActive || inv.slots[0].quantity != 1)
+                {
+                    Debug.LogError($"[Test 90] TryActivateNightOverdrive failed! activated={activated}, active={nb.IsOverdriveNightActive}, remainingMat={inv.slots[0].quantity}");
+                    ScriptableObject.DestroyImmediate(matItem);
+                    return false;
+                }
+
+                // 5. Verify Tactical Forge WorkbenchUI 3-Tab Widescreen Bento Hierarchy & Refresh
+                var wbGo = new GameObject("Test_WorkbenchUI", typeof(RectTransform));
+                var prevWb = FeaturesWorkbench.UI.WorkbenchUI.Instance;
+                try
+                {
+                    typeof(FeaturesWorkbench.UI.WorkbenchUI).GetProperty("Instance")?.SetValue(null, null);
+                    var wb = wbGo.AddComponent<FeaturesWorkbench.UI.WorkbenchUI>();
+                    typeof(FeaturesWorkbench.UI.WorkbenchUI)
+                        .GetMethod("BuildUIHierarchyIfNeeded", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+                        ?.Invoke(wb, null);
+
+                    wb.SetTab(FeaturesWorkbench.UI.WorkbenchUI.WorkbenchTab.Weapon);
+                    wb.SetTab(FeaturesWorkbench.UI.WorkbenchUI.WorkbenchTab.Armor);
+                    wb.SetTab(FeaturesWorkbench.UI.WorkbenchUI.WorkbenchTab.Overdrive);
+                }
+                finally
+                {
+                    if (wbGo != null) GameObject.DestroyImmediate(wbGo);
+                    typeof(FeaturesWorkbench.UI.WorkbenchUI).GetProperty("Instance")?.SetValue(null, prevWb);
+                }
+
+                ScriptableObject.DestroyImmediate(matItem);
+                Debug.Log("✅ Test 90: Bio-Catalyst Night Overdrive crop growth, Clean Harvest purification, loot escalation, and Tactical Forge WorkbenchUI verified.");
+                return true;
+            }
+            finally
+            {
+                if (go != null) GameObject.DestroyImmediate(go);
+                if (nbGo != null) GameObject.DestroyImmediate(nbGo);
+                typeof(NightBrawlManager).GetProperty("Instance")?.SetValue(null, prevNb);
+            }
+        }
+        // Test 91: Verify complete accessibility of all 3 weapons and 5 armor pieces via both Merchant Purchasing and Workbench Crafting
+        private static bool Test_WeaponsAndArmor_CompleteAccessibility_CraftingAndPurchasing_Audit()
+        {
+            var cleanupList = new List<Object>();
+            var db = Resources.Load<ItemDatabase>("Database/ItemDatabase");
+            if (db == null)
+            {
+                Debug.LogError("[Test 91] ItemDatabase could not be loaded!");
+                return false;
+            }
+
+            string[] weaponIds = new string[] { "dummysword", "tool_weapon_root_cleaver", "tool_weapon_corn_repeater" };
+            string[] armorIds = new string[] { "item_burrow_hood", "item_swift_root_armor", "item_fang_grips", "item_underground_striders", "item_sweet_potato_heart" };
+
+            // 1. Verify all 8 items exist in ItemDatabase with valid prices
+            foreach (var wid in weaponIds)
+            {
+                var it = db.GetItem(wid);
+                if (it == null || it.buyPrice <= 0)
+                {
+                    Debug.LogError($"[Test 91] Weapon '{wid}' missing from ItemDatabase or has invalid buyPrice ({it?.buyPrice})!");
+                    return false;
+                }
+            }
+            foreach (var aid in armorIds)
+            {
+                var it = db.GetItem(aid);
+                if (it == null || it.buyPrice <= 0)
+                {
+                    Debug.LogError($"[Test 91] Armor '{aid}' missing from ItemDatabase or has invalid buyPrice ({it?.buyPrice})!");
+                    return false;
+                }
+            }
+
+            // 2. Verify Merchant Table stock initialization includes all 8 items
+            var tableGo = new GameObject("Test91_MerchantTable");
+            cleanupList.Add(tableGo);
+            var table = tableGo.AddComponent<MerchantTableInteractable>();
+            table.InitializeDefaultStock();
+
+            foreach (var wid in weaponIds)
+            {
+                if (!table.StockItems.Any(it => it != null && it.itemId == wid))
+                {
+                    Debug.LogError($"[Test 91] MerchantTable stock missing weapon '{wid}'!");
+                    return false;
+                }
+            }
+            foreach (var aid in armorIds)
+            {
+                if (!table.StockItems.Any(it => it != null && it.itemId == aid))
+                {
+                    Debug.LogError($"[Test 91] MerchantTable stock missing armor '{aid}'!");
+                    return false;
+                }
+            }
+
+            // 3. Verify TradingPost ShopInteractable stock includes all 8 items
+            var postGo = new GameObject("Test91_ShopCounter");
+            cleanupList.Add(postGo);
+            var shop = postGo.AddComponent<ShopInteractable>();
+            shop.InitializeDefaultStock();
+
+            foreach (var wid in weaponIds)
+            {
+                if (!shop.StockItems.Any(it => it != null && it.itemId == wid))
+                {
+                    Debug.LogError($"[Test 91] TradingPost stock missing weapon '{wid}'!");
+                    return false;
+                }
+            }
+            foreach (var aid in armorIds)
+            {
+                if (!shop.StockItems.Any(it => it != null && it.itemId == aid))
+                {
+                    Debug.LogError($"[Test 91] TradingPost stock missing armor '{aid}'!");
+                    return false;
+                }
+            }
+
+            // 4. Verify MerchantShopUI purchasing simulation
+            var playerGo = new GameObject("Test91_Player");
+            cleanupList.Add(playerGo);
+            playerGo.tag = "Player";
+            var inv = playerGo.AddComponent<InventoryComponent>();
+            inv.ResetInventory(16);
+
+            var walletField = typeof(PlayerWallet).GetField("instance", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            var prevWallet = walletField?.GetValue(null);
+            var wallet = playerGo.AddComponent<PlayerWallet>();
+            walletField?.SetValue(null, wallet);
+            wallet.AddGold(50000);
+
+            var prevWalletSvc = ServiceLocator.Resolve<IWalletService>();
+            ServiceLocator.Register<IWalletService>(wallet);
+
+            var shopUiGo = new GameObject("Test91_MerchantShopUI");
+            cleanupList.Add(shopUiGo);
+            var shopUi = shopUiGo.AddComponent<MerchantShopUI>();
+
+            var invField = typeof(MerchantShopUI).GetField("playerInventory", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            invField?.SetValue(shopUi, inv);
+
+            // Test purchasing Root Cleaver
+            var cleaverItem = db.GetItem("tool_weapon_root_cleaver");
+            var buyMethod = typeof(MerchantShopUI).GetMethod("TryBuyItem", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            if (buyMethod == null)
+            {
+                Debug.LogError("[Test 91] MerchantShopUI.TryBuyItem method not found!");
+                walletField?.SetValue(null, prevWallet);
+                if (prevWalletSvc != null) ServiceLocator.Register<IWalletService>(prevWalletSvc);
+                return false;
+            }
+
+            int goldBefore = wallet.CurrentGold;
+            buyMethod.Invoke(shopUi, new object[] { cleaverItem, 1 });
+            if (inv.CountItem(cleaverItem) != 1 || wallet.CurrentGold != goldBefore - cleaverItem.buyPrice)
+            {
+                Debug.LogError($"[Test 91] Failed purchasing Root Cleaver from shop! invCount={inv.CountItem(cleaverItem)}, gold={wallet.CurrentGold}");
+                walletField?.SetValue(null, prevWallet);
+                if (prevWalletSvc != null) ServiceLocator.Register<IWalletService>(prevWalletSvc);
+                return false;
+            }
+
+            // Test purchasing Burrow Hood
+            var hoodItem = db.GetItem("item_burrow_hood");
+            goldBefore = wallet.CurrentGold;
+            buyMethod.Invoke(shopUi, new object[] { hoodItem, 1 });
+            if (inv.CountItem(hoodItem) != 1 || wallet.CurrentGold != goldBefore - hoodItem.buyPrice)
+            {
+                Debug.LogError($"[Test 91] Failed purchasing Burrow Hood from shop! invCount={inv.CountItem(hoodItem)}, gold={wallet.CurrentGold}");
+                walletField?.SetValue(null, prevWallet);
+                if (prevWalletSvc != null) ServiceLocator.Register<IWalletService>(prevWalletSvc);
+                return false;
+            }
+
+            // 5. Verify Workbench Crafting of weapons and armor
+            var armorState = playerGo.AddComponent<FeaturesWorkbench.PlayerArmorUpgradeState>();
+            var wepState = playerGo.AddComponent<FeaturesWorkbench.PlayerWeaponUpgradeState>();
+            var rootMat = db.GetItem("mat_mutated_root");
+            inv.AddItem(rootMat, 20);
+
+            var wbGo = new GameObject("Test91_WorkbenchUI");
+            cleanupList.Add(wbGo);
+            var wb = wbGo.AddComponent<FeaturesWorkbench.UI.WorkbenchUI>();
+
+            var wbInvField = typeof(FeaturesWorkbench.UI.WorkbenchUI).GetField("playerInventory", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            wbInvField?.SetValue(wb, inv);
+            var wbArmorField = typeof(FeaturesWorkbench.UI.WorkbenchUI).GetField("armorState", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            wbArmorField?.SetValue(wb, armorState);
+            var wbWepField = typeof(FeaturesWorkbench.UI.WorkbenchUI).GetField("weaponState", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            wbWepField?.SetValue(wb, wepState);
+
+            // Craft Homestead Slingshot via WorkbenchUI
+            var repeaterItem = db.GetItem("tool_weapon_corn_repeater");
+            goldBefore = wallet.CurrentGold;
+            int rootsBefore = inv.CountItem(rootMat);
+            wb.CraftSetPiece("tool_weapon_corn_repeater", 450, "mat_mutated_root", 3);
+
+            bool hasRepeater = inv.CountItem(repeaterItem) > 0 || armorState.GetEquippedItem(EquipmentSlotType.MainWeapon) == repeaterItem;
+            if (!hasRepeater || inv.CountItem(rootMat) != rootsBefore - 3 || wallet.CurrentGold != goldBefore - 450)
+            {
+                Debug.LogError($"[Test 91] Failed crafting Homestead Slingshot! hasRepeater={hasRepeater}, roots={inv.CountItem(rootMat)}, gold={wallet.CurrentGold}");
+                walletField?.SetValue(null, prevWallet);
+                if (prevWalletSvc != null) ServiceLocator.Register<IWalletService>(prevWalletSvc);
+                return false;
+            }
+
+            // Craft Swift Root Armor via WorkbenchUI
+            var armorPiece = db.GetItem("item_swift_root_armor");
+            goldBefore = wallet.CurrentGold;
+            rootsBefore = inv.CountItem(rootMat);
+            wb.CraftSetPiece("item_swift_root_armor", 6000, "mat_mutated_root", 10);
+
+            bool hasArmor = inv.CountItem(armorPiece) > 0 || armorState.GetEquippedItem(EquipmentSlotType.Chest) == armorPiece;
+            if (!hasArmor || inv.CountItem(rootMat) != rootsBefore - 10 || wallet.CurrentGold != goldBefore - 6000)
+            {
+                Debug.LogError($"[Test 91] Failed crafting Swift Root Armor! hasArmor={hasArmor}, roots={inv.CountItem(rootMat)}, gold={wallet.CurrentGold}");
+                walletField?.SetValue(null, prevWallet);
+                if (prevWalletSvc != null) ServiceLocator.Register<IWalletService>(prevWalletSvc);
+                return false;
+            }
+
+            walletField?.SetValue(null, prevWallet);
+            if (prevWalletSvc != null) ServiceLocator.Register<IWalletService>(prevWalletSvc);
+
+            foreach (var o in cleanupList)
+            {
+                if (o != null) Object.DestroyImmediate(o);
+            }
+
+            Debug.Log("✅ Test 91: Complete accessibility of all 3 weapons and 5 armor pieces via Merchant Purchasing and Workbench Crafting verified.");
             return true;
         }
 

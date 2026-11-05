@@ -17,7 +17,15 @@ Decorative Color Band: $\colorbox{fffde7}{~~}
 
 #### Seed Economy
 
-Farm equipment: farmer set (starter gear + 1 Hoe + 6 plant plots)
+At the start of the game, Player will do finish the tutorial and recieved a Farm equipment:
+
+Starter gear: 
+
+1. Straw Hats(no def no hp) + 5% growing rate (only for farming)
+2. farmer Suit(no def no hp) + 10% crop drops (only for farming)
+3. Hoe(only for farming, unavailable at night): +2/4/6% growing rate & 1/3/6% crop drops(depend on upgrade)
+4. Bag of seeds: 3 sweet potato seeds
+5. Watering cans: +4/8/10% growing rates (only for farming)
 
 The farming economy is built around a simple resource loop:
 
@@ -48,6 +56,18 @@ Sweet Potato → Stamina / Mobility
 
 Corn → Recovery / Utility
 
+**Crops Growth:**
+
+![image.png](MVP%20Version%20Guideline%20V0%201/90006524-a19b-41a7-b3aa-799db6b08e85.png)
+
+Corn:
+
+![image.png](MVP%20Version%20Guideline%20V0%201/b4461ee1-cc8d-4579-a011-f75a1b3934fa.png)
+
+Taro & Sweet potato:
+
+![image.png](MVP%20Version%20Guideline%20V0%201/f5d9fb8e-e9ff-45a0-99b9-8bae1c2e8048.png)
+
 # Cooking
 
 Cooking is performed inside the player’s kitchen.
@@ -57,7 +77,7 @@ The MVP version focuses on simplicity:
 **3 Ingredients → 1 Food
 Note: Some recipe need water to cook**
 
-Player recieved a bottle(can be upgrade): 100/100 litre (use to drink or cook)
+At the start of the game, Player recieved a bottle(can be upgrade): 100/100 litre (use to drink or cook) after using it, player can repurchase it in shop with 5k golds.
 
 MVP start with **3 core recipes**:
 
@@ -82,7 +102,9 @@ Players must decide whether resources are more valuable as:
 
 The MVP combat system focuses on:
 
-- 1 Weapon
+[**FTUE Content Definition**](https://app.notion.com/p/FTUE-Content-Definition-3cd97560e11a8045b747d2cd2853878e?pvs=21)
+
+- 1 Weapon (Root Cleaver)
 - 3 Base Enemies
 - 3 Boss Forms
 - Wave System
@@ -160,37 +182,102 @@ Sweet Potato dan Taro memberikan material berbeda sehingga menentukan **jenis up
 | Corn Musketeer | 1-3Kernel Shrapnel 50%   200-500 Golds | normal Material | Upgrade jalur **Area / Splash** |
 | The Ranger | 1-2 Cob Core 15%             700-1000 Golds 85% | Boss Material | Membuka special effect berbasis **Chain Hit / Crowd Control**  |
 
-## Weapon Upgrade
+## **Weapon Upgrade System**
 
-Upgrade dilakukan di **Workbench / Garage**.
+[1. Upgrade System](MVP%20Version%20Guideline%20V0%201/1%20Upgrade%20System%2040b97560e11a80228321f02c72a51dac.csv)
 
-Cost:
+# 2. Three Seed Specialization Paths
 
-**Gold + Monster Material → Upgrade**
+Each seed has its own combat identity.
 
-Ada dua jenis progression:
+2.1 Sweet Potato Path – Speed & Mobility
 
-### Basic Upgrade
+[The way of Sweet Potato](MVP%20Version%20Guideline%20V0%201/The%20way%20of%20Sweet%20Potato%2040b97560e11a80e9bcdbc9b6dd450fbb.csv)
 
-Meningkatkan statistik dasar.
+2.2 Taro Path – Heavy Damage & Defense
 
-Contoh:
+[Harden Mind Of Taro](MVP%20Version%20Guideline%20V0%201/Harden%20Mind%20Of%20Taro%2040b97560e11a80b9bb2edc08783e6b44.csv)
 
-**Damage Lv.1 → Lv.2 → Lv.3** 
+2.3 Corn Path – Ranged Damage & Critical Hits
 
-### Special Upgrade
+[Deadly Accuracy of Corn](MVP%20Version%20Guideline%20V0%201/Deadly%20Accuracy%20of%20Corn%2040b97560e11a805882a0d19a957fb0b9.csv)
 
-Monster material memberikan efek tertentu.
+### Special Upgrade – Level 1 to Level 5
 
-Contoh konsep:
+- Each seed path has 5 upgrade nodes.
+- Players must unlock nodes sequentially.
+- Each node requires its corresponding monster material.
+- The final node unlocks an Ultimate Specialization.
+- Specialization does not reset Basic Upgrade levels.
 
-**Sweet Potato Path**
+### 3. BASIC UPGRADE lv1 → lv10
 
-→ Attack Speed / Dash Attack / Mobility Effect
+Proposed stat progression (Weapons):
 
-**Taro Path**
+| Level | Damage Bonus |
+| --- | --- |
+| Lv.1 | Base Damage |
+| Lv.2 | +15% |
+| Lv.3 | +30% |
+| Lv.4 | +45% |
+| Lv.5 | +60% |
+| Lv.6 | +75% |
+| Lv.7 | +90% |
+| Lv.8 | +105% |
+| Lv.9 | +120% |
+| Lv.10 | +150% |
 
-→ Heavy Hit / Knockback / Defensive Effect
+Proposed stat progression (Armor)
+
+| Upgrade | Gold | Stat Bonus |
+| --- | --- | --- |
+| Lv.1 → 2 | 300 | Base Stats |
+| Lv.2 → 3 | 500 | +2% |
+| Lv.3 → 4 | 800 | +2% |
+| Lv.4 → 5 | 1,200 | +2% |
+| Lv.5 → 6 | 1,800 | +2% |
+| Lv.6 → 7 | 12,500 | +4% |
+| Lv.7 → 8 | 23,500 | +5% |
+| Lv.8 → 9 | 35,000 | +5% |
+| Lv.9 → 10 | 47,000 | +10% |
+
+# **Combat Set:**
+
+01 – Sweet Potato Set Assassin / Mobility
+Fast attacks, dashing, evasion and combo damage.
+
+1. Sweet Potato Combat Set
+
+Lore: Equipment developed from Sweet Potato monster materials. Its lightweight structure allows the player to move quickly and strike enemies before they can react. 
+
+| Equipment | Name | Function |
+| --- | --- | --- |
+| Weapon | Root Cleaver | Fast melee attacks |
+| Helmet | Burrow Hood | Increased critical chance |
+| Chest | Swift Root Armor | Increased movement speed |
+| Gloves | Fang Grips | Increased attack speed |
+| Boots | Underground Striders | Improved dash |
+| Accessory | Sweet Potato Heart | Bonus damage after dodging |
+
+### Combat Stats
+
+Suggested bonuses when the complete set is equipped
+
+| Attribute | Bonus |
+| --- | --- |
+| Attack Speed | +20% |
+| Movement Speed | +15% |
+| Critical Chance | +10% |
+| Dash Cooldown Reduction | -20% |
+| Defense | -5% |
+
+### Set Bonus
+
+- 2 Pieces: +10% Attack Speed.
+- 4 Pieces: Successful dodges increase damage by 15% for 3 seconds.
+- 6 Pieces: Shadow Dash resets its cooldown after defeating an enemy (once every 5 seconds).
+
+Combat identity: Hit fast → Dodge → Reposition → Attack again.
 
 ## Time Management Day & Night
 
@@ -258,6 +345,8 @@ Total crop income over 5 days is roughly 50-60k gold, plus about 13k from night 
 
 Opportunity cost of food: 1 dish = 3 ingredients, worth about 2,100 gold (Sweet Potato at the new value) to 4,800 gold (Taro/Corn), or 20-45% of daily income. This keeps the “sell or keep for cooking” dilemma the document is aiming for.
 
+# Provide details on character movement, game saves, weapon, changing outfits and achievements
+
 ![Area Rumah Harvest Pipeline-2026-09-10-105210.png](MVP%20Version%20Guideline%20V0%201/Area_Rumah_Harvest_Pipeline-2026-09-10-105210.png)
 
 **Animation Drafting**
@@ -285,3 +374,11 @@ Corn musketeer: -preference
 The Ranger: -preference
 
 ![image.png](MVP%20Version%20Guideline%20V0%201/image%205.png)
+
+# Frame
+
+1. Combat
+
+![1000274575.jpg](MVP%20Version%20Guideline%20V0%201/1000274575.jpg)
+
+# Storyline overview:

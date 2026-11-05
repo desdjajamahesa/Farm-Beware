@@ -65,15 +65,17 @@ namespace FeaturesEconomy
 
             foreach (var item in db.GetAllItems())
             {
-                if (item == null) continue;
+                if (item == null || item.isDirty || (item.itemId != null && item.itemId.Contains("dirty"))) continue;
 
-                // Trading post carries tools, seeds, weapons, and provisions with a valid buy price
+                // Trading post carries tools, seeds, weapons, armor, and provisions with a valid buy price
                 if (item.category == ItemCategory.Seed ||
                     item.category == ItemCategory.Tool ||
                     item.category == ItemCategory.Weapon ||
+                    item is EquipmentItemData ||
                     (item.category == ItemCategory.Material && item.buyPrice > 0) ||
                     item.itemId == "dummysword" ||
-                    item.itemId == "food_bottle_water")
+                    item.itemId == "food_bottle_water" ||
+                    (item.buyPrice > 0 && item.category != ItemCategory.Crop && item.category != ItemCategory.MonsterDrop))
                 {
                     if (!stockItems.Contains(item))
                     {

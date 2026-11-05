@@ -1,0 +1,36 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c908330538660af40ad2893ecae8f656, type: 3}
+  m_Name: Tool_RootCleaver
+  m_EditorClassIdentifier: Assembly-CSharp::ToolItemData
+  itemId: tool_weapon_root_cleaver
+  itemName: Root Cleaver
+  category: 6
+  rarity: 0
+  itemIcon: {fileID: 21300000, guid: 050846de51a140d895bb85af313a2021, type: 3}
+  description: The farmer's standard-issue cleaver, forged to withstand nocturnal
+    root abominations.
+  maxStack: 1
+  type: 2
+  buyPrice: 350
+  sellPrice: 120
+  isDirty: 0
+  cleanVariant: {fileID: 0}
+  equipPrefab: {fileID: 8479986625188135542, guid: 6b2794aaa34bd4e40a29b00fdc58afca, type: 3}
+  isWeapon: 1
+  isHoe: 0
+  baseDamage: 25
+  knockbackForce: 6
+  isRangedWeapon: 0
+  projectileSpeed: 22
+  projectileRange: 12
+  projectileColor: {r: 1, g: 0.85, b: 0.2, a: 1}

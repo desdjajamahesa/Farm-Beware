@@ -80,7 +80,7 @@ namespace FeaturesSaveSystem
 
         private void HandleSceneLoaded(UnityEngine.SceneManagement.Scene scene, UnityEngine.SceneManagement.LoadSceneMode mode)
         {
-            if (scene.name == "StagingScene")
+            if (scene.name == "MainScene" || scene.name == "StagingScene")
             {
                 if (!string.IsNullOrEmpty(PendingSaveIdToLoad))
                 {
@@ -754,25 +754,26 @@ namespace FeaturesSaveSystem
             Cursor.visible = true;
             Cursor.lockState = CursorLockMode.None;
 
-            if (UnityEngine.SceneManagement.SceneManager.GetActiveScene().name == "StagingScene")
+            string activeScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+            if (activeScene == "MainScene" || activeScene == "StagingScene")
             {
                 StartCoroutine(RoutineApplyNewGameInitialization());
                 return;
             }
 
-            Debug.Log("[SaveSystemManager] Starting fresh New Game, transitioning to StagingScene...");
+            Debug.Log("[SaveSystemManager] Starting fresh New Game, transitioning to MainScene...");
 
             var fade = ServiceLocator.Resolve<IFadeService>();
             if (fade != null)
             {
                 fade.FadeIn(0.4f, () =>
                 {
-                    UnityEngine.SceneManagement.SceneManager.LoadScene("StagingScene");
+                    UnityEngine.SceneManagement.SceneManager.LoadScene("MainScene");
                 });
             }
             else
             {
-                UnityEngine.SceneManagement.SceneManager.LoadScene("StagingScene");
+                UnityEngine.SceneManagement.SceneManager.LoadScene("MainScene");
             }
         }
 
@@ -929,13 +930,32 @@ namespace FeaturesSaveSystem
                 data.isHatEquipped = PlayerOutfit.Instance.isHatEquipped;
             }
 
-            // 7. Weapon Upgrades
+            // 7. Weapon & Armor Upgrades
             if (FeaturesWorkbench.PlayerWeaponUpgradeState.Instance != null)
             {
-                data.weaponLevel = FeaturesWorkbench.PlayerWeaponUpgradeState.Instance.weaponLevel;
-                data.sweetPotatoPathUnlocked = FeaturesWorkbench.PlayerWeaponUpgradeState.Instance.sweetPotatoPathUnlocked;
-                data.taroPathUnlocked = FeaturesWorkbench.PlayerWeaponUpgradeState.Instance.taroPathUnlocked;
-                data.cornPathUnlocked = FeaturesWorkbench.PlayerWeaponUpgradeState.Instance.cornPathUnlocked;
+                var wu = FeaturesWorkbench.PlayerWeaponUpgradeState.Instance;
+                data.weaponLevel = wu.weaponLevel;
+                data.activeSpecialization = (int)wu.activeSpecialization;
+                data.specializationNodeLevel = wu.specializationNodeLevel;
+                data.totalBossesDefeated = wu.totalBossesDefeated;
+                data.sweetPotatoPathUnlocked = wu.sweetPotatoPathUnlocked;
+                data.taroPathUnlocked = wu.taroPathUnlocked;
+                data.cornPathUnlocked = wu.cornPathUnlocked;
+            }
+            if (FeaturesWorkbench.PlayerArmorUpgradeState.Instance != null)
+            {
+                var au = FeaturesWorkbench.PlayerArmorUpgradeState.Instance;
+                data.armorLevel = au.armorLevel;
+                if (data.equippedSlots == null) data.equippedSlots = new List<SavedEquippedSlot>();
+                data.equippedSlots.Clear();
+                foreach (EquipmentSlotType slot in System.Enum.GetValues(typeof(EquipmentSlotType)))
+                {
+                    var item = au.GetEquippedItem(slot);
+                    if (item != null && !string.IsNullOrEmpty(item.itemId))
+                    {
+                        data.equippedSlots.Add(new SavedEquippedSlot { slotType = (int)slot, itemId = item.itemId });
+                    }
+                }
             }
 
             // 8. Container Inventories (Storage, Refrigerator, Trophy Cabinet)
@@ -1116,14 +1136,38 @@ namespace FeaturesSaveSystem
                 );
             }
 
-            // 6. Weapon Upgrades
+            // 6. Weapon & Armor Upgrades
             if (FeaturesWorkbench.PlayerWeaponUpgradeState.Instance != null)
             {
-                FeaturesWorkbench.PlayerWeaponUpgradeState.Instance.weaponLevel = Mathf.Max(1, data.weaponLevel);
-                FeaturesWorkbench.PlayerWeaponUpgradeState.Instance.sweetPotatoPathUnlocked = data.sweetPotatoPathUnlocked;
-                FeaturesWorkbench.PlayerWeaponUpgradeState.Instance.taroPathUnlocked = data.taroPathUnlocked;
-                FeaturesWorkbench.PlayerWeaponUpgradeState.Instance.cornPathUnlocked = data.cornPathUnlocked;
-                FeaturesWorkbench.PlayerWeaponUpgradeState.Instance.RecalculateStats();
+                var wu = FeaturesWorkbench.PlayerWeaponUpgradeState.Instance;
+                wu.weaponLevel = Mathf.Clamp(data.weaponLevel, 1, 10);
+                wu.activeSpecialization = (FeaturesWorkbench.Core.SpecializationPath)data.activeSpecialization;
+                wu.specializationNodeLevel = data.specializationNodeLevel;
+                wu.totalBossesDefeated = data.totalBossesDefeated;
+                if (data.activeSpecialization == 0)
+                {
+                    wu.sweetPotatoPathUnlocked = data.sweetPotatoPathUnlocked;
+                    wu.taroPathUnlocked = data.taroPathUnlocked;
+                    wu.cornPathUnlocked = data.cornPathUnlocked;
+                }
+                wu.RecalculateStats();
+            }
+            if (FeaturesWorkbench.PlayerArmorUpgradeState.Instance != null)
+            {
+                var au = FeaturesWorkbench.PlayerArmorUpgradeState.Instance;
+                au.armorLevel = Mathf.Clamp(data.armorLevel, 1, 10);
+                if (data.equippedSlots != null)
+                {
+                    var db = ItemDatabase.Instance;
+                    foreach (var eq in data.equippedSlots)
+                    {
+                        var item = db?.GetItem(eq.itemId);
+                        if (item != null)
+                        {
+                            au.EquipItem((EquipmentSlotType)eq.slotType, item, out _);
+                        }
+                    }
+                }
             }
 
             // 7. Container Inventories (Storage, Refrigerator, Trophy Cabinet)

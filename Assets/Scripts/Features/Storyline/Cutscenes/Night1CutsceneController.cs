@@ -401,6 +401,7 @@ namespace FeaturesStoryline.Cutscenes
         /// </summary>
         public void SkipCurrentCutscene()
         {
+            UIModalHelper.LastFrameUIPanelClosed = Time.frameCount;
             if (!_isCutscenePlaying) return;
 
             Debug.Log("[Night1CutsceneController] ⏭️ Skipping Night 1 cutscene and transitioning into combat.");

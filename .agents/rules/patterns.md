@@ -16,24 +16,25 @@ Coding standards, recurring design patterns, and strict anti-patterns for **Farm
 - Centralize input gating and modal panels via `IModalStackService` and `ModalStackManager`.
 
 ### 1.3 Safe Reflection Invocation over SendMessage
-- Never call raw `SendMessage` on inactive objects or during EditMode unit tests. This triggers native engine assertion `Assertion failed on expression: 'ShouldRunBehaviour()'`.
-- Use direct type-safe methods or managed C# reflection (`MethodInfo.Invoke`).
+- Never call raw `SendMessage` on inactive objects or during EditMode tests to avoid `Assertion failed on expression: 'ShouldRunBehaviour()'`. Use type-safe methods or reflection (`MethodInfo.Invoke`).
 
 ### 1.4 Zero-Snag Road & Yard Invariant
 - Mesh colliders on decorative road ribbons, gravel shoulders, and courtyard aprons must be disabled.
-- Vehicles (`ArcadeVehicleController`) and player must ride 100% smoothly on native `TerrainCollider`.
+- Vehicles (`ArcadeVehicleController`) and player ride smoothly on native `TerrainCollider`.
 
 ### 1.5 Isometric Depth Staging
-- The camera views from SW to NE (`pitch: 30°`, `yaw: 45°`).
-- Taller masses (lodge roofs, chimneys, cupolas) sit in background (+Z); interaction zones (counters, boardwalks, produce) face South (-Z) into the lens with zero occlusion.
+- SW to NE camera (`pitch: 30°`, `yaw: 45°`). Background structures at $+Z$; interaction zones face South ($-Z$).
 
 ### 1.6 Safe Station Transactions & Rollbacks
-- Stations consuming resources over time (`KitchenStove`) snapshot consumed items/liquids at start.
-- Cancellation performs atomic rollback (`CancelCooking(refundIngredients: true)`). Output is granted only on timer completion.
+- Stations consuming items (`KitchenStove`) snapshot inputs at start. Cancellation performs atomic rollback (`refundIngredients: true`). Output granted only on completion.
 
 ### 1.7 Max Stack Invariant (Ceiling = 20)
-- Stackable items (`ItemData`) enforce `maxStack = 20` clamped via `[Range(1, 20)]`.
-- Tools, weapons, armor, and trophies enforce `maxStack = 1`.
+- Stackable items (`ItemData`) enforce `maxStack = 20` clamped via `[Range(1, 20)]`. Tools/weapons enforce `maxStack = 1`.
+
+### 1.8 Anti-Regression API Contracts & Decoupling
+- **Preserve Public APIs**: Never alter or delete public method/property signatures used by existing modules. Use overloads or optional params.
+- **Subsystem Decoupling**: Inter-feature communication must use domain events (`Action<T>`). Never directly invoke mutating methods on another feature's singleton.
+- **Scoped State & Token Safety**: Never flip flat boolean flags (`isInputLocked`, `timeScale`) without guaranteed cleanup in `try...finally` or scoped token services.
 
 ---
 
@@ -52,8 +53,8 @@ Coding standards, recurring design patterns, and strict anti-patterns for **Farm
 3. ❌ **Unsafe SendMessage**: Never call `SendMessage` without verifying `Application.isPlaying && activeInHierarchy`.
 4. ❌ **Road Collider Snags**: Never add active colliders to road ribbons, shoulders, or yard aprons.
 5. ❌ **UI Polling**: Never poll backend states inside UI `Update()`; rely on events.
-6. ❌ **Event Leaks**: Never subscribe to events without unsubscribing in `OnDisable()`.
+6. ❌ **Event Leaks**: Never subscribe to events without unsubscribing in `OnDisable()` / `OnDestroy()`.
 7. ❌ **Temporary Setup Scripts**: Never create ad-hoc `Assets/Editor/*Setup*.cs` scripts. Use MCP tools.
-8. ❌ **Transparent Buildings**: Use Bayer 4x4 Dithered Alpha Clipping (`RenderType = Opaque`, `ZWrite On`).
-9. ❌ **`UniversalForward` in Deferred+**: Custom passes must use `Tags { "LightMode" = "UniversalForwardOnly" }`.
-10. ❌ **Static Batching in BRG**: Never enable Static Batching with GPU Resident Drawer (`InstancedDrawing`).
+8. ❌ **Breaking Public Contracts**: Never delete/modify existing method signatures consumed by legacy features.
+9. ❌ **Silent Inspector Breakage**: Never rename serialized fields without `[FormerlySerializedAs("oldName")]`.
+10. ❌ **Unscoped State Leaks**: Never mutate global state without exit cleanup (causes ghost bugs in old features).
