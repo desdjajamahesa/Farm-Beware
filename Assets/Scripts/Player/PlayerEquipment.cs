@@ -223,10 +223,10 @@ public class PlayerEquipment : MonoBehaviour
 
             // Fallback when hotbar slot is empty: if a ranged weapon (Slingshot) is equipped in MainWeapon slot,
             // return it so daytime/dusk attacks fire the Slingshot instead of bare-hands melee punching.
-            var armorState = GetComponent<FeaturesWorkbench.PlayerArmorUpgradeState>() ?? FeaturesWorkbench.PlayerArmorUpgradeState.Instance;
-            if (armorState != null)
+            var armorStateFallback = GetComponent<FeaturesWorkbench.PlayerArmorUpgradeState>() ?? FeaturesWorkbench.PlayerArmorUpgradeState.Instance;
+            if (armorStateFallback != null)
             {
-                var mainWep = armorState.GetEquippedItem(FarmBeware.Core.Runtime.EquipmentSlotType.MainWeapon);
+                var mainWep = armorStateFallback.GetEquippedItem(FarmBeware.Core.Runtime.EquipmentSlotType.MainWeapon);
                 if (mainWep is ToolItemData rangedMain && rangedMain.isWeapon && rangedMain.isRangedWeapon)
                 {
                     return mainWep;
@@ -1303,7 +1303,6 @@ public class PlayerEquipment : MonoBehaviour
         if (armorState != null)
         {
             armorState.OnEquipmentChanged -= HandleArmorEquipmentChanged;
-        }
         }
         if (rangeIndicatorObj == null)
         {
