@@ -408,6 +408,11 @@ public class DayTransitionUI : MonoBehaviour
         if (transitionCoroutine != null)
             StopCoroutine(transitionCoroutine);
 
+        if (ServiceLocator.TryResolve<IFadeService>(out var fadeService) && fadeService != null)
+        {
+            fadeService.FadeOut(0.6f);
+        }
+
         transitionCoroutine = StartCoroutine(CinematicTransitionRoutine(isNight: false, dayNumber: dayNumber));
     }
 

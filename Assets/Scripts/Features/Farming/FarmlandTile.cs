@@ -240,7 +240,7 @@ namespace FeaturesFarming
                     return GetHeldSeed(interactor) != null;
 
                 case TileState.PlantedDry:
-                    return IsHoldingPlantWaterer(interactor) && (PlantWaterer.Instance != null ? PlantWaterer.Instance.CurrentWater >= 10f : true);
+                    return IsHoldingPlantWaterer(interactor) && (PlantWaterer.Instance != null && PlantWaterer.Instance.CurrentWater >= 10f);
 
                 case TileState.PlantedWatered:
                     return false; // Crop is actively growing; cannot interact

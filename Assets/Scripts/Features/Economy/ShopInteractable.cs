@@ -67,13 +67,13 @@ namespace FeaturesEconomy
             {
                 if (item == null || item.isDirty || (item.itemId != null && item.itemId.Contains("dirty"))) continue;
 
+                if (string.Equals(item.itemId, "dummysword", System.StringComparison.OrdinalIgnoreCase)) continue;
                 // Trading post carries tools, seeds, weapons, armor, and provisions with a valid buy price
                 if (item.category == ItemCategory.Seed ||
                     item.category == ItemCategory.Tool ||
                     item.category == ItemCategory.Weapon ||
                     item is EquipmentItemData ||
                     (item.category == ItemCategory.Material && item.buyPrice > 0) ||
-                    item.itemId == "dummysword" ||
                     item.itemId == "food_bottle_water" ||
                     (item.buyPrice > 0 && item.category != ItemCategory.Crop && item.category != ItemCategory.MonsterDrop))
                 {

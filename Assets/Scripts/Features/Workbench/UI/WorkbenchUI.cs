@@ -430,7 +430,7 @@ namespace FeaturesWorkbench.UI
             var equippedWeapon = armorState != null ? armorState.GetEquippedItem(EquipmentSlotType.MainWeapon) : null;
             bool isRepeaterEquipped = equippedWeapon != null && string.Equals(equippedWeapon.itemId, "tool_weapon_corn_repeater", StringComparison.OrdinalIgnoreCase);
 
-            var displayItem = equippedWeapon ?? db?.GetItem("tool_weapon_root_cleaver") ?? db?.GetItem("dummysword");
+            var displayItem = equippedWeapon ?? db?.GetItem("tool_weapon_root_cleaver");
             if (weaponIconImage != null && displayItem != null)
             {
                 Sprite resolvedIcon = displayItem.itemIcon;
@@ -703,12 +703,30 @@ namespace FeaturesWorkbench.UI
                     else
                     {
                         var node1 = EquipmentUpgradeEvaluator.GetNodeInfo(inspectedPath, 1);
-                        bool canAffordLv1 = currentGold >= node1.GoldCost;
-                        commitPathButton.interactable = true;
-                        commitPathButton.GetComponent<Image>().color = ColBtnPrimary;
-                        commitPathButtonText.text = canAffordLv1
-                            ? $"★ COMMIT TO {GetPathDisplayName(inspectedPath)} & UNLOCK NODE 1 ({node1.GoldCost:N0} GOLD)"
-                            : $"★ COMMIT TO {GetPathDisplayName(inspectedPath)} DOCTRINE (LOCKS PATH PERMANENTLY)";
+                        var node1Mat = !string.IsNullOrEmpty(node1.RequiredMaterialId) ? db?.GetItem(node1.RequiredMaterialId) : null;
+                        int matCount = CountMaterial(node1.RequiredMaterialId);
+                        bool hasMat = node1.RequiredMaterialCount == 0 || matCount >= node1.RequiredMaterialCount;
+                        bool hasGold = currentGold >= node1.GoldCost;
+                        string matName = node1Mat != null ? node1Mat.itemName : (!string.IsNullOrEmpty(node1.RequiredMaterialId) ? node1.RequiredMaterialId : "Materials");
+
+                        if (!hasMat)
+                        {
+                            commitPathButton.interactable = false;
+                            commitPathButton.GetComponent<Image>().color = ColBtnDisabled;
+                            commitPathButtonText.text = $"REQUIRES {node1.RequiredMaterialCount}x {matName.ToUpper()} ({matCount}/{node1.RequiredMaterialCount}) TO COMMIT DOCTRINE";
+                        }
+                        else if (!hasGold)
+                        {
+                            commitPathButton.interactable = false;
+                            commitPathButton.GetComponent<Image>().color = ColBtnDisabled;
+                            commitPathButtonText.text = $"REQUIRES {node1.GoldCost:N0} GOLD (HAVE {currentGold:N0} G) TO COMMIT DOCTRINE";
+                        }
+                        else
+                        {
+                            commitPathButton.interactable = true;
+                            commitPathButton.GetComponent<Image>().color = ColBtnPrimary;
+                            commitPathButtonText.text = $"★ COMMIT TO {GetPathDisplayName(inspectedPath)} & UNLOCK NODE 1 ({node1.GoldCost:N0} GOLD + {node1.RequiredMaterialCount}x {matName})";
+                        }
                     }
                 }
             }
@@ -1090,8 +1108,7 @@ namespace FeaturesWorkbench.UI
                 }
                 else if (targetItem.category == ItemCategory.Weapon ||
                          targetItem.itemId == "tool_weapon_root_cleaver" ||
-                         targetItem.itemId == "tool_weapon_corn_repeater" ||
-                         targetItem.itemId == "dummysword")
+                         targetItem.itemId == "tool_weapon_corn_repeater")
                 {
                     if (armorState.GetEquippedItem(EquipmentSlotType.MainWeapon) == null)
                     {
@@ -1147,7 +1164,7 @@ namespace FeaturesWorkbench.UI
             if (ownsCleaver && armorState != null)
             {
                 var db = ItemDatabase.Instance ?? Resources.Load<ItemDatabase>("Database/ItemDatabase");
-                var cleaver = db?.GetItem("tool_weapon_root_cleaver") ?? db?.GetItem("dummysword");
+                var cleaver = db?.GetItem("tool_weapon_root_cleaver");
                 if (cleaver != null)
                 {
                     armorState.EquipItem(EquipmentSlotType.MainWeapon, cleaver, out _);
@@ -1204,10 +1221,8 @@ namespace FeaturesWorkbench.UI
         private void OnClickCommitInspectedPath()
         {
             if (weaponState == null) return;
-            if (weaponState.SelectSpecialization(inspectedPath))
+            if (weaponState.SelectSpecialization(inspectedPath, playerInventory))
             {
-                // Automatically unlock Node 1 if the player can afford it
-                weaponState.UpgradeActiveSpecialization(playerInventory);
                 RefreshView();
             }
         }

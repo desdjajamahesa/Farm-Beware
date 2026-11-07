@@ -30,6 +30,7 @@ namespace FeaturesCombat
         private Vector3 attackDirection;
         private readonly HashSet<IDamageable> hitTargets = new HashSet<IDamageable>();
         private bool isActive = false;
+        public bool IsActive => isActive;
 
         private void Awake()
         {

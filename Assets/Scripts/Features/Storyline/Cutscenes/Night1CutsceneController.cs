@@ -24,12 +24,18 @@ namespace FeaturesStoryline.Cutscenes
     public class Night1CutsceneController : MonoBehaviour, ICutsceneService
     {
         private static Night1CutsceneController _instance;
+        private static int _lastSearchedSceneHandle = -1;
         public static bool HasInstance
         {
             get
             {
                 if (_instance != null) return true;
-                _instance = FindFirstObjectByType<Night1CutsceneController>(FindObjectsInactive.Include);
+                int activeHandle = UnityEngine.SceneManagement.SceneManager.GetActiveScene().handle;
+                if (_lastSearchedSceneHandle != activeHandle)
+                {
+                    _lastSearchedSceneHandle = activeHandle;
+                    _instance = FindFirstObjectByType<Night1CutsceneController>(FindObjectsInactive.Include);
+                }
                 return _instance != null;
             }
         }
@@ -39,6 +45,7 @@ namespace FeaturesStoryline.Cutscenes
         private static void ResetStaticState()
         {
             _instance = null;
+            _lastSearchedSceneHandle = -1;
             _isQuitting = false;
         }
 

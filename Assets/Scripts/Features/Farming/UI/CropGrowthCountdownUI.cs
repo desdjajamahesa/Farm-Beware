@@ -35,6 +35,8 @@ namespace FeaturesFarming
 
         private Camera cachedCamera;
         private bool isGrowing = false;
+        private int _lastDisplayedSec = -1;
+        public int LastDisplayedSeconds => _lastDisplayedSec;
 
         private void Awake()
         {
@@ -169,6 +171,7 @@ namespace FeaturesFarming
             if (state != TileState.PlantedWatered || growthProgress >= 1f || string.IsNullOrEmpty(seedName))
             {
                 isGrowing = false;
+                _lastDisplayedSec = -1;
                 SetVisible(false);
                 return;
             }
@@ -183,15 +186,19 @@ namespace FeaturesFarming
             if (timerText != null)
             {
                 int totalSec = Mathf.Max(0, Mathf.CeilToInt(remainingSeconds));
-                if (totalSec >= 60)
+                if (totalSec != _lastDisplayedSec)
                 {
-                    int minutes = totalSec / 60;
-                    int seconds = totalSec % 60;
-                    timerText.text = $"{minutes}:{seconds:D2}";
-                }
-                else
-                {
-                    timerText.text = $"{totalSec}s";
+                    _lastDisplayedSec = totalSec;
+                    if (totalSec >= 60)
+                    {
+                        int minutes = totalSec / 60;
+                        int seconds = totalSec % 60;
+                        timerText.text = $"{minutes}:{seconds:D2}";
+                    }
+                    else
+                    {
+                        timerText.text = $"{totalSec}s";
+                    }
                 }
             }
         }

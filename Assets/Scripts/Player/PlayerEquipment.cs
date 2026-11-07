@@ -188,10 +188,26 @@ public class PlayerEquipment : MonoBehaviour
     {
         get
         {
+            var timeService = FarmBeware.Core.Runtime.ServiceLocator.Resolve<FarmBeware.Core.Runtime.ITimeService>();
+            bool isNight = (timeService != null && timeService.IsNight) ||
+                           (TimeManager.Instance != null && TimeManager.Instance.currentPhase == TimeManager.DayPhase.Night) ||
+                           (FeaturesTime.DayNightTimeManager.Instance != null && FeaturesTime.DayNightTimeManager.Instance.IsNight);
+
             var stance = GetComponent<PlayerStanceManager>() ?? PlayerStanceManager.Instance;
-            if (stance != null && stance.IsInCombatStance)
+            if (isNight || (stance != null && stance.IsInCombatStance))
             {
-                return stance.GetActiveCombatWeapon();
+                var armorState = GetComponent<FeaturesWorkbench.PlayerArmorUpgradeState>() ?? FeaturesWorkbench.PlayerArmorUpgradeState.Instance;
+                if (armorState != null)
+                {
+                    var equippedWep = armorState.GetEquippedItem(FarmBeware.Core.Runtime.EquipmentSlotType.MainWeapon);
+                    if (equippedWep != null && FeaturesWorkbench.PlayerWeaponUpgradeState.IsValidCombatWeapon(equippedWep))
+                    {
+                        return equippedWep;
+                    }
+                }
+
+                var combatWep = stance != null ? stance.GetActiveCombatWeapon() : null;
+                if (combatWep != null) return combatWep;
             }
             if (inventory == null) inventory = GetComponent<InventoryComponent>();
             if (inventory != null)
@@ -450,12 +466,54 @@ public class PlayerEquipment : MonoBehaviour
                 currentSwingCoroutine = null;
             }
 
-            currentSwingCoroutine = StartCoroutine(RoutineSwingHitbox(finalDamage, finalKnockback, atkSpdMultiplier, is360, activeRange, isFinisher: is360, isHeavy: isRiposte));
+            currentSwingCoroutine = StartCoroutine(RoutineSwingHitbox(finalDamage, finalKnockback, atkSpdMultiplier, is360, activeRange, isFinisher: is360, isHeavy: isRiposte, isDash: false, isRiposte: isRiposte));
 
             return true;
         }
 
         return false;
+    }
+
+    /// <summary>
+    /// Immediately cancels any active melee swing or skill coroutine, deactivates weapon hitboxes and trails,
+    /// restores animator playback speed, and resets the underlying combat state machine.
+    /// Ensures zero ghost hitboxes when an attack is interrupted by dodge, parry, damage, or modal input locks.
+    /// </summary>
+    public void CancelActiveAttackSwing()
+    {
+        if (currentSwingCoroutine != null)
+        {
+            StopCoroutine(currentSwingCoroutine);
+            currentSwingCoroutine = null;
+        }
+
+        isExecutingSkill = false;
+
+        if (bareHandsTrail != null)
+        {
+            bareHandsTrail.EndTrail();
+        }
+
+        if (currentWeaponTrail != null)
+        {
+            currentWeaponTrail.EndTrail();
+        }
+
+        if (currentWeaponModel != null)
+        {
+            var hitbox = currentWeaponModel.GetComponentInChildren<FeaturesCombat.WeaponHitbox>();
+            if (hitbox != null)
+            {
+                hitbox.Deactivate();
+            }
+        }
+
+        if (animator != null)
+        {
+            animator.speed = 1f;
+        }
+
+        combatStateMachine?.InterruptCombatSequence();
     }
 
     public bool TryPerformBranchingHeavyFinisher()
@@ -903,7 +961,7 @@ public class PlayerEquipment : MonoBehaviour
         return false;
     }
 
-    private System.Collections.IEnumerator RoutineSwingHitbox(int damage, float knockback, float speedMultiplier, bool is360 = false, float rangeOverride = -1f, bool isFinisher = false, bool isHeavy = false, bool isDash = false)
+    private System.Collections.IEnumerator RoutineSwingHitbox(int damage, float knockback, float speedMultiplier, bool is360 = false, float rangeOverride = -1f, bool isFinisher = false, bool isHeavy = false, bool isDash = false, bool isRiposte = false)
     {
         float speedRatio = speedMultiplier / Mathf.Max(0.1f, attackAnimationSpeed);
         float delay;
@@ -960,15 +1018,15 @@ public class PlayerEquipment : MonoBehaviour
 
         PlayAttackSwingSound(is360, isFinisher, isHeavy, isDash);
 
-        if (hitbox != null && !is360 && !isHeavy && !isDash)
+        if (hitbox != null && !is360 && !isHeavy && !isDash && !isRiposte)
         {
             hitbox.ConfigureHitRange(activeRange);
             hitbox.Activate(gameObject, damage, knockback, transform.forward);
         }
         else
         {
-            // Direct zero-GC non-alloc sweep for 360, heavy strikes, dash attacks, or bare hands
-            PerformDirectMeleeSweep(damage, knockback, is360, activeRange, isFinisher, isHeavy, isDash);
+            // Direct zero-GC non-alloc sweep for 360, heavy strikes, ripostes, dash attacks, or bare hands
+            PerformDirectMeleeSweep(damage, knockback, is360, activeRange, isFinisher, isHeavy, isDash, isRiposte);
         }
 
         yield return new WaitForSeconds(duration);
@@ -1067,7 +1125,7 @@ public class PlayerEquipment : MonoBehaviour
     /// <summary>
     /// Direct melee sweep query (zero-GC, non-alloc, supporting frontal cone or 360 spins with visual impulse juice).
     /// </summary>
-    private void PerformDirectMeleeSweep(int damage, float knockback, bool is360 = false, float rangeOverride = -1f, bool isFinisher = false, bool isHeavy = false, bool isDash = false)
+    private void PerformDirectMeleeSweep(int damage, float knockback, bool is360 = false, float rangeOverride = -1f, bool isFinisher = false, bool isHeavy = false, bool isDash = false, bool isRiposte = false)
     {
         float activeRange = rangeOverride > 0f ? rangeOverride : attackHitRange;
         Vector3 origin = transform.position + Vector3.up * 0.8f;
@@ -1110,15 +1168,30 @@ public class PlayerEquipment : MonoBehaviour
 
                 if (FeaturesCombat.Adapters.CombatHitVfxEngine.Instance != null)
                 {
-                    var impactTier = isExecutingSkill
-                        ? FeaturesCombat.Core.PureLogic.AttackImpactTier.RiposteStrike
-                        : (isHeavy ? FeaturesCombat.Core.PureLogic.AttackImpactTier.HeavyCleave : FeaturesCombat.Core.PureLogic.AttackImpactTier.ComboFinisher);
+                    FeaturesCombat.Core.PureLogic.AttackImpactTier impactTier;
+                    if (isRiposte || isExecutingSkill)
+                    {
+                        impactTier = FeaturesCombat.Core.PureLogic.AttackImpactTier.ParryRiposte;
+                    }
+                    else if (isHeavy)
+                    {
+                        impactTier = FeaturesCombat.Core.PureLogic.AttackImpactTier.HeavyCleave;
+                    }
+                    else if (isFinisher || is360 || isDash)
+                    {
+                        impactTier = FeaturesCombat.Core.PureLogic.AttackImpactTier.ComboFinisher;
+                    }
+                    else
+                    {
+                        impactTier = FeaturesCombat.Core.PureLogic.AttackImpactTier.LightSlash;
+                    }
+
                     FeaturesCombat.Adapters.CombatHitVfxEngine.Instance.TriggerHit(
                         hitPoint,
                         hitDir,
                         c.gameObject,
                         gameObject,
-                        isCrit: isFinisher || isHeavy || isExecutingSkill,
+                        isCrit: isRiposte || isFinisher || isHeavy || isExecutingSkill,
                         impactTier: impactTier);
                 }
 
@@ -1174,12 +1247,16 @@ public class PlayerEquipment : MonoBehaviour
 
     private void Start()
     {
-        // Refresh visual saat awal mulai game
-        if (inventory != null)
+        var armorState = GetComponent<FeaturesWorkbench.PlayerArmorUpgradeState>() ?? FeaturesWorkbench.PlayerArmorUpgradeState.Instance;
+        if (armorState != null)
         {
-            lastEquippedItem = CurrentEquippedItem;
-            UpdateEquipmentVisual(inventory.selectedHotbarIndex);
+            armorState.OnEquipmentChanged -= HandleArmorEquipmentChanged;
+            armorState.OnEquipmentChanged += HandleArmorEquipmentChanged;
         }
+
+        // Refresh visual saat awal mulai game
+        lastEquippedItem = CurrentEquippedItem;
+        RefreshEquipmentForStance();
         isInitialized = true;
         UpdateRangeIndicatorState();
     }
@@ -1206,9 +1283,11 @@ public class PlayerEquipment : MonoBehaviour
             inventory.OnInventoryChanged += RefreshCurrentEquipment;
             inventory.OnHotbarSelected += OnHotbarSlotChanged;
         }
-        if (FeaturesWorkbench.PlayerArmorUpgradeState.Instance != null)
+        var armorState = GetComponent<FeaturesWorkbench.PlayerArmorUpgradeState>() ?? FeaturesWorkbench.PlayerArmorUpgradeState.Instance;
+        if (armorState != null)
         {
-            FeaturesWorkbench.PlayerArmorUpgradeState.Instance.OnEquipmentChanged += HandleArmorEquipmentChanged;
+            armorState.OnEquipmentChanged -= HandleArmorEquipmentChanged;
+            armorState.OnEquipmentChanged += HandleArmorEquipmentChanged;
         }
         UpdateRangeIndicatorState();
     }
@@ -1220,9 +1299,11 @@ public class PlayerEquipment : MonoBehaviour
             inventory.OnInventoryChanged -= RefreshCurrentEquipment;
             inventory.OnHotbarSelected -= OnHotbarSlotChanged;
         }
-        if (FeaturesWorkbench.PlayerArmorUpgradeState.Instance != null)
+        var armorState = GetComponent<FeaturesWorkbench.PlayerArmorUpgradeState>() ?? FeaturesWorkbench.PlayerArmorUpgradeState.Instance;
+        if (armorState != null)
         {
-            FeaturesWorkbench.PlayerArmorUpgradeState.Instance.OnEquipmentChanged -= HandleArmorEquipmentChanged;
+            armorState.OnEquipmentChanged -= HandleArmorEquipmentChanged;
+        }
         }
         if (rangeIndicatorObj == null)
         {
@@ -1449,9 +1530,24 @@ public class PlayerEquipment : MonoBehaviour
     /// <summary>
     /// Dipanggil saat pemain mengganti slot hotbar (1-4, mouse scroll).
     /// Mengganti model seketika TANPA memicu animasi equip agar tidak mengganggu gerakan jalan/lari.
+    /// At night or during combat stance, held weapon is locked functionally and visually to the active combat weapon.
     /// </summary>
     public void OnHotbarSlotChanged(int hotbarIndex)
     {
+        var timeService = FarmBeware.Core.Runtime.ServiceLocator.Resolve<FarmBeware.Core.Runtime.ITimeService>();
+        bool isNight = (timeService != null && timeService.IsNight) ||
+                       (TimeManager.Instance != null && TimeManager.Instance.currentPhase == TimeManager.DayPhase.Night) ||
+                       (FeaturesTime.DayNightTimeManager.Instance != null && FeaturesTime.DayNightTimeManager.Instance.IsNight);
+
+        var stance = GetComponent<PlayerStanceManager>() ?? PlayerStanceManager.Instance;
+        if (isNight || (stance != null && stance.IsInCombatStance))
+        {
+            SpawnCombatWeaponVisual();
+            lastEquippedItem = CurrentEquippedItem;
+            UpdateRangeIndicatorState();
+            return;
+        }
+
         UpdateEquipmentVisual(hotbarIndex);
         if (inventory != null)
         {
@@ -1471,8 +1567,13 @@ public class PlayerEquipment : MonoBehaviour
 
     public void RefreshEquipmentForStance()
     {
+        var timeService = FarmBeware.Core.Runtime.ServiceLocator.Resolve<FarmBeware.Core.Runtime.ITimeService>();
+        bool isNight = (timeService != null && timeService.IsNight) ||
+                       (TimeManager.Instance != null && TimeManager.Instance.currentPhase == TimeManager.DayPhase.Night) ||
+                       (FeaturesTime.DayNightTimeManager.Instance != null && FeaturesTime.DayNightTimeManager.Instance.IsNight);
+
         var stance = GetComponent<PlayerStanceManager>() ?? PlayerStanceManager.Instance;
-        if (stance != null && stance.IsInCombatStance)
+        if (isNight || (stance != null && stance.IsInCombatStance))
         {
             SpawnCombatWeaponVisual();
         }
@@ -1488,8 +1589,24 @@ public class PlayerEquipment : MonoBehaviour
     {
         DestroyCurrentWeapon();
 
-        var stance = GetComponent<PlayerStanceManager>() ?? PlayerStanceManager.Instance;
-        ItemData weapon = stance != null ? stance.GetActiveCombatWeapon() : null;
+        // 1. Direct priority: Equipped weapon in PlayerArmorUpgradeState MainWeapon slot
+        ItemData weapon = null;
+        var armorState = GetComponent<FeaturesWorkbench.PlayerArmorUpgradeState>() ?? FeaturesWorkbench.PlayerArmorUpgradeState.Instance;
+        if (armorState != null)
+        {
+            var equippedWeapon = armorState.GetEquippedItem(FarmBeware.Core.Runtime.EquipmentSlotType.MainWeapon);
+            if (equippedWeapon != null && FeaturesWorkbench.PlayerWeaponUpgradeState.IsValidCombatWeapon(equippedWeapon))
+            {
+                weapon = equippedWeapon;
+            }
+        }
+
+        // 2. Second priority: Stance manager resolution (checks inventory for Root Cleaver / Slingshot)
+        if (weapon == null)
+        {
+            var stance = GetComponent<PlayerStanceManager>() ?? PlayerStanceManager.Instance;
+            weapon = stance != null ? stance.GetActiveCombatWeapon() : null;
+        }
 
         if (weapon == null) return;
 
@@ -1510,12 +1627,18 @@ public class PlayerEquipment : MonoBehaviour
 
         if (prefabToSpawn == null && ItemDatabase.Instance != null)
         {
-            var fallbackItem = ItemDatabase.Instance.GetItem("tool_weapon_root_cleaver") as ToolItemData 
-                ?? ItemDatabase.Instance.GetItem("dummysword") as ToolItemData;
+            var fallbackItem = ItemDatabase.Instance.GetItem("tool_weapon_root_cleaver") as ToolItemData;
             if (fallbackItem != null && fallbackItem.equipPrefab != null)
             {
                 prefabToSpawn = fallbackItem.equipPrefab;
             }
+        }
+
+        if (prefabToSpawn == null)
+        {
+#if UNITY_EDITOR
+            prefabToSpawn = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/Weapons/DummySword.prefab");
+#endif
         }
 
         if (prefabToSpawn != null)
@@ -1576,8 +1699,13 @@ public class PlayerEquipment : MonoBehaviour
     {
         DestroyCurrentWeapon();
 
+        var timeService = FarmBeware.Core.Runtime.ServiceLocator.Resolve<FarmBeware.Core.Runtime.ITimeService>();
+        bool isNight = (timeService != null && timeService.IsNight) ||
+                       (TimeManager.Instance != null && TimeManager.Instance.currentPhase == TimeManager.DayPhase.Night) ||
+                       (FeaturesTime.DayNightTimeManager.Instance != null && FeaturesTime.DayNightTimeManager.Instance.IsNight);
+
         var stance = GetComponent<PlayerStanceManager>() ?? PlayerStanceManager.Instance;
-        if (stance != null && stance.IsInCombatStance)
+        if (isNight || (stance != null && stance.IsInCombatStance))
         {
             SpawnCombatWeaponVisual();
             return;

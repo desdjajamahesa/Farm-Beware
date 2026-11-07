@@ -39,6 +39,7 @@ public class TimeManager : MonoBehaviour
 
     // Event sinyal (data-driven) untuk listener UI/backend lain.
     public static event Action<int> OnAnyDayChanged;
+    public static event Action<DayPhase> OnAnyPhaseChanged;
     public event Action<int> OnDayChanged;
     public event Action<DayPhase> OnPhaseChanged;
 
@@ -79,6 +80,7 @@ public class TimeManager : MonoBehaviour
         OnDayChanged?.Invoke(currentDay);
         OnAnyDayChanged?.Invoke(currentDay);
         OnPhaseChanged?.Invoke(currentPhase);
+        OnAnyPhaseChanged?.Invoke(currentPhase);
 
         Debug.Log($"Day changed to {currentDay}, Phase: {currentPhase}");
     }
@@ -92,6 +94,7 @@ public class TimeManager : MonoBehaviour
         currentPhase = DayPhase.Night;
         isNightEncounterCleared = false;
         OnPhaseChanged?.Invoke(currentPhase);
+        OnAnyPhaseChanged?.Invoke(currentPhase);
 
         Debug.Log($"Phase changed to {currentPhase} (Night Brawl begins!)");
     }
@@ -123,6 +126,7 @@ public class TimeManager : MonoBehaviour
         if (notifyPhaseChanged)
         {
             OnPhaseChanged?.Invoke(currentPhase);
+            OnAnyPhaseChanged?.Invoke(currentPhase);
         }
     }
 }

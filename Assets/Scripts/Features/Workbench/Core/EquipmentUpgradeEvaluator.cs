@@ -82,6 +82,8 @@ namespace FeaturesWorkbench.Core
         public const string MatColossusCore = "mat_colossus_core";
         public const string MatCobCore = "mat_cob_core";
         public const string MatMutatedRoot = "mat_mutated_root";
+        public const string MatHardenedRoot = "mat_hardened_root";
+        public const string MatKernelShrapnel = "mat_kernel_shrapnel";
 
         // Weapon Damage Progression Bonus: Base(0%), +15%, +30%, +45%, +60%, +75%, +90%, +105%, +120%, +150%
         private static readonly float[] WeaponDamageMultipliers =
@@ -152,7 +154,7 @@ namespace FeaturesWorkbench.Core
 
         private static SpecializationNodeInfo GetSweetPotatoNode(int level) => level switch
         {
-            1 => new SpecializationNodeInfo(1, "Lv.1 – Quick Roots", "Faster weapon attacks", "+10% Attack Speed", 10000, null, 0, 0, false),
+            1 => new SpecializationNodeInfo(1, "Lv.1 – Quick Roots", "Faster weapon attacks", "+10% Attack Speed", 10000, MatMutatedRoot, 2, 0, false),
             2 => new SpecializationNodeInfo(2, "Lv.2 – Swift Movement", "Move faster during combat", "+10% Movement Speed", 20000, MatCyclopsEye, 1, 0, false),
             3 => new SpecializationNodeInfo(3, "Lv.3 – Dash Strike", "Deal damage when dashing through enemies", "Dash Attack Damage", 40000, null, 0, 0, false),
             4 => new SpecializationNodeInfo(4, "Lv.4 – Root Frenzy", "Consecutive attacks increase attack speed", "+15% Attack Speed", 45000, MatCyclopsEye, 2, 0, false),
@@ -163,7 +165,7 @@ namespace FeaturesWorkbench.Core
 
         private static SpecializationNodeInfo GetTaroNode(int level) => level switch
         {
-            1 => new SpecializationNodeInfo(1, "Lv.1 – Heavy Roots", "Increase heavy attack damage", "+10% Heavy Attack Damage", 10000, null, 0, 0, false),
+            1 => new SpecializationNodeInfo(1, "Lv.1 – Heavy Roots", "Increase heavy attack damage", "+10% Heavy Attack Damage", 10000, MatHardenedRoot, 2, 0, false),
             2 => new SpecializationNodeInfo(2, "Lv.2 – Thick Skin", "Reduce incoming damage", "+10% Defense", 20000, MatColossusCore, 1, 0, false),
             3 => new SpecializationNodeInfo(3, "Lv.3 – Ground Breaker", "Heavy attacks push enemies backward", "Heavy Knockback", 40000, null, 0, 0, false),
             4 => new SpecializationNodeInfo(4, "Lv.4 – Iron Taro", "Increase maximum health", "+15% Max HP", 45000, MatColossusCore, 2, 0, false),
@@ -174,7 +176,7 @@ namespace FeaturesWorkbench.Core
 
         private static SpecializationNodeInfo GetCornNode(int level) => level switch
         {
-            1 => new SpecializationNodeInfo(1, "Lv.1 – Golden Kernel", "Increase ranged and projectile damage", "+10% Projectile Damage", 10000, null, 0, 0, false),
+            1 => new SpecializationNodeInfo(1, "Lv.1 – Golden Kernel", "Increase ranged and projectile damage", "+10% Projectile Damage", 10000, MatKernelShrapnel, 2, 0, false),
             2 => new SpecializationNodeInfo(2, "Lv.2 – Sharp Kernel", "Improve critical hit probability", "+5% Critical Chance", 20000, MatCobCore, 1, 0, false),
             3 => new SpecializationNodeInfo(3, "Lv.3 – Piercing Shot", "Projectiles pass through one additional enemy", "Piercing Projectiles", 40000, null, 0, 0, false),
             4 => new SpecializationNodeInfo(4, "Lv.4 – Rapid Harvest", "Faster projectile travel velocity", "+15% Projectile Speed", 45000, MatCobCore, 2, 0, false),

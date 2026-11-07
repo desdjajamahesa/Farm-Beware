@@ -49,12 +49,40 @@ public class PlayerStanceManager : MonoBehaviour
     private void Start()
     {
         ResolveDependencies();
+        SubscribeTimeEvents();
         CheckInitialPhase();
+    }
+
+    private void Update()
+    {
+        bool isNight = (_timeService != null && _timeService.IsNight) ||
+                       (TimeManager.Instance != null && TimeManager.Instance.currentPhase == TimeManager.DayPhase.Night) ||
+                       (FeaturesTime.DayNightTimeManager.Instance != null && FeaturesTime.DayNightTimeManager.Instance.IsNight);
+
+        if (isNight && CurrentStance != PlayerStanceMode.CombatBrawl)
+        {
+            TransitionToPhase(DayPhase.Night);
+        }
+        else if (!isNight && CurrentStance == PlayerStanceMode.CombatBrawl)
+        {
+            TransitionToPhase(DayPhase.Day);
+        }
     }
 
     private void OnEnable()
     {
         ResolveDependencies();
+        SubscribeTimeEvents();
+    }
+
+    private void OnDisable()
+    {
+        UnsubscribeTimeEvents();
+    }
+
+    private void SubscribeTimeEvents()
+    {
+        UnsubscribeTimeEvents();
         if (_timeService != null)
         {
             _timeService.OnPhaseChanged += HandleTimeServicePhaseChanged;
@@ -65,7 +93,7 @@ public class PlayerStanceManager : MonoBehaviour
         }
     }
 
-    private void OnDisable()
+    private void UnsubscribeTimeEvents()
     {
         if (_timeService != null)
         {
@@ -167,8 +195,9 @@ public class PlayerStanceManager : MonoBehaviour
     /// <summary>
     /// Retrieves the currently active combat weapon:
     /// 1. Weapon equipped in MainWeapon slot on PlayerArmorUpgradeState.
-    /// 2. If null, fallbacks to Root Cleaver / DummySword in ItemDatabase.
-    /// 3. If still null, returns a safe runtime Root Cleaver instance (25 base damage, 6 knockback).
+    /// 2. If null, weapon present in player inventory (Root Cleaver or Slingshot).
+    /// 3. If null, fallbacks to Root Cleaver in ItemDatabase.
+    /// 4. If still null, returns a safe runtime Root Cleaver instance (25 base damage, 6 knockback).
     /// </summary>
     public ItemData GetActiveCombatWeapon()
     {
@@ -176,33 +205,40 @@ public class PlayerStanceManager : MonoBehaviour
         if (_armorState != null)
         {
             var equipped = _armorState.GetEquippedItem(EquipmentSlotType.MainWeapon);
-            if (equipped != null) return equipped;
+            if (equipped != null && IsValidCombatWeapon(equipped)) return equipped;
         }
 
-        // Fallback 1: Database lookup
-        if (ItemDatabase.Instance != null)
+        // Check inventory slots for Root Cleaver or Slingshot
+        if (_inventory == null) _inventory = GetComponent<InventoryComponent>();
+        if (_inventory != null && _inventory.slots != null)
         {
-            var starterCleaver = ItemDatabase.Instance.GetItem("tool_weapon_root_cleaver");
-            if (starterCleaver != null) return starterCleaver;
-
-            var dummySword = ItemDatabase.Instance.GetItem("dummysword");
-            if (dummySword != null) return dummySword;
+            foreach (var s in _inventory.slots)
+            {
+                if (s != null && !s.IsEmpty && s.item != null && IsValidCombatWeapon(s.item))
+                {
+                    return s.item;
+                }
+            }
         }
 
-        // Fallback 2: Guaranteed non-null runtime Root Cleaver instance
-        if (_fallbackWeapon == null)
+        return null;
+    }
+
+    private static bool IsValidCombatWeapon(ItemData item)
+    {
+        if (item == null) return false;
+        if (item is ToolItemData t)
         {
-            var runtimeCleaver = ScriptableObject.CreateInstance<ToolItemData>();
-            runtimeCleaver.itemId = "tool_weapon_root_cleaver";
-            runtimeCleaver.itemName = "Root Cleaver";
-            runtimeCleaver.isWeapon = true;
-            runtimeCleaver.isHoe = false;
-            runtimeCleaver.baseDamage = 25;
-            runtimeCleaver.knockbackForce = 6f;
-            _fallbackWeapon = runtimeCleaver;
+            if (t.isHoe) return false;
+            if (string.Equals(t.itemId, "tool_plant_waterer", StringComparison.OrdinalIgnoreCase) ||
+                (t.itemName != null && t.itemName.IndexOf("Water", StringComparison.OrdinalIgnoreCase) >= 0))
+                return false;
+            if (t.isWeapon || t.isRangedWeapon) return true;
         }
-
-        return _fallbackWeapon;
+        if (item.category == ItemCategory.Weapon) return true;
+        if (string.Equals(item.itemId, "tool_weapon_root_cleaver", StringComparison.OrdinalIgnoreCase)) return true;
+        if (string.Equals(item.itemId, "tool_weapon_corn_repeater", StringComparison.OrdinalIgnoreCase)) return true;
+        return false;
     }
 
     /// <summary>

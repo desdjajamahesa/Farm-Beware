@@ -140,9 +140,10 @@ namespace FeaturesEconomy
             bool IsShopItem(ItemData item)
             {
                 if (item == null || item.isDirty || (item.itemId != null && item.itemId.Contains("dirty"))) return false;
+                if (string.Equals(item.itemId, "dummysword", System.StringComparison.OrdinalIgnoreCase)) return false;
                 if (item.category == ItemCategory.Seed) return true;
                 if (item.category == ItemCategory.Material && item.buyPrice > 0) return true;
-                if (item.itemId == "dummysword" || item.itemId == "food_bottle_water") return true;
+                if (item.itemId == "food_bottle_water") return true;
                 if ((item.category == ItemCategory.Weapon || item.category == ItemCategory.Tool) && item.buyPrice > 0) return true;
                 if (item is EquipmentItemData && item.buyPrice > 0) return true;
                 if (item.buyPrice > 0 && item.category != ItemCategory.Crop && item.category != ItemCategory.MonsterDrop) return true;
@@ -335,6 +336,12 @@ namespace FeaturesEconomy
             int playerGold = PlayerWallet.Instance != null ? PlayerWallet.Instance.CurrentGold : 0;
             int matchedCount = 0;
 
+            if (currentFilter == ShopCategoryFilter.All || currentFilter == ShopCategoryFilter.Supplies)
+            {
+                matchedCount++;
+                BuildLandDeedRow(buyContentContainer, playerGold);
+            }
+
             foreach (var item in itemsForSale)
             {
                 if (item == null) continue;
@@ -386,7 +393,6 @@ namespace FeaturesEconomy
                 case ShopCategoryFilter.WeaponsAndArmor:
                     return item is EquipmentItemData ||
                            item.category == ItemCategory.Weapon ||
-                           item.itemId == "dummysword" ||
                            item.itemId == "tool_weapon_root_cleaver" ||
                            item.itemId == "tool_weapon_corn_repeater";
 
@@ -396,7 +402,6 @@ namespace FeaturesEconomy
                 case ShopCategoryFilter.Supplies:
                     bool isWepOrArmor = item is EquipmentItemData ||
                                         item.category == ItemCategory.Weapon ||
-                                        item.itemId == "dummysword" ||
                                         item.itemId == "tool_weapon_root_cleaver" ||
                                         item.itemId == "tool_weapon_corn_repeater";
                     return !isWepOrArmor && item.category != ItemCategory.Seed;
@@ -499,7 +504,7 @@ namespace FeaturesEconomy
                         isEquipped = true;
                     }
                 }
-                else if (item.category == ItemCategory.Weapon || item.itemId == "dummysword" || item.itemId == "tool_weapon_root_cleaver" || item.itemId == "tool_weapon_corn_repeater")
+                else if (item.category == ItemCategory.Weapon || item.itemId == "tool_weapon_root_cleaver" || item.itemId == "tool_weapon_corn_repeater")
                 {
                     var eq = armorState.GetEquippedItem(EquipmentSlotType.MainWeapon);
                     if (eq != null && string.Equals(eq.itemId, item.itemId, System.StringComparison.OrdinalIgnoreCase))
@@ -529,10 +534,6 @@ namespace FeaturesEconomy
             else if (item.itemId == "tool_weapon_corn_repeater")
             {
                 infoTmp.text = $"<b>{item.itemName}</b> <color=#FFD54F>[RANGED WEAPON]</color>{ownedBadge}\n<color=#FFD700>{item.buyPrice:N0} G</color>  <size=11><color=#A0AAB8>22 Base Dmg | Cursor-Aimed 3D Slingshot</color></size>";
-            }
-            else if (item.itemId == "dummysword")
-            {
-                infoTmp.text = $"<b>{item.itemName}</b> <color=#4FC3F7>[STARTER MELEE]</color>{ownedBadge}\n<color=#FFD700>{item.buyPrice:N0} G</color>  <size=11><color=#A0AAB8>25 Base Dmg | Wooden Practice Blade</color></size>";
             }
             else
             {
@@ -576,6 +577,93 @@ namespace FeaturesEconomy
                 btnBuy5 = b5.btn,
                 txtBuy5 = b5.tmp,
                 imgBuy5 = b5.img
+            });
+        }
+
+        private void BuildLandDeedRow(Transform parent, int playerGold)
+        {
+            var farming = ServiceLocator.Resolve<IFarmingService>();
+            int curPlots = farming != null ? farming.UnlockedPlotCount : 6;
+            int maxPlots = farming != null ? farming.MaxPlotCount : 16;
+            bool isMax = farming != null ? farming.IsFullyExpanded : (curPlots >= maxPlots);
+            const int cost = 2500;
+
+            GameObject rowGO = new GameObject("BuyRow_LandExpansionDeed", typeof(RectTransform), typeof(Image));
+            rowGO.transform.SetParent(parent, false);
+
+            RectTransform rowRT = rowGO.GetComponent<RectTransform>();
+            rowRT.sizeDelta = new Vector2(0f, 68f);
+
+            Image rowBg = rowGO.GetComponent<Image>();
+            rowBg.color = new Color(0.12f, 0.18f, 0.14f, 0.90f);
+
+            var layout = rowGO.AddComponent<HorizontalLayoutGroup>();
+            layout.childControlWidth = false;
+            layout.childControlHeight = true;
+            layout.childForceExpandWidth = false;
+            layout.childForceExpandHeight = true;
+            layout.spacing = 16f;
+            layout.padding = new RectOffset(14, 14, 8, 8);
+
+            // Icon
+            GameObject iconGO = new GameObject("Icon", typeof(RectTransform), typeof(Image));
+            iconGO.transform.SetParent(rowGO.transform, false);
+            var iconRT = iconGO.GetComponent<RectTransform>();
+            iconRT.sizeDelta = new Vector2(52f, 52f);
+            var iconImg = iconGO.GetComponent<Image>();
+            iconImg.color = new Color(0.35f, 0.85f, 0.45f, 1f);
+
+            // Info text
+            GameObject infoGO = new GameObject("Info", typeof(RectTransform), typeof(TextMeshProUGUI));
+            infoGO.transform.SetParent(rowGO.transform, false);
+            var infoRT = infoGO.GetComponent<RectTransform>();
+            infoRT.sizeDelta = new Vector2(360f, 52f);
+            var infoTmp = infoGO.GetComponent<TextMeshProUGUI>();
+            infoTmp.fontSize = 14;
+            infoTmp.color = Color.white;
+            infoTmp.alignment = TextAlignmentOptions.MidlineLeft;
+
+            string statusBadge = isMax 
+                ? "<color=#38C773>[MAX EXPANSION]</color>" 
+                : $"<color=#FFD54F>[+2 FARMLAND PLOTS]</color>";
+            infoTmp.text = $"<b>Land Expansion Deed</b> {statusBadge}\n" +
+                           $"<color=#FFD700>{cost:N0} G</color>  <size=11><color=#A0AAB8>Unlocks 2 arable soil plots ({curPlots}/{maxPlots} Plots Active)</color></size>";
+
+            // CTA Button
+            GameObject btnGO = new GameObject("BtnBuyDeed", typeof(RectTransform), typeof(Image), typeof(Button));
+            btnGO.transform.SetParent(rowGO.transform, false);
+            var btnRT = btnGO.GetComponent<RectTransform>();
+            btnRT.sizeDelta = new Vector2(160f, 44f);
+            var btnImg = btnGO.GetComponent<Image>();
+            var btn = btnGO.GetComponent<Button>();
+
+            GameObject btnTxtGO = new GameObject("Text", typeof(RectTransform), typeof(TextMeshProUGUI));
+            btnTxtGO.transform.SetParent(btnGO.transform, false);
+            var btnTxtRT = btnTxtGO.GetComponent<RectTransform>();
+            btnTxtRT.anchorMin = Vector2.zero;
+            btnTxtRT.anchorMax = Vector2.one;
+            btnTxtRT.sizeDelta = Vector2.zero;
+            var btnTmp = btnTxtGO.GetComponent<TextMeshProUGUI>();
+            btnTmp.fontSize = 13;
+            btnTmp.fontStyle = FontStyles.Bold;
+            btnTmp.alignment = TextAlignmentOptions.Center;
+
+            bool canAfford = playerGold >= cost && !isMax;
+            btn.interactable = canAfford;
+            btnImg.color = isMax 
+                ? new Color(0.2f, 0.2f, 0.2f, 0.5f) 
+                : (canAfford ? new Color(0.18f, 0.65f, 0.35f, 1f) : new Color(0.3f, 0.3f, 0.35f, 0.5f));
+            btnTmp.text = isMax ? "MAX PLOTS" : (canAfford ? $"Purchase Deed" : $"Need {cost:N0}G");
+
+            btn.onClick.AddListener(() =>
+            {
+                var farmService = ServiceLocator.Resolve<IFarmingService>();
+                var wallet = PlayerWallet.Instance ?? ServiceLocator.Resolve<IWalletService>() as PlayerWallet;
+                if (farmService != null && farmService.TryExpandPlots(wallet))
+                {
+                    RefreshBuyList();
+                    UpdateGoldDisplay(wallet != null ? wallet.CurrentGold : 0);
+                }
             });
         }
 

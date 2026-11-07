@@ -99,6 +99,11 @@ namespace FeaturesFarming
             }
         }
 
+        public int UnlockedPlotCount => FarmlandExpansionManager.Instance != null ? FarmlandExpansionManager.Instance.UnlockedPlotCount : 6;
+        public int MaxPlotCount => FarmlandExpansionManager.MaxPlotCount;
+        public bool IsFullyExpanded => FarmlandExpansionManager.Instance != null ? FarmlandExpansionManager.Instance.IsFullyExpanded : false;
+        public bool TryExpandPlots(FarmBeware.Core.Runtime.IWalletService wallet) => FarmlandExpansionManager.Instance != null && FarmlandExpansionManager.Instance.TryExpand(wallet);
+
         public bool HasCropsAboutToRipen(float thresholdSeconds, out string cropSummary)
         {
             cropSummary = string.Empty;

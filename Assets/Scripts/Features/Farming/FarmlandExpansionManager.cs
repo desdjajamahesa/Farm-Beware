@@ -63,6 +63,14 @@ namespace FeaturesFarming
             RefreshAllPlots();
         }
 
+        private void OnDestroy()
+        {
+            if (Instance == this)
+            {
+                Instance = null;
+            }
+        }
+
         /// <summary>
         /// Parses plot index number from GameObject name (e.g. 'FarmlandPlot_10' -> 10).
         /// </summary>

@@ -83,6 +83,7 @@ namespace FarmBeware.Features.Vehicles
         private Transform _rollPivotFR;
         private Transform _rollPivotRL;
         private Transform _rollPivotRR;
+        private static readonly RaycastHit[] _exitRaycastBuffer = new RaycastHit[8];
 
         public bool IsDriverOccupied => _isDriverOccupied;
         public float CurrentSpeedKmh => Mathf.Abs(_currentSpeedMps) * 3.6f;
@@ -130,11 +131,38 @@ namespace FarmBeware.Features.Vehicles
         private void OnEnable()
         {
             TimeManager.OnAnyDayChanged += HandleDayChanged;
+            TimeManager.OnAnyPhaseChanged += HandlePhaseChanged;
         }
 
         private void OnDisable()
         {
             TimeManager.OnAnyDayChanged -= HandleDayChanged;
+            TimeManager.OnAnyPhaseChanged -= HandlePhaseChanged;
+        }
+
+        private void HandlePhaseChanged(TimeManager.DayPhase phase)
+        {
+            if (phase == TimeManager.DayPhase.Night && _isDriverOccupied)
+            {
+                PlayerControl pc = _playerControl;
+                GameObject playerGo = _occupantPlayer;
+
+                ExitVehicle();
+                Teleport(homesteadParkPosition, homesteadParkRotation);
+
+                Vector3 courtyardDismountPos = homesteadParkPosition + (homesteadParkRotation * new Vector3(-2.6f, 0.05f, 0.2f));
+                Quaternion courtyardDismountRot = Quaternion.Euler(0f, homesteadParkRotation.eulerAngles.y - 90f, 0f);
+
+                if (pc != null)
+                {
+                    pc.Teleport(courtyardDismountPos, courtyardDismountRot);
+                }
+                else if (playerGo != null)
+                {
+                    playerGo.transform.SetPositionAndRotation(courtyardDismountPos, courtyardDismountRot);
+                    Physics.SyncTransforms();
+                }
+            }
         }
 
         private void HandleDayChanged(int day)
@@ -214,6 +242,12 @@ namespace FarmBeware.Features.Vehicles
             if (_isDriverOccupied) return false;
             if (interactor == null) return false;
             if (IsCutsceneOrInputBlocked()) return false;
+            if (TimeManager.Instance != null &&
+                TimeManager.Instance.currentPhase == TimeManager.DayPhase.Night &&
+                !TimeManager.Instance.isNightEncounterCleared)
+            {
+                return false;
+            }
 
             Vector3 interactorPos = interactor.transform.position;
 
@@ -440,15 +474,24 @@ namespace FarmBeware.Features.Vehicles
                 : transform.position + transform.TransformDirection(new Vector3(-2.6f, 0.2f, 0.2f));
 
             Ray ray = new Ray(exitPos + Vector3.up * 4f, Vector3.down);
-            var hits = Physics.RaycastAll(ray, 10f, groundLayer, QueryTriggerInteraction.Ignore);
-            System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
-            foreach (var hit in hits)
+            int hitCount = Physics.RaycastNonAlloc(ray, _exitRaycastBuffer, 10f, groundLayer, QueryTriggerInteraction.Ignore);
+            int closestIdx = -1;
+            float closestDist = float.MaxValue;
+            for (int i = 0; i < hitCount; i++)
             {
-                if (hit.transform != transform && !hit.transform.IsChildOf(transform))
+                var hitTransform = _exitRaycastBuffer[i].transform;
+                if (hitTransform != null && hitTransform != transform && !hitTransform.IsChildOf(transform))
                 {
-                    exitPos = hit.point + Vector3.up * 0.05f;
-                    break;
+                    if (_exitRaycastBuffer[i].distance < closestDist)
+                    {
+                        closestDist = _exitRaycastBuffer[i].distance;
+                        closestIdx = i;
+                    }
                 }
+            }
+            if (closestIdx >= 0)
+            {
+                exitPos = _exitRaycastBuffer[closestIdx].point + Vector3.up * 0.05f;
             }
 
             // 2. Return to original parent with worldPositionStays: true (strictly preserving _ENTITIES root)

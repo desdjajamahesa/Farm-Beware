@@ -519,6 +519,9 @@ namespace FeaturesTime
                 modalStack.CloseAll();
             }
 
+            // Teleport player safely into the farmhouse kitchen per MVP design
+            TeleportPlayerToKitchen();
+
             // Transition to night phase
             if (TimeManager.Instance != null)
             {
@@ -528,6 +531,56 @@ namespace FeaturesTime
             {
                 SetTime(nightStartHour);
             }
+        }
+
+        /// <summary>
+        /// Locates the appropriate indoor kitchen spawn position.
+        /// </summary>
+        public static Vector3 GetKitchenSpawnPosition()
+        {
+            var spawnInside = GameObject.Find("KitchenBackDoorSpawn_Inside");
+            if (spawnInside != null) return spawnInside.transform.position;
+
+            var zone = GameObject.Find("KitchenZone");
+            if (zone != null) return zone.transform.position + Vector3.up * 0.05f;
+
+            var fridge = GameObject.Find("Refrigerator") ?? GameObject.Find("Interactable_Refrigerator");
+            if (fridge != null) return fridge.transform.position + fridge.transform.forward * 1.2f;
+
+            var stove = GameObject.Find("KitchenStove") ?? GameObject.Find("Interactable_Stove");
+            if (stove != null) return stove.transform.position + stove.transform.forward * 1.2f;
+
+            return new Vector3(14.85f, 0.05f, 8.86f);
+        }
+
+        private void TeleportPlayerToKitchen()
+        {
+            var playerObj = GameObject.FindWithTag("Player") ?? GameObject.Find("Player");
+            if (playerObj == null) return;
+
+            Vector3 kitchenPos = GetKitchenSpawnPosition();
+
+            var pc = playerObj.GetComponent<FarmBeware.Core.Runtime.IPlayerContext>();
+            if (pc != null)
+            {
+                pc.StopMovement();
+            }
+
+            var charCtrl = playerObj.GetComponent<CharacterController>();
+            if (charCtrl != null) charCtrl.enabled = false;
+
+            var rb = playerObj.GetComponent<Rigidbody>();
+            if (rb != null)
+            {
+                rb.linearVelocity = Vector3.zero;
+                rb.angularVelocity = Vector3.zero;
+                rb.position = kitchenPos;
+            }
+
+            playerObj.transform.position = kitchenPos;
+            if (charCtrl != null) charCtrl.enabled = true;
+
+            Debug.Log($"[DayNightTimeManager] 🏠 Teleported player to farmhouse kitchen at {kitchenPos} upon 18:00 nightfall.");
         }
 
         private void OnApplicationQuit()

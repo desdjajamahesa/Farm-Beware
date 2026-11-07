@@ -85,7 +85,7 @@ public class InventoryComponent : MonoBehaviour
         if (blockTrophyItems && item.type == ItemData.ItemType.Trophy)
             return false;
 
-        // Refrigerator / All Crops & Food Storage rule: can store all crops, food, seeds, and plants
+        // Refrigerator / All Crops & Food Storage rule: can store all crops, food, seeds, plants, and cooking ingredients
         if (allowAllCropsAndFood)
         {
             if (item.category == ItemCategory.Crop || 
@@ -94,7 +94,16 @@ public class InventoryComponent : MonoBehaviour
                 item is FoodItemData ||
                 item is SeedItemData ||
                 string.Equals(item.itemId, "mat_coconut", System.StringComparison.OrdinalIgnoreCase) ||
-                (item.itemName != null && item.itemName.IndexOf("Coconut", System.StringComparison.OrdinalIgnoreCase) >= 0))
+                string.Equals(item.itemId, "mat_cooking_oil", System.StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(item.itemId, "mat_flour", System.StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(item.itemId, "mat_seasoning", System.StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(item.itemId, "item_spice", System.StringComparison.OrdinalIgnoreCase) ||
+                (item.itemName != null && (
+                    item.itemName.IndexOf("Coconut", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    item.itemName.IndexOf("Cooking Oil", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    item.itemName.IndexOf("Flour", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    item.itemName.IndexOf("Seasoning", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    item.itemName.IndexOf("Spice", System.StringComparison.OrdinalIgnoreCase) >= 0)))
             {
                 return true;
             }
@@ -197,36 +206,7 @@ public class InventoryComponent : MonoBehaviour
 
         if (hasHotbar && slots.Count > 4)
         {
-            // 1a. Tumpuk ke slot inventori utama (indeks >= 4) yang sudah berisi item sama
-            for (int i = 4; i < slots.Count && remaining > 0; i++)
-            {
-                InventorySlot slot = slots[i];
-                if (!slot.IsEmpty && slot.item == item)
-                {
-                    int space = maxStack - slot.quantity;
-                    int toAdd = Mathf.Min(space, remaining);
-                    if (toAdd > 0)
-                    {
-                        slot.quantity += toAdd;
-                        remaining -= toAdd;
-                    }
-                }
-            }
-
-            // 1b. Isi ke slot inventori utama (indeks >= 4) yang masih kosong
-            for (int i = 4; i < slots.Count && remaining > 0; i++)
-            {
-                InventorySlot slot = slots[i];
-                if (slot.IsEmpty)
-                {
-                    int toAdd = Mathf.Min(maxStack, remaining);
-                    slot.item = item;
-                    slot.quantity = toAdd;
-                    remaining -= toAdd;
-                }
-            }
-
-            // 2a. Jika slot utama penuh dan masih ada sisa, tumpuk ke slot hotbar (indeks 0..3) yang berisi item sama
+            // 1a. Prioritize stacking onto existing matching item stacks in the active Hotbar (indeks 0..3)
             int hotbarEnd = Mathf.Min(4, slots.Count);
             for (int i = 0; i < hotbarEnd && remaining > 0; i++)
             {
@@ -243,7 +223,36 @@ public class InventoryComponent : MonoBehaviour
                 }
             }
 
-            // 2b. Jika masih ada sisa, isi ke slot hotbar (indeks 0..3) yang kosong
+            // 1b. Tumpuk ke slot inventori utama (indeks >= 4) yang sudah berisi item sama
+            for (int i = 4; i < slots.Count && remaining > 0; i++)
+            {
+                InventorySlot slot = slots[i];
+                if (!slot.IsEmpty && slot.item == item)
+                {
+                    int space = maxStack - slot.quantity;
+                    int toAdd = Mathf.Min(space, remaining);
+                    if (toAdd > 0)
+                    {
+                        slot.quantity += toAdd;
+                        remaining -= toAdd;
+                    }
+                }
+            }
+
+            // 2a. Isi ke slot inventori utama (indeks >= 4) yang masih kosong
+            for (int i = 4; i < slots.Count && remaining > 0; i++)
+            {
+                InventorySlot slot = slots[i];
+                if (slot.IsEmpty)
+                {
+                    int toAdd = Mathf.Min(maxStack, remaining);
+                    slot.item = item;
+                    slot.quantity = toAdd;
+                    remaining -= toAdd;
+                }
+            }
+
+            // 2b. Jika slot utama penuh dan masih ada sisa, isi ke slot hotbar (indeks 0..3) yang kosong
             for (int i = 0; i < hotbarEnd && remaining > 0; i++)
             {
                 InventorySlot slot = slots[i];

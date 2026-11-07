@@ -135,6 +135,9 @@ namespace FeaturesCombat
         [SerializeField] private float whiskerAngle = 35f;
 
         private NavMeshPath navMeshPath;
+        private readonly Vector3[] _pathCornersBuffer = new Vector3[16];
+        private int _pathCornerCount = 0;
+        private static readonly RaycastHit[] _beamHitsBuffer = new RaycastHit[16];
         private int currentPathIndex = 1;
         private float nextRepathTime = 0f;
         private bool hasValidNavPath = false;
@@ -424,13 +427,15 @@ namespace FeaturesCombat
 
         private void Update()
         {
-            if (IsDead || isPerformingSkill) return;
+            if (IsDead) return;
 
             if (poiseTracker != null)
             {
                 poiseTracker.Tick(Time.deltaTime);
                 if (poiseTracker.IsStaggered) return;
             }
+
+            if (isPerformingSkill) return;
 
             // 1. Batas Anti-Penetrasi Safe Zone: Cegah monster masuk/terselip ke dalam interior rumah modular
             if (NightBrawlManager.IsInsideHouse(transform.position))
@@ -515,7 +520,7 @@ namespace FeaturesCombat
                         canExecuteSkill = distToPlayer <= 7.0f; // Airborne slam
                         break;
                     case EnemyType.CornMusketeer:
-                        canExecuteSkill = distToPlayer >= 2.5f && distToPlayer <= 13.0f; // Kernel shot
+                        canExecuteSkill = distToPlayer >= 2.5f && distToPlayer <= 11.5f; // Kernel shot (on-screen frustum range)
                         break;
                     case EnemyType.TheRanger:
                         canExecuteSkill = distToPlayer <= 16.0f; // Heavens fall
@@ -663,15 +668,16 @@ namespace FeaturesCombat
                 }
 
                 hasValidNavPath = NavMesh.CalculatePath(sampleStart, sampleTarget, NavMesh.AllAreas, navMeshPath);
+                _pathCornerCount = (hasValidNavPath && navMeshPath != null) ? navMeshPath.GetCornersNonAlloc(_pathCornersBuffer) : 0;
                 currentPathIndex = 1; // Indeks 0 adalah posisi awal monster saat ini
             }
 
-            // 2. Telusuri waypoint sudut (corners) jika jalur valid
-            if (hasValidNavPath && navMeshPath != null && navMeshPath.corners.Length > 1 && navMeshPath.status != NavMeshPathStatus.PathInvalid)
+            // 2. Telusuri waypoint sudut (corners) jika jalur valid (Zero-GC non-alloc buffer)
+            if (hasValidNavPath && navMeshPath != null && _pathCornerCount > 1 && navMeshPath.status != NavMeshPathStatus.PathInvalid)
             {
-                while (currentPathIndex < navMeshPath.corners.Length - 1)
+                while (currentPathIndex < _pathCornerCount - 1)
                 {
-                    Vector3 toCorner = navMeshPath.corners[currentPathIndex] - transform.position;
+                    Vector3 toCorner = _pathCornersBuffer[currentPathIndex] - transform.position;
                     toCorner.y = 0f;
                     if (toCorner.sqrMagnitude <= cornerReachThreshold * cornerReachThreshold)
                     {
@@ -683,8 +689,8 @@ namespace FeaturesCombat
                     }
                 }
 
-                int targetIndex = Mathf.Min(currentPathIndex, navMeshPath.corners.Length - 1);
-                Vector3 nextCorner = navMeshPath.corners[targetIndex];
+                int targetIndex = Mathf.Min(currentPathIndex, _pathCornerCount - 1);
+                Vector3 nextCorner = _pathCornersBuffer[targetIndex];
                 desiredDir = (nextCorner - transform.position);
                 desiredDir.y = 0f;
                 if (desiredDir.sqrMagnitude > 0.01f)
@@ -1146,6 +1152,20 @@ namespace FeaturesCombat
 
         private void TryExecuteSkill(float distToPlayer)
         {
+            // Offensive skills must respect AttackTokenDispatcher concurrency limits to prevent synchronized horde dogpiling
+            bool isDefensiveSkill = (enemyType == EnemyType.TaroBrute);
+            bool isRanged = (enemyType == EnemyType.CornMusketeer || enemyType == EnemyType.TheRanger);
+
+            if (!isDefensiveSkill && NightBrawlManager.Instance != null && NightBrawlManager.Instance.TokenDispatcher != null)
+            {
+                var priority = isBoss ? FeaturesCombat.Core.PureLogic.AttackTokenPriority.Boss : FeaturesCombat.Core.PureLogic.AttackTokenPriority.Minion;
+                if (!NightBrawlManager.Instance.TokenDispatcher.TryAcquireToken(
+                    gameObject.GetInstanceID(), isRanged, Time.time, 3.2f, priority, distToPlayer, isCommitted: true))
+                {
+                    return;
+                }
+            }
+
             skillCooldownTimer = 0f;
 
             switch (enemyType)
@@ -1166,6 +1186,10 @@ namespace FeaturesCombat
                     if (GetComponent<ColossusAirborneAbility>() == null)
                     {
                         StartCoroutine(RoutineAirborneSlam());
+                    }
+                    else
+                    {
+                        NightBrawlManager.Instance?.TokenDispatcher?.ReleaseToken(gameObject.GetInstanceID(), false);
                     }
                     break;
 
@@ -1382,6 +1406,7 @@ namespace FeaturesCombat
             yield return new WaitForSeconds(0.35f);
             isPerformingSkill = false;
             lastAttackTime = Time.time + 0.6f;
+            NightBrawlManager.Instance?.TokenDispatcher?.ReleaseToken(gameObject.GetInstanceID(), false);
         }
 
         private IEnumerator RoutineTrackingBeam()
@@ -1402,22 +1427,34 @@ namespace FeaturesCombat
             Vector3 targetChest = (playerTarget != null) ? playerTarget.position + Vector3.up * 1.0f : (eyeOrigin + transform.forward * 10f);
             Vector3 shootDir = (targetChest - eyeOrigin).normalized;
 
-            RaycastHit[] hits = Physics.RaycastAll(eyeOrigin, shootDir, 20f, ~0, QueryTriggerInteraction.Ignore);
-            System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
-            foreach (var hit in hits)
+            int hitCount = Physics.RaycastNonAlloc(eyeOrigin, shootDir, _beamHitsBuffer, 20f, ~0, QueryTriggerInteraction.Ignore);
+            int closestIdx = -1;
+            float closestDist = float.MaxValue;
+            for (int i = 0; i < hitCount; i++)
             {
-                if (hit.collider.gameObject == gameObject || hit.collider.transform.IsChildOf(transform)) continue;
+                var col = _beamHitsBuffer[i].collider;
+                if (col == null || col.gameObject == gameObject || col.transform.IsChildOf(transform)) continue;
+                if (_beamHitsBuffer[i].distance < closestDist)
+                {
+                    closestDist = _beamHitsBuffer[i].distance;
+                    closestIdx = i;
+                }
+            }
+
+            if (closestIdx >= 0)
+            {
+                var hit = _beamHitsBuffer[closestIdx];
                 var target = hit.collider.GetComponent<IDamageable>() ?? hit.collider.GetComponentInParent<IDamageable>();
                 if (target != null && hit.collider.CompareTag("Player") && !NightBrawlManager.IsInsideHouse(hit.point))
                 {
                     target.TakeDamage(25, hit.point, shootDir);
                 }
-                break;
             }
 
             yield return new WaitForSeconds(0.5f);
             isPerformingSkill = false;
             lastAttackTime = Time.time + 0.6f;
+            NightBrawlManager.Instance?.TokenDispatcher?.ReleaseToken(gameObject.GetInstanceID(), false);
         }
 
         private IEnumerator RoutineRootGuard()
@@ -1475,6 +1512,7 @@ namespace FeaturesCombat
             yield return new WaitForSeconds(0.6f);
             isPerformingSkill = false;
             lastAttackTime = Time.time + 0.8f;
+            NightBrawlManager.Instance?.TokenDispatcher?.ReleaseToken(gameObject.GetInstanceID(), false);
         }
 
         private IEnumerator RoutineKernelShot()
@@ -1531,6 +1569,7 @@ namespace FeaturesCombat
             yield return new WaitForSeconds(0.3f);
             isPerformingSkill = false;
             lastAttackTime = Time.time + 0.6f;
+            NightBrawlManager.Instance?.TokenDispatcher?.ReleaseToken(gameObject.GetInstanceID(), true);
         }
 
         private IEnumerator RoutineCornHeavensFall()
@@ -1557,6 +1596,7 @@ namespace FeaturesCombat
             yield return new WaitForSeconds(0.5f);
             isPerformingSkill = false;
             lastAttackTime = Time.time + 0.8f;
+            NightBrawlManager.Instance?.TokenDispatcher?.ReleaseToken(gameObject.GetInstanceID(), true);
         }
 
         // --- IDAMAGEABLE IMPLEMENTATION ---
@@ -1582,12 +1622,34 @@ namespace FeaturesCombat
             // Flash visual (Zero-GC via MaterialPropertyBlock)
             if (hitFeedback != null) hitFeedback.TriggerFlash();
 
+            Vector3 pushDir = hitDirection.sqrMagnitude > 0.001f ? hitDirection.normalized : -transform.forward;
+
             // Terapkan knockback & stagger berjenjang (diabaikan jika un-staggerable)
             if (poiseTracker != null)
             {
                 float poiseDmg = Mathf.Max(10f, damage * 0.75f);
-                float impulse = Mathf.Max(1.0f, hitDirection.magnitude);
+                float derivedImpulse = effectiveDmg >= 45 ? 2.1f : (effectiveDmg >= 30 ? 1.4f : 1.0f);
+                float impulse = Mathf.Max(hitDirection.magnitude, derivedImpulse);
                 var staggerTier = poiseTracker.ApplyPoiseDamage(poiseDmg, impulse, out bool poiseBroken);
+
+                if (poiseBroken && staggerTier >= FeaturesCombat.Core.PureLogic.StaggerTier.HeavyStagger && !IsUnstaggerable)
+                {
+                    if (isPerformingSkill && !isBurrowed)
+                    {
+                        StopAllCoroutines();
+                        isPerformingSkill = false;
+                        isRetreatingAndHealing = false;
+                        if (isRootGuarded)
+                        {
+                            armor = originalArmor;
+                            isRootGuarded = false;
+                        }
+                        if (meshRenderer != null) SetRendererColor(originalColor);
+                        if (combatTelegraph != null) combatTelegraph.Hide();
+                        if (laserSightLine != null) laserSightLine.enabled = false;
+                        NightBrawlManager.Instance?.TokenDispatcher?.ReleaseAllForEntity(gameObject.GetInstanceID());
+                    }
+                }
 
                 if (rb != null && !IsUnstaggerable)
                 {
@@ -1595,27 +1657,27 @@ namespace FeaturesCombat
                     {
                         if (airborneHazard != null)
                         {
-                            airborneHazard.LaunchAsHazard(hitDirection * 12f + Vector3.up * 4f);
+                            airborneHazard.LaunchAsHazard(pushDir * 12f + Vector3.up * 4f);
                         }
                         else
                         {
-                            rb.AddForce(hitDirection * 10f + Vector3.up * 3f, ForceMode.Impulse);
+                            rb.AddForce(pushDir * 10f + Vector3.up * 3f, ForceMode.Impulse);
                         }
                     }
                     else if (staggerTier == FeaturesCombat.Core.PureLogic.StaggerTier.HeavyStagger)
                     {
-                        rb.AddForce(hitDirection * 6f, ForceMode.Impulse);
+                        rb.AddForce(pushDir * 6f, ForceMode.Impulse);
                     }
                     else if (staggerTier == FeaturesCombat.Core.PureLogic.StaggerTier.MicroStagger)
                     {
-                        rb.AddForce(hitDirection * 2.5f, ForceMode.Impulse);
+                        rb.AddForce(pushDir * 2.5f, ForceMode.Impulse);
                     }
                 }
             }
             else if (rb != null && knockbackResistance < 1f && !IsUnstaggerable)
             {
                 float actualKb = 6f * (1f - knockbackResistance);
-                rb.AddForce(hitDirection * actualKb, ForceMode.Impulse);
+                rb.AddForce(pushDir * actualKb, ForceMode.Impulse);
             }
 
             if (currentHealth <= 0)

@@ -190,7 +190,7 @@ namespace Player
             if (inv.maxCapacity < 16) inv.maxCapacity = 16;
             inv.EnsureSlotsAllocated();
 
-            // On Day 0: Player arrives with completely empty pockets per narrative design.
+            // On Day 0: Player arrives with completely empty pockets and clean storage chest per narrative design.
             if (currentDay == 0)
             {
                 if (inv.slots != null)
@@ -208,6 +208,17 @@ namespace Player
                     equip.UpdateEquipmentVisual(0);
                 }
                 inv.OnInventoryChanged?.Invoke();
+
+                // Ensure Storage Chest is completely cleared on Day 0
+                var targetChestDay0 = FindTargetStorageChest();
+                if (targetChestDay0 != null && targetChestDay0.slots != null)
+                {
+                    for (int i = 0; i < targetChestDay0.slots.Count; i++)
+                    {
+                        targetChestDay0.slots[i] = new InventorySlot();
+                    }
+                    targetChestDay0.OnInventoryChanged?.Invoke();
+                }
                 return;
             }
 
@@ -263,6 +274,27 @@ namespace Player
 
             var playerInv = GetComponent<InventoryComponent>();
             var armorState = GetComponent<PlayerArmorUpgradeState>() ?? PlayerArmorUpgradeState.Instance;
+
+            // Sanitize chest: Slingshot, weapons, and armor must be crafted or bought, never free in starter chest
+            if (chestInv.slots != null)
+            {
+                for (int i = 0; i < chestInv.slots.Count; i++)
+                {
+                    var s = chestInv.slots[i];
+                    if (s != null && !s.IsEmpty && s.item != null)
+                    {
+                        string id = s.item.itemId;
+                        if (string.Equals(id, "tool_weapon_corn_repeater", System.StringComparison.OrdinalIgnoreCase) ||
+                            string.Equals(id, "dummysword", System.StringComparison.OrdinalIgnoreCase) ||
+                            string.Equals(id, "tool_weapon_root_cleaver", System.StringComparison.OrdinalIgnoreCase) ||
+                            s.item is EquipmentItemData ||
+                            s.item.category == ItemCategory.Weapon)
+                        {
+                            chestInv.slots[i] = new InventorySlot();
+                        }
+                    }
+                }
+            }
 
             // 1. Core Starter Farming Pack (Slots 0..3)
             TryAddStarterItemToChest(chestInv, playerInv, armorState, hoeItem, 1);

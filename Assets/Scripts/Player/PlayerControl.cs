@@ -218,6 +218,25 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
         // Kunci input: hentikan inventory/hotbar/gerak/animator saat terkunci.
         if (isInputLocked)
         {
+            if (isAttacking || isChargingAttack || hasBufferedAttack)
+            {
+                isChargingAttack = false;
+                attackHoldDuration = 0f;
+                hasBufferedAttack = false;
+                isAttacking = false;
+                isLightAttacking = false;
+                if (attackCoroutine != null)
+                {
+                    StopCoroutine(attackCoroutine);
+                    attackCoroutine = null;
+                }
+                playerEquipment?.CancelActiveAttackSwing();
+                if (animator != null && !animator.GetBool("Driving"))
+                {
+                    animator.SetBool("IsAttacking", false);
+                }
+            }
+
             // Izinkan Tab / I menutup inventori saat UI inventori sedang terbuka
             if (InventoryManagerUI.Instance != null && InventoryManagerUI.Instance.IsAnyInventoryUIRelatedOpen())
             {
@@ -288,12 +307,14 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
         // 3. Aksi Defensif (Dodge Roll & Parry) - bisa dieksekusi saat bergerak, idle, atau cancel serangan
         HandleDefensiveInput();
 
-        // Input aksi lain diblokir saat sedang mengeksekusi serangan
+        // 4. Input Serangan (mendukung combo buffering, early cancel, dan branching heavy finisher saat sedang mengayun)
+        HandleAttackInput();
+
+        // Input aksi non-kombat diblokir saat sedang mengeksekusi serangan
         if (!isAttacking)
         {
             HandleInventoryInput();
             HandleHotbarInput();
-            HandleAttackInput();
 
             if (Keyboard.current != null && Keyboard.current.eKey.wasPressedThisFrame)
             {
@@ -1204,6 +1225,10 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
     public void TriggerWaterAnimation()
     {
         if (isPlanting || isAttacking) return;
+        if (FeaturesFarming.PlantWaterer.Instance != null && FeaturesFarming.PlantWaterer.Instance.CurrentWater < 10f)
+        {
+            return;
+        }
         StartCoroutine(RoutineWaterCrop());
     }
 
@@ -1277,6 +1302,18 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
     private void HandleHotbarInput()
     {
         if (playerInventory == null) return;
+
+        var timeService = FarmBeware.Core.Runtime.ServiceLocator.Resolve<FarmBeware.Core.Runtime.ITimeService>();
+        bool isNight = (timeService != null && timeService.IsNight) ||
+                       (TimeManager.Instance != null && TimeManager.Instance.currentPhase == TimeManager.DayPhase.Night) ||
+                       (FeaturesTime.DayNightTimeManager.Instance != null && FeaturesTime.DayNightTimeManager.Instance.IsNight);
+
+        if (isNight)
+        {
+            // At night, held item is locked to active equipped combat weapon (Root Cleaver / Slingshot).
+            // Consumables can still be used via double-click directly in hotbar or inventory.
+            return;
+        }
 
         Keyboard keyboard = Keyboard.current;
         if (keyboard != null)
@@ -1405,7 +1442,9 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
                     isAttacking = false;
                     isLightAttacking = false;
                     isChargingAttack = false;
-                    playerEquipment?.CombatStateMachine?.InterruptCombatSequence();
+                    attackHoldDuration = 0f;
+                    hasBufferedAttack = false;
+                    playerEquipment?.CancelActiveAttackSwing();
                     if (animator != null) animator.SetBool("IsAttacking", false);
                 }
                 else
@@ -1514,7 +1553,9 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
                     isAttacking = false;
                     isLightAttacking = false;
                     isChargingAttack = false;
-                    playerEquipment?.CombatStateMachine?.InterruptCombatSequence();
+                    attackHoldDuration = 0f;
+                    hasBufferedAttack = false;
+                    playerEquipment?.CancelActiveAttackSwing();
                     if (animator != null) animator.SetBool("IsAttacking", false);
                 }
                 else
@@ -1807,7 +1848,7 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
                 StopCoroutine(attackCoroutine);
                 attackCoroutine = null;
             }
-            playerEquipment?.CombatStateMachine?.InterruptCombatSequence();
+            playerEquipment?.CancelActiveAttackSwing();
             if (animator != null && !animator.GetBool("Driving"))
             {
                 animator.SetFloat("Vel", 0f);

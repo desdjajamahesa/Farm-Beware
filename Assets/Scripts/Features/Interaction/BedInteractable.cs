@@ -138,35 +138,92 @@ namespace FeaturesInteraction
                 SafeHeal(interactor, sleepHealAmount);
             }
 
-            int completedDay = timeService.CurrentDay;
+            ExecuteNightSleep(timeService, interactor);
+        }
+
+        private void ExecuteNightSleep(ITimeService timeService, GameObject interactor)
+        {
+            if (!Application.isPlaying)
+            {
+                ExecuteNightSleepInstant(timeService, interactor);
+                return;
+            }
+
+            StartCoroutine(RoutineNightSleep(timeService, interactor));
+        }
+
+        private void ExecuteNightSleepInstant(ITimeService timeService, GameObject interactor)
+        {
+            var pc = interactor != null ? interactor.GetComponent<IPlayerContext>() : ServiceLocator.Resolve<IPlayerContext>();
+            if (pc != null) pc.AddInputLock("BedSleep");
+
+            if (interactor != null)
+            {
+                SafeClearBuffs(interactor);
+                SafeHeal(interactor, sleepHealAmount);
+            }
+
+            OnBedSleepExecuted?.Invoke();
+            timeService.AdvanceToNextDay();
+
+            if (pc != null) pc.RemoveInputLock("BedSleep");
+            UpdateLabel();
+        }
+
+        private System.Collections.IEnumerator RoutineNightSleep(ITimeService timeService, GameObject interactor)
+        {
+            var pc = interactor != null ? interactor.GetComponent<IPlayerContext>() : ServiceLocator.Resolve<IPlayerContext>();
+            if (pc != null)
+            {
+                pc.AddInputLock("BedSleep");
+                pc.StopMovement();
+            }
+
             OnBedSleepExecuted?.Invoke();
 
-            // Tampilkan laporan pagi operasi perkebunan & hasil Night Brawl sebelum transisi hari baru
-            var dailyReport = ServiceLocator.Resolve<IDailyReportService>();
-            if (dailyReport != null)
+            // 1. Smooth Fade In to black screen
+            var fadeService = ServiceLocator.Resolve<IFadeService>();
+            float fadeDuration = 0.5f;
+            if (fadeService != null)
             {
-                dailyReport.ShowReport(completedDay, () =>
-                {
-                    timeService.AdvanceToNextDay();
-                    if (floatingText != null && interactor != null)
-                    {
-                        floatingText.SpawnText(
-                            transform.position + Vector3.up * 1.2f,
-                            $"Day {timeService.CurrentDay} begins!",
-                            new Color(1f, 0.9f, 0.3f));
-                    }
-                    if (pc != null)
-                        pc.RemoveInputLock("BedSleep");
-                    UpdateLabel();
-                });
+                fadeService.FadeIn(fadeDuration);
+                yield return new WaitForSecondsRealtime(fadeDuration + 0.05f);
             }
             else
             {
-                timeService.AdvanceToNextDay();
-                if (pc != null)
-                    pc.RemoveInputLock("BedSleep");
-                UpdateLabel();
+                yield return null;
             }
+
+            // 2. Perform day advance behind the black curtain
+            if (interactor != null)
+            {
+                SafeClearBuffs(interactor);
+                SafeHeal(interactor, sleepHealAmount);
+            }
+
+            timeService.AdvanceToNextDay();
+
+            // Optional: Daily report if available
+            var dailyReport = ServiceLocator.Resolve<IDailyReportService>();
+            if (dailyReport != null)
+            {
+                bool reportClosed = false;
+                dailyReport.ShowReport(timeService.CurrentDay - 1, () => reportClosed = true);
+                while (!reportClosed) yield return null;
+            }
+
+            // 3. Smooth Fade Out from black screen back to morning
+            if (fadeService != null)
+            {
+                fadeService.FadeOut(fadeDuration);
+                yield return new WaitForSecondsRealtime(fadeDuration);
+            }
+
+            if (pc != null)
+            {
+                pc.RemoveInputLock("BedSleep");
+            }
+            UpdateLabel();
         }
 
         private void ExecuteDay0Sleep(ITimeService timeService, GameObject interactor)

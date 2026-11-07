@@ -129,7 +129,31 @@ namespace FeaturesWorkbench
         }
 
         /// <summary>
-        /// Checks whether the player possesses the Dummy Sword / Root Cleaver in inventory or hotbar.
+        /// Pure static validation helper ensuring only real combat weapons qualify (excluding hoes and plant waterers).
+        /// </summary>
+        public static bool IsValidCombatWeapon(ItemData item)
+        {
+            if (item == null) return false;
+            if (item is ToolItemData tool)
+            {
+                if (tool.isHoe) return false;
+                if (string.Equals(tool.itemId, "tool_plant_waterer", StringComparison.OrdinalIgnoreCase) ||
+                    (tool.itemName != null && tool.itemName.IndexOf("Water", StringComparison.OrdinalIgnoreCase) >= 0))
+                    return false;
+                if (tool.isWeapon || tool.isRangedWeapon) return true;
+            }
+            if (item.category == ItemCategory.Weapon) return true;
+            if (string.Equals(item.itemId, "tool_weapon_root_cleaver", StringComparison.OrdinalIgnoreCase)) return true;
+            if (string.Equals(item.itemId, "tool_weapon_corn_repeater", StringComparison.OrdinalIgnoreCase)) return true;
+            if (string.Equals(item.itemName, "Root Cleaver", StringComparison.OrdinalIgnoreCase)) return true;
+            if (string.Equals(item.itemName, "Homestead Slingshot", StringComparison.OrdinalIgnoreCase)) return true;
+            if (string.Equals(item.itemName, "Corn Cob Repeater", StringComparison.OrdinalIgnoreCase)) return true;
+            return false;
+        }
+
+        /// <summary>
+        /// Checks whether the player possesses a valid combat weapon (Root Cleaver or Slingshot) in inventory or equipped slot.
+        /// Strict invariant: Farming hoes and plant waterers NEVER count as combat weapons.
         /// </summary>
         public bool HasDummySword(InventoryComponent inv = null)
         {
@@ -146,15 +170,7 @@ namespace FeaturesWorkbench
             if (PlayerArmorUpgradeState.Instance != null)
             {
                 var equipped = PlayerArmorUpgradeState.Instance.GetEquippedItem(EquipmentSlotType.MainWeapon);
-                if (equipped != null &&
-                    ((equipped is ToolItemData eqTool && eqTool.isWeapon) ||
-                     string.Equals(equipped.itemId, "dummysword", StringComparison.OrdinalIgnoreCase) ||
-                     string.Equals(equipped.itemId, "tool_weapon_root_cleaver", StringComparison.OrdinalIgnoreCase) ||
-                     string.Equals(equipped.itemId, "tool_weapon_corn_repeater", StringComparison.OrdinalIgnoreCase) ||
-                     string.Equals(equipped.itemName, "Dummy Sword", StringComparison.OrdinalIgnoreCase) ||
-                     string.Equals(equipped.itemName, "Root Cleaver", StringComparison.OrdinalIgnoreCase) ||
-                     string.Equals(equipped.itemName, "Homestead Slingshot", StringComparison.OrdinalIgnoreCase) ||
-                     string.Equals(equipped.itemName, "Corn Cob Repeater", StringComparison.OrdinalIgnoreCase)))
+                if (equipped != null && IsValidCombatWeapon(equipped))
                 {
                     return true;
                 }
@@ -166,14 +182,7 @@ namespace FeaturesWorkbench
             {
                 if (slot != null && !slot.IsEmpty && slot.item != null)
                 {
-                    if ((slot.item is ToolItemData slotTool && slotTool.isWeapon) ||
-                        string.Equals(slot.item.itemId, "dummysword", StringComparison.OrdinalIgnoreCase) ||
-                        string.Equals(slot.item.itemId, "tool_weapon_root_cleaver", StringComparison.OrdinalIgnoreCase) ||
-                        string.Equals(slot.item.itemId, "tool_weapon_corn_repeater", StringComparison.OrdinalIgnoreCase) ||
-                        string.Equals(slot.item.itemName, "Dummy Sword", StringComparison.OrdinalIgnoreCase) ||
-                        string.Equals(slot.item.itemName, "Root Cleaver", StringComparison.OrdinalIgnoreCase) ||
-                        string.Equals(slot.item.itemName, "Homestead Slingshot", StringComparison.OrdinalIgnoreCase) ||
-                        string.Equals(slot.item.itemName, "Corn Cob Repeater", StringComparison.OrdinalIgnoreCase))
+                    if (IsValidCombatWeapon(slot.item))
                     {
                         return true;
                     }
@@ -218,9 +227,9 @@ namespace FeaturesWorkbench
         }
 
         /// <summary>
-        /// Selects the single active specialization path. Enforces the 1-path exclusivity rule.
+        /// Selects and commits to the single active specialization path. Enforces weapon ownership and Node 1 material/gold gating.
         /// </summary>
-        public bool SelectSpecialization(SpecializationPath path)
+        public bool SelectSpecialization(SpecializationPath path, InventoryComponent inv = null)
         {
             if (path == SpecializationPath.None) return false;
 
@@ -230,13 +239,54 @@ namespace FeaturesWorkbench
                 return false;
             }
 
-            activeSpecialization = path;
-            if (specializationNodeLevel == 0)
+            if (!HasDummySword(inv))
             {
-                specializationNodeLevel = 0; // ready to unlock node 1
+                Debug.LogWarning("[PlayerWeaponUpgradeState] Cannot commit specialization doctrine: Player does not possess weapon!");
+                return false;
             }
 
+            if (inv == null)
+            {
+                var player = GameObject.FindWithTag("Player") ?? GameObject.Find("Player");
+                if (player != null) inv = player.GetComponent<InventoryComponent>();
+            }
+
+            var node1 = EquipmentUpgradeEvaluator.GetNodeInfo(path, 1);
+            if (!string.IsNullOrEmpty(node1.RequiredMaterialId) && node1.RequiredMaterialCount > 0)
+            {
+                var db = ItemDatabase.Instance ?? Resources.Load<ItemDatabase>("Database/ItemDatabase");
+                var mat = db?.GetItem(node1.RequiredMaterialId);
+                int matCount = (mat != null && inv != null) ? inv.CountItem(mat) : 0;
+                if (matCount < node1.RequiredMaterialCount)
+                {
+                    Debug.LogWarning($"[PlayerWeaponUpgradeState] Cannot commit doctrine {path}: Requires {node1.RequiredMaterialCount}x {node1.RequiredMaterialId} (has {matCount})!");
+                    return false;
+                }
+            }
+
+            var wallet = ServiceLocator.Resolve<IWalletService>();
+            if (wallet != null && node1.GoldCost > 0 && !wallet.CanAfford(node1.GoldCost))
+            {
+                Debug.LogWarning($"[PlayerWeaponUpgradeState] Cannot commit doctrine {path}: Requires {node1.GoldCost} gold!");
+                return false;
+            }
+
+            activeSpecialization = path;
+            specializationNodeLevel = 0; // ready for Node 1 unlock
             RecalculateStats();
+
+            // Automatically unlock Node 1 using the materials & gold
+            bool unlockedNode1 = UpgradeActiveSpecialization(inv);
+            if (!unlockedNode1)
+            {
+                // If unlock failed, revert
+                activeSpecialization = SpecializationPath.None;
+                specializationNodeLevel = 0;
+                RecalculateStats();
+                OnUpgradesChanged?.Invoke();
+                return false;
+            }
+
             OnUpgradesChanged?.Invoke();
             return true;
         }
