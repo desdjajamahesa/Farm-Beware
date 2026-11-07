@@ -16,9 +16,9 @@ MonoBehaviour:
   recipeName: Taro Corn Stew
   ingredients:
   - item: {fileID: 11400000, guid: 0b3f64f5cc4e73e4d8acc8ee24d96fda, type: 2}
-    quantity: 4
+    quantity: 1
   - item: {fileID: 11400000, guid: c55242fdf6330d84ea289b07c31b6e10, type: 2}
-    quantity: 3
+    quantity: 1
   - item: {fileID: 11400000, guid: 18736835b0621ad478537e2fa98f4c07, type: 2}
     quantity: 1
   recipeIcon: {fileID: 21300000, guid: 186c5f2f01914b54da6f2c1678567b6a, type: 3}

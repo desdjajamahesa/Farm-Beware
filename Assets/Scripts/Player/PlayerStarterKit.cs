@@ -3,17 +3,17 @@ using FarmBeware.Core.Runtime;
 using FeaturesFarming;
 using FeaturesKitchen;
 using FeaturesEconomy;
+using FeaturesWorkbench;
 
 namespace Player
 {
     /// <summary>
-    /// Guarantees that the player starts with the official MVP starter kit:
+    /// Guarantees that on Day 1+ the Storage Chest contains the official starter farming kit:
     /// - Slot 0: Hoe (Tool_Hoe)
     /// - Slot 1: Plant Waterer (Tool_PlantWaterer 100L)
     /// - Slot 2: Bottle of Water (Food_BottleOfWater 4 charges)
-    /// - Slot 3: 6x Sweet Potato Seeds (Seed_SweetPotato)
-    /// - Dummy Sword is NOT in starter kit; must be bought from merchant table.
-    /// - Full capacity for PlantWaterer and PlayerWaterBottle.
+    /// - Slot 3: 3x Sweet Potato Seeds (Seed_SweetPotato)
+    /// Combat armor and slingshot must be earned, crafted at Workbench, or purchased from Merchant.
     /// </summary>
     public class PlayerStarterKit : MonoBehaviour
     {
@@ -22,7 +22,18 @@ namespace Player
         [SerializeField] private ItemData plantWatererItem;
         [SerializeField] private ItemData waterBottleItem;
         [SerializeField] private ItemData sweetPotatoSeedItem;
-        [SerializeField] private int starterSeedCount = 6;
+        [SerializeField] private int starterSeedCount = 3;
+
+        [Header("Day 1 Combat & Armor Starter Pack (Auto-loaded if null)")]
+        [SerializeField] private ItemData slingshotItem;
+        [SerializeField] private ItemData burrowHoodItem;
+        [SerializeField] private ItemData swiftRootArmorItem;
+        [SerializeField] private ItemData fangGripsItem;
+        [SerializeField] private ItemData undergroundStridersItem;
+        [SerializeField] private ItemData sweetPotatoHeartItem;
+
+        [Header("Target Storage Chest (Auto-found if null)")]
+        [SerializeField] private InventoryComponent storageChestInventory;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void AutoAttachToPlayer()
@@ -34,17 +45,191 @@ namespace Player
             }
         }
 
+        private void OnEnable()
+        {
+            SubscribeTimeEvents();
+        }
+
         private void Start()
         {
+            SubscribeTimeEvents();
             EnsureStarterKit();
         }
 
+        private void OnDisable()
+        {
+            UnsubscribeTimeEvents();
+        }
+
+        private void OnDestroy()
+        {
+            UnsubscribeTimeEvents();
+        }
+
+        private void SubscribeTimeEvents()
+        {
+            if (ServiceLocator.TryResolve<ITimeService>(out var timeService) && timeService != null)
+            {
+                timeService.OnDayChanged -= HandleDayChanged;
+                timeService.OnDayChanged += HandleDayChanged;
+            }
+            if (FeaturesTime.DayNightTimeManager.Instance != null)
+            {
+                FeaturesTime.DayNightTimeManager.Instance.OnDayChanged -= HandleDayChanged;
+                FeaturesTime.DayNightTimeManager.Instance.OnDayChanged += HandleDayChanged;
+            }
+            if (TimeManager.Instance != null)
+            {
+                TimeManager.Instance.OnDayChanged -= HandleDayChanged;
+                TimeManager.Instance.OnDayChanged += HandleDayChanged;
+            }
+        }
+
+        private void UnsubscribeTimeEvents()
+        {
+            if (ServiceLocator.TryResolve<ITimeService>(out var timeService) && timeService != null)
+            {
+                timeService.OnDayChanged -= HandleDayChanged;
+            }
+            if (FeaturesTime.DayNightTimeManager.Instance != null)
+            {
+                FeaturesTime.DayNightTimeManager.Instance.OnDayChanged -= HandleDayChanged;
+            }
+            if (TimeManager.Instance != null)
+            {
+                TimeManager.Instance.OnDayChanged -= HandleDayChanged;
+            }
+        }
+
+        private void HandleDayChanged(int newDay)
+        {
+            if (newDay >= 1)
+            {
+                EnsureStarterKit(newDay);
+            }
+        }
+
+        public void SetTargetStorageChest(InventoryComponent chestInv)
+        {
+            storageChestInventory = chestInv;
+        }
+
+        public InventoryComponent FindTargetStorageChest()
+        {
+            if (storageChestInventory != null) return storageChestInventory;
+
+            var storageInteractables = UnityEngine.Object.FindObjectsByType<FeaturesInteraction.StorageInteractable>(
+                UnityEngine.FindObjectsInactive.Include, UnityEngine.FindObjectsSortMode.None);
+
+            if (storageInteractables != null)
+            {
+                foreach (var storage in storageInteractables)
+                {
+                    if (storage != null && storage.name.Contains("StorageChest"))
+                    {
+                        var inv = storage.GetComponent<InventoryComponent>();
+                        if (inv != null)
+                        {
+                            storageChestInventory = inv;
+                            return storageChestInventory;
+                        }
+                    }
+                }
+
+                if (storageInteractables.Length > 0 && storageInteractables[0] != null)
+                {
+                    var inv = storageInteractables[0].GetComponent<InventoryComponent>();
+                    if (inv != null)
+                    {
+                        storageChestInventory = inv;
+                        return storageChestInventory;
+                    }
+                }
+            }
+
+            var chestGo = UnityEngine.GameObject.Find("StorageChest");
+            if (chestGo != null)
+            {
+                var inv = chestGo.GetComponent<InventoryComponent>();
+                if (inv != null)
+                {
+                    storageChestInventory = inv;
+                    return storageChestInventory;
+                }
+            }
+
+            return null;
+        }
+
         public void EnsureStarterKit()
+        {
+            int currentDay = 0;
+            if (ServiceLocator.TryResolve<ITimeService>(out var timeService) && timeService != null)
+            {
+                currentDay = timeService.CurrentDay;
+            }
+            else if (FeaturesTime.DayNightTimeManager.Instance != null)
+            {
+                currentDay = FeaturesTime.DayNightTimeManager.Instance.CurrentDay;
+            }
+            else if (TimeManager.Instance != null)
+            {
+                currentDay = TimeManager.Instance.currentDay;
+            }
+
+            EnsureStarterKit(currentDay);
+        }
+
+        public void EnsureStarterKit(int currentDay)
         {
             var inv = GetComponent<InventoryComponent>();
             if (inv == null) return;
 
             ResolveItemReferences();
+
+            if (inv.maxCapacity < 16) inv.maxCapacity = 16;
+            inv.EnsureSlotsAllocated();
+
+            // On Day 0: Player arrives with completely empty pockets and clean storage chest per narrative design.
+            if (currentDay == 0)
+            {
+                if (inv.slots != null)
+                {
+                    for (int i = 0; i < inv.slots.Count; i++)
+                    {
+                        inv.slots[i] = new InventorySlot();
+                    }
+                }
+                inv.selectedHotbarIndex = 0;
+                var equip = GetComponent<PlayerEquipment>();
+                if (equip != null)
+                {
+                    equip.DestroyCurrentWeapon();
+                    equip.UpdateEquipmentVisual(0);
+                }
+                inv.OnInventoryChanged?.Invoke();
+
+                // Ensure Storage Chest is completely cleared on Day 0
+                var targetChestDay0 = FindTargetStorageChest();
+                if (targetChestDay0 != null && targetChestDay0.slots != null)
+                {
+                    for (int i = 0; i < targetChestDay0.slots.Count; i++)
+                    {
+                        targetChestDay0.slots[i] = new InventorySlot();
+                    }
+                    targetChestDay0.OnInventoryChanged?.Invoke();
+                }
+                return;
+            }
+
+            // On Day 1+: Player wakes up with empty hands/pockets.
+            // Starter tools, Homestead Slingshot, and Sweet Potato Armor set are stored in the Storage Chest.
+            var targetChest = FindTargetStorageChest();
+            if (targetChest != null)
+            {
+                PopulateStorageChest(targetChest);
+            }
+            PopulateRefrigerator();
 
             // Cleanse any accidental Mat_MutatedRoot
             var db = Resources.Load<ItemDatabase>("Database/ItemDatabase");
@@ -57,34 +242,7 @@ namespace Player
                 }
             }
 
-            // 1. Check if hotbar is completely uninitialized or empty
-            bool isEmptyInventory = true;
-            if (inv.slots != null)
-            {
-                foreach (var slot in inv.slots)
-                {
-                    if (slot != null && !slot.IsEmpty)
-                    {
-                        isEmptyInventory = false;
-                        break;
-                    }
-                }
-            }
-
-            if (isEmptyInventory)
-            {
-                PopulateFreshSlots(inv);
-            }
-            else
-            {
-                // Fallback guarantee: if individual key tools are completely missing, add them safely
-                if (hoeItem != null && inv.CountItem(hoeItem) == 0) inv.AddItem(hoeItem, 1);
-                if (plantWatererItem != null && inv.CountItem(plantWatererItem) == 0) inv.AddItem(plantWatererItem, 1);
-                if (waterBottleItem != null && inv.CountItem(waterBottleItem) == 0) inv.AddItem(waterBottleItem, 1);
-                if (sweetPotatoSeedItem != null && inv.CountItem(sweetPotatoSeedItem) == 0) inv.AddItem(sweetPotatoSeedItem, starterSeedCount);
-            }
-
-            // 2. Ensure water tool states
+            // Ensure water tool states
             if (PlantWaterer.Instance != null && PlantWaterer.Instance.CurrentWater <= 0f)
             {
                 PlantWaterer.Instance.RefillWater(-1f);
@@ -93,16 +251,121 @@ namespace Player
             {
                 PlayerWaterBottle.Instance.RefillWater(-1f);
             }
+
+            // Ensure player hotbar slot 0 is selected and weapon visual is cleared (player holds nothing upon waking)
+            inv.selectedHotbarIndex = 0;
+            var playerEquip = GetComponent<PlayerEquipment>();
+            if (playerEquip != null)
+            {
+                playerEquip.DestroyCurrentWeapon();
+                playerEquip.UpdateEquipmentVisual(0);
+            }
+
+            inv.OnInventoryChanged?.Invoke();
         }
 
-        private void PopulateFreshSlots(InventoryComponent inv)
+        public void PopulateStorageChest(InventoryComponent chestInv)
         {
-            if (inv.slots == null || inv.slots.Count < 4) return;
+            if (chestInv == null) return;
+            ResolveItemReferences();
 
-            if (hoeItem != null) inv.slots[0] = new InventorySlot(hoeItem, 1);
-            if (plantWatererItem != null) inv.slots[1] = new InventorySlot(plantWatererItem, 1);
-            if (waterBottleItem != null) inv.slots[2] = new InventorySlot(waterBottleItem, 1);
-            if (sweetPotatoSeedItem != null) inv.slots[3] = new InventorySlot(sweetPotatoSeedItem, starterSeedCount);
+            if (chestInv.maxCapacity < 16) chestInv.maxCapacity = 16;
+            chestInv.EnsureSlotsAllocated();
+
+            var playerInv = GetComponent<InventoryComponent>();
+            var armorState = GetComponent<PlayerArmorUpgradeState>() ?? PlayerArmorUpgradeState.Instance;
+
+            // Sanitize chest: Slingshot, weapons, and armor must be crafted or bought, never free in starter chest
+            if (chestInv.slots != null)
+            {
+                for (int i = 0; i < chestInv.slots.Count; i++)
+                {
+                    var s = chestInv.slots[i];
+                    if (s != null && !s.IsEmpty && s.item != null)
+                    {
+                        string id = s.item.itemId;
+                        if (string.Equals(id, "tool_weapon_corn_repeater", System.StringComparison.OrdinalIgnoreCase) ||
+                            string.Equals(id, "dummysword", System.StringComparison.OrdinalIgnoreCase) ||
+                            string.Equals(id, "tool_weapon_root_cleaver", System.StringComparison.OrdinalIgnoreCase) ||
+                            s.item is EquipmentItemData ||
+                            s.item.category == ItemCategory.Weapon)
+                        {
+                            chestInv.slots[i] = new InventorySlot();
+                        }
+                    }
+                }
+            }
+
+            // 1. Core Starter Farming Pack (Slots 0..3)
+            TryAddStarterItemToChest(chestInv, playerInv, armorState, hoeItem, 1);
+            TryAddStarterItemToChest(chestInv, playerInv, armorState, plantWatererItem, 1);
+            TryAddStarterItemToChest(chestInv, playerInv, armorState, waterBottleItem, 1);
+            TryAddStarterItemToChest(chestInv, playerInv, armorState, sweetPotatoSeedItem, starterSeedCount);
+
+            chestInv.OnInventoryChanged?.Invoke();
+        }
+
+        private static void TryAddStarterItemToChest(
+            InventoryComponent chestInv,
+            InventoryComponent playerInv,
+            PlayerArmorUpgradeState armorState,
+            ItemData item,
+            int quantity)
+        {
+            if (item == null || chestInv == null || quantity <= 0) return;
+
+            if (chestInv.CountItem(item) > 0) return;
+            if (playerInv != null && playerInv.CountItem(item) > 0) return;
+            if (IsItemCurrentlyEquipped(armorState, item)) return;
+
+            chestInv.AddItem(item, quantity);
+        }
+
+        private static bool IsItemCurrentlyEquipped(PlayerArmorUpgradeState armorState, ItemData item)
+        {
+            if (armorState == null || item == null) return false;
+            foreach (EquipmentSlotType st in System.Enum.GetValues(typeof(EquipmentSlotType)))
+            {
+                var eq = armorState.GetEquippedItem(st);
+                if (eq != null && (eq == item || string.Equals(eq.itemId, item.itemId, System.StringComparison.OrdinalIgnoreCase)))
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        public void PopulateRefrigerator(InventoryComponent fridgeInv = null)
+        {
+            if (fridgeInv == null)
+            {
+                var fridge = UnityEngine.Object.FindFirstObjectByType<RefrigeratorInteractable>(
+                    UnityEngine.FindObjectsInactive.Include);
+                if (fridge != null)
+                {
+                    fridgeInv = fridge.GetComponent<InventoryComponent>();
+                }
+            }
+
+            if (fridgeInv == null) return;
+
+            var db = Resources.Load<ItemDatabase>("Database/ItemDatabase");
+            if (db == null) return;
+
+            var taroItem = db.GetItem("crop_taro");
+            var coconutItem = db.GetItem("mat_coconut");
+            var playerInv = GetComponent<InventoryComponent>();
+
+            if (taroItem != null && fridgeInv.CountItem(taroItem) == 0 && (playerInv == null || playerInv.CountItem(taroItem) == 0))
+            {
+                fridgeInv.AddItem(taroItem, 1);
+            }
+            if (coconutItem != null && fridgeInv.CountItem(coconutItem) == 0 && (playerInv == null || playerInv.CountItem(coconutItem) == 0))
+            {
+                fridgeInv.AddItem(coconutItem, 1);
+            }
+
+            fridgeInv.OnInventoryChanged?.Invoke();
         }
 
         private void ResolveItemReferences()
@@ -114,7 +377,29 @@ namespace Player
                 if (plantWatererItem == null) plantWatererItem = db.GetItem("tool_plant_waterer");
                 if (waterBottleItem == null) waterBottleItem = db.GetItem("food_bottle_water");
                 if (sweetPotatoSeedItem == null) sweetPotatoSeedItem = db.GetItem("seed_sweet_potato");
+
+                if (slingshotItem == null) slingshotItem = db.GetItem("tool_weapon_corn_repeater");
+                if (burrowHoodItem == null) burrowHoodItem = db.GetItem("item_burrow_hood");
+                if (swiftRootArmorItem == null) swiftRootArmorItem = db.GetItem("item_swift_root_armor");
+                if (fangGripsItem == null) fangGripsItem = db.GetItem("item_fang_grips");
+                if (undergroundStridersItem == null) undergroundStridersItem = db.GetItem("item_underground_striders");
+                if (sweetPotatoHeartItem == null) sweetPotatoHeartItem = db.GetItem("item_sweet_potato_heart");
             }
+
+#if UNITY_EDITOR
+            if (slingshotItem == null)
+                slingshotItem = UnityEditor.AssetDatabase.LoadAssetAtPath<ItemData>("Assets/Data/Items/Equipment/Tool_CornRepeater.asset");
+            if (burrowHoodItem == null)
+                burrowHoodItem = UnityEditor.AssetDatabase.LoadAssetAtPath<ItemData>("Assets/Data/Items/Equipment/item_burrow_hood.asset");
+            if (swiftRootArmorItem == null)
+                swiftRootArmorItem = UnityEditor.AssetDatabase.LoadAssetAtPath<ItemData>("Assets/Data/Items/Equipment/item_swift_root_armor.asset");
+            if (fangGripsItem == null)
+                fangGripsItem = UnityEditor.AssetDatabase.LoadAssetAtPath<ItemData>("Assets/Data/Items/Equipment/item_fang_grips.asset");
+            if (undergroundStridersItem == null)
+                undergroundStridersItem = UnityEditor.AssetDatabase.LoadAssetAtPath<ItemData>("Assets/Data/Items/Equipment/item_underground_striders.asset");
+            if (sweetPotatoHeartItem == null)
+                sweetPotatoHeartItem = UnityEditor.AssetDatabase.LoadAssetAtPath<ItemData>("Assets/Data/Items/Equipment/item_sweet_potato_heart.asset");
+#endif
         }
     }
 }

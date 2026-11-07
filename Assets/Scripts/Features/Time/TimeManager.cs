@@ -38,6 +38,8 @@ public class TimeManager : MonoBehaviour
     public bool isNightEncounterCleared { get; set; } = false;
 
     // Event sinyal (data-driven) untuk listener UI/backend lain.
+    public static event Action<int> OnAnyDayChanged;
+    public static event Action<DayPhase> OnAnyPhaseChanged;
     public event Action<int> OnDayChanged;
     public event Action<DayPhase> OnPhaseChanged;
 
@@ -51,6 +53,11 @@ public class TimeManager : MonoBehaviour
         }
 
         Instance = this;
+
+        if (FarmBeware.Core.Runtime.GameSessionState.IsPendingNewGameIntroCutscene)
+        {
+            currentDay = 0;
+        }
     }
 
     private void OnDestroy()
@@ -71,7 +78,9 @@ public class TimeManager : MonoBehaviour
         isNightEncounterCleared = false;
 
         OnDayChanged?.Invoke(currentDay);
+        OnAnyDayChanged?.Invoke(currentDay);
         OnPhaseChanged?.Invoke(currentPhase);
+        OnAnyPhaseChanged?.Invoke(currentPhase);
 
         Debug.Log($"Day changed to {currentDay}, Phase: {currentPhase}");
     }
@@ -85,6 +94,7 @@ public class TimeManager : MonoBehaviour
         currentPhase = DayPhase.Night;
         isNightEncounterCleared = false;
         OnPhaseChanged?.Invoke(currentPhase);
+        OnAnyPhaseChanged?.Invoke(currentPhase);
 
         Debug.Log($"Phase changed to {currentPhase} (Night Brawl begins!)");
     }
@@ -101,15 +111,22 @@ public class TimeManager : MonoBehaviour
     /// Invoking it on load erroneously triggers DayTransitionUI ('Morning' banner), FarmingManager (advancing crop days),
     /// and DailyEconomyManager (resetting stats).
     /// </summary>
-    public void SetTimeState(int day, DayPhase phase, bool cleared, bool notifyPhaseChanged = false)
+    public void SetTimeState(int day, DayPhase phase, bool cleared, bool notifyPhaseChanged = false, bool notifyDayChanged = false)
     {
-        currentDay = Mathf.Max(1, day);
+        currentDay = Mathf.Max(0, day);
         currentPhase = phase;
         isNightEncounterCleared = cleared;
+
+        if (notifyDayChanged)
+        {
+            OnDayChanged?.Invoke(currentDay);
+            OnAnyDayChanged?.Invoke(currentDay);
+        }
 
         if (notifyPhaseChanged)
         {
             OnPhaseChanged?.Invoke(currentPhase);
+            OnAnyPhaseChanged?.Invoke(currentPhase);
         }
     }
 }

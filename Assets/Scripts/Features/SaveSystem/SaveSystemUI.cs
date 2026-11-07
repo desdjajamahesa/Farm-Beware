@@ -197,7 +197,7 @@ namespace FeaturesSaveSystem
             if (playerCtx != null)
             {
                 playerCtx.StopMovement();
-                playerCtx.IsInputLocked = true;
+                playerCtx.AddInputLock("SaveSystemUI");
             }
 
             Cursor.visible = true;
@@ -276,7 +276,7 @@ namespace FeaturesSaveSystem
             var closePlayerCtx = FarmBeware.Core.Runtime.ServiceLocator.Resolve<FarmBeware.Core.Runtime.IPlayerContext>();
             if (closePlayerCtx != null)
             {
-                closePlayerCtx.IsInputLocked = false;
+                closePlayerCtx.RemoveInputLock("SaveSystemUI");
             }
 
             Cursor.visible = true;
@@ -307,7 +307,7 @@ namespace FeaturesSaveSystem
                 {
                     SaveSystemManager.PendingSaveIdToLoad = null;
                     Close();
-                    UnityEngine.SceneManagement.SceneManager.LoadScene("StagingScene");
+                    UnityEngine.SceneManagement.SceneManager.LoadScene("MainScene");
                 }
                 return;
             }
@@ -561,7 +561,7 @@ namespace FeaturesSaveSystem
                 {
                     SaveSystemManager.Instance.SetLastPlayedSaveId(saveId);
                 }
-                Debug.Log($"[SaveSystemUI] Main Menu loading selected save '{saveId}', transitioning to StagingScene...");
+                Debug.Log($"[SaveSystemUI] Main Menu loading selected save '{saveId}', transitioning to MainScene...");
                 Close();
 
                 var fade = ServiceLocator.Resolve<IFadeService>();
@@ -569,12 +569,12 @@ namespace FeaturesSaveSystem
                 {
                     fade.FadeIn(0.4f, () =>
                     {
-                        UnityEngine.SceneManagement.SceneManager.LoadScene("StagingScene");
+                        UnityEngine.SceneManagement.SceneManager.LoadScene("MainScene");
                     });
                 }
                 else
                 {
-                    UnityEngine.SceneManagement.SceneManager.LoadScene("StagingScene");
+                    UnityEngine.SceneManagement.SceneManager.LoadScene("MainScene");
                 }
                 return;
             }

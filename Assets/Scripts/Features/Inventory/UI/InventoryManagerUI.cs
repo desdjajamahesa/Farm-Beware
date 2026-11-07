@@ -163,9 +163,20 @@ public class InventoryManagerUI : MonoBehaviour, IModalWindow
             playerInventory.EnsureSlotsAllocated();
         }
 
-        // Ensure hotbar is visible at start
+        // Ensure hotbar is visible at start only when allowed by game phase
         if (playerHotbarContainer != null)
-            playerHotbarContainer.gameObject.SetActive(true);
+            playerHotbarContainer.gameObject.SetActive(ShouldHotbarBeVisible());
+
+        // Dynamic listeners for game phase & cutscene state changes
+        if (ServiceLocator.TryResolve<ITimeService>(out var timeService) && timeService != null)
+        {
+            timeService.OnDayChanged += HandleDayChangedForHotbar;
+        }
+
+        if (ServiceLocator.TryResolve<ICutsceneService>(out var cutsceneService) && cutsceneService != null)
+        {
+            cutsceneService.OnCutsceneEnded += HandleCutsceneEndedForHotbar;
+        }
 
         displayLeftInventory = playerInventory;
         BuildPlayerSlots();
@@ -175,6 +186,43 @@ public class InventoryManagerUI : MonoBehaviour, IModalWindow
         // Tampilkan highlight awal di hotbar slot 0.
         if (playerInventory != null)
             playerInventory.SelectHotbarSlot(0);
+    }
+
+
+    private void HandleDayChangedForHotbar(int day)
+    {
+        if (playerHotbarContainer != null)
+            playerHotbarContainer.gameObject.SetActive(ShouldHotbarBeVisible());
+    }
+
+    private void HandleCutsceneEndedForHotbar()
+    {
+        if (playerHotbarContainer != null)
+            playerHotbarContainer.gameObject.SetActive(ShouldHotbarBeVisible());
+    }
+
+    /// <summary>
+    /// Evaluates whether the player hotbar HUD should be visible based on cutscene, day phase, and modal states.
+    /// Strictly suppressed during active cutscenes and throughout Day 0.
+    /// </summary>
+    public bool ShouldHotbarBeVisible()
+    {
+        // 1. Suppress if opening or timeline cutscene is playing
+        if (ServiceLocator.TryResolve<ICutsceneService>(out var cutsceneService) && cutsceneService != null)
+        {
+            if (cutsceneService.IsCutscenePlaying) return false;
+        }
+
+        // 2. Suppress on Day 0 (homestead arrival)
+        if (ServiceLocator.TryResolve<ITimeService>(out var timeService) && timeService != null)
+        {
+            if (timeService.CurrentDay == 0) return false;
+        }
+
+        // 3. Suppress during special exclusive modes
+        if (isTrophyCabinetMode) return false;
+
+        return true;
     }
 
     /// <summary>
@@ -235,22 +283,25 @@ public class InventoryManagerUI : MonoBehaviour, IModalWindow
         // TAB / I key closes player inventory if open
         if (Keyboard.current != null && (Keyboard.current.tabKey.wasPressedThisFrame || Keyboard.current.iKey.wasPressedThisFrame))
         {
-            if (Time.frameCount != frameInventoryOpened && (isPlayerOpen || IsAnyInventoryUIRelatedOpen()))
+            if (Time.frameCount != frameInventoryOpened && Time.frameCount != UIModalHelper.LastFrameUIPanelClosed && (isPlayerOpen || IsAnyInventoryUIRelatedOpen()))
             {
-                if (currentStorageInventory != null || isTrophyCabinetMode)
-                {
-                    CloseAllUI();
-                }
-                else
-                {
-                    TogglePlayerInventory();
-                }
+                CloseAllUI();
             }
         }
     }
 
     void OnDestroy()
     {
+        if (ServiceLocator.TryResolve<ITimeService>(out var timeService) && timeService != null)
+        {
+            timeService.OnDayChanged -= HandleDayChangedForHotbar;
+        }
+
+        if (ServiceLocator.TryResolve<ICutsceneService>(out var cutsceneService) && cutsceneService != null)
+        {
+            cutsceneService.OnCutsceneEnded -= HandleCutsceneEndedForHotbar;
+        }
+
         if (playerInventory != null)
         {
             playerInventory.OnInventoryChanged -= OnInventoryChanged;
@@ -309,6 +360,7 @@ public class InventoryManagerUI : MonoBehaviour, IModalWindow
         else
         {
             ModalStackManager.Instance?.PopSpecific(this);
+            UIModalHelper.LastFrameUIPanelClosed = Time.frameCount;
         }
 
         if (playerPanel != null)
@@ -342,12 +394,20 @@ public class InventoryManagerUI : MonoBehaviour, IModalWindow
 
         if (isPlayerOpen && playerStatsPanel != null)
         {
-            playerStatsPanel.SendMessage("UpdateAllStats", SendMessageOptions.DontRequireReceiver);
+            var statsUI = playerStatsPanel.GetComponent("PlayerStatsDisplayUI");
+            if (statsUI != null)
+            {
+                statsUI.GetType().GetMethod("UpdateAllStats", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance)?.Invoke(statsUI, null);
+            }
+            else if (Application.isPlaying && playerStatsPanel.activeInHierarchy)
+            {
+                playerStatsPanel.SendMessage("UpdateAllStats", SendMessageOptions.DontRequireReceiver);
+            }
         }
 
-        // Ensure hotbar is visible when player inventory is open
-        if (isPlayerOpen && playerHotbarContainer != null)
-            playerHotbarContainer.gameObject.SetActive(true);
+        // Ensure hotbar visibility respects game phase and cutscene state
+        if (playerHotbarContainer != null)
+            playerHotbarContainer.gameObject.SetActive(ShouldHotbarBeVisible());
 
         // Show/hide item details container
         if (itemDetailsContainer != null)
@@ -491,7 +551,7 @@ if (customPanel != null)
             }
 
         if (playerHotbarContainer != null)
-            playerHotbarContainer.gameObject.SetActive(true);
+            playerHotbarContainer.gameObject.SetActive(ShouldHotbarBeVisible());
 
         if (itemDetailsContainer != null)
             itemDetailsContainer.SetActive(true);
@@ -630,6 +690,7 @@ if (customPanel != null)
     {
         isPlayerOpen = false;
         ModalStackManager.Instance?.PopSpecific(this);
+        UIModalHelper.LastFrameUIPanelClosed = Time.frameCount;
 
         // Close all panels
         if (playerPanel != null) playerPanel.SetActive(false);
@@ -641,9 +702,9 @@ if (customPanel != null)
         if (equipmentPanel != null) equipmentPanel.SetActive(false);
 
 
-        // ALWAYS ensure hotbar is visible when closing all UI
+        // Ensure hotbar visibility respects game phase and cutscene state
         if (playerHotbarContainer != null)
-            playerHotbarContainer.gameObject.SetActive(true);
+            playerHotbarContainer.gameObject.SetActive(ShouldHotbarBeVisible());
 
         UnsubscribeRight();
         UnsubscribeCabinet();
@@ -654,7 +715,7 @@ if (customPanel != null)
             isTrophyCabinetMode = false;
 
             if (playerHotbarContainer != null)
-                playerHotbarContainer.gameObject.SetActive(true);
+                playerHotbarContainer.gameObject.SetActive(ShouldHotbarBeVisible());
 
             displayLeftInventory = playerInventory;
             BuildPlayerSlots();
@@ -728,7 +789,7 @@ if (customPanel != null)
                     {
                         string buffDesc = !string.IsNullOrEmpty(buff.description) ? buff.description : buff.buffName;
                         sb.AppendLine();
-                        sb.Append($"<color=#FBBF24>✦ {buffDesc} ({buff.duration}s)</color>");
+                        sb.Append($"<color=#FBBF24>• {buffDesc} ({buff.duration}s)</color>");
                     }
                 }
                 detailItemDesc.text = sb.ToString();

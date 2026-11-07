@@ -50,6 +50,33 @@ namespace FeaturesCombat.Core.PureLogic
             float attackRange,
             out MonsterTacticalState calculatedState)
         {
+            return EvaluateMovement(
+                enemyPos,
+                targetPos,
+                distanceToTarget,
+                hasAttackToken,
+                isRanged,
+                entityId,
+                attackRange,
+                isAttackReady: false,
+                out calculatedState);
+        }
+
+        /// <summary>
+        /// Evaluates movement with explicit attack readiness. If entity is ready to strike,
+        /// avoids endless FlankOrbit and drives EngageDirect to claim tokens and strike.
+        /// </summary>
+        public Vector3 EvaluateMovement(
+            Vector3 enemyPos,
+            Vector3 targetPos,
+            float distanceToTarget,
+            bool hasAttackToken,
+            bool isRanged,
+            int entityId,
+            float attackRange,
+            bool isAttackReady,
+            out MonsterTacticalState calculatedState)
+        {
             Vector3 toTarget = targetPos - enemyPos;
             toTarget.y = 0f;
 
@@ -84,14 +111,14 @@ namespace FeaturesCombat.Core.PureLogic
             }
 
             // 2. Melee Specialist Behavior (Tuber Maw, Taro Brute, Taro Colossus)
-            if (hasAttackToken)
+            if (hasAttackToken || isAttackReady)
             {
-                // Has attack permit: Charge directly to player to initiate telegraphed strike
+                // Has attack permit or cooldown is ready to strike: Charge directly to player!
                 calculatedState = MonsterTacticalState.EngageDirect;
                 return directDir;
             }
 
-            // No attack token: Check distance to combat ring
+            // No attack token and not attack-ready: Check distance to combat ring
             if (distanceToTarget > OrbitMaxRadius)
             {
                 // Outside combat ring: Approach the orbit zone
@@ -101,7 +128,7 @@ namespace FeaturesCombat.Core.PureLogic
 
             // Inside combat ring and waiting for attack token: Flank and circle around player!
             calculatedState = MonsterTacticalState.FlankOrbit;
-            return CalculateOrbitDirection(directDir, distanceToTarget, entityId);
+            return CalculateOrbitDirection(directDir, distanceToTarget, entityId, OrbitMinRadius, OrbitMaxRadius);
         }
 
         /// <summary>
@@ -110,13 +137,21 @@ namespace FeaturesCombat.Core.PureLogic
         /// </summary>
         public Vector3 CalculateOrbitDirection(Vector3 directDirToTarget, float currentDist, int entityId)
         {
+            return CalculateOrbitDirection(directDirToTarget, currentDist, entityId, OrbitMinRadius, OrbitMaxRadius);
+        }
+
+        /// <summary>
+        /// Overload with dynamic min and max orbit radii.
+        /// </summary>
+        public Vector3 CalculateOrbitDirection(Vector3 directDirToTarget, float currentDist, int entityId, float minRadius, float maxRadius)
+        {
             float directionSign = ((entityId & 1) == 0) ? 1.0f : -1.0f;
 
             // Tangent perpendicular to line of sight (X-Z plane)
             Vector3 tangent = new Vector3(-directDirToTarget.z, 0f, directDirToTarget.x) * directionSign;
 
-            // Radial bias to keep distance within [OrbitMinRadius, OrbitMaxRadius]
-            float midRadius = (OrbitMinRadius + OrbitMaxRadius) * 0.5f;
+            // Radial bias to keep distance within [minRadius, maxRadius]
+            float midRadius = (minRadius + maxRadius) * 0.5f;
             float radialOffset = currentDist - midRadius;
             Vector3 radialCorrection = directDirToTarget * Mathf.Clamp(radialOffset * 0.45f, -0.75f, 0.75f);
 

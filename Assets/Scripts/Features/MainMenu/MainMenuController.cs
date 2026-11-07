@@ -55,7 +55,7 @@ public class MainMenuController : MonoBehaviour
 
     [Header("Scene Transition")]
     [Tooltip("Target gameplay scene to load when Start Game is clicked.")]
-    [SerializeField] private string targetSceneName = "StagingScene";
+    [SerializeField] private string targetSceneName = "MainScene";
     [Tooltip("Whether to load the target scene when the menu fades out.")]
     [SerializeField] private bool loadSceneOnStart = true;
 
@@ -296,9 +296,16 @@ public class MainMenuController : MonoBehaviour
         // If Main Menu is Hidden (gameplay active)
         if (currentState == MenuState.Hidden)
         {
-            // 1. If a gameplay UI panel was already closed on this exact frame, DO NOT pause!
+            // 1. If a gameplay UI panel or cutscene was already closed/skipped on this exact frame, DO NOT pause!
             if (Time.frameCount == LastFrameUIPanelClosed || Time.frameCount == FarmBeware.Core.Runtime.UIModalHelper.LastFrameUIPanelClosed)
             {
+                return;
+            }
+
+            // 1a. If any cinematic cutscene is currently playing, ESC skips the cutscene and MUST NOT open Pause Menu!
+            if (TrySkipActiveCutscene())
+            {
+                LastFrameUIPanelClosed = Time.frameCount;
                 return;
             }
 
@@ -317,6 +324,34 @@ public class MainMenuController : MonoBehaviour
 
             ShowMenu(isPause: true);
         }
+    }
+
+    private bool TrySkipActiveCutscene()
+    {
+        if (FarmBeware.Core.Runtime.ServiceLocator.TryResolve<FarmBeware.Core.Runtime.ICutsceneService>(out var cutsceneService) &&
+            cutsceneService != null && cutsceneService.IsCutscenePlaying)
+        {
+            cutsceneService.SkipCurrentCutscene();
+            return true;
+        }
+
+        if (FeaturesStoryline.Cutscenes.OpeningCutsceneController.HasInstance &&
+            FeaturesStoryline.Cutscenes.OpeningCutsceneController.Instance != null &&
+            FeaturesStoryline.Cutscenes.OpeningCutsceneController.Instance.IsCutscenePlaying)
+        {
+            FeaturesStoryline.Cutscenes.OpeningCutsceneController.Instance.SkipCurrentCutscene();
+            return true;
+        }
+
+        if (FeaturesStoryline.Cutscenes.Night1CutsceneController.HasInstance &&
+            FeaturesStoryline.Cutscenes.Night1CutsceneController.Instance != null &&
+            FeaturesStoryline.Cutscenes.Night1CutsceneController.Instance.IsCutscenePlaying)
+        {
+            FeaturesStoryline.Cutscenes.Night1CutsceneController.Instance.SkipCurrentCutscene();
+            return true;
+        }
+
+        return false;
     }
 
     /// <summary>
@@ -395,6 +430,20 @@ public class MainMenuController : MonoBehaviour
             closedAny = true;
         }
 
+        // 8. Garage Workbench UI
+        if (FeaturesWorkbench.UI.WorkbenchUI.Instance != null && FeaturesWorkbench.UI.WorkbenchUI.Instance.IsOpen)
+        {
+            FeaturesWorkbench.UI.WorkbenchUI.Instance.Close();
+            closedAny = true;
+        }
+
+        // 9. Journal UI
+        if (FeaturesStoryline.UI.JournalUI.Instance != null && FeaturesStoryline.UI.JournalUI.Instance.IsOpen)
+        {
+            FeaturesStoryline.UI.JournalUI.Instance.CloseJournal();
+            closedAny = true;
+        }
+
         return closedAny;
     }
 
@@ -463,6 +512,7 @@ public class MainMenuController : MonoBehaviour
 
             if (willLoadScene)
             {
+                if (targetSceneName == "StagingScene") targetSceneName = "MainScene";
                 Debug.Log($"[MainMenuController] Loading target scene: {targetSceneName}");
                 SceneManager.LoadScene(targetSceneName);
             }
@@ -1018,11 +1068,11 @@ public class MainMenuController : MonoBehaviour
             FeaturesSaveSystem.SaveSystemManager.PendingSaveIdToLoad = null;
             if (FeaturesCommon.CloudTransitionManager.Instance != null)
             {
-                FeaturesCommon.CloudTransitionManager.Instance.TransitionToScene("StagingScene");
+                FeaturesCommon.CloudTransitionManager.Instance.TransitionToScene("MainScene");
             }
             else
             {
-                SceneManager.LoadScene("StagingScene");
+                SceneManager.LoadScene("MainScene");
             }
         }
     }

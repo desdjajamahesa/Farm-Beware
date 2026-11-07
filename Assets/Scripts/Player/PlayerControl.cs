@@ -103,23 +103,24 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
     private float lastWallContactTime = -10f;
     private float sprintDuration = 0f;
 
-    // Kunci input global: saat true, pemain tidak bisa bergerak, membuka
-    // inventori, melompat, dash, atau berinteraksi (dipakai mode Trophy, dst).
+    // Global input lock: when true, player cannot move, open inventory, jump, dash, or attack.
+    // Centrally queries ModalStackManager so that any open modal window halts player input automatically.
     private bool _isInputLocked = false;
     public bool isInputLocked
     {
-        get => _isInputLocked;
+        get => _isInputLocked || (FarmBeware.Core.Runtime.ModalStackManager.HasInstance && FarmBeware.Core.Runtime.ModalStackManager.Instance.HasActiveModal);
         set => SetControlLock(value);
     }
     private readonly System.Collections.Generic.HashSet<string> _inputLockSources = new System.Collections.Generic.HashSet<string>();
 
     #region IPlayerContext Implementation
-    public Transform Transform => transform;
+    public Transform Transform => this != null ? transform : null;
     bool IPlayerContext.IsInputLocked { get => isInputLocked; set => SetControlLock(value); }
     void IPlayerContext.AddInputLock(string source) => AddInputLock(source);
     void IPlayerContext.RemoveInputLock(string source) => RemoveInputLock(source);
     void IPlayerContext.ClearAllInputLocks() => ClearAllInputLocks();
     bool IPlayerContext.HasInputLock(string source) => HasInputLock(source);
+    bool IPlayerContext.HasLockOtherThan(string excludedSource) => HasLockOtherThan(excludedSource);
     public bool IsGodMode => playerStats != null && playerStats.isGodMode;
     public void PlayAnimation(string triggerName)
     {
@@ -205,6 +206,11 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
         inputActions.Player.Disable();
     }
 
+    private void OnDestroy()
+    {
+        ServiceLocator.Unregister<IPlayerContext>();
+    }
+
     private void OnJumpPerformed(UnityEngine.InputSystem.InputAction.CallbackContext ctx) => ExecuteJump();
 
     void Update()
@@ -212,12 +218,44 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
         // Kunci input: hentikan inventory/hotbar/gerak/animator saat terkunci.
         if (isInputLocked)
         {
+            if (isAttacking || isChargingAttack || hasBufferedAttack)
+            {
+                isChargingAttack = false;
+                attackHoldDuration = 0f;
+                hasBufferedAttack = false;
+                isAttacking = false;
+                isLightAttacking = false;
+                if (attackCoroutine != null)
+                {
+                    StopCoroutine(attackCoroutine);
+                    attackCoroutine = null;
+                }
+                playerEquipment?.CancelActiveAttackSwing();
+                if (animator != null && !animator.GetBool("Driving"))
+                {
+                    animator.SetBool("IsAttacking", false);
+                }
+            }
+
+            // Izinkan Tab / I menutup inventori saat UI inventori sedang terbuka
+            if (InventoryManagerUI.Instance != null && InventoryManagerUI.Instance.IsAnyInventoryUIRelatedOpen())
+            {
+                Keyboard kb = Keyboard.current;
+                if (kb != null && (kb.tabKey.wasPressedThisFrame || kb.iKey.wasPressedThisFrame))
+                {
+                    if (Time.frameCount != FarmBeware.Core.Runtime.UIModalHelper.LastFrameUIPanelClosed)
+                    {
+                        InventoryManagerUI.Instance.CloseAllUI();
+                    }
+                }
+            }
+
             // Pastikan velocity benar-benar nol dan animasi idle saat UI terbuka
             inputVector = Vector3.zero;
             isRunning = false;
-            if (rb != null)
+            if (rb != null && !rb.isKinematic)
                 rb.linearVelocity = new Vector3(0f, rb.linearVelocity.y, 0f);
-            if (animator != null)
+            if (animator != null && !animator.GetBool("Driving"))
             {
                 animator.SetFloat("Vel", 0f, 0.05f, Time.deltaTime);
                 animator.SetBool("Idle", true);
@@ -231,7 +269,7 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
         {
             inputVector = Vector3.zero;
             isRunning = false;
-            if (animator != null)
+            if (animator != null && !animator.GetBool("Driving"))
             {
                 animator.SetFloat("Vel", 0f, 0.1f, Time.deltaTime);
                 animator.SetBool("Idle", true);
@@ -269,12 +307,14 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
         // 3. Aksi Defensif (Dodge Roll & Parry) - bisa dieksekusi saat bergerak, idle, atau cancel serangan
         HandleDefensiveInput();
 
-        // Input aksi lain diblokir saat sedang mengeksekusi serangan
+        // 4. Input Serangan (mendukung combo buffering, early cancel, dan branching heavy finisher saat sedang mengayun)
+        HandleAttackInput();
+
+        // Input aksi non-kombat diblokir saat sedang mengeksekusi serangan
         if (!isAttacking)
         {
             HandleInventoryInput();
             HandleHotbarInput();
-            HandleAttackInput();
 
             if (Keyboard.current != null && Keyboard.current.eKey.wasPressedThisFrame)
             {
@@ -410,7 +450,7 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
         // Kunci input: hentikan fisika pergerakan saat terkunci atau sedang menanam benih
         if (isInputLocked || isPlanting)
         {
-            if (rb != null)
+            if (rb != null && !rb.isKinematic)
                 rb.linearVelocity = new Vector3(0f, rb.linearVelocity.y, 0f);
             return;
         }
@@ -655,6 +695,12 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
         if (playerEquipment == null)
             playerEquipment = GetComponent<PlayerEquipment>() ?? gameObject.AddComponent<PlayerEquipment>();
 
+        if (playerEquipment != null && playerEquipment.IsRangedWeaponEquipped)
+        {
+            HandleRangedSlingshotInput(attackPressed, attackHeld, attackReleased, rightClick || rKey);
+            return;
+        }
+
         // Priority Special Actions (Leap Strike)
         if ((rightClick || rKey) && !isSkillLeaping)
         {
@@ -678,11 +724,29 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
             return;
         }
 
-        // --- COMBO ADVANCEMENT / BUFFERING DURING LIGHT ATTACK ---
+        // --- COMBO ADVANCEMENT / BUFFERING / BRANCHING HEAVY FINISHER DURING LIGHT ATTACK ---
         if (isLightAttacking)
         {
+            if (attackHeld)
+            {
+                attackHoldDuration += Time.deltaTime;
+            }
+
+            if (attackReleased && attackHoldDuration >= 0.30f)
+            {
+                attackHoldDuration = 0f;
+                hasBufferedAttack = false;
+                if (playerEquipment != null && playerEquipment.TryPerformBranchingHeavyFinisher())
+                {
+                    if (attackCoroutine != null) { StopCoroutine(attackCoroutine); }
+                    attackCoroutine = StartCoroutine(RoutineHeavyAttack());
+                    return;
+                }
+            }
+
             if (attackPressed)
             {
+                attackHoldDuration = 0f;
                 if (playerEquipment != null && playerEquipment.TryPerformAttack())
                 {
                     StartLightAttack();
@@ -775,6 +839,115 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
                 attackHoldDuration = 0f;
             }
         }
+    }
+
+    private void HandleRangedSlingshotInput(bool attackPressed, bool attackHeld, bool attackReleased, bool skillPressed)
+    {
+        if (skillPressed && !isSkillLeaping && !isAttacking)
+        {
+            isChargingAttack = false;
+            attackHoldDuration = 0f;
+            hasBufferedAttack = false;
+            if (playerEquipment != null && playerEquipment.TryPerformSkillAttack())
+            {
+                if (attackCoroutine != null)
+                {
+                    StopCoroutine(attackCoroutine);
+                    attackCoroutine = null;
+                }
+                attackCoroutine = StartCoroutine(RoutineRangedShotRecovery(0.20f));
+            }
+            return;
+        }
+
+        if (isAttacking)
+        {
+            if (attackPressed)
+            {
+                hasBufferedAttack = true;
+                bufferedAttackTime = Time.time;
+            }
+            return;
+        }
+
+        if (hasBufferedAttack)
+        {
+            hasBufferedAttack = false;
+            if (Time.time - bufferedAttackTime <= 0.35f && playerEquipment != null && playerEquipment.TryPerformAttack())
+            {
+                if (attackCoroutine != null) StopCoroutine(attackCoroutine);
+                attackCoroutine = StartCoroutine(RoutineRangedShotRecovery(0.14f));
+                return;
+            }
+        }
+
+        if (attackPressed)
+        {
+            isChargingAttack = true;
+            attackHoldDuration = 0f;
+            playerEquipment.ResolveCursorAimDirection(out _);
+        }
+
+        if (isChargingAttack)
+        {
+            if (attackHeld)
+            {
+                attackHoldDuration += Time.deltaTime;
+                playerEquipment.ResolveCursorAimDirection(out _);
+                if (attackHoldDuration >= 0.35f)
+                {
+                    playerEquipment.CombatStateMachine.StartHeavyCharge(Time.time);
+                    playerEquipment.CombatStateMachine.UpdateCharge(Time.deltaTime);
+                }
+            }
+
+            if (attackReleased)
+            {
+                isChargingAttack = false;
+                if (attackHoldDuration >= 0.35f)
+                {
+                    if (playerEquipment.TryPerformHeavyAttack(playerEquipment.CombatStateMachine.ChargeRatio))
+                    {
+                        if (attackCoroutine != null) StopCoroutine(attackCoroutine);
+                        attackCoroutine = StartCoroutine(RoutineRangedShotRecovery(0.18f));
+                    }
+                }
+                else
+                {
+                    if (playerEquipment.TryPerformAttack())
+                    {
+                        if (attackCoroutine != null) StopCoroutine(attackCoroutine);
+                        attackCoroutine = StartCoroutine(RoutineRangedShotRecovery(0.14f));
+                    }
+                }
+                attackHoldDuration = 0f;
+            }
+        }
+    }
+
+    private IEnumerator RoutineRangedShotRecovery(float lockDuration)
+    {
+        isAttacking = true;
+        isLightAttacking = false;
+        if (animator != null)
+        {
+            animator.SetBool("IsAttacking", false);
+        }
+
+        float elapsed = 0f;
+        while (elapsed < lockDuration)
+        {
+            elapsed += Time.deltaTime;
+            if (playerEquipment != null)
+            {
+                playerEquipment.ResolveCursorAimDirection(out _);
+            }
+            yield return null;
+        }
+
+        isAttacking = false;
+        isLightAttacking = false;
+        attackCoroutine = null;
     }
 
     private IEnumerator RoutineDashAttack()
@@ -980,6 +1153,7 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
                info.IsName("Attack_Combo1") ||
                info.IsName("Attack_Combo2") ||
                info.IsName("Attack_Combo3") ||
+               info.IsName("Attack_Heavy") ||
                info.IsName("Attack_Skill");
     }
 
@@ -1029,11 +1203,65 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
         {
             timer += Time.deltaTime;
 
-            // Jika animasi sudah selesai dan bertransisi kembali ke Idle/Moving setelah minimal 0.5 detik
-            if (timer > 0.5f && animator != null)
+            // Jika animasi sudah selesai dan bertransisi kembali ke Idle/Moving setelah minimal 0.25 detik (kecepatan 2x)
+            if (timer > 0.25f && animator != null)
             {
                 var stateInfo = animator.GetCurrentAnimatorStateInfo(0);
                 if (!stateInfo.IsName("PlantSeed") && !animator.GetNextAnimatorStateInfo(0).IsName("PlantSeed"))
+                {
+                    break;
+                }
+            }
+
+            yield return null;
+        }
+
+        isPlanting = false;
+    }
+
+    /// <summary>
+    /// Memanggil animasi menyiram tanaman secara kontekstual (mis. saat menyiram FarmlandTile).
+    /// </summary>
+    public void TriggerWaterAnimation()
+    {
+        if (isPlanting || isAttacking) return;
+        if (FeaturesFarming.PlantWaterer.Instance != null && FeaturesFarming.PlantWaterer.Instance.CurrentWater < 10f)
+        {
+            return;
+        }
+        StartCoroutine(RoutineWaterCrop());
+    }
+
+    private IEnumerator RoutineWaterCrop()
+    {
+        isPlanting = true;
+        inputVector = Vector3.zero;
+
+        if (rb != null)
+        {
+            rb.linearVelocity = new Vector3(0f, rb.linearVelocity.y, 0f);
+            rb.angularVelocity = Vector3.zero;
+        }
+
+        if (animator != null)
+        {
+            animator.SetTrigger("Watering");
+            animator.SetFloat("Vel", 0f);
+            animator.SetBool("Idle", true);
+            animator.SetBool("Sprinting", false);
+        }
+
+        yield return null;
+
+        float timer = 0f;
+        while (timer < 0.7f)
+        {
+            timer += Time.deltaTime;
+
+            if (timer > 0.2f && animator != null)
+            {
+                var stateInfo = animator.GetCurrentAnimatorStateInfo(0);
+                if (!stateInfo.IsName("Watering") && !animator.GetNextAnimatorStateInfo(0).IsName("Watering"))
                 {
                     break;
                 }
@@ -1057,8 +1285,16 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
 
         if (keyboard.tabKey.wasPressedThisFrame || keyboard.iKey.wasPressedThisFrame)
         {
+            if (Time.frameCount == FarmBeware.Core.Runtime.UIModalHelper.LastFrameUIPanelClosed)
+                return;
+
             if (InventoryManagerUI.Instance != null)
-                InventoryManagerUI.Instance.TogglePlayerInventory();
+            {
+                if (InventoryManagerUI.Instance.IsAnyInventoryUIRelatedOpen())
+                    InventoryManagerUI.Instance.CloseAllUI();
+                else
+                    InventoryManagerUI.Instance.TogglePlayerInventory();
+            }
         }
     }
 
@@ -1066,6 +1302,18 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
     private void HandleHotbarInput()
     {
         if (playerInventory == null) return;
+
+        var timeService = FarmBeware.Core.Runtime.ServiceLocator.Resolve<FarmBeware.Core.Runtime.ITimeService>();
+        bool isNight = (timeService != null && timeService.IsNight) ||
+                       (TimeManager.Instance != null && TimeManager.Instance.currentPhase == TimeManager.DayPhase.Night) ||
+                       (FeaturesTime.DayNightTimeManager.Instance != null && FeaturesTime.DayNightTimeManager.Instance.IsNight);
+
+        if (isNight)
+        {
+            // At night, held item is locked to active equipped combat weapon (Root Cleaver / Slingshot).
+            // Consumables can still be used via double-click directly in hotbar or inventory.
+            return;
+        }
 
         Keyboard keyboard = Keyboard.current;
         if (keyboard != null)
@@ -1105,7 +1353,11 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
             isGrounded = false;
             isJumping = true;
             groundBufferTimer = 0f;
-            if (animator != null) animator.SetBool("Grounded", false);
+            if (animator != null)
+            {
+                animator.SetBool("Grounded", false);
+                animator.Play("AirBorn", 0, 0f);
+            }
 
             // Reset kecepatan Y agar lompatan konsisten, lalu dorong ke atas
             rb.linearVelocity = new Vector3(rb.linearVelocity.x, 0f, rb.linearVelocity.z);
@@ -1190,7 +1442,9 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
                     isAttacking = false;
                     isLightAttacking = false;
                     isChargingAttack = false;
-                    playerEquipment?.CombatStateMachine?.InterruptCombatSequence();
+                    attackHoldDuration = 0f;
+                    hasBufferedAttack = false;
+                    playerEquipment?.CancelActiveAttackSwing();
                     if (animator != null) animator.SetBool("IsAttacking", false);
                 }
                 else
@@ -1299,7 +1553,9 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
                     isAttacking = false;
                     isLightAttacking = false;
                     isChargingAttack = false;
-                    playerEquipment?.CombatStateMachine?.InterruptCombatSequence();
+                    attackHoldDuration = 0f;
+                    hasBufferedAttack = false;
+                    playerEquipment?.CancelActiveAttackSwing();
                     if (animator != null) animator.SetBool("IsAttacking", false);
                 }
                 else
@@ -1363,9 +1619,9 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
     {
         inputVector = Vector3.zero;
         isRunning = false;
-        if (rb != null)
+        if (rb != null && !rb.isKinematic)
             rb.linearVelocity = new Vector3(0f, rb.linearVelocity.y, 0f);
-        if (animator != null)
+        if (animator != null && !animator.GetBool("Driving"))
         {
             animator.SetFloat("Vel", 0f);
             animator.SetBool("Idle", true);
@@ -1567,6 +1823,15 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
         return _inputLockSources.Contains(source);
     }
 
+    public bool HasLockOtherThan(string excludedSource)
+    {
+        foreach (var src in _inputLockSources)
+        {
+            if (src != excludedSource) return true;
+        }
+        return false;
+    }
+
     private void ApplyLockState(bool locked)
     {
         _isInputLocked = locked;
@@ -1583,8 +1848,8 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
                 StopCoroutine(attackCoroutine);
                 attackCoroutine = null;
             }
-            playerEquipment?.CombatStateMachine?.InterruptCombatSequence();
-            if (animator != null)
+            playerEquipment?.CancelActiveAttackSwing();
+            if (animator != null && !animator.GetBool("Driving"))
             {
                 animator.SetFloat("Vel", 0f);
                 animator.SetBool("Idle", true);
@@ -1610,8 +1875,11 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
         StopMovement();
         if (rb != null)
         {
-            rb.linearVelocity = Vector3.zero;
-            rb.angularVelocity = Vector3.zero;
+            if (!rb.isKinematic)
+            {
+                rb.linearVelocity = Vector3.zero;
+                rb.angularVelocity = Vector3.zero;
+            }
             rb.position = position;
             rb.rotation = rotation;
         }
@@ -1640,10 +1908,5 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
         {
             equip.UpdateEquipmentVisual(slotIndex);
         }
-    }
-
-    private void OnDestroy()
-    {
-        ServiceLocator.Unregister<IPlayerContext>();
     }
 }

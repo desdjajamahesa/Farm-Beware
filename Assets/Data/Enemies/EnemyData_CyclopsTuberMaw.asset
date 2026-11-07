@@ -21,14 +21,14 @@ MonoBehaviour:
   moveSpeed: 3
   contactDamage: 30
   attackRate: 0.4
-  attackRange: 3.6
+  attackRange: 2.4
   aggroRange: 12
   knockbackResistance: 0.35
   lootDrops:
   - item: {fileID: 11400000, guid: aadb6cfba39a5794387c1f0a6f1c53de, type: 2}
     minQuantity: 1
-    maxQuantity: 2
-    dropChance: 0.4
+    maxQuantity: 1
+    dropChance: 1
   - item: {fileID: 11400000, guid: 631a56d8258854a40afd2bc5508e5304, type: 2}
     minQuantity: 2
     maxQuantity: 4

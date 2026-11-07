@@ -2,6 +2,35 @@
 
 Semua perubahan penting pada proyek ini oleh M-Roihan (Roi) dari `branch-roi-1` dicatat di halaman ini.
 
+## - 2026-10-26
+
+### Ditambahkan (Added)
+- **Integrasi Paket Aset & Animasi Karakter Stylized PlayerV2 (`Assets/PlayerV2/*`)**:
+  - Mengimpor model 3D karakter petani baru [`character.fbx`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/PlayerV2/character.fbx) beserta material URP PBR ([`skin_player_mat.mat`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/PlayerV2/textures/skin_player_mat.mat), [`outfit_player.mat`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/PlayerV2/textures/outfit_player.mat)) dan tekstur pendukung (Albedo, MetallicSmoothness, Normal, Ambient Occlusion).
+  - Mengimpor dan mengonfigurasi paket animasi tempur kapak/pedang (`Pro Melee Axe Pack`):
+    - `standing melee attack horizontal.fbx`
+    - `standing melee attack downward.fbx`
+    - `standing melee attack 360 low.fbx`
+    - `standing melee combo attack ver. 1.fbx`
+    - `standing block idle.fbx`
+    - `standing jump.fbx`
+  - Mengekstraksi klip animasi dasar ke dalam folder kanonikal `Assets/PlayerV2/anim/`:
+    - Locomotion & Maneuver: [`idle_loop.anim`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/PlayerV2/anim/idle_loop.anim), [`walk_loop.anim`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/PlayerV2/anim/walk_loop.anim), [`Running.anim`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/PlayerV2/anim/Running.anim), [`roll_fit.anim`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/PlayerV2/anim/roll_fit.anim).
+    - Farming & Combat: [`farm_plantseed.anim`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/PlayerV2/anim/farm_plantseed.anim), [`farm_watering.anim`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/PlayerV2/anim/farm_watering.anim), [`hit.anim`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/PlayerV2/anim/hit.anim).
+
+### Diubah & Dioptimasi (Changed & Optimized)
+- **Pembersihan Aset Usang & Penyesuaian Timing Animasi**:
+  - Menghapus layer `Weapon_Idle` yang bertentangan dengan state idle dasar agar transisi animasi tangan tetap natural saat memegang alat.
+  - Mempercepat kurva pemutaran animasi menanam dan menyiram tanaman untuk responsivitas gameplay pertanian yang lebih lincah.
+  - Menyesuaikan kurva `standing jump` untuk sinkronisasi elevasi vertikal Rigidbody.
+- **Stabilitas Unity Editor (`EditorSettings.asset`)**:
+  - Menonaktifkan fitur eksperimental `EnterPlayModeOptions` pada project settings untuk mencegah kondisi hang saat keluar dari Play Mode di Unity Editor.
+
+### Pemeliharaan Integrasi Stabil & Verifikasi (Stable Integration & Verification)
+- Menggabungkan pembaruan aset dan animasi dari `roi-branch` ke `Rafi-branch` untuk integrasi penuh controller `AsepAnimator_V2` dan verifikasi test suite.
+
+---
+
 ## - 2026-10-17
 
 ### Ditambahkan (Added)

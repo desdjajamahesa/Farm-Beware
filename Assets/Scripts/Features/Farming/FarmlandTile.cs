@@ -24,9 +24,41 @@ namespace FeaturesFarming
     [RequireComponent(typeof(Highlightable))]
     public class FarmlandTile : MonoBehaviour, IInteractable, FarmBeware.Core.Runtime.IDynamicLabelProvider
     {
+        public static event System.Action<FarmlandTile, SeedItemData> OnAnyCropPlanted;
+        public static event System.Action<FarmlandTile, ItemData, int> OnAnyCropHarvested;
+
+        /// <summary>
+        /// Signal dispatched whenever a seed is successfully planted into a farmland tile.
+        /// </summary>
+        public static event System.Action<SeedItemData> OnCropPlanted;
+
+        /// <summary>
+        /// Signal dispatched whenever a crop is successfully watered.
+        /// </summary>
+        public static event System.Action<FarmlandTile> OnCropWatered;
+
+        /// <summary>
+        /// Signal dispatched whenever any farmland tile is tilled into arable soil.
+        /// </summary>
+        public static event System.Action<FarmlandTile> OnAnySoilTilled;
+
+        /// <summary>
+        /// Explicit helper to broadcast soil tilled signal across the game.
+        /// </summary>
+        public static void InvokeSoilTilled(FarmlandTile tile)
+        {
+            OnAnySoilTilled?.Invoke(tile);
+        }
+
         [Header("State Petak Tanah")]
         [SerializeField] private TileState currentState = TileState.Untilled;
         public TileState CurrentState => currentState;
+
+        [Header("Plot Progression & Gating")]
+        [SerializeField] private int plotIndex = -1;
+        [SerializeField] private bool isLocked = false;
+        public int PlotIndex => plotIndex;
+        public bool IsLocked => isLocked;
 
         [Header("Data Tanaman")]
         [SerializeField] private SeedItemData plantedSeed;
@@ -94,17 +126,40 @@ namespace FeaturesFarming
 
         private void Start()
         {
+            RefreshLockState();
             UpdateVisuals();
             UpdateLabelText(null);
             UpdateCountdownUI();
         }
 
+        public void RefreshLockState()
+        {
+            if (plotIndex <= 0)
+            {
+                plotIndex = FarmlandExpansionManager.ParsePlotIndex(gameObject.name);
+            }
+
+            if (FarmlandExpansionManager.Instance != null)
+            {
+                isLocked = !FarmlandExpansionManager.Instance.IsPlotUnlocked(plotIndex);
+            }
+            else
+            {
+                isLocked = plotIndex > FarmlandExpansionManager.InitialPlotCount;
+            }
+
+            UpdateLabelText(null);
+        }
+
         private int lastVisualStage = -1;
+        private bool _ripenedDuringOverdrive = false;
+        public bool RipenedDuringOverdrive => _ripenedDuringOverdrive;
 
         private void Update()
         {
             // Sesuai MVP Version Guideline V0.1:
             // "Crop growth: Only counts during the Day phase (night does not count)."
+            // Module C Exception: Bio-Catalyst Night Overdrive allows 50% nocturnal growth + Clean Harvest purification.
             var timeService = ServiceLocator.Resolve<ITimeService>();
             bool isNight = (timeService != null && timeService.IsNight) ||
                            (TimeManager.Instance != null && TimeManager.Instance.currentPhase == TimeManager.DayPhase.Night);
@@ -112,13 +167,25 @@ namespace FeaturesFarming
             // 1. Logika pertumbuhan jika tanah dalam kondisi tersiram air
             if (currentState == TileState.PlantedWatered && plantedSeed != null)
             {
+                float timeMultiplier = FeaturesTime.DayNightTimeManager.Instance != null
+                    ? FeaturesTime.DayNightTimeManager.Instance.FastForwardMultiplier
+                    : 1f;
+
                 if (!isNight)
                 {
-                    float timeMultiplier = FeaturesTime.DayNightTimeManager.Instance != null
-                        ? FeaturesTime.DayNightTimeManager.Instance.FastForwardMultiplier
-                        : 1f;
-
                     currentTimer += Time.deltaTime * timeMultiplier;
+                }
+                else
+                {
+                    bool isOverdrive = FeaturesCombat.NightBrawlManager.Instance != null &&
+                                       FeaturesCombat.NightBrawlManager.Instance.IsOverdriveNightActive;
+                    float nightDelta = FeaturesCombat.Core.PureLogic.NightOverdriveEvaluator.EvaluateCropNightGrowthDelta(
+                        Time.deltaTime, timeMultiplier, isOverdrive);
+                    if (nightDelta > 0f)
+                    {
+                        currentTimer += nightDelta;
+                        _ripenedDuringOverdrive = true;
+                    }
                 }
                 growthProgress = Mathf.Clamp01(currentTimer / Mathf.Max(1f, growthDuration));
 
@@ -144,12 +211,72 @@ namespace FeaturesFarming
                     SetState(TileState.ReadyToHarvest);
                 }
             }
+        }
 
+        public bool CanInteract(GameObject interactor)
+        {
+            if (interactor == null) return false;
+            if (isLocked) return false;
+
+            int currentDay = FeaturesTime.DayNightTimeManager.Instance != null 
+                ? FeaturesTime.DayNightTimeManager.Instance.CurrentDay 
+                : (TimeManager.Instance != null ? TimeManager.Instance.currentDay : 1);
+            if (currentDay == 0) return false;
+
+            // Farming is only allowed during daytime
+            if (TimeManager.Instance != null && TimeManager.Instance.currentPhase == TimeManager.DayPhase.Night)
+                return false;
+
+            var timeService = ServiceLocator.Resolve<ITimeService>();
+            if (timeService != null && timeService.IsNight)
+                return false;
+
+            switch (currentState)
+            {
+                case TileState.Untilled:
+                    return IsHoldingHoe(interactor);
+
+                case TileState.Tilled:
+                    return GetHeldSeed(interactor) != null;
+
+                case TileState.PlantedDry:
+                    return IsHoldingPlantWaterer(interactor) && (PlantWaterer.Instance != null && PlantWaterer.Instance.CurrentWater >= 10f);
+
+                case TileState.PlantedWatered:
+                    return false; // Crop is actively growing; cannot interact
+
+                case TileState.ReadyToHarvest:
+                    return true;
+
+                default:
+                    return false;
+            }
         }
 
         public void Interact(GameObject interactor)
         {
             if (interactor == null) return;
+
+            if (isLocked)
+            {
+                ServiceLocator.Resolve<IFloatingTextService>()?.SpawnText(
+                    transform.position + Vector3.up * 1.2f,
+                    "Locked farmland plot! Purchase Land Expansion at the Workbench (2,500 G).",
+                    new Color(1f, 0.5f, 0.4f));
+                return;
+            }
+
+            int currentDay = FeaturesTime.DayNightTimeManager.Instance != null 
+                ? FeaturesTime.DayNightTimeManager.Instance.CurrentDay 
+                : (TimeManager.Instance != null ? TimeManager.Instance.currentDay : 1);
+            if (currentDay == 0)
+            {
+                ServiceLocator.Resolve<IFloatingTextService>()?.SpawnText(
+                    transform.position + Vector3.up * 1.2f,
+                    "Rest first. The harvest begins tomorrow.",
+                    new Color(1f, 0.8f, 0.4f));
+                return;
+            }
 
             // Gameplay rule: Farming is only allowed during the daytime (Day Phase).
             if (TimeManager.Instance != null && TimeManager.Instance.currentPhase == TimeManager.DayPhase.Night)
@@ -204,6 +331,7 @@ namespace FeaturesFarming
         private void TillSoil()
         {
             SetState(TileState.Tilled);
+            OnAnySoilTilled?.Invoke(this);
             Debug.Log("[FarmlandTile] Soil tilled. Ready for seeds.");
         }
 
@@ -220,10 +348,10 @@ namespace FeaturesFarming
                 return;
             }
 
-            StartCoroutine(RoutinePlantSeedToTile(inventory, seed, playerControl));
+            StartCoroutine(RoutinePlantSeedToTile(inventory, seed, hotbarIdx, playerControl));
         }
 
-        private IEnumerator RoutinePlantSeedToTile(InventoryComponent inventory, SeedItemData seed, IPlayerContext playerControl)
+        private IEnumerator RoutinePlantSeedToTile(InventoryComponent inventory, SeedItemData seed, int hotbarIdx, IPlayerContext playerControl)
         {
             isPlantingAction = true;
 
@@ -232,19 +360,29 @@ namespace FeaturesFarming
                 playerControl.TriggerPlantAnimation();
             }
 
-            // Sinkronkan pemunculan bibit saat tangan pemain membungkuk ke tanah (~0.5s)
-            yield return new WaitForSeconds(0.5f);
+            // Sinkronkan pemunculan bibit saat tangan pemain membungkuk ke tanah (snappy ~0.25s)
+            yield return new WaitForSeconds(0.25f);
 
             if (inventory != null && seed != null)
             {
-                inventory.RemoveItem(seed, 1);
-                plantedSeed = seed;
-                growthDuration = seed.growthDuration > 0f ? seed.growthDuration : 30f;
-                currentTimer = 0f;
-                growthProgress = 0f;
+                bool success = inventory.RemoveItem(seed, 1, preferredSlotIndex: hotbarIdx);
+                if (success)
+                {
+                    plantedSeed = seed;
+                    growthDuration = seed.growthDuration > 0f ? seed.growthDuration : 30f;
+                    currentTimer = 0f;
+                    growthProgress = 0f;
+                    _ripenedDuringOverdrive = false;
 
-                SetState(TileState.PlantedDry);
-                Debug.Log($"[FarmlandTile] Successfully planted {seed.itemName}. Requires watering!");
+                    SetState(TileState.PlantedDry);
+                    OnAnyCropPlanted?.Invoke(this, seed);
+                    OnCropPlanted?.Invoke(seed);
+                    Debug.Log($"[FarmlandTile] Successfully planted {seed.itemName}. Requires watering!");
+                }
+                else
+                {
+                    Debug.LogWarning($"[FarmlandTile] Aborting plant: insufficient {seed.itemName} in inventory!");
+                }
             }
 
             isPlantingAction = false;
@@ -267,6 +405,10 @@ namespace FeaturesFarming
             var waterer = PlantWaterer.Instance;
             if (waterer != null && waterer.ConsumeWater(waterRequired))
             {
+                if (interactor != null && interactor.TryGetComponent<IPlayerContext>(out var playerContext))
+                {
+                    playerContext.TriggerWaterAnimation();
+                }
                 WaterCrop();
                 ServiceLocator.Resolve<IFloatingTextService>()?.SpawnText(
                     transform.position + Vector3.up * 1.2f,
@@ -286,6 +428,7 @@ namespace FeaturesFarming
         private void WaterCrop()
         {
             SetState(TileState.PlantedWatered);
+            OnCropWatered?.Invoke(this);
             Debug.Log("[FarmlandTile] Crop watered! Growth countdown started.");
         }
 
@@ -311,7 +454,7 @@ namespace FeaturesFarming
             {
                 ItemData dropItem = plantedSeed.cropYield;
 
-                if (yieldDirtyVariant)
+                if (yieldDirtyVariant && !_ripenedDuringOverdrive)
                 {
                     ItemData dirtyVariant = ResolveDirtyVariant(dropItem);
                     if (dirtyVariant != null)
@@ -319,6 +462,7 @@ namespace FeaturesFarming
                         dropItem = dirtyVariant;
                     }
                 }
+                _ripenedDuringOverdrive = false;
 
                 if (dropItem != null)
                 {
@@ -376,6 +520,7 @@ namespace FeaturesFarming
                     }
 
                     Debug.Log($"[FarmlandTile] Harvest completed: {yieldCount}x {dropItem.itemName} (in inventory: {fruitAdded}), {seedBonusCount}x seeds (in inventory: {seedAdded})");
+                    OnAnyCropHarvested?.Invoke(this, dropItem, yieldCount);
                     if (playerControl != null)
                     {
                         ServiceLocator.Resolve<IFloatingTextService>()?.SpawnText(
@@ -501,6 +646,30 @@ namespace FeaturesFarming
         }
 
         /// <summary>
+        /// Handles withering or destruction of crops on this farmland tile.
+        /// Increments DeadCropsCount in NarrativeFactBoard and fires narrative telemetry.
+        /// </summary>
+        public void WitherCrop()
+        {
+            if (currentState == TileState.PlantedDry || currentState == TileState.PlantedWatered || currentState == TileState.ReadyToHarvest)
+            {
+                plantedSeed = null;
+                growthProgress = 0f;
+                currentTimer = 0f;
+                SetState(TileState.Untilled);
+
+                var facts = ServiceLocator.Resolve<INarrativeFactBoard>();
+                facts?.AddFact(NarrativeFactKey.DeadCropsCount, 1);
+                NarrativeTelemetryHooks.ReportCropWithered();
+
+                Debug.Log("[FarmlandTile] Crop withered and died. DeadCropsCount updated.");
+            }
+        }
+
+        /// <summary>Alias method for crop withering / death.</summary>
+        public void OnCropWithered() => WitherCrop();
+
+        /// <summary>
         /// Restores complete crop state (used by Save/Load system).
         /// </summary>
         public void RestoreCropState(TileState state, SeedItemData seed, float progress, float timer, float duration = -1f)
@@ -529,12 +698,28 @@ namespace FeaturesFarming
 
         public void UpdateLabelText(GameObject interactor)
         {
+            if (worldLabel == null) worldLabel = GetComponent<WorldLabel>();
             if (worldLabel == null) return;
+
+            if (isLocked)
+            {
+                worldLabel.displayName = "[Locked Plot] Expand at Workbench (2,500 G)";
+                return;
+            }
+
+            int currentDay = FeaturesTime.DayNightTimeManager.Instance != null 
+                ? FeaturesTime.DayNightTimeManager.Instance.CurrentDay 
+                : (TimeManager.Instance != null ? TimeManager.Instance.currentDay : 1);
+            if (currentDay == 0)
+            {
+                worldLabel.displayName = "Farmland (Rest First)";
+                return;
+            }
 
             // At night, display that farming activities are only permitted during daytime
             if (TimeManager.Instance != null && TimeManager.Instance.currentPhase == TimeManager.DayPhase.Night)
             {
-                worldLabel.displayName = "🌙 Can only farm during the day";
+                worldLabel.displayName = "Can only farm during the day";
                 return;
             }
 

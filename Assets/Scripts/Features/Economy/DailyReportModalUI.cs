@@ -127,7 +127,7 @@ namespace FeaturesEconomy
             int totalWallet = PlayerWallet.Instance != null ? PlayerWallet.Instance.CurrentGold : 0;
 
             if (headerText != null)
-                headerText.text = $"☀️ DAY {completedDay} COMPLETE";
+                headerText.text = $"DAY {completedDay} COMPLETE";
 
             if (combatStatsText != null)
                 combatStatsText.text = $"• Monsters Slain: <b>{monsters}</b>\n• Combat Gold Looted: <b>+{combatGold:N0} G</b>";
@@ -231,7 +231,7 @@ namespace FeaturesEconomy
             GameObject titleGO = new GameObject("HeaderTitle", typeof(RectTransform), typeof(TextMeshProUGUI));
             titleGO.transform.SetParent(cardGO.transform, false);
             headerText = titleGO.GetComponent<TextMeshProUGUI>();
-            headerText.text = "☀️ DAY 1 COMPLETE";
+            headerText.text = "DAY 1 COMPLETE";
             headerText.fontSize = 24;
             headerText.fontStyle = FontStyles.Bold;
             headerText.alignment = TextAlignmentOptions.Center;

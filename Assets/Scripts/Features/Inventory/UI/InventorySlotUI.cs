@@ -107,7 +107,12 @@ public class InventorySlotUI : MonoBehaviour, IDropHandler, IPointerClickHandler
         iconRT.offsetMax = new Vector2(-8, -8);
 
         Image img = iconGO.AddComponent<Image>();
-        img.sprite = slot.item.itemIcon;
+        Sprite resolvedSprite = slot.item.itemIcon;
+        if (resolvedSprite == null && slot.item is ToolItemData rangedTool && rangedTool.isRangedWeapon)
+        {
+            resolvedSprite = ToolItemData.GetDefaultRangedSlingshotSprite();
+        }
+        img.sprite = resolvedSprite;
         img.preserveAspect = true;
         img.raycastTarget = true;
         iconGO.AddComponent<DraggableItem>();
@@ -195,42 +200,60 @@ public class InventorySlotUI : MonoBehaviour, IDropHandler, IPointerClickHandler
         }
     }
 
+    private static float _lastClickTime = -1f;
+    private static int _lastClickSlotIndex = -1;
+    private static InventoryComponent _lastClickOwner = null;
+
     public void OnPointerClick(PointerEventData eventData)
     {
-        if (eventData.button != PointerEventData.InputButton.Left)
-            return;
-
         // Ignore clicks that ended a drag operation.
         if (eventData.dragging)
             return;
 
-        // Abaikan klik slot jika kontrol pemain sedang terkunci (misal: selama transisi layar atau modal dialog)
-        var pc = ServiceLocator.Resolve<IPlayerContext>();
-        if (pc != null && pc.IsInputLocked)
-            return;
-
-        // Seleksi Hotbar via klik mouse (Slot 0..3 pada inventory dengan Hotbar)
-        bool isHotbarSlot = (ownerInventory != null && ownerInventory.HasHotbar && SlotIndex >= 0 && SlotIndex < 4);
-        if (isHotbarSlot)
+        // RIGHT-CLICK: quick-use / quick-equip item from player inventory
+        if (eventData.button == PointerEventData.InputButton.Right)
         {
-            ownerInventory.SelectHotbarSlot(SlotIndex);
-        }
-
-        // DOUBLE-CLICK: use the item (only for player inventory items).
-        if (eventData.clickCount >= 2)
-        {
-            if (ownerInventory != null && manager != null && ownerInventory == manager.playerInventory)
+            if (ownerInventory != null && (ownerInventory.CompareTag("Player") || ownerInventory.HasHotbar || (manager != null && ownerInventory == manager.playerInventory)))
             {
                 ownerInventory.UseItem(SlotIndex);
             }
             return;
         }
 
-        // SINGLE-CLICK: quick transfer to the other open inventory.
-        // Only works when a secondary inventory panel is open (chest, kitchen sink, etc.).
+        if (eventData.button != PointerEventData.InputButton.Left)
+            return;
+
+        // Reliable double-click detection combining eventData.clickCount with unscaled timestamp fallback
+        bool isDoubleClick = (eventData.clickCount >= 2) ||
+            (Time.unscaledTime - _lastClickTime < 0.38f && _lastClickSlotIndex == SlotIndex && _lastClickOwner == ownerInventory);
+
+        _lastClickTime = Time.unscaledTime;
+        _lastClickSlotIndex = SlotIndex;
+        _lastClickOwner = ownerInventory;
+
+        // DOUBLE-CLICK: use the item (eat/drink consumable or equip armor/weapon, only for player inventory items).
+        if (isDoubleClick)
+        {
+            if (ownerInventory != null && (ownerInventory.CompareTag("Player") || ownerInventory.HasHotbar || (manager != null && ownerInventory == manager.playerInventory)))
+            {
+                ownerInventory.UseItem(SlotIndex);
+            }
+            return;
+        }
+
+        // SINGLE-CLICK:
+        // 1. If a secondary storage panel is open (chest, refrigerator, kitchen sink, etc.), quick-transfer between panels.
         if (manager != null && manager.IsAnyInventoryUIRelatedOpen())
         {
-            manager.TryQuickTransfer(ownerInventory, SlotIndex);
+            bool transferred = manager.TryQuickTransfer(ownerInventory, SlotIndex);
+            if (transferred) return;
+        }
+
+        // 2. Hotbar slot selection via click (Slots 0..3 on player inventory)
+        bool isHotbarSlot = (ownerInventory != null && ownerInventory.HasHotbar && SlotIndex >= 0 && SlotIndex < 4);
+        if (isHotbarSlot)
+        {
+            ownerInventory.SelectHotbarSlot(SlotIndex);
         }
     }
 

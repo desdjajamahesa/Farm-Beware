@@ -173,7 +173,7 @@ namespace FeaturesTime
             {
                 floatingText.SpawnText(
                     player.Transform.position + Vector3.up * 1.8f,
-                    $"🔔 [{entry.timeRangeText}] {entry.activityDescription}",
+                    $"[{entry.timeRangeText}] {entry.activityDescription}",
                     new Color(1f, 0.85f, 0.35f));
             }
 

@@ -1,0 +1,8 @@
+﻿Upgrade,Cost,Description,Effect
+Lv.1 – Quick Roots,10k gold,Faster weapon attacks,+10% Attack Speed
+Lv.2 – Swift Movement,20k + 1 SP Boss Core,Move faster during combat,+10% Movement Speed
+Lv.3 – Dash Strike,40k,Deal damage when dashing through enemies,Dash Attack
+Lv.4 – Root Frenzy,45k + 2 SP Boss Core,Consecutive attacks increase attack speed,+15% Attack Speed
+Lv.5 – Burrow Instinct,60k,Successful dodges grant temporary damage reduction,Evasion Bonus
+"Ultimate Specialization
+(Underground Predator)",100k + 3 SP Boss Core + REQ: 0/5 Boss Kill,,-Dash attacks deal 150% weapon damage.                                                   -Successfully dodging an attack grants 3 seconds of increased attack speed (+20%).

@@ -35,6 +35,12 @@
 - ❌ **Cache Boundaries:** Never read, search, index, or modify files within engine cache folders: `Library/`, `Temp/`, `Obj/`, `Logs/`, `UserSettings/`, `Builds/`.
 - ❌ **Meta File Sync:** Never manually edit `.meta` files without explicit GUID verification.
 
+### 2.5 Anti-Regression Invariant (Preserve Existing Feature Contracts)
+- **Public API Stability**: Never alter or delete existing public method/property signatures used by legacy features. Use method overloads or optional parameters to maintain backwards compatibility.
+- **Subsystem Decoupling**: Inter-feature communication must use domain events (`Action<T>`). Never directly invoke mutating methods on another feature's singleton.
+- **Scoped State & Token Safety**: Never mutate global state flags (`isInputLocked`, `timeScale`, camera priority) without guaranteed cleanup in `try...finally` or scoped token services.
+- **Clean Diff Gate**: Check `git status` before commit; never stage unintended scene or prefab changes.
+
 ---
 
 ## 3. Autonomous Execution Protocol (Read ➔ Plan ➔ Act ➔ Verify)
@@ -61,7 +67,7 @@
         - Execute project test suite via Unity MCP:
           `FarmBeware.EditorTests.GameplayAndHUDTests.RunAllTests()`
         - Or run tests via `run_tests` MCP tool.
-        - All 15 comprehensive audit tests must pass (15/15 Passed).
+        - All 86 comprehensive audit tests must pass (86/86 Passed).
      3. **Autonomous Auto-Healing:**
         - If any compilation error or test failure occurs, autonomously diagnose and resolve it immediately before concluding the turn.
 

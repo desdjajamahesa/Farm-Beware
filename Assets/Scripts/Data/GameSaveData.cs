@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using FarmBeware.Core.Runtime;
 
 namespace FeaturesSaveSystem
 {
@@ -89,24 +90,50 @@ namespace FeaturesSaveSystem
         public List<SavedInventorySlot> inventorySlots = new List<SavedInventorySlot>();
         public List<SavedContainerInventory> containerInventories = new List<SavedContainerInventory>();
 
-        // Farmland Crops
+        // Farmland Crops & Capacity
+        public int unlockedFarmlandPlots = 6;
         public List<SavedFarmlandTile> farmlandTiles = new List<SavedFarmlandTile>();
 
         // Wardrobe
         public string outfitName;
         public bool isHatEquipped = true;
 
-        // Weapon Upgrades
+        // Weapon & Armor Upgrades
         public int weaponLevel = 1;
+        public int armorLevel = 1;
+        public int activeSpecialization = 0; // 0=None, 1=SweetPotato, 2=Taro, 3=Corn
+        public int specializationNodeLevel = 0;
+        public int totalBossesDefeated = 0;
         public bool sweetPotatoPathUnlocked;
         public bool taroPathUnlocked;
         public bool cornPathUnlocked;
+        public List<SavedEquippedSlot> equippedSlots = new List<SavedEquippedSlot>();
 
         // Combat & Night Brawl
         public int nightCurrentWave;
         public int nightTotalWaves;
         public bool isNightBrawlActive;
         public List<SavedEnemyData> activeEnemies = new List<SavedEnemyData>();
+
+        // Storyline Progression
+        public int storyChapter = 1;
+        public List<string> triggeredStoryBeats = new List<string>();
+        public List<string> unlockedJournalEntries = new List<string>();
+        public bool isStoryComplete = false;
+        public int[] narrativeFacts;
+        public List<string> lastPlayedBeatKeys = new List<string>();
+        public List<int> lastPlayedDays = new List<int>();
+        public List<string> pendingModalBeatIds = new List<string>();
+
+        // Quest Progress Persistence
+        public QuestSavePayload questPayload;
+    }
+
+    [Serializable]
+    public class SavedEquippedSlot
+    {
+        public int slotType;
+        public string itemId;
     }
 
     [Serializable]

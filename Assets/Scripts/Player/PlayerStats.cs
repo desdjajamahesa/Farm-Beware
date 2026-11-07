@@ -199,6 +199,10 @@ public class PlayerStats : MonoBehaviour, FeaturesCombat.IDamageable, IPlayerDam
 
     private void DrainHungerAndThirst(float deltaTime)
     {
+        var timeService = ServiceLocator.Resolve<ITimeService>();
+        if (timeService != null && timeService.CurrentDay == 0) return;
+        if (FeaturesTime.DayNightTimeManager.Instance != null && FeaturesTime.DayNightTimeManager.Instance.CurrentDay == 0) return;
+
         if (isGodMode)
         {
             currentHunger = maxHunger;
@@ -228,6 +232,10 @@ public class PlayerStats : MonoBehaviour, FeaturesCombat.IDamageable, IPlayerDam
 
     private void HandleEmptyPenalty()
     {
+        var timeService = ServiceLocator.Resolve<ITimeService>();
+        if (timeService != null && timeService.CurrentDay == 0) return;
+        if (FeaturesTime.DayNightTimeManager.Instance != null && FeaturesTime.DayNightTimeManager.Instance.CurrentDay == 0) return;
+
         if (takeDamageWhenEmpty && (IsStarving || IsDehydrated))
         {
             if (Time.time >= nextDamageTime)
@@ -249,7 +257,16 @@ public class PlayerStats : MonoBehaviour, FeaturesCombat.IDamageable, IPlayerDam
         OnHealthChanged?.Invoke(currentHealth, maxHealth);
         if (actualHealed > 0)
             OnHealed?.Invoke(actualHealed);
+
+        var facts = ServiceLocator.Resolve<INarrativeFactBoard>();
+        if (facts != null)
+        {
+            bool isLowHealth = currentHealth > 0 && currentHealth <= (maxHealth * 0.25f);
+            facts.SetFact(NarrativeFactKey.PlayerLowHealthTriggered, isLowHealth ? 1 : 0);
+        }
     }
+
+    private static readonly Collider[] _parryShockwaveBuffer = new Collider[16];
 
     public FeaturesCombat.Core.PureLogic.CombatStatModifiers GetCombatStatModifiers()
     {
@@ -259,12 +276,40 @@ public class PlayerStats : MonoBehaviour, FeaturesCombat.IDamageable, IPlayerDam
         bool hasBerserker = buffMgr != null && (buffMgr.HasBuffKeyword("Berserker") || buffMgr.HasBuffKeyword("Smite"));
         bool hasReflective = buffMgr != null && (buffMgr.HasBuffKeyword("Reflective") || buffMgr.HasBuffKeyword("Shell") || buffMgr.HasBuffKeyword("Deflect"));
 
-        var weaponUpgrade = FeaturesWorkbench.PlayerWeaponUpgradeState.Instance;
+        var weaponUpgrade = GetComponent<FeaturesWorkbench.PlayerWeaponUpgradeState>() ?? FeaturesWorkbench.PlayerWeaponUpgradeState.Instance;
         bool sweetPotato = weaponUpgrade != null && weaponUpgrade.sweetPotatoPathUnlocked;
         bool taro = weaponUpgrade != null && weaponUpgrade.taroPathUnlocked;
 
+        bool isDodgeEmpowered = DefenseEvaluator != null && DefenseEvaluator.IsDodgeEmpowermentActive;
+        float setDodgeBonus = 0f;
+        var armorUpgrade = GetComponent<FeaturesWorkbench.PlayerArmorUpgradeState>() ?? FeaturesWorkbench.PlayerArmorUpgradeState.Instance;
+        if (armorUpgrade != null)
+        {
+            setDodgeBonus = armorUpgrade.GetCurrentSetBonus("Sweet Potato").DodgeDamageBonus;
+        }
+
         return FeaturesCombat.Core.PureLogic.CombatStatModifiers.Evaluate(
-            hasAgility, hasIronRoot, hasBerserker, hasReflective, sweetPotato, taro);
+            hasAgility, hasIronRoot, hasBerserker, hasReflective, sweetPotato, taro, isDodgeEmpowered, setDodgeBonus);
+    }
+
+    private void EmitParryShockwave(int blockedDamage)
+    {
+        int hitCount = Physics.OverlapSphereNonAlloc(transform.position + Vector3.up * 0.8f, 2.8f, _parryShockwaveBuffer, ~0, QueryTriggerInteraction.Collide);
+        int reflectDmg = Mathf.Max(8, Mathf.RoundToInt(blockedDamage * 0.35f));
+
+        for (int i = 0; i < hitCount; i++)
+        {
+            var col = _parryShockwaveBuffer[i];
+            if (col == null || col.gameObject == gameObject || col.transform.IsChildOf(transform)) continue;
+
+            var enemy = col.GetComponent<FeaturesCombat.EnemyBase>() ?? col.GetComponentInParent<FeaturesCombat.EnemyBase>();
+            if (enemy != null && !enemy.IsDead)
+            {
+                Vector3 pushDir = (enemy.transform.position - transform.position).normalized;
+                if (pushDir.sqrMagnitude < 0.01f) pushDir = transform.forward;
+                enemy.TakeDamage(reflectDmg, col.ClosestPoint(transform.position), pushDir * 1.8f);
+            }
+        }
     }
 
     public void TakeDamage(int amount)
@@ -278,15 +323,16 @@ public class PlayerStats : MonoBehaviour, FeaturesCombat.IDamageable, IPlayerDam
         {
             if (parried)
             {
+                EmitParryShockwave(amount);
                 if (PlayerUI.FloatingCombatTextManager.Instance != null)
                 {
                     PlayerUI.FloatingCombatTextManager.Instance.SpawnText(
                         transform.position + Vector3.up * 2f,
-                        "PARRY!",
+                        "⚡ PARRY! RIPOSTE READY!",
                         new Color(1f, 0.85f, 0.1f));
                 }
-                FeaturesCombat.Adapters.TraumaCameraShake.Instance?.AddTrauma(0.35f);
-                FeaturesCombat.Adapters.HitstopCoordinator.Instance?.RegisterHitstop(gameObject, 0.12f);
+                FeaturesCombat.Adapters.TraumaCameraShake.Instance?.AddTrauma(0.38f);
+                FeaturesCombat.Adapters.HitstopCoordinator.Instance?.RegisterHitstop(gameObject, 0.10f);
                 return;
             }
 
@@ -296,7 +342,7 @@ public class PlayerStats : MonoBehaviour, FeaturesCombat.IDamageable, IPlayerDam
                 {
                     PlayerUI.FloatingCombatTextManager.Instance.SpawnText(
                         transform.position + Vector3.up * 1.8f,
-                        "DODGE!",
+                        "DODGE! (+15% DMG)",
                         new Color(0.4f, 0.9f, 1f));
                 }
                 return;
@@ -309,6 +355,13 @@ public class PlayerStats : MonoBehaviour, FeaturesCombat.IDamageable, IPlayerDam
             amount = Mathf.Max(1, Mathf.RoundToInt(amount * (1f - mods.DamageMitigationRatio)));
         }
 
+        // Apply Armor Upgrade mitigation ratio (Lv 1 to 10: 0% up to 32%)
+        var armorUpgrade = FeaturesWorkbench.PlayerArmorUpgradeState.Instance;
+        if (armorUpgrade != null && armorUpgrade.DamageMitigationRatio > 0f)
+        {
+            amount = Mathf.Max(1, Mathf.RoundToInt(amount * (1f - armorUpgrade.DamageMitigationRatio)));
+        }
+
         var weaponUpgrade = FeaturesWorkbench.PlayerWeaponUpgradeState.Instance;
         if (weaponUpgrade != null && weaponUpgrade.taroPathUnlocked)
         {
@@ -319,6 +372,13 @@ public class PlayerStats : MonoBehaviour, FeaturesCombat.IDamageable, IPlayerDam
         currentHealth = Mathf.Clamp(currentHealth - amount, 0, maxHealth);
         OnHealthChanged?.Invoke(currentHealth, maxHealth);
         OnDamageTaken?.Invoke(amount);
+
+        var facts = ServiceLocator.Resolve<INarrativeFactBoard>();
+        if (facts != null)
+        {
+            bool isLowHealth = currentHealth > 0 && currentHealth <= (maxHealth * 0.25f);
+            facts.SetFact(NarrativeFactKey.PlayerLowHealthTriggered, isLowHealth ? 1 : 0);
+        }
 
         if (currentHealth <= 0 && !isDeadHandled)
         {

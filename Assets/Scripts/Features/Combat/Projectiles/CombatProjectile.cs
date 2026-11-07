@@ -1,10 +1,12 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering.Universal;
+using FeaturesCombat.Core.PureLogic;
 
 namespace FeaturesCombat.Projectiles
 {
     /// <summary>
-    /// Komponen entitas proyektil (sihir, peluru, panah, serangan energi) yang terintegrasi
+    /// Komponen entitas proyektil (sihir, peluru, panah, serangan energi, Corn Cob Repeater) yang terintegrasi
     /// dengan CombatProjectilePool untuk alokasi memori zero-GC.
     /// Dilengkapi sumber cahaya dinamis Point Light beradius pendek untuk mode Deferred+.
     ///
@@ -18,6 +20,8 @@ namespace FeaturesCombat.Projectiles
     [RequireComponent(typeof(Collider))]
     public class CombatProjectile : MonoBehaviour
     {
+        private static readonly Collider[] SharedExplosionBuffer = new Collider[24];
+
         [Header("Projectile Flight Dynamics")]
         [Tooltip("Kecepatan terbang proyektil (unit per detik).")]
         [SerializeField] private float speed = 14f;
@@ -52,6 +56,18 @@ namespace FeaturesCombat.Projectiles
         private GameObject shooterOwner;
         private CombatProjectilePool poolRef;
         private bool isDespawning = false;
+
+        // Player ranged weapon modifiers (Piercing, Knockback, Kernel Explosion)
+        private int _remainingPierces = 0;
+        private float _knockbackForce = 0f;
+        private bool _explodeOnHit = false;
+        private float _explosionRadius = 0f;
+        private bool _isCritShot = false;
+        private readonly HashSet<IDamageable> _hitTargetsThisFlight = new HashSet<IDamageable>();
+
+        public int RemainingPierces => _remainingPierces;
+        public int Damage => damage;
+        public float Speed => speed;
 
         private static MaterialPropertyBlock s_propBlock;
         private static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
@@ -111,7 +127,7 @@ namespace FeaturesCombat.Projectiles
                 if (IsValidTarget(hit.collider))
                 {
                     ApplyHit(hit.collider, hit.point);
-                    return;
+                    if (isDespawning) return;
                 }
             }
 
@@ -131,7 +147,7 @@ namespace FeaturesCombat.Projectiles
         public void Launch(GameObject shooter, Vector3 direction, Color color, int damageAmount = 25, float projSpeed = 14f, CombatProjectilePool pool = null)
         {
             shooterOwner = shooter;
-            moveDirection = direction.normalized;
+            moveDirection = direction.sqrMagnitude > 0.001f ? direction.normalized : Vector3.forward;
             transform.forward = moveDirection;
             damage = damageAmount;
             speed = projSpeed;
@@ -139,6 +155,13 @@ namespace FeaturesCombat.Projectiles
             spawnTime = Time.time;
             poolRef = pool;
             isDespawning = false;
+
+            _remainingPierces = 0;
+            _knockbackForce = 0f;
+            _explodeOnHit = false;
+            _explosionRadius = 0f;
+            _isCritShot = false;
+            _hitTargetsThisFlight.Clear();
 
             EnsurePointLightConfiguration();
 
@@ -163,6 +186,18 @@ namespace FeaturesCombat.Projectiles
                 _cachedGradient.SetKeys(_cachedColorKeys, _cachedAlphaKeys);
                 projectileTrail.colorGradient = _cachedGradient;
             }
+        }
+
+        /// <summary>
+        /// Configures advanced player ranged weapon modifiers (Piercing Shot, Knockback, Kernel Explosion).
+        /// </summary>
+        public void ConfigureRangedModifiers(int pierceCount, float knockbackForce, bool explodeOnHit, float explosionRadius, bool isCritShot = false)
+        {
+            _remainingPierces = Mathf.Max(0, pierceCount);
+            _knockbackForce = Mathf.Max(0f, knockbackForce);
+            _explodeOnHit = explodeOnHit;
+            _explosionRadius = Mathf.Max(0f, explosionRadius);
+            _isCritShot = isCritShot;
         }
 
         /// <summary>
@@ -210,7 +245,7 @@ namespace FeaturesCombat.Projectiles
 
         private bool IsValidTarget(Collider other)
         {
-            if (other.isTrigger) return false;
+            if (other == null || other.isTrigger) return false;
 
             if (shooterOwner != null)
             {
@@ -222,14 +257,24 @@ namespace FeaturesCombat.Projectiles
                     return false;
             }
 
+            var damageable = other.GetComponent<IDamageable>() ?? other.GetComponentInParent<IDamageable>();
+            if (damageable != null && _hitTargetsThisFlight.Contains(damageable))
+            {
+                return false;
+            }
+
             return true;
         }
 
         private void ApplyHit(Collider other, Vector3 hitPoint)
         {
             var damageable = other.GetComponent<IDamageable>() ?? other.GetComponentInParent<IDamageable>();
+            bool isPlayerShot = shooterOwner != null && shooterOwner.GetComponent<EnemyBase>() == null;
+
             if (damageable != null && !damageable.IsDead)
             {
+                _hitTargetsThisFlight.Add(damageable);
+
                 int effectiveDamage = damage;
                 if (shooterOwner != null)
                 {
@@ -239,10 +284,84 @@ namespace FeaturesCombat.Projectiles
                         effectiveDamage = 99999;
                     }
                 }
+
                 damageable.TakeDamage(effectiveDamage, hitPoint, moveDirection);
+
+                if (isPlayerShot)
+                {
+                    if (_knockbackForce > 0f)
+                    {
+                        Rigidbody targetRb = other.GetComponent<Rigidbody>() ?? other.GetComponentInParent<Rigidbody>();
+                        if (targetRb != null && !targetRb.isKinematic)
+                        {
+                            targetRb.AddForce((moveDirection + Vector3.up * 0.25f).normalized * _knockbackForce, ForceMode.Impulse);
+                        }
+                    }
+
+                    if (FloatingCombatTextManager.Instance != null)
+                    {
+                        FloatingCombatTextManager.Instance.SpawnEnemyDamage(
+                            hitPoint + Vector3.up * 0.8f,
+                            effectiveDamage,
+                            isCrit: _isCritShot,
+                            isSkill: _explodeOnHit);
+                    }
+
+                    if (FeaturesCombat.Adapters.CombatHitVfxEngine.Instance != null)
+                    {
+                        FeaturesCombat.Adapters.CombatHitVfxEngine.Instance.TriggerHit(
+                            hitPoint,
+                            moveDirection,
+                            other.gameObject,
+                            shooterOwner,
+                            _isCritShot,
+                            _isCritShot ? AttackImpactTier.ComboFinisher : AttackImpactTier.LightSlash);
+                    }
+
+                    // Kernel Explosion (Corn Lv.5 / Ultimate)
+                    if (_explodeOnHit && _explosionRadius > 0.1f && _isCritShot)
+                    {
+                        TriggerKernelSplashExplosion(hitPoint, Mathf.Max(1, Mathf.RoundToInt(effectiveDamage * 0.50f)), damageable);
+                    }
+                }
+
+                // Piercing check: if hitting a valid IDamageable and pierces remain, continue flight!
+                if (_remainingPierces > 0)
+                {
+                    _remainingPierces--;
+                    return;
+                }
             }
 
             Despawn();
+        }
+
+        private void TriggerKernelSplashExplosion(Vector3 center, int splashDamage, IDamageable primaryTarget)
+        {
+            int count = Physics.OverlapSphereNonAlloc(center, _explosionRadius, SharedExplosionBuffer, ~0, QueryTriggerInteraction.Collide);
+            for (int i = 0; i < count; i++)
+            {
+                var col = SharedExplosionBuffer[i];
+                if (col == null) continue;
+                if (shooterOwner != null && (col.gameObject == shooterOwner || col.transform.IsChildOf(shooterOwner.transform)))
+                    continue;
+
+                var target = col.GetComponent<IDamageable>() ?? col.GetComponentInParent<IDamageable>();
+                if (target == null || target.IsDead || target == primaryTarget) continue;
+
+                Vector3 dir = (col.transform.position - center).normalized;
+                if (dir.sqrMagnitude < 0.01f) dir = moveDirection;
+                target.TakeDamage(splashDamage, col.ClosestPoint(center), dir);
+
+                if (FloatingCombatTextManager.Instance != null)
+                {
+                    FloatingCombatTextManager.Instance.SpawnEnemyDamage(
+                        col.transform.position + Vector3.up * 0.9f,
+                        splashDamage,
+                        isCrit: false,
+                        isSkill: true);
+                }
+            }
         }
 
         private void OnTriggerEnter(Collider other)

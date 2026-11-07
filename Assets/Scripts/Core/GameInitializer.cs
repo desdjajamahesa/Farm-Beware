@@ -4,6 +4,6 @@ public class GameInitializer : MonoBehaviour
 {
     void Start()
     {
-        Debug.Log("Sistem AI berhasil terhubung!");
+        Debug.Log("[GameInitializer] Systems initialized and verified.");
     }
 }

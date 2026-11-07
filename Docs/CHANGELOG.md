@@ -4,6 +4,89 @@ Welcome to the **Farm-Beware** patch notes! Here you'll find the latest updates,
 
 ---
 
+## 2026-10-26
+
+### Added
+* **Cinematic Cutscene Visual & Typography Overhaul**: Completely overhauled cutscene typography and letterbox presentation for high-definition displays:
+  * **Cinematic Subtitles**: Subtitle font size increased from 20 to **28** (with TextMeshPro auto-sizing 22 – 32, bold moonlight ivory `#FAF8F2`, and crisp kerning).
+  * **Frosted Obsidian Backing Plate & Gold Accent Line**: Added a semi-transparent charcoal backing plate (`SubtitlePlate`) featuring a delicate 2px golden accent line (`#F2C752`) along the top edge, ensuring pristine readability across any 3D environment lighting.
+  * **Full-Screen Intro Story Cards**: Sentence cards during the intro black screen now display at **36** font size (auto-sizing 26 – 42, bold, generous line spacing) with pure cinematic quotation marks `“...”` centered on the screen.
+  * **Cinematic Letterbox & Amber Skip Prompt**: Letterbox bar height expanded to **125px** (from 110px), and skip gauge prompt upgraded to 15pt bold with warm amber hotkey highlights (`[ESC] / HOLD [SPACE] TO SKIP`).
+  * **In-Game Dialogue Sizing**: In-game dialogue box upgraded to 21pt body text and 24pt bold gold speaker name across an expanded 920x200 panel.
+* **Player V2 Stylized Character Model & Complete Animation Suite**: Replaced the legacy character model with the brand new, stylized farmer character (`Farmer_Asep_V2`). Equipped with a full suite of responsive, handcrafted generic animations:
+  * **Locomotion**: Crisp 8-way directional walking, dynamic running, and sprint animations.
+  * **Evasive Roll & Jump**: Smooth, athletic dodge roll (`roll_fit`) and responsive jump physics for traversing the farmstead.
+  * **Farming Actions**: Dedicated planting and watering animations (`farm_plantseed`, `farm_watering`) synchronized with tool particles.
+  * **Triple-Hit Melee Combo & Right-Click Attack**: Fluid 3-stage combat attack sequence (horizontal slash, downward chop, 360 spin attack) triggered with either left-click or right-click.
+  * **HandSocket & Weapon Alignment**: Normalized hand sockets to prevent weapon distortion, ensuring all tools (Hoe, Plant Waterer, Sword, Axe) fit snugly into the farmer's hands.
+* **Side Quest "First Steps" HUD Tracker**: Added a beginner quest tracker card prominently docked on the top-right HUD beneath the clock. Guides players step-by-step through their first day on the farm:
+  1. Retrieve farming tools (`tool_hoe` and `tool_plant_waterer`) from the homestead.
+  2. Stock up on fresh water bottles (`food_bottle_water`) from the kitchen or storage.
+  3. Acquire Sweet Potato seeds (`seed_sweet_potato`).
+  4. Till farmland soil, plant the seeds, and water the crops to initiate growth.
+  * Real-time checklist updates automatically as items enter your inventory or field actions are performed.
+* **Dedicated Cockpit Seating & Driving Pose**: Stepping into the delivery truck now transitions the character into a seated driving pose (`PlayerV2_DrivingPose`) inside the cab, with hands grasping the steering wheel and feet resting on the pedals.
+* **Day 0 to Day 1 Prologue Sleep Transition**: Day 0 arrival now seamlessly transitions into Day 1 Morning upon sleeping in your bedroom bed. The delivery truck remains permanently parked by the front entrance (`X: 30.55, Y: 0.00, Z: 54.14`), facing the house.
+
+### Changed
+* **Protagonist Character Identity Renamed to 'Ucup'**: Updated all dialogue boxes, story beat speaker metadata, and research journal author signatures across the narrative engine from "Veteran" to "Ucup".
+* **Combat Hit Registration Expansion**: Expanded melee target detection buffers from 16 to 64 simultaneous colliders, ensuring all strikes connect cleanly even in dense enemy swarms during Night Brawl.
+* **Cleaned Test Banners & UI Clutter**: Safely removed obsolete editor test banners from the scene, providing an unobstructed view of the homestead and clean HUD presentation.
+
+### Fixed
+* **Fixed Cutscene Text Formatting & Missing Font Glyphs**: Resolved an issue where the prologue header rendered raw `&nbsp;` entities and missing character boxes (`□ &nbsp; P R O L O G U E &nbsp; □`). TextMeshPro does not parse HTML character entities—replaced with standard whitespace and native em-dash glyphs (`—   P R O L O G U E   —`) that are fully supported by the SDF font atlas. Also replaced unsupported star glyphs (`✦`) with native bullet points (`•`) and em-dashes (`—`) across all inventory, cooking, and day transition interfaces.
+* **Fixed Day 1 Metal Pipe Discovery Story Trigger**: Corrected narrative beat alignment where striking the buried metal warning sign and cracking the underground pipe ("CLANG! My hoe just hit something metal...") was erroneously triggered when planting seeds (`FirstPlant`). Added a dedicated `StoryTriggerType.FirstTill` event invoked specifically upon successfully tilling farmland soil with the hoe.
+* **Fixed Player Standing Inside Vehicle Cab**: Resolved an issue where the character stood upright inside the delivery truck cab while driving, with the head clipping through the roof and feet dangling through the chassis.
+* **Fixed Native Engine Assertions on Game Stop**: Resolved "GameObjects can not be made active when they are being destroyed" console errors during game exit by safeguarding singletons (`OpeningCutsceneController`, `StorylineUI`, `JournalUI`) during teardown.
+* **Fixed Edit Mode Material Leaks & Destroy Warnings**: Implemented safe lifecycle destruction (`DestroyImmediate` in edit mode, `Destroy` in play mode) and `MaterialPropertyBlock` in kitchen and item visualizers, eliminating compiler warnings during test suite runs.
+
+---
+
+## 2026-10-25
+
+### Added
+* **Cinematic Vehicle Arrival Cutscene Overhaul**: Rebuilt the game's opening sequence with a cinematic road trip leading to the homestead:
+  * **Cinematic 50mm Lens Perspective**: Replaced wide distorted view with an authentic 50mm cinematic perspective (50° FOV, 0.3 near clip) from an unobstructed northern vantage point (`Z = 57.5 - 62.5`), preventing fence and pillar clipping.
+  * **Dynamic Vehicle Dynamics**: Built a responsive vehicle physics model featuring realistic acceleration curves, steering dampening, and suspension friction.
+  * **Atmospheric Letterbox & Subtitles**: Sleek cinematic black bars and smooth typewriter subtitle narration introducing the backstory as the truck arrives at the front gate.
+  * **Instant & Hold-to-Skip Support**: Players can tap or hold the skip button to smoothly transition directly to live gameplay without camera jitter or animation snapping.
+
+---
+
+## 2026-10-22
+
+### Added
+* **Modular Storyline & Lore Progression System**: Implemented an episodic narrative engine spanning the 5-day gameplay cycle:
+  * **NexaPhyto Research Lore**: Uncover the dark history of the abandoned NexaPhyto bio-chemical facility, rogue genetic crop experiments, and the source of the nighttime abominations.
+  * **In-Game Story Journal (`J` Key)**: Open an interactive journal anytime to review discovered story facts, daily logs, and active narrative milestones.
+  * **Dialogue Cards & Cutscene Sequences**: Introduced glassmorphic dialogue popups and cinematic boss introduction sequences (`BossIntroSequence`) that trigger when confronting climactic boss encounters.
+* **Centralized Modal Input Management**: Unified all fullscreen and overlay UI panels (Journal, Storyline, Menus) under a centralized input stack, preventing accidental character movement or tool swings while reading lore or adjusting settings.
+* **New Crop Data & Farm Grid Lookups**: Added canonical data for Corn (`CropData_Corn.asset`) and expanded farm grid query aliases to support versatile crop rotations.
+
+---
+
+## 2026-10-20
+
+### Fixed
+* **Monster & Boss Health Bar Visibility During Night Brawl**: Fixed an issue where overhead health bars above common monsters and the boss health bar panel at the top of the screen disappeared during Night Brawl. All combat health bars are now strictly anchored to the main UI canvas with automated reparenting protection, and monster health bars are immediately visible above active enemies upon spawn.
+* **Buff Tooltip UI Canvas Resolution**: Resolved an issue where food and combat buff inspection tooltips could become misparented, guaranteeing tooltips render accurately across all display modes.
+* **Night Brawl Wave Spawning & Intermission Fix**: Fixed a bug where monsters continued spawning during the 30-second wave intermission even after all active enemies in the previous wave were defeated. Wave spawns are now immediately and cleanly terminated the moment a wave is cleared.
+* **Boss Minion Wave Progress Decoupling**: Fixed an issue where eliminating minions summoned by bosses prematurely filled the wave progress bar and triggered early wave completion. Minions are now treated as dynamic combat adds that do not inflate or corrupt wave milestone quotas. When a boss is defeated, any lingering summoned minions are automatically dispersed.
+* **Climax Boss Wave Order**: In boss waves (Day 3 Wave 3, Day 4 Wave 4, and Day 5 Wave 5), common monsters will now always spawn first to test your defenses, with the boss appearing strictly as the final, dramatic climax of the wave.
+* **Monster Attack Consistency & Fair Combat Timing**: Fixed three long-standing monster combat AI issues:
+  * **Phantom Long-Distance Melee Attacks**: Fixed an issue where *The Ranger* and heavy bosses swung from far across the arena. *The Ranger* now properly uses its dedicated long-range artillery mortar attacks with laser telegraphing, while melee attack ranges and hitbox buffers have been harmonized across all enemy types (*Cyclops Tuber Maw* 2.4m, *Taro Colossus* 2.4m, *Taro Brute* 1.8m, *Tuber Maw* 1.4m). Special skills now strictly validate engagement distance before firing.
+  * **Hesitation & Orbiting at Close Range**: Fixed an issue where monsters standing directly next to you circled in place instead of attacking. Distant monsters are no longer allowed to hoard attack permits from 7 meters away, and close-quarters combatants now preempt distant approaching monsters to strike without delay.
+  * **Continuous Attacks Without Cooldown**: Eliminated jarring back-to-back attack loops where monsters chained special skills and basic attacks instantaneously with zero recovery. Attack cooldown timers are now stamped strictly when animations finish, and a guaranteed recovery buffer is enforced between skills and standard strikes.
+* **Seed Planting Stack Consumption Priority**: Fixed an issue where planting seeds while holding a seed stack in the hotbar incorrectly consumed seeds from duplicate stacks in your main inventory backpack rather than the active hotbar stack in your hands. Active hotbar stacks are now strictly prioritized when planting, seamlessly falling back to backpack stacks only once the hotbar stack is fully depleted.
+* **Plant Waterer Visual Mount & 3D Tool Model**: Resolved an issue where equipping the watering can (`tool_plant_waterer`) showed empty player hands due to an unlinked visual prefab. Created and configured the official 3D `PlantWaterer.prefab` with bespoke cylinder body, spout, handle, URP `Mat_Metal_Dark` material, trigger hitbox, and weapon trail controller, fully linked to `Tool_PlantWaterer.asset`.
+* **Melee Combat AI Reachability & Strike Precision**: Eliminated the circular deadlock where melee monsters endlessly circled the player without attacking:
+  * **Deadlock Elimination**: Fixed an architectural mismatch where melee orbit boundaries were larger than token acquisition thresholds. Combat AI now dynamically sizes orbit rings according to weapon range, and monsters with attack cooldowns ready immediately break out of orbit to close the gap and strike.
+  * **Precision Strike Alignment & Zero Whiffing**: Fixed an issue where monsters missed attacks against stationary players due to sluggish rotation during windups. Monsters now snap rotation directly toward the target at the strike climax, expanding telegraph ground coverage and close-proximity hit registration.
+  * **Subterranean Burrow Proximity**: Adjusted subterranean burrow eruptions (Tuber Maw) to approach within 1.2m before detonating with an expanded 2.4m eruption radius, preventing misses from meters away.
+* **Production-Ready Standalone Windows Build & Material Hardening**: Successfully prepared and compiled the official 64-bit Standalone Windows release build (`Builds/Windows/Farm-Beware.exe`). Implemented dual-layer material and shader hardening: configured `GraphicsSettings.defaultRenderPipeline` to `PC_RPAsset` (preventing fallback to Built-in pipeline pink shaders), whitelisted all runtime shaders in `Always Included Shaders` to prevent shader stripping, bundled farming soil materials into `Assets/Resources/Materials/Farming/`, synchronized enemy prefab renderer material slots, and validated clean execution through an automated startup smoke test.
+
+---
+
 ## 2026-10-17
 
 ### Added

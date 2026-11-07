@@ -32,6 +32,13 @@ namespace FeaturesCombat.UI
         [Header("Settings")]
         [SerializeField] private int initialPoolSize = 20;
         [SerializeField] private bool showOverheadBarForBosses = true;
+        [SerializeField] private bool hideBarAtFullHealth = false;
+
+        public bool HideBarAtFullHealth
+        {
+            get => hideBarAtFullHealth;
+            set => hideBarAtFullHealth = value;
+        }
 
         [Header("Hierarchy")]
         [SerializeField] private RectTransform containerRect;
@@ -90,24 +97,36 @@ namespace FeaturesCombat.UI
 
         private void EnsureContainer()
         {
+            var targetCanvas = CanvasHelper.ResolveMainUICanvas();
+            if (targetCanvas == null) return;
+
+            // Pastikan manager GameObject sendiri berada di bawah target canvas
+            if (transform.parent != targetCanvas.transform)
+            {
+                transform.SetParent(targetCanvas.transform, false);
+            }
+
             if (containerRect == null)
             {
-                containerRect = GetComponent<RectTransform>();
-                if (containerRect == null)
+                var existingContainer = targetCanvas.transform.Find("EnemyHealthBarContainer");
+                if (existingContainer != null)
                 {
-                    // Cari canvas utama UI_Canvas
-                    var canvas = FindFirstObjectByType<Canvas>();
-                    if (canvas != null)
-                    {
-                        var containerObj = new GameObject("EnemyHealthBarContainer", typeof(RectTransform));
-                        containerObj.transform.SetParent(canvas.transform, false);
-                        containerRect = containerObj.GetComponent<RectTransform>();
-                        containerRect.anchorMin = Vector2.zero;
-                        containerRect.anchorMax = Vector2.one;
-                        containerRect.offsetMin = Vector2.zero;
-                        containerRect.offsetMax = Vector2.zero;
-                    }
+                    containerRect = existingContainer.GetComponent<RectTransform>();
                 }
+                else
+                {
+                    var containerObj = new GameObject("EnemyHealthBarContainer", typeof(RectTransform));
+                    containerObj.transform.SetParent(targetCanvas.transform, false);
+                    containerRect = containerObj.GetComponent<RectTransform>();
+                    containerRect.anchorMin = Vector2.zero;
+                    containerRect.anchorMax = Vector2.one;
+                    containerRect.offsetMin = Vector2.zero;
+                    containerRect.offsetMax = Vector2.zero;
+                }
+            }
+            else if (containerRect.parent != targetCanvas.transform)
+            {
+                containerRect.SetParent(targetCanvas.transform, false);
             }
         }
 
@@ -147,7 +166,7 @@ namespace FeaturesCombat.UI
             if (enemy.isBoss && !showOverheadBarForBosses) return;
 
             EnemyOverheadBarUI bar = pool.Count > 0 ? pool.Dequeue() : CreateNewBarInstance();
-            bar.Bind(enemy);
+            bar.Bind(enemy, hideBarAtFullHealth);
             activeBars[enemy] = bar;
         }
 

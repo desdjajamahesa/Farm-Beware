@@ -2,7 +2,7 @@ namespace FeaturesCombat.Core.PureLogic
 {
     /// <summary>
     /// Pure C# immutable struct representing aggregated combat multipliers
-    /// calculated from gastronomy food buffs and workbench progression paths.
+    /// calculated from gastronomy food buffs, workbench progression paths, and defensive counter states.
     /// </summary>
     public readonly struct CombatStatModifiers
     {
@@ -51,7 +51,8 @@ namespace FeaturesCombat.Core.PureLogic
         );
 
         /// <summary>
-        /// Combines base modifiers with active gastronomy food buffs and workbench forging path bonuses.
+        /// Combines base modifiers with active gastronomy food buffs, workbench forging path bonuses,
+        /// and Phantom Dodge Empowerment.
         /// </summary>
         public static CombatStatModifiers Evaluate(
             bool hasAgilitySurge,
@@ -59,7 +60,9 @@ namespace FeaturesCombat.Core.PureLogic
             bool hasBerserkerHarvest,
             bool hasReflectiveShell,
             bool isSweetPotatoPath,
-            bool isTaroPath)
+            bool isTaroPath,
+            bool isDodgeEmpowered = false,
+            float setDodgeDamageBonus = 0f)
         {
             float atkSpeed = 1.0f;
             float dmg = 1.0f;
@@ -105,6 +108,13 @@ namespace FeaturesCombat.Core.PureLogic
                 poiseDmg += 0.35f;
                 kb += 0.30f;
                 mitigation += 0.10f;
+            }
+
+            // --- Phantom Dodge Empowerment & Sweet Potato 4-Piece Set Bonus ---
+            if (isDodgeEmpowered)
+            {
+                dmg += 0.15f + (setDodgeDamageBonus > 0f ? setDodgeDamageBonus : 0f);
+                atkSpeed += 0.10f;
             }
 
             return new CombatStatModifiers(

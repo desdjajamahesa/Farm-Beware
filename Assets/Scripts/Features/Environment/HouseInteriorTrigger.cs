@@ -49,6 +49,7 @@ namespace FarmBeware.Features.Environment
         /// Listener yang direkomendasikan: LightLayerAssignment, AudioAmbience, UI.
         /// </summary>
         public event Action<bool> OnInteriorStateChanged;
+        public static event Action<bool> OnAnyInteriorStateChanged;
 
         // ─────────────── Private State ───────────────
 
@@ -104,6 +105,8 @@ namespace FarmBeware.Features.Environment
             isPlayerInside = true;
             StartDitherTransition(targetDitherFade);
             OnInteriorStateChanged?.Invoke(true);
+            OnAnyInteriorStateChanged?.Invoke(true);
+            FarmBeware.Core.Runtime.NarrativeTelemetry.ReportSafeZoneChanged(true);
 
             Debug.Log($"[HouseInteriorTrigger] Pemain masuk interior '{gameObject.name}'. " +
                       $"Dither fade → {targetDitherFade:F2}");
@@ -117,6 +120,8 @@ namespace FarmBeware.Features.Environment
             isPlayerInside = false;
             StartDitherTransition(0.0f);
             OnInteriorStateChanged?.Invoke(false);
+            OnAnyInteriorStateChanged?.Invoke(false);
+            FarmBeware.Core.Runtime.NarrativeTelemetry.ReportSafeZoneChanged(false);
 
             Debug.Log($"[HouseInteriorTrigger] Pemain keluar interior '{gameObject.name}'. " +
                       "Dither fade → 0.00");

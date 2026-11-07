@@ -7,57 +7,54 @@ Coding standards, recurring design patterns, and strict anti-patterns for **Farm
 ## 1. Recurring Architectural Patterns
 
 ### 1.1 Pure Logic (POCO) vs Thin Engine Adapters
-- Decouple all state machines and math into plain C# objects (`CombatStateEvaluator`, `PoiseTracker`, `AttackTokenDispatcher`, `DefenseEvaluator`).
-- Zero Unity API calls in POCO logic; 0 byte heap allocations in runtime combat loops (Zero-GC).
-- `MonoBehaviour` scripts serve exclusively as thin adapters (pumping `Tick(deltaTime)`, inputs, Unity events).
+- Decouple state machines, grid math, and crop formulas into plain C# objects (`CombatStateEvaluator`, `PoiseTracker`, `AttackTokenDispatcher`, `DailyEconomyManager`).
+- Zero Unity API calls in POCO logic; 0 byte heap allocations in runtime loops (Zero-GC).
+- `MonoBehaviour` scripts act strictly as thin adapters (pumping `Tick(deltaTime)`, inputs, Unity events).
 
-### 1.2 Central Camera Delegation
-- Subsystems never manipulate camera components or transforms directly.
-- Transitions delegate through `CameraManager.Instance.SetMode(CameraMode.Gameplay | TrophyMode | WardrobeMode)`.
-- Camera controllers check `CurrentMode == CameraMode.Gameplay` before updating follow loops.
+### 1.2 Central Camera & Modal Delegation
+- Subsystems never manipulate camera transforms directly; delegate via `CameraManager`.
+- Centralize input gating and modal panels via `IModalStackService` and `ModalStackManager`.
 
-### 1.3 Event-Driven Stateless UI
-- Backend systems own state and broadcast C# events.
-- UI managers subscribe in `OnEnable()`, unsubscribe in `OnDisable()`, and re-render without duplicate state.
-- UI components must never mutate inventory directly or run backend countdown coroutines.
+### 1.3 Safe Reflection Invocation over SendMessage
+- Never call raw `SendMessage` on inactive objects or during EditMode tests to avoid `Assertion failed on expression: 'ShouldRunBehaviour()'`. Use type-safe methods or reflection (`MethodInfo.Invoke`).
 
-### 1.4 Safe Station Transactions & Rollbacks
-- Stations consuming resources over time (`KitchenStove`) snapshot consumed items/liquids at start.
-- Cancellation performs atomic rollback (`CancelCooking(refundIngredients: true)`), restoring items and water. Output is granted only on timer completion.
+### 1.4 Zero-Snag Road & Yard Invariant
+- Mesh colliders on decorative road ribbons, gravel shoulders, and courtyard aprons must be disabled.
+- Vehicles (`ArcadeVehicleController`) and player ride smoothly on native `TerrainCollider`.
 
-### 1.5 Combat Input Buffering & Interruption
-- Cache attack inputs pressed during active animations (`bufferedAttackTime <= 0.45f`).
-- Consume buffer at combo branch windows (`normalizedTime >= minLock`, `ComboResetWindow = 1.5f`).
-- Interrupt active combos on dodge or parry via `InterruptCombatSequence()` to reset timestamps (`-999f`) for immediate responsiveness.
+### 1.5 Isometric Depth Staging
+- SW to NE camera (`pitch: 30°`, `yaw: 45°`). Background structures at $+Z$; interaction zones face South ($-Z$).
 
-### 1.6 MaterialPropertyBlock & Zero-GC Pooling
-- Never call `renderer.material` for dynamic visuals. Use `MaterialPropertyBlock` to preserve GPU Resident Drawer (BRG) instancing.
-- Pre-allocate pools for floating UI and combat entities; zero runtime instantiation during combat.
+### 1.6 Safe Station Transactions & Rollbacks
+- Stations consuming items (`KitchenStove`) snapshot inputs at start. Cancellation performs atomic rollback (`refundIngredients: true`). Output granted only on completion.
 
 ### 1.7 Max Stack Invariant (Ceiling = 20)
-- Stackable items (`ItemData`) enforce `maxStack = 20` clamped via `[Range(1, 20)]`.
-- Tools, weapons, armor, and trophies enforce `maxStack = 1`.
+- Stackable items (`ItemData`) enforce `maxStack = 20` clamped via `[Range(1, 20)]`. Tools/weapons enforce `maxStack = 1`.
+
+### 1.8 Anti-Regression API Contracts & Decoupling
+- **Preserve Public APIs**: Never alter or delete public method/property signatures used by existing modules. Use overloads or optional params.
+- **Subsystem Decoupling**: Inter-feature communication must use domain events (`Action<T>`). Never directly invoke mutating methods on another feature's singleton.
+- **Scoped State & Token Safety**: Never flip flat boolean flags (`isInputLocked`, `timeScale`) without guaranteed cleanup in `try...finally` or scoped token services.
 
 ---
 
 ## 2. Coding Standards
 
-- **Namespaces**: Modular `Features<Module>` (e.g., `FeaturesCombat`, `FeaturesCamera`).
+- **Namespaces**: Modular `Features<Module>` (e.g., `FeaturesCombat`, `FeaturesEconomy`, `FeaturesStoryline`).
 - **Naming**: `PascalCase` for classes/methods/enums; `camelCase` or `_camelCase` for fields.
-- **Components**: Always use `TMPro.TextMeshProUGUI`. Use New Input System (`UnityEngine.InputSystem`).
-- **100% English Mandate**: All identifiers, comments, logs, Inspector attributes (`Header`, `Tooltip`), and UI labels must be written exclusively in English.
+- **100% English Mandate**: All identifiers, comments, logs, Inspector attributes, and UI text must be in English.
 
 ---
 
 ## 3. Strict Anti-Patterns (PROHIBITED)
 
 1. ❌ **Direct Camera Mutation**: Never alter camera transforms outside `CameraManager`.
-2. ❌ **Manual Input Locking**: Never toggle `PlayerControl.isInputLocked` manually; `CameraManager` owns this state.
-3. ❌ **UI Polling**: Never poll backend states inside UI `Update()`; rely on events.
-4. ❌ **Event Leaks**: Never subscribe to events without unsubscribing in `OnDisable()`.
-5. ❌ **Temporary Setup Scripts**: Never create ad-hoc `Assets/Editor/*Setup*.cs` scripts. Use targeted MCP tools.
-6. ❌ **Transparent Buildings**: Always use Bayer 4x4 Dithered Alpha Clipping (`RenderType = Opaque`, `ZWrite On`) to preserve depth prepass and shadows.
-7. ❌ **`UniversalForward` in Deferred+**: Custom opaque forward passes must use `Tags { "LightMode" = "UniversalForwardOnly" }`.
-8. ❌ **Static Batching in BRG**: Never enable Static Batching with GPU Resident Drawer (`InstancedDrawing`).
-9. ❌ **Secondary Camera Post-Processing**: Mirror/auxiliary cameras must set `renderPostProcessing = false`.
-10. ❌ **Dangling References in Pools**: Always unregister despawned enemies from `HitstopCoordinator` and `AttackTokenDispatcher` in `OnDisable()`.
+2. ❌ **Manual Input Locking**: Never toggle `PlayerControl.isInputLocked` manually; use `CameraManager` or `ModalStackManager`.
+3. ❌ **Unsafe SendMessage**: Never call `SendMessage` without verifying `Application.isPlaying && activeInHierarchy`.
+4. ❌ **Road Collider Snags**: Never add active colliders to road ribbons, shoulders, or yard aprons.
+5. ❌ **UI Polling**: Never poll backend states inside UI `Update()`; rely on events.
+6. ❌ **Event Leaks**: Never subscribe to events without unsubscribing in `OnDisable()` / `OnDestroy()`.
+7. ❌ **Temporary Setup Scripts**: Never create ad-hoc `Assets/Editor/*Setup*.cs` scripts. Use MCP tools.
+8. ❌ **Breaking Public Contracts**: Never delete/modify existing method signatures consumed by legacy features.
+9. ❌ **Silent Inspector Breakage**: Never rename serialized fields without `[FormerlySerializedAs("oldName")]`.
+10. ❌ **Unscoped State Leaks**: Never mutate global state without exit cleanup (causes ghost bugs in old features).

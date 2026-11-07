@@ -196,6 +196,16 @@ namespace FeaturesCombat.Wave
 
             _currentWaveIndex++;
             List<EnemyType> enemies = GetEnemiesScheduleForDayAndWave(_currentDay, _currentWaveIndex);
+
+            // Enforce design rule: in boss waves, all non-boss monsters spawn first, and the boss(es) spawn strictly last as the climax
+            enemies.Sort((a, b) =>
+            {
+                bool aIsBoss = IsBossType(a);
+                bool bIsBoss = IsBossType(b);
+                if (aIsBoss == bIsBoss) return 0;
+                return aIsBoss ? 1 : -1;
+            });
+
             _activeEnemiesRemaining = enemies.Count;
 
             OnWaveStarted?.Invoke(_currentDay, _currentWaveIndex);
@@ -206,13 +216,11 @@ namespace FeaturesCombat.Wave
 
         /// <summary>
         /// Registers dynamically summoned minions (e.g. from boss abilities).
+        /// Note: Summoned minions are secondary combat adds and do not mutate the canonical scheduled wave quota.
         /// </summary>
         public void RegisterDynamicEnemy()
         {
-            if (!_isNightActive) return;
-
-            _activeEnemiesRemaining++;
-            OnEnemiesRemainingChanged?.Invoke(_activeEnemiesRemaining);
+            // Summoned minions do not advance or mutate the fixed wave milestone quota.
         }
 
         /// <summary>
@@ -310,18 +318,18 @@ namespace FeaturesCombat.Wave
                 }
                 else
                 {
-                    // Wave 3: 6 enemies (Mini-boss Cyclops Tuber Maw + 5)
-                    list.Add(EnemyType.CyclopsTuberMaw);
+                    // Wave 3: 6 enemies (5 regular enemies + Mini-boss Cyclops Tuber Maw climax)
                     list.Add(EnemyType.TaroBrute);
                     list.Add(EnemyType.TaroBrute);
                     list.Add(EnemyType.CornMusketeer);
                     list.Add(EnemyType.CornMusketeer);
                     list.Add(EnemyType.TuberMaw);
+                    list.Add(EnemyType.CyclopsTuberMaw);
                 }
             }
             else if (day == 4)
             {
-                // Day 4: 3 normal waves + W4 (1 boss + 4 enemies)
+                // Day 4: 3 normal waves + W4 (4 regular enemies + 1 boss climax)
                 if (wave == 1)
                 {
                     list.Add(EnemyType.CornMusketeer);
@@ -346,17 +354,17 @@ namespace FeaturesCombat.Wave
                 }
                 else
                 {
-                    // Wave 4: 1 Boss (Taro Colossus) + 4 enemies
-                    list.Add(EnemyType.TaroColossus);
+                    // Wave 4: 4 regular enemies + 1 Boss (Taro Colossus) climax
                     list.Add(EnemyType.TaroBrute);
                     list.Add(EnemyType.TaroBrute);
                     list.Add(EnemyType.CornMusketeer);
                     list.Add(EnemyType.TuberMaw);
+                    list.Add(EnemyType.TaroColossus);
                 }
             }
             else
             {
-                // Day 5: 3 normal (4 + 5 + 6) + W4 (1 boss) + W5 (1 boss + 3 enemies)
+                // Day 5: 3 normal (4 + 5 + 6) + W4 (1 boss) + W5 (3 regular enemies + 1 boss climax)
                 if (wave == 1)
                 {
                     list.Add(EnemyType.TuberMaw);
@@ -388,11 +396,11 @@ namespace FeaturesCombat.Wave
                 }
                 else
                 {
-                    // Wave 5 Boss + 3 enemies: The Ranger + 3 minions
-                    list.Add(EnemyType.TheRanger);
+                    // Wave 5 Boss + 3 enemies: 3 regular enemies + The Ranger climax
                     list.Add(EnemyType.TaroBrute);
                     list.Add(EnemyType.CornMusketeer);
                     list.Add(EnemyType.TuberMaw);
+                    list.Add(EnemyType.TheRanger);
                 }
             }
 

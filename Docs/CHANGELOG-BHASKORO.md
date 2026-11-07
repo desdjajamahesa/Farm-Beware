@@ -157,4 +157,28 @@ Pembaruan grafis tombol menu utama dan pengayaan visual menggunakan ornamen tana
 - [`MainMenuScene.unity`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scenes/MainMenuScene.unity):
   - Sinkronisasi instansiasi prefab UI dan event trigger pada scene menu utama.
 
+---
+
+## 8. Subsistem Side Quest 'First Steps' & Integrasi Onboarding Pertanian (2026-10-26)
+
+Implementasi alur misi pembuka (*Side Quest: First Steps*) yang membimbing pemain baru melalui langkah-langkah dasar berkebun di hari pertama (`bhaskoro-branch`, diintegrasikan ke `Rafi-branch` via commit `f31db09`).
+
+### Komponen & Arsitektur:
+- [`QuestProgressModel.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Quest/Core/QuestProgressModel.cs):
+  - Model data quest deterministik murni POCO Zero-GC (`FeaturesQuest.Core`) yang melacak status pencapaian objektif:
+    1. Mengambil cangkul (`tool_hoe`).
+    2. Mengambil kaleng penyiram (`tool_plant_waterer`).
+    3. Mengambil botol air bersih (`food_bottle_water`).
+    4. Mengambil bibit ubi jalar (`seed_sweet_potato`).
+    5. Mencangkul tanah, menanam bibit, dan menyiram petak lahan.
+- [`QuestManager.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Quest/QuestManager.cs):
+  - Manager singleton yang memantau perubahan inventori pemain (`OnInventoryChanged`) dan mendengarkan event sinyal pertanian dari `FarmlandTile`.
+- [`QuestHUDUI.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Quest/UI/QuestHUDUI.cs):
+  - Kartu antarmuka HUD otomatis berestetika glassmorphism di sudut kanan atas layar di bawah jam digital, menampilkan daftar checklist interaktif secara real-time.
+- [`PlayerStarterKit.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Player/PlayerStarterKit.cs):
+  - Penyesuaian distribusi perlengkapan awal di peti penyimpanan rumah dan halaman untuk mendukung alur pengambilan item side quest.
+- [`GameplayAndHUDTests.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Editor/GameplayAndHUDTests.cs):
+  - Penambahan unit test otomatis **Test 62** untuk memvalidasi evaluasi logika quest, transisi checklist, dan deteksi sinyal petak lahan.
+
+
 

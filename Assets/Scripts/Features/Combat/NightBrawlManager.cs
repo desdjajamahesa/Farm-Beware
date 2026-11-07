@@ -117,26 +117,152 @@ namespace FeaturesCombat
         [SerializeField] private float waveIntermissionDelay = 30f;
 
         [Header("Staggered Spawning Settings")]
-        [Tooltip("Interval minimum (detik) antar kemunculan monster dalam satu wave (default: 15 detik).")]
-        [SerializeField] private float spawnIntervalMin = 15f;
+        [Tooltip("Minimum interval in seconds between consecutive monster arrivals in a wave (6 to 10s range).")]
+        [SerializeField] private float spawnIntervalMin = 2.0f;
 
-        [Tooltip("Interval maksimum (detik) antar kemunculan monster dalam satu wave (default: 20 detik).")]
-        [SerializeField] private float spawnIntervalMax = 20f;
+        [Tooltip("Maximum interval in seconds between consecutive monster arrivals in a wave (6 to 10s range).")]
+        [SerializeField] private float spawnIntervalMax = 3.5f;
+
+        public float SpawnIntervalMin => spawnIntervalMin;
+        public float SpawnIntervalMax => spawnIntervalMax;
 
         private readonly List<EnemyBase> activeEnemies = new List<EnemyBase>();
         private readonly Wave.WaveProgressionEngine waveEngine = new Wave.WaveProgressionEngine();
         private bool isWaveInProgress = false;
+        private bool isSpawningWave = false;
+        private bool _hasNight1CutscenePlayed = false;
         private Coroutine intermissionCoroutine;
         private Coroutine spawnCoroutine;
+        private Coroutine _night1CutsceneWaitingRoutine;
+
+        public bool HasNight1CutscenePlayed => _hasNight1CutscenePlayed;
+        public bool IsOverdriveNightActive { get; private set; }
+
+        public void SetOverdriveNightActive(bool active)
+        {
+            IsOverdriveNightActive = active;
+        }
+
+        /// <summary>
+        /// Attempts to arm Bio-Catalyst Night Overdrive by consuming 2 monster materials.
+        /// Enables 50% nocturnal crop growth, automatic Clean Harvest purification, +25% gold, and +30% material drops.
+        /// </summary>
+        public bool TryActivateNightOverdrive(InventoryComponent playerInv = null)
+        {
+            if (playerInv == null)
+            {
+                var player = GameObject.FindWithTag("Player") ?? GameObject.Find("Player");
+                if (player != null) playerInv = player.GetComponent<InventoryComponent>();
+            }
+
+            int availableCatalysts = 0;
+            if (playerInv != null && playerInv.slots != null)
+            {
+                for (int i = 0; i < playerInv.slots.Count; i++)
+                {
+                    var slot = playerInv.slots[i];
+                    if (slot != null && !slot.IsEmpty && slot.item != null)
+                    {
+                        if (slot.item.category == ItemCategory.Material ||
+                            (slot.item.itemId != null && slot.item.itemId.StartsWith("mat_", System.StringComparison.OrdinalIgnoreCase)))
+                        {
+                            availableCatalysts += slot.quantity;
+                        }
+                    }
+                }
+            }
+
+            if (!Core.PureLogic.NightOverdriveEvaluator.CanActivateOverdrive(IsOverdriveNightActive, availableCatalysts))
+            {
+                return false;
+            }
+
+            int remainingToConsume = Core.PureLogic.NightOverdriveEvaluator.RequiredCatalystMaterialCount;
+            if (playerInv != null && playerInv.slots != null)
+            {
+                for (int i = 0; i < playerInv.slots.Count && remainingToConsume > 0; i++)
+                {
+                    var slot = playerInv.slots[i];
+                    if (slot != null && !slot.IsEmpty && slot.item != null)
+                    {
+                        if (slot.item.category == ItemCategory.Material ||
+                            (slot.item.itemId != null && slot.item.itemId.StartsWith("mat_", System.StringComparison.OrdinalIgnoreCase)))
+                        {
+                            int take = Mathf.Min(slot.quantity, remainingToConsume);
+                            slot.quantity -= take;
+                            if (slot.quantity <= 0) { slot.item = null; slot.quantity = 0; }
+                            remainingToConsume -= take;
+                        }
+                    }
+                }
+                playerInv.OnInventoryChanged?.Invoke();
+            }
+
+            IsOverdriveNightActive = true;
+
+            if (FloatingCombatTextManager.Instance != null)
+            {
+                var player = GameObject.FindWithTag("Player");
+                Vector3 notifPos = player != null ? player.transform.position + Vector3.up * 2f : arenaCenter;
+                FloatingCombatTextManager.Instance.SpawnText(
+                    notifPos,
+                    "🔥 BIO-CATALYST OVERDRIVE ARMED! (+50% Night Growth & Clean Harvest)",
+                    new Color(1f, 0.45f, 0.15f));
+            }
+
+            return true;
+        }
+
+        public void ResetNight1CutsceneState()
+        {
+            _hasNight1CutscenePlayed = false;
+        }
+
+        /// <summary>
+        /// Configures the staggered spawn interval bounds with strict [6f, 10f] design envelope enforcement.
+        /// </summary>
+        public void SetSpawnIntervals(float min, float max)
+        {
+            spawnIntervalMin = Mathf.Clamp(min, 1.0f, 5.0f);
+            spawnIntervalMax = Mathf.Clamp(max, spawnIntervalMin, 5.0f);
+        }
+
+        private void ValidateSpawnIntervals()
+        {
+            // Auto-migrate legacy 15s-20s serialized scene values to the 6-10s specification
+            if (spawnIntervalMin > 4.0f || spawnIntervalMin < 1.0f)
+            {
+                spawnIntervalMin = 2.0f;
+            }
+            if (spawnIntervalMax > 5.0f || spawnIntervalMax < 1.0f)
+            {
+                spawnIntervalMax = 3.5f;
+            }
+            if (spawnIntervalMin > spawnIntervalMax)
+            {
+                spawnIntervalMin = spawnIntervalMax;
+            }
+        }
 
         public event System.Action<EnemyBase> OnEnemySpawned;
         public event System.Action<EnemyBase> OnEnemyDied;
         public IReadOnlyList<EnemyBase> ActiveEnemies => activeEnemies;
         public int ActiveEnemiesCount => activeEnemies.Count;
         public bool IsNightBrawlActive => isWaveInProgress;
+        public bool IsSpawningWave => isSpawningWave;
         public Wave.WaveProgressionEngine WaveEngine => waveEngine;
         public int CurrentWave => currentWave;
         public int TotalWaves => totalWaves;
+
+        private void StopSpawnCoroutine()
+        {
+            if (spawnCoroutine != null)
+            {
+                StopCoroutine(spawnCoroutine);
+                spawnCoroutine = null;
+            }
+            isSpawningWave = false;
+        }
 
         private void Awake()
         {
@@ -146,6 +272,12 @@ namespace FeaturesCombat
                 return;
             }
             Instance = this;
+            ValidateSpawnIntervals();
+        }
+
+        private void OnValidate()
+        {
+            ValidateSpawnIntervals();
         }
 
         private void OnEnable()
@@ -177,10 +309,12 @@ namespace FeaturesCombat
             waveEngine.OnAllWavesCleared -= HandleAllWavesCleared;
             waveEngine.OnEnemiesRemainingChanged -= HandleEnemiesRemainingChanged;
 
-            if (spawnCoroutine != null)
+            StopSpawnCoroutine();
+
+            if (_night1CutsceneWaitingRoutine != null)
             {
-                StopCoroutine(spawnCoroutine);
-                spawnCoroutine = null;
+                StopCoroutine(_night1CutsceneWaitingRoutine);
+                _night1CutsceneWaitingRoutine = null;
             }
 
             if (intermissionCoroutine != null)
@@ -221,12 +355,93 @@ namespace FeaturesCombat
             }
         }
 
+        private bool ShouldPlayNight1Cutscene()
+        {
+            if (currentDay != 1 || _hasNight1CutscenePlayed) return false;
+
+            if (FarmBeware.Core.Runtime.ServiceLocator.TryResolve<FarmBeware.Core.Runtime.INarrativeFactBoard>(out var facts) && facts != null)
+            {
+                if (facts.GetFact(FarmBeware.Core.Runtime.NarrativeFactKey.Night1CutsceneCompleted) > 0)
+                {
+                    _hasNight1CutscenePlayed = true;
+                    return false;
+                }
+            }
+            return true;
+        }
+
         public void StartNightBrawl()
         {
             if (isWaveInProgress) return;
 
+            if (FarmBeware.Core.Runtime.ServiceLocator.TryResolve<FarmBeware.Core.Runtime.ITimeService>(out var timeService) && timeService != null)
+            {
+                currentDay = timeService.CurrentDay;
+            }
+            else if (TimeManager.Instance != null)
+            {
+                currentDay = TimeManager.Instance.currentDay;
+            }
+
+            if (currentDay <= 0)
+            {
+                Debug.Log("[NightBrawlManager] Day 0 is arrival day. Night Brawl is suspended until Day 1.");
+                return;
+            }
+
+            if (ShouldPlayNight1Cutscene())
+            {
+                _hasNight1CutscenePlayed = true;
+                if (_night1CutsceneWaitingRoutine != null)
+                {
+                    StopCoroutine(_night1CutsceneWaitingRoutine);
+                }
+                _night1CutsceneWaitingRoutine = StartCoroutine(RoutinePlayNight1CutsceneThenStartBrawl());
+                return;
+            }
+
+            BeginNightBrawlActive();
+        }
+
+        private IEnumerator RoutinePlayNight1CutsceneThenStartBrawl()
+        {
+            // 1. Await DayTransitionUI if currently displaying day/night transition card
+            while (DayTransitionUI.IsAnyTransitionActive)
+            {
+                yield return null;
+            }
+
+            yield return new WaitForEndOfFrame();
+
+            // 2. Play Night 1 in-engine cutscene via ICutsceneService
+            bool cutsceneFinished = false;
+            if (FarmBeware.Core.Runtime.ServiceLocator.TryResolve<FarmBeware.Core.Runtime.ICutsceneService>(out var cutsceneService) && cutsceneService != null)
+            {
+                cutsceneService.PlayNight1Cutscene(() =>
+                {
+                    cutsceneFinished = true;
+                });
+            }
+            else
+            {
+                cutsceneFinished = true;
+            }
+
+            while (!cutsceneFinished)
+            {
+                yield return null;
+            }
+
+            // 3. Clean handoff into Wave 1 active brawl
+            _night1CutsceneWaitingRoutine = null;
+            BeginNightBrawlActive();
+        }
+
+        private void BeginNightBrawlActive()
+        {
             EnforceNightFoodLimit();
             EnsureHealthBarManagers();
+            EnsureWaveTrackerActive();
 
             isWaveInProgress = true;
             waveEngine.StartNight(currentDay);
@@ -353,11 +568,7 @@ namespace FeaturesCombat
             List<EnemyType> toSpawn = waveEngine.PrepareNextWave();
             currentWave = waveEngine.CurrentWaveIndex;
 
-            if (spawnCoroutine != null)
-            {
-                StopCoroutine(spawnCoroutine);
-                spawnCoroutine = null;
-            }
+            StopSpawnCoroutine();
 
             spawnCoroutine = StartCoroutine(RoutineSpawnWaveStaggered(toSpawn));
         }
@@ -366,14 +577,21 @@ namespace FeaturesCombat
         {
             if (toSpawn == null || toSpawn.Count == 0)
             {
+                isSpawningWave = false;
                 spawnCoroutine = null;
                 yield break;
             }
 
+            isSpawningWave = true;
             int totalCount = toSpawn.Count;
             for (int i = 0; i < totalCount; i++)
             {
-                if (!isWaveInProgress) yield break;
+                if (!isWaveInProgress)
+                {
+                    isSpawningWave = false;
+                    spawnCoroutine = null;
+                    yield break;
+                }
 
                 EnemyType type = toSpawn[i];
                 Vector3 spawnPos = CalculateRandomSpawnPoint();
@@ -383,11 +601,21 @@ namespace FeaturesCombat
 
                 if (enemy != null)
                 {
+                    enemy.isSummonedMinion = false;
+                    if (IsOverdriveNightActive)
+                    {
+                        float speedMult = Core.PureLogic.NightOverdriveEvaluator.GetEnemySpeedMultiplier(true);
+                        enemy.moveSpeed *= speedMult;
+                        if (enemy.TryGetComponent<NavMeshAgent>(out var navAgent) && navAgent != null)
+                        {
+                            navAgent.speed = enemy.moveSpeed;
+                        }
+                    }
                     activeEnemies.Add(enemy);
                     OnEnemySpawned?.Invoke(enemy);
                 }
 
-                // If not the last enemy in wave, wait 15-20 seconds before spawning the next monster
+                // If not the last enemy in wave, wait 6-10 seconds before spawning the next monster
                 if (i < totalCount - 1)
                 {
                     float interval = UnityEngine.Random.Range(spawnIntervalMin, spawnIntervalMax);
@@ -396,6 +624,7 @@ namespace FeaturesCombat
             }
 
             Debug.Log($"[NightBrawlManager] Day {currentDay} Wave {currentWave} completed staggered spawn: {activeEnemies.Count} enemies.");
+            isSpawningWave = false;
             spawnCoroutine = null;
         }
 
@@ -427,6 +656,8 @@ namespace FeaturesCombat
 
         private void HandleWaveCompleted(int day, int wave)
         {
+            StopSpawnCoroutine();
+
             if (waveEngine.HasMoreWaves)
             {
                 if (FloatingCombatTextManager.Instance != null)
@@ -449,11 +680,17 @@ namespace FeaturesCombat
         private IEnumerator RoutineIntermissionCountdown()
         {
             float countdown = waveIntermissionDelay;
+            int lastUpdatedSecond = -1;
             while (countdown > 0f)
             {
-                if (CombatPhaseTrackerUI.Instance != null)
+                int currentSecond = Mathf.CeilToInt(countdown);
+                if (currentSecond != lastUpdatedSecond)
                 {
-                    CombatPhaseTrackerUI.Instance.SetIntermissionCountdown(Mathf.CeilToInt(countdown), currentWave + 1, totalWaves);
+                    lastUpdatedSecond = currentSecond;
+                    if (CombatPhaseTrackerUI.Instance != null)
+                    {
+                        CombatPhaseTrackerUI.Instance.SetIntermissionCountdown(currentSecond, currentWave + 1, totalWaves);
+                    }
                 }
 
                 // Check for instant skip input ([Enter] or [N]) every frame - non-conflicting with movement, attack, or jump
@@ -516,13 +753,14 @@ namespace FeaturesCombat
 
         /// <summary>
         /// Mendaftarkan musuh baru hasil pemanggilan (summon) bos ke dalam daftar musuh aktif wave saat ini.
+        /// Minion tidak menambah kuota waveEngine dan ditandai sebagai isSummonedMinion = true.
         /// </summary>
         public void RegisterDynamicEnemy(EnemyBase enemy)
         {
             if (enemy == null || activeEnemies.Contains(enemy)) return;
+            enemy.isSummonedMinion = true;
             activeEnemies.Add(enemy);
             OnEnemySpawned?.Invoke(enemy);
-            waveEngine.RegisterDynamicEnemy();
         }
 
         private List<EnemyType> GetEnemiesListForDayAndWave(int day, int wave)
@@ -627,11 +865,17 @@ namespace FeaturesCombat
         {
             activeEnemies.Remove(enemy);
             OnEnemyDied?.Invoke(enemy);
-            waveEngine.RecordEnemyDefeated();
+
+            // Minion hasil summon bos tidak boleh memajukan kuota atau progres waveEngine
+            if (enemy == null || !enemy.isSummonedMinion)
+            {
+                waveEngine.RecordEnemyDefeated();
+            }
         }
 
         private void HandleAllWavesCleared(int day)
         {
+            StopSpawnCoroutine();
             isWaveInProgress = false;
 
             if (TimeManager.Instance != null)
@@ -668,11 +912,7 @@ namespace FeaturesCombat
                 intermissionCoroutine = null;
             }
 
-            if (spawnCoroutine != null)
-            {
-                StopCoroutine(spawnCoroutine);
-                spawnCoroutine = null;
-            }
+            StopSpawnCoroutine();
 
             // Cleanup any existing active enemies
             foreach (var enemy in activeEnemies)
@@ -756,6 +996,7 @@ namespace FeaturesCombat
 
             // Scenario 2: It is Night and encounter is active/not cleared
             isWaveInProgress = false; // Reset lock so wave spawning is never blocked
+            EnsureHealthBarManagers();
 
             if (TimeManager.Instance != null)
             {
@@ -832,19 +1073,22 @@ namespace FeaturesCombat
 
         public void EndNightBrawl(bool cleanupRemaining)
         {
+            if (_night1CutsceneWaitingRoutine != null)
+            {
+                StopCoroutine(_night1CutsceneWaitingRoutine);
+                _night1CutsceneWaitingRoutine = null;
+            }
+
             if (intermissionCoroutine != null)
             {
                 StopCoroutine(intermissionCoroutine);
                 intermissionCoroutine = null;
             }
 
-            if (spawnCoroutine != null)
-            {
-                StopCoroutine(spawnCoroutine);
-                spawnCoroutine = null;
-            }
+            StopSpawnCoroutine();
 
             isWaveInProgress = false;
+            IsOverdriveNightActive = false;
             waveEngine.EndNight();
 
             if (cleanupRemaining)
@@ -878,23 +1122,39 @@ namespace FeaturesCombat
 
         private void EnsureHealthBarManagers()
         {
+            var targetCanvas = FarmBeware.Core.Runtime.CanvasHelper.ResolveMainUICanvas();
+            if (targetCanvas == null) return;
+
             if (FeaturesCombat.UI.EnemyHealthBarManager.Instance == null)
             {
-                var canvas = FindFirstObjectByType<Canvas>();
-                if (canvas != null)
-                {
-                    var mgrObj = new GameObject("EnemyHealthBarManager", typeof(FeaturesCombat.UI.EnemyHealthBarManager));
-                    mgrObj.transform.SetParent(canvas.transform, false);
-                }
+                var mgrObj = new GameObject("EnemyHealthBarManager", typeof(FeaturesCombat.UI.EnemyHealthBarManager));
+                mgrObj.transform.SetParent(targetCanvas.transform, false);
+            }
+            else if (FeaturesCombat.UI.EnemyHealthBarManager.Instance.transform.parent != targetCanvas.transform)
+            {
+                FeaturesCombat.UI.EnemyHealthBarManager.Instance.transform.SetParent(targetCanvas.transform, false);
             }
 
             if (FeaturesCombat.UI.BossHealthBarManager.Instance == null)
             {
-                var canvas = FindFirstObjectByType<Canvas>();
-                if (canvas != null)
+                var bossMgrObj = new GameObject("BossHealthBarManager", typeof(FeaturesCombat.UI.BossHealthBarManager));
+                bossMgrObj.transform.SetParent(targetCanvas.transform, false);
+            }
+            else if (FeaturesCombat.UI.BossHealthBarManager.Instance.transform.parent != targetCanvas.transform)
+            {
+                FeaturesCombat.UI.BossHealthBarManager.Instance.transform.SetParent(targetCanvas.transform, false);
+            }
+        }
+
+        private void EnsureWaveTrackerActive()
+        {
+            var targetCanvas = FarmBeware.Core.Runtime.CanvasHelper.ResolveMainUICanvas();
+            if (targetCanvas != null)
+            {
+                var tracker = targetCanvas.transform.Find("HUD_NightBrawlWaveTracker");
+                if (tracker != null && !tracker.gameObject.activeSelf)
                 {
-                    var bossMgrObj = new GameObject("BossHealthBarManager", typeof(FeaturesCombat.UI.BossHealthBarManager));
-                    bossMgrObj.transform.SetParent(canvas.transform, false);
+                    tracker.gameObject.SetActive(true);
                 }
             }
         }

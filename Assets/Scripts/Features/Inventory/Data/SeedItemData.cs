@@ -4,20 +4,20 @@ using UnityEngine;
 public class SeedItemData : ItemData
 {
     [Header("Crop Yield & Growth")]
-    [Tooltip("Hasil panen tanaman saat tanaman ini matang.")]
+    [Tooltip("Harvested crop item yielded when this crop reaches maturity.")]
     public ItemData cropYield;
 
-    [Tooltip("Durasi waktu pertumbuhan tanaman dari bibit sampai siap panen (detik).")]
+    [Tooltip("Growth duration from planted seed to mature crop (in seconds).")]
     public float growthDuration = 30f;
 
-    [Tooltip("Jumlah hasil panen minimal.")]
+    [Tooltip("Minimum crop yield quantity upon harvest.")]
     public int minYield = 1;
 
-    [Tooltip("Jumlah hasil panen maksimal.")]
+    [Tooltip("Maximum crop yield quantity upon harvest.")]
     public int maxYield = 3;
 
     [Header("Ecology & Brawl")]
-    [Tooltip("Monster yang berasosiasi dengan tanaman ini di malam hari (e.g. Tuber Maw, Taro Brute).")]
+    [Tooltip("Mutant monster species associated with this crop at night (e.g. Tuber Maw, Taro Brute, Corn Musketeer).")]
     public string associatedMonster;
 
     private void OnEnable()

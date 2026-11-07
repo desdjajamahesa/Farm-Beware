@@ -218,7 +218,16 @@ namespace FeaturesFarming.Adapters
         /// </summary>
         public bool HandleFarmAction(Vector2Int coord, Vector3 worldPos, bool isInteractOnly = false)
         {
-            // CONSTRAINT: Prevent all farming actions if Night phase
+            // CONSTRAINT: Prevent all farming actions if Day 0 or Night phase
+            int currentDay = FeaturesTime.DayNightTimeManager.Instance != null 
+                ? FeaturesTime.DayNightTimeManager.Instance.CurrentDay 
+                : (TimeManager.Instance != null ? TimeManager.Instance.currentDay : 1);
+            if (currentDay == 0)
+            {
+                ShowFeedbackText(worldPos, "Rest first. The harvest begins tomorrow.", new Color(1f, 0.8f, 0.4f));
+                return false;
+            }
+
             if (TimeManager.Instance != null && TimeManager.Instance.currentPhase == TimeManager.DayPhase.Night)
             {
                 Debug.LogWarning("[PlayerFarmInteraction] Farming is only allowed during the day!");
@@ -259,6 +268,7 @@ namespace FeaturesFarming.Adapters
 
                     if (grid.TryTill(coord))
                     {
+                        FarmlandTile.InvokeSoilTilled(null);
                         ShowFeedbackText(worldPos, "Soil Tilled!", new Color(0.85f, 0.65f, 0.35f));
                         return true;
                     }
@@ -335,6 +345,7 @@ namespace FeaturesFarming.Adapters
 
             if (grid.TryTill(coord))
             {
+                FarmlandTile.InvokeSoilTilled(null);
                 ShowFeedbackText(worldPos, "Soil Tilled!", new Color(0.85f, 0.65f, 0.35f));
                 return true;
             }
@@ -406,7 +417,8 @@ namespace FeaturesFarming.Adapters
             {
                 if (PlayerInventory != null)
                 {
-                    PlayerInventory.RemoveItem(seedItem, 1);
+                    int hotbarIdx = PlayerInventory.selectedHotbarIndex;
+                    PlayerInventory.RemoveItem(seedItem, 1, preferredSlotIndex: hotbarIdx);
                 }
 
                 if (playerControl != null)
@@ -452,8 +464,8 @@ namespace FeaturesFarming.Adapters
 
             if (yieldItem == null)
             {
-                yieldItem = Resources.Load<ItemData>("Data/Items/Crops/Crop_SweetPotato_Dirty")
-                         ?? Resources.Load<ItemData>("Data/Items/Crops/Crop_SweetPotato");
+                var db = ItemDatabase.Instance;
+                yieldItem = db != null ? (db.GetItem("crop_sweetpotato_dirty") ?? db.GetItem("crop_sweetpotato")) : null;
             }
 
             if (yieldCount < 1) yieldCount = 1;

@@ -25,7 +25,7 @@ MonoBehaviour:
   sellPrice: 150
   isDirty: 0
   cleanVariant: {fileID: 0}
-  equipPrefab: {fileID: 0}
+  equipPrefab: {fileID: 4766059736135846039, guid: f25e84560fcf3a644a476506d5820c3c, type: 3}
   isWeapon: 0
   isHoe: 0
   baseDamage: 5

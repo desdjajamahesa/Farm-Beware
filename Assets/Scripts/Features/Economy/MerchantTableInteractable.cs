@@ -14,35 +14,41 @@ namespace FeaturesEconomy
     {
         [Header("Merchant Catalog")]
         [Tooltip("Custom items for sale at this table. If empty, all seeds are loaded automatically.")]
-        [SerializeField] private List<ItemData> stockItems = new List<ItemData>();
+        [SerializeField] protected List<ItemData> stockItems = new List<ItemData>();
 
-        private void Awake()
+        /// <summary>
+        /// Read-only view of current stock items for sale.
+        /// </summary>
+        public IReadOnlyList<ItemData> StockItems => stockItems;
+
+        protected virtual void Awake()
         {
             var label = GetComponent<WorldLabel>();
             if (label != null && string.IsNullOrEmpty(label.displayName))
             {
                 label.displayName = "Merchant Table (Trade)";
             }
-            if (stockItems == null || stockItems.Count == 0)
-            {
-                InitializeDefaultStock();
-            }
+            InitializeDefaultStock();
         }
 
-        public void InitializeDefaultStock()
+        public virtual void InitializeDefaultStock()
         {
             if (stockItems == null) stockItems = new List<ItemData>();
-            if (stockItems.Count > 0) return;
 
             var db = Resources.Load<ItemDatabase>("Database/ItemDatabase");
             if (db != null && db.GetAllItems() != null)
             {
                 foreach (var item in db.GetAllItems())
                 {
-                    if (item == null) continue;
+                    if (item == null || item.isDirty || (item.itemId != null && item.itemId.Contains("dirty"))) continue;
+                    if (string.Equals(item.itemId, "dummysword", System.StringComparison.OrdinalIgnoreCase)) continue;
                     if (item.category == ItemCategory.Seed ||
+                        item.category == ItemCategory.Tool ||
+                        item.category == ItemCategory.Weapon ||
+                        item is EquipmentItemData ||
                         (item.category == ItemCategory.Material && item.buyPrice > 0) ||
-                        item.itemId == "dummysword" || item.itemId == "food_bottle_water")
+                        item.itemId == "food_bottle_water" ||
+                        (item.buyPrice > 0 && item.category != ItemCategory.Crop && item.category != ItemCategory.MonsterDrop))
                     {
                         if (!stockItems.Contains(item))
                             stockItems.Add(item);
@@ -51,8 +57,21 @@ namespace FeaturesEconomy
             }
         }
 
-        public void Interact(GameObject interactor)
+        public virtual bool CanInteract(GameObject interactor) => true;
+
+        public virtual void Interact(GameObject interactor)
         {
+            var timeService = FarmBeware.Core.Runtime.ServiceLocator.Resolve<FarmBeware.Core.Runtime.ITimeService>();
+            int currentDay = timeService != null ? timeService.CurrentDay : 1;
+            if (currentDay == 0)
+            {
+                FarmBeware.Core.Runtime.ServiceLocator.Resolve<FarmBeware.Core.Runtime.IFloatingTextService>()?.SpawnText(
+                    transform.position + Vector3.up * 1.5f,
+                    "Rest first. The harvest begins tomorrow.",
+                    new Color(1f, 0.8f, 0.4f));
+                return;
+            }
+
             if (MerchantShopUI.Instance == null)
             {
                 // Search for existing panel in scene first

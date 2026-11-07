@@ -23,6 +23,7 @@ namespace FeaturesFarming
     public class WaterWellInteractable : MonoBehaviour, IInteractable, IObstructionExempt
     {
         public static WaterWellInteractable Instance { get; private set; }
+        public static event Action<int> OnWaterWellRefilled;
 
         [Header("Interaction Prompt")]
         [Tooltip("The base label shown on screen when player approaches the well.")]
@@ -215,6 +216,14 @@ namespace FeaturesFarming
 
         public void Interact(GameObject interactor)
         {
+            var timeService = FarmBeware.Core.Runtime.ServiceLocator.Resolve<FarmBeware.Core.Runtime.ITimeService>();
+            int currentDay = timeService != null ? timeService.CurrentDay : (FeaturesTime.DayNightTimeManager.Instance != null ? FeaturesTime.DayNightTimeManager.Instance.CurrentDay : 1);
+            if (currentDay == 0)
+            {
+                SpawnFloatingAlert("Rest first. The harvest begins tomorrow.");
+                return;
+            }
+
             if (isWatererReadyToCollect)
             {
                 CollectFilledWaterer(interactor);
@@ -316,6 +325,11 @@ namespace FeaturesFarming
             UpdateVisuals();
             UpdatePromptLabel();
 
+            if (waterGained > 0f)
+            {
+                OnWaterWellRefilled?.Invoke(Mathf.RoundToInt(waterGained));
+            }
+
             float remainingQuota = Mathf.Max(0f, maxRefillsPerDay - refillsUsedToday);
             SpawnFloatingAlert($"💧 Waterer retrieved early! ({Mathf.FloorToInt(newWaterAmount)}/100L | {remainingQuota:F1}/{maxRefillsPerDay:F0} refills left)");
             return true;
@@ -350,6 +364,8 @@ namespace FeaturesFarming
             UpdateVisuals();
             UpdatePromptLabel();
 
+            OnWaterWellRefilled?.Invoke(100);
+
             float remainingQuota = Mathf.Max(0f, maxRefillsPerDay - refillsUsedToday);
             SpawnFloatingAlert($"💧 Taken Full Plant Waterer (100/100 L)! ({remainingQuota:F1}/{maxRefillsPerDay:F0} refills left today)");
             return true;
@@ -357,7 +373,16 @@ namespace FeaturesFarming
 
         private void UpdatePromptLabel()
         {
+            if (worldLabel == null) worldLabel = GetComponent<WorldLabel>();
             if (worldLabel == null) return;
+
+            var timeService = FarmBeware.Core.Runtime.ServiceLocator.Resolve<FarmBeware.Core.Runtime.ITimeService>();
+            int currentDay = timeService != null ? timeService.CurrentDay : (FeaturesTime.DayNightTimeManager.Instance != null ? FeaturesTime.DayNightTimeManager.Instance.CurrentDay : 1);
+            if (currentDay == 0)
+            {
+                worldLabel.displayName = $"{promptLabel} (Rest First)";
+                return;
+            }
 
             float remainingQuota = Mathf.Max(0f, maxRefillsPerDay - refillsUsedToday);
 

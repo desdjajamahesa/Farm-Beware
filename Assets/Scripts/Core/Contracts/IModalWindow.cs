@@ -22,5 +22,6 @@ namespace FarmBeware.Core.Runtime
         void Pop();
         void PopSpecific(IModalWindow modal);
         void CloseAll();
+        void Clear();
     }
 }

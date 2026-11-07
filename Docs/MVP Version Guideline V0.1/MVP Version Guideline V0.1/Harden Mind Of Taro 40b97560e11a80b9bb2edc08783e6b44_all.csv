@@ -1,0 +1,8 @@
+﻿Upgrade,Cost,Description,Effect
+Lv.1 – Heavy Roots,10k gold,Increase heavy attack damage,+10% Heavy Attack Damage
+Lv.2 – Thick Skin,20k + 1 Taro Boss Core,Reduce incoming damage,+10% Defense
+Lv.3 – Ground Breaker,40k,Heavy attacks push enemies backward,Knockback
+Lv.4 – Iron Taro,45k + 2 Taro Boss Core,Increase maximum health,+15% Max HP
+Lv.5 – Unbreakable Root,60k,Taking damage briefly reduces incoming damage,Damage Resistance
+"Ultimate Specialization
+(Ancient Guardian)",100k + 3 Taro Boss Core + REQ: 0/5 Boss Kill,,-Heavy attacks deal 150% weapon damage.                                                   -Heavy attacks create a small shockwave that damages nearby enemies.                                                  -Receive 20% less damage for 3 seconds after a heavy attack.

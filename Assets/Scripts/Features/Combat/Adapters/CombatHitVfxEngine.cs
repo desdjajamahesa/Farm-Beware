@@ -1,4 +1,5 @@
 using UnityEngine;
+using FeaturesCombat.Core.PureLogic;
 
 namespace FeaturesCombat.Adapters
 {
@@ -7,8 +8,8 @@ namespace FeaturesCombat.Adapters
     /// Provides visceral game feel on weapon impact:
     /// 1. Procedural blade slice & impact thump sound effects (Zero external asset dependency).
     /// 2. Procedural hit spark & slash particle bursts.
-    /// 3. Zero-GC Hitstop dual-freeze (attacker pause + victim freeze).
-    /// 4. Dynamic trauma camera shake.
+    /// 3. Zero-GC Hitstop dual-freeze (attacker pause + victim freeze) scaled by AttackImpactTier.
+    /// 4. Dynamic trauma camera shake scaled by AttackImpactTier.
     /// 5. Hit flash coordination.
     /// </summary>
     public class CombatHitVfxEngine : MonoBehaviour
@@ -180,25 +181,53 @@ namespace FeaturesCombat.Adapters
         }
 
         /// <summary>
-        /// Triggers full combat impact feedback when player weapon hits an enemy.
+        /// Triggers full combat impact feedback when player weapon hits an enemy (backwards-compatible overload).
         /// </summary>
         public void TriggerHit(Vector3 hitPoint, Vector3 attackDir, GameObject victim, GameObject attacker = null, bool isCrit = false)
+        {
+            AttackImpactTier tier = isCrit ? AttackImpactTier.ComboFinisher : AttackImpactTier.LightSlash;
+            TriggerHit(hitPoint, attackDir, victim, attacker, isCrit, tier);
+        }
+
+        /// <summary>
+        /// Triggers full combat impact feedback evaluated against a 5-tier ImpactKinematicsProfile.
+        /// </summary>
+        public void TriggerHit(
+            Vector3 hitPoint,
+            Vector3 attackDir,
+            GameObject victim,
+            GameObject attacker,
+            bool isCrit,
+            AttackImpactTier impactTier)
         {
             EnsureAudioSource();
             EnsureParticleSystems();
 
+            ImpactKinematicsProfile profile = ImpactKinematicsProfile.Evaluate(impactTier, isCrit);
+
             // 1. Blade Impact Audio
             if (_audioSource != null)
             {
-                AudioClip clipToPlay = isCrit
-                    ? (critHitClip != null ? critHitClip : _bladeHitClip)
-                    : (_bladeHitClip != null ? _bladeHitClip : sliceHitClip);
+                AudioClip clipToPlay;
+                if (impactTier >= AttackImpactTier.PoiseCrushOrWallSplat || isCrit)
+                {
+                    clipToPlay = critHitClip != null ? critHitClip : (heavyHitClip != null ? heavyHitClip : _bladeHitClip);
+                }
+                else if (impactTier >= AttackImpactTier.ComboFinisher)
+                {
+                    clipToPlay = heavyHitClip != null ? heavyHitClip : _bladeHitClip;
+                }
+                else
+                {
+                    clipToPlay = _bladeHitClip != null ? _bladeHitClip : sliceHitClip;
+                }
 
                 if (clipToPlay != null)
                 {
-                    _audioSource.pitch = Random.Range(0.93f, 1.07f);
+                    _audioSource.pitch = Random.Range(profile.AudioPitchMin, profile.AudioPitchMax);
                     _audioSource.transform.position = hitPoint;
-                    _audioSource.PlayOneShot(clipToPlay, isCrit ? 1.0f : 0.85f);
+                    float vol = (isCrit || impactTier >= AttackImpactTier.HeavyCleave) ? 1.0f : 0.85f;
+                    _audioSource.PlayOneShot(clipToPlay, vol);
                 }
             }
 
@@ -208,7 +237,7 @@ namespace FeaturesCombat.Adapters
                 _sparkParticleSystem.transform.position = hitPoint;
                 Vector3 emitDir = attackDir.sqrMagnitude > 0.01f ? attackDir.normalized : Vector3.up;
                 _sparkParticleSystem.transform.rotation = Quaternion.LookRotation(emitDir);
-                _sparkParticleSystem.Emit(isCrit ? 22 : 14);
+                _sparkParticleSystem.Emit(profile.SparkBurstCount);
             }
 
             // 3. Hit Flash on Victim
@@ -217,22 +246,20 @@ namespace FeaturesCombat.Adapters
                 var feedback = victim.GetComponent<HitFeedbackRenderer>() ?? victim.GetComponentInChildren<HitFeedbackRenderer>();
                 if (feedback != null)
                 {
-                    feedback.TriggerFlash(isCrit ? 0.14f : 0.10f);
+                    feedback.TriggerFlash(isCrit || impactTier >= AttackImpactTier.HeavyCleave ? 0.15f : 0.10f);
                 }
             }
 
-            // 4. Dual Hitstop (Briefly freeze attacker swing & victim)
+            // 4. Dual Hitstop (Briefly freeze attacker swing & victim scaled by impact tier)
             if (HitstopCoordinator.Instance != null)
             {
-                float attackerStop = isCrit ? 0.065f : 0.045f;
-                float victimStop = isCrit ? 0.11f : 0.08f;
-                HitstopCoordinator.Instance.RegisterDualHitstop(attacker, victim, attackerStop, victimStop);
+                HitstopCoordinator.Instance.RegisterDualHitstop(attacker, victim, profile.AttackerHitstopSec, profile.VictimHitstopSec);
             }
 
             // 5. Trauma Camera Shake
             if (TraumaCameraShake.Instance != null)
             {
-                TraumaCameraShake.Instance.AddTrauma(isCrit ? 0.36f : 0.22f);
+                TraumaCameraShake.Instance.AddTrauma(profile.CameraTrauma);
             }
         }
 

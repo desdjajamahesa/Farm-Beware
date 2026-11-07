@@ -11,6 +11,7 @@ namespace FarmBeware.Core.Runtime
         bool IsInputLocked { get; set; }
         void PlayAnimation(string triggerName);
         void TriggerPlantAnimation();
+        void TriggerWaterAnimation();
         void TriggerHarvestAnimation();
         void ApplyKnockback(Vector3 direction, float force);
         void ApplyStun(float duration);
@@ -19,6 +20,7 @@ namespace FarmBeware.Core.Runtime
         void RemoveInputLock(string source);
         void ClearAllInputLocks();
         bool HasInputLock(string source);
+        bool HasLockOtherThan(string excludedSource);
         bool IsGodMode { get; }
         void StopMovement();
         void Teleport(Vector3 position, Quaternion rotation);

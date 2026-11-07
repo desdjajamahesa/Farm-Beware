@@ -91,10 +91,26 @@ namespace FeaturesFarming.Adapters
             if (crop != null && !string.IsNullOrEmpty(crop.cropId))
             {
                 _cropLookup[crop.cropId] = crop;
+                RegisterAlias(crop);
                 if (!registeredCrops.Contains(crop))
                 {
                     registeredCrops.Add(crop);
                 }
+            }
+        }
+
+        private void RegisterAlias(CropData crop)
+        {
+            if (crop == null || string.IsNullOrEmpty(crop.cropId)) return;
+            if (crop.cropId.StartsWith("Crop_", StringComparison.OrdinalIgnoreCase))
+            {
+                string seedAlias = "seed_" + crop.cropId.Substring(5).ToLowerInvariant();
+                _cropLookup[seedAlias] = crop;
+            }
+            else if (crop.cropId.StartsWith("seed_", StringComparison.OrdinalIgnoreCase))
+            {
+                string cropAlias = "Crop_" + crop.cropId.Substring(5);
+                _cropLookup[cropAlias] = crop;
             }
         }
 
@@ -108,6 +124,7 @@ namespace FeaturesFarming.Adapters
                     if (crop != null && !string.IsNullOrEmpty(crop.cropId))
                     {
                         _cropLookup[crop.cropId] = crop;
+                        RegisterAlias(crop);
                     }
                 }
             }
@@ -121,6 +138,7 @@ namespace FeaturesFarming.Adapters
                     if (c != null && !string.IsNullOrEmpty(c.cropId))
                     {
                         _cropLookup[c.cropId] = c;
+                        RegisterAlias(c);
                     }
                 }
             }

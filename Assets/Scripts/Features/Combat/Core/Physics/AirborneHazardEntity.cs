@@ -1,11 +1,13 @@
 using UnityEngine;
+using FeaturesCombat.Core.PureLogic;
 
 namespace FeaturesCombat.Core.Physics
 {
     /// <summary>
     /// Governs airborne hazard state for knocked-down entities.
     /// Employs kinetic threshold gating (speed >= 4.5 m/s) and temporal subsampling (20 Hz)
-    /// with Physics.OverlapSphereNonAlloc to detect collisions with other enemies.
+    /// with Physics.OverlapSphereNonAlloc to detect collisions with other enemies,
+    /// plus environmental Wall-Splat impacts when launched enemies slam into static obstacles.
     /// Utilizes a zero-GC struct ring cache to prevent multihit collision damage loops.
     /// </summary>
     [RequireComponent(typeof(Rigidbody))]
@@ -27,6 +29,9 @@ namespace FeaturesCombat.Core.Physics
         [Tooltip("Secondary damage inflicted upon other enemies struck by this entity.")]
         [SerializeField] private int secondaryCollisionDamage = 18;
 
+        [Tooltip("Base bonus damage inflicted upon this entity when slamming into a solid wall or fence at high speed.")]
+        [SerializeField] private int wallSplatBonusDamage = 22;
+
         private struct HitRecord
         {
             public int TargetId;
@@ -40,8 +45,10 @@ namespace FeaturesCombat.Core.Physics
         private bool _wasAgentEnabledBeforeLaunch;
         private float _scanTimer;
         private bool _isHazardActive;
+        private bool _hasWallSplattedThisLaunch;
 
         public bool IsHazardActive => _isHazardActive;
+        public int LastWallSplatDamage { get; private set; }
 
         private void Awake()
         {
@@ -86,6 +93,8 @@ namespace FeaturesCombat.Core.Physics
             _rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
             _rb.AddForce(launchForce, ForceMode.Impulse);
             _isHazardActive = true;
+            _hasWallSplattedThisLaunch = false;
+            LastWallSplatDamage = 0;
             _scanTimer = 0f;
 
             // Clear hit history ring buffer
@@ -94,6 +103,48 @@ namespace FeaturesCombat.Core.Physics
                 _hitHistory[i].TargetId = 0;
                 _hitHistory[i].ExpireTime = 0f;
             }
+        }
+
+        /// <summary>
+        /// Evaluates and applies environmental Wall-Splat impact damage, trauma shake, and floating text
+        /// when a launched enemy slams into a solid boundary (fence, house wall, boulder).
+        /// </summary>
+        public int TriggerWallSplatImpact(Vector3 wallPoint, Vector3 wallNormal, float impactSpeed)
+        {
+            if (_hasWallSplattedThisLaunch) return 0;
+
+            int wallDmg = ImpactKinematicsProfile.EvaluateWallSplatDamage(impactSpeed, minHazardSpeed, wallSplatBonusDamage);
+            if (wallDmg <= 0) return 0;
+
+            _hasWallSplattedThisLaunch = true;
+            LastWallSplatDamage = wallDmg;
+
+            var selfDamageable = GetComponent<IDamageable>() ?? GetComponentInParent<IDamageable>();
+            if (selfDamageable != null && !selfDamageable.IsDead)
+            {
+                selfDamageable.TakeDamage(wallDmg, wallPoint, wallNormal);
+            }
+
+            if (FloatingCombatTextManager.Instance != null)
+            {
+                FloatingCombatTextManager.Instance.SpawnText(
+                    wallPoint + Vector3.up * 1.4f,
+                    $"💥 WALL SPLAT! ({wallDmg})",
+                    new Color(1f, 0.55f, 0.15f));
+            }
+
+            if (FeaturesCombat.Adapters.CombatHitVfxEngine.Instance != null)
+            {
+                FeaturesCombat.Adapters.CombatHitVfxEngine.Instance.TriggerHit(
+                    wallPoint,
+                    wallNormal,
+                    gameObject,
+                    null,
+                    true,
+                    AttackImpactTier.PoiseCrushOrWallSplat);
+            }
+
+            return wallDmg;
         }
 
         private void FixedUpdate()
@@ -108,7 +159,7 @@ namespace FeaturesCombat.Core.Physics
                 return;
             }
 
-            // Boundary safeguard: Predictive raycast to prevent penetrating fences / static boundaries
+            // Boundary safeguard & Wall-Splat evaluation: Predictive raycast to detect fences / static boundaries
             float currentSpeed = Mathf.Sqrt(sqrSpeed);
             Vector3 moveDir = _rb.linearVelocity / currentSpeed;
             float checkDist = currentSpeed * Time.fixedDeltaTime + scanRadius * 0.5f;
@@ -119,6 +170,10 @@ namespace FeaturesCombat.Core.Physics
                 {
                     Vector3 normal = wallHit.normal;
                     normal.y = 0f;
+
+                    // Trigger Wall-Splat bonus damage on high-speed boundary slam
+                    TriggerWallSplatImpact(wallHit.point, normal.sqrMagnitude > 0.01f ? normal.normalized : -moveDir, currentSpeed);
+
                     if (normal.sqrMagnitude > 0.01f)
                     {
                         normal.Normalize();

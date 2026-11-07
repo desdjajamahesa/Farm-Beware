@@ -21,7 +21,7 @@ MonoBehaviour:
   moveSpeed: 0
   contactDamage: 60
   attackRate: 0.5
-  attackRange: 5
+  attackRange: 10
   aggroRange: 14
   knockbackResistance: 1
   maxPoise: 100
@@ -31,8 +31,8 @@ MonoBehaviour:
   lootDrops:
   - item: {fileID: 11400000, guid: 4f7d88e8909f6ec4e90f1c9207138114, type: 2}
     minQuantity: 1
-    maxQuantity: 2
-    dropChance: 0.15
+    maxQuantity: 1
+    dropChance: 1
   minGold: 700
   maxGold: 1000
   goldChance: 0.85

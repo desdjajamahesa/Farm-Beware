@@ -416,6 +416,10 @@ public class StoveUIManager : MonoBehaviour, IModalWindow
 
     private void HandleCookingCompleted(KitchenRecipe recipe)
     {
+        var facts = ServiceLocator.Resolve<INarrativeFactBoard>();
+        facts?.AddFact(NarrativeFactKey.MealsCookedCount, 1);
+        NarrativeTelemetryHooks.ReportCookingCompleted();
+
         UpdateAllBurnerCards();
         UpdateCookedSlotUI();
         UpdateCookButton();
@@ -651,7 +655,7 @@ public class StoveUIManager : MonoBehaviour, IModalWindow
                         foreach (var buff in food.buffEffects)
                         {
                             string buffDesc = !string.IsNullOrEmpty(buff.description) ? buff.description : buff.buffName;
-                            sb.AppendLine($"<color=#FBBF24>✦ {buffDesc} ({buff.duration}s)</color>");
+                            sb.AppendLine($"<color=#FBBF24>• {buffDesc} ({buff.duration}s)</color>");
                         }
                     }
                 }

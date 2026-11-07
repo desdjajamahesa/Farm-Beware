@@ -247,12 +247,13 @@ namespace FeaturesFarming
             matTilledWet = tilledWet;
         }
 
-        public void SetCropVisualObjects(GameObject sprout, GameObject growing, GameObject sweetPotato, GameObject taro)
+        public void SetCropVisualObjects(GameObject sprout, GameObject growing, GameObject sweetPotato, GameObject taro, GameObject corn = null)
         {
             sproutVisual = sprout;
             growingVisual = growing;
             matureSweetPotatoVisual = sweetPotato;
             matureTaroVisual = taro;
+            matureCornVisual = corn;
         }
     }
 }

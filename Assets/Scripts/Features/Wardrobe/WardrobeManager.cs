@@ -678,6 +678,29 @@ namespace FeaturesWardrobe
             }
 
             // Enforce initial state: UI hidden, mirror cam off for performance.
+            if (chestLidAnimator == null)
+            {
+                var lid = transform.Find("lid");
+                if (lid != null)
+                {
+                    chestLidAnimator = lid.GetComponent<Animator>();
+                    if (chestLidAnimator == null)
+                    {
+                        chestLidAnimator = lid.gameObject.AddComponent<Animator>();
+                    }
+                }
+            }
+
+            if (chestLidAnimator != null)
+            {
+                if (chestLidAnimator.runtimeAnimatorController == null)
+                {
+                    chestLidAnimator.runtimeAnimatorController = Resources.Load<RuntimeAnimatorController>("Wardrobe/ChestLidController");
+                }
+                chestLidAnimator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
+                chestLidAnimator.SetBool("IsOpen", false);
+            }
+
             if (mirrorCamera != null)
                 mirrorCamera.EnableMirrorCamera(false);
 
