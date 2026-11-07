@@ -88,7 +88,7 @@ namespace FarmBeware.EditorTests
             ResetTestAuditHarness();
 
             int passed = 0;
-            int total = 105;
+            int total = 107;
 
             if (Test_DayNight_PhaseProgression_DuskUntilNight()) passed++;
             if (Test_BedInteractable_Logic_AllowsDuskAndBlocksNightOnly()) passed++;
@@ -196,6 +196,8 @@ namespace FarmBeware.EditorTests
             if (Test_Axis3_InteractionEdges_SwingCancelCleanup_And_NightVehicleAutoDismount_Audit()) passed++;
             if (Test_Axis4_ZeroGC_TickInvariants_CountdownCache_And_CutsceneHasInstance_Audit()) passed++;
             if (Test_PlaytestAudit_11Bugs_RegressionSuite()) passed++;
+            if (Test_WorldMap_ProjectionMath_ZeroGC_And_StyleCBoundaryCalculations()) passed++;
+            if (Test_WorldMap_ModalStack_And_PlayerTracking_Audit()) passed++;
 
             Debug.Log("[AUDIT-SUITE] ========================================================");
             Debug.Log($"[AUDIT-SUITE] Complete! Passed: {passed}/{total}");
@@ -4513,7 +4515,7 @@ namespace FarmBeware.EditorTests
                 playerGo.tag = "Player";
                 var inv = playerGo.AddComponent<InventoryComponent>();
                 inv.ResetInventory(16);
-                var kit = playerGo.AddComponent<Player.PlayerStarterKit>();
+                var kit = playerGo.AddComponent<global::Player.PlayerStarterKit>();
 
                 // 1. Force Day 0
                 timeMgr.SetDayAndTime(0, 16.0f);
@@ -10177,6 +10179,267 @@ namespace FarmBeware.EditorTests
             finally
             {
                 if (testRoot != null) Object.DestroyImmediate(testRoot);
+            }
+        }
+
+        // Test 106: MapProjectionMath Zero-GC coordinate normalization & Style C bounds
+        private static bool Test_WorldMap_ProjectionMath_ZeroGC_And_StyleCBoundaryCalculations()
+        {
+            try
+            {
+                var bounds = FarmBeware.Core.Runtime.MapBounds2D.DefaultStyleCBounds;
+
+                // 1. Boundary span verification
+                if (Mathf.Abs(bounds.SpanX - 231.11112f) > 0.01f || Mathf.Abs(bounds.SpanZ - 130.0f) > 0.01f)
+                {
+                    Debug.LogError($"[Test 106] Invalid Style C Bounds span! SpanX={bounds.SpanX}, SpanZ={bounds.SpanZ}");
+                    return false;
+                }
+
+                // 2. Center point mapping: (-70, 35) must project to exactly UV (0.5, 0.5) and anchored (0, 0)
+                var centerWorld = new Vector3(-70f, 0f, 35f);
+                var uvCenter = FarmBeware.Core.Runtime.MapProjectionMath.WorldToNormalizedUV(centerWorld, bounds);
+                if (Mathf.Abs(uvCenter.x - 0.5f) > 0.0001f || Mathf.Abs(uvCenter.y - 0.5f) > 0.0001f)
+                {
+                    Debug.LogError($"[Test 106] Center world position failed UV mapping! UV={uvCenter}");
+                    return false;
+                }
+
+                var containerSize = new Vector2(1600f, 900f);
+                var anchoredCenter = FarmBeware.Core.Runtime.MapProjectionMath.WorldToMapAnchoredPosition(centerWorld, bounds, containerSize);
+                if (anchoredCenter.sqrMagnitude > 0.0001f)
+                {
+                    Debug.LogError($"[Test 106] Center world position did not map to anchored (0, 0)! Anchored={anchoredCenter}");
+                    return false;
+                }
+
+                // 3. Min/Max boundary corners
+                var minWorld = new Vector3(bounds.MinX, 0f, bounds.MinZ);
+                var uvMin = FarmBeware.Core.Runtime.MapProjectionMath.WorldToNormalizedUV(minWorld, bounds);
+                if (Mathf.Abs(uvMin.x) > 0.0001f || Mathf.Abs(uvMin.y) > 0.0001f)
+                {
+                    Debug.LogError($"[Test 106] Min corner failed UV mapping! UV={uvMin}");
+                    return false;
+                }
+
+                var anchoredMin = FarmBeware.Core.Runtime.MapProjectionMath.UVToAnchoredPosition(uvMin, containerSize);
+                if (Mathf.Abs(anchoredMin.x - (-800f)) > 0.01f || Mathf.Abs(anchoredMin.y - (-450f)) > 0.01f)
+                {
+                    Debug.LogError($"[Test 106] Min corner failed anchored position! Anchored={anchoredMin}");
+                    return false;
+                }
+
+                var maxWorld = new Vector3(bounds.MaxX, 0f, bounds.MaxZ);
+                var uvMax = FarmBeware.Core.Runtime.MapProjectionMath.WorldToNormalizedUV(maxWorld, bounds);
+                if (Mathf.Abs(uvMax.x - 1f) > 0.0001f || Mathf.Abs(uvMax.y - 1f) > 0.0001f)
+                {
+                    Debug.LogError($"[Test 106] Max corner failed UV mapping! UV={uvMax}");
+                    return false;
+                }
+
+                // 4. Heading rotation conversion
+                if (Mathf.Abs(FarmBeware.Core.Runtime.MapProjectionMath.WorldYawToUIRotationZ(0f) - 0f) > 0.0001f ||
+                    Mathf.Abs(FarmBeware.Core.Runtime.MapProjectionMath.WorldYawToUIRotationZ(90f) - (-90f)) > 0.0001f ||
+                    Mathf.Abs(FarmBeware.Core.Runtime.MapProjectionMath.WorldYawToUIRotationZ(180f) - (-180f)) > 0.0001f ||
+                    Mathf.Abs(FarmBeware.Core.Runtime.MapProjectionMath.WorldYawToUIRotationZ(270f) - (-270f)) > 0.0001f)
+                {
+                    Debug.LogError("[Test 106] Heading yaw rotation calculation failed!");
+                    return false;
+                }
+
+                Debug.Log("✅ Test 106: MapProjectionMath Zero-GC coordinate normalization & Style C bounds verified.");
+                return true;
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogError($"[Test 106] Exception: {ex.Message}\n{ex.StackTrace}");
+                return false;
+            }
+        }
+
+        // Test 107: WorldMapUI ModalStack integration, player input lock gating, and marker tracking
+        private static bool Test_WorldMap_ModalStack_And_PlayerTracking_Audit()
+        {
+            GameObject canvasGo = null;
+            GameObject mapGo = null;
+            GameObject playerGo = null;
+            var prevStack = ModalStackManager.Instance;
+            var origPlayer = ServiceLocator.Resolve<IPlayerContext>();
+
+            try
+            {
+                // Setup Canvas and WorldMapUI hierarchy
+                canvasGo = new GameObject("Test_Canvas", typeof(RectTransform), typeof(Canvas), typeof(UnityEngine.UI.GraphicRaycaster));
+                mapGo = new GameObject("Test_WorldMapUI", typeof(RectTransform), typeof(CanvasGroup), typeof(FarmBeware.Player.UI.WorldMapUI));
+                mapGo.transform.SetParent(canvasGo.transform, false);
+
+                var mapContainer = new GameObject("Container", typeof(RectTransform));
+                mapContainer.transform.SetParent(mapGo.transform, false);
+                var containerRt = mapContainer.GetComponent<RectTransform>();
+                containerRt.sizeDelta = new Vector2(1600f, 900f);
+
+                var markerGo = new GameObject("Marker", typeof(RectTransform));
+                markerGo.transform.SetParent(mapContainer.transform, false);
+                var markerRt = markerGo.GetComponent<RectTransform>();
+
+                var mapUi = mapGo.GetComponent<FarmBeware.Player.UI.WorldMapUI>();
+
+                // Bind serialized references
+                var so = new UnityEditor.SerializedObject(mapUi);
+                so.FindProperty("canvasGroup").objectReferenceValue = mapGo.GetComponent<CanvasGroup>();
+                so.FindProperty("mapContainer").objectReferenceValue = containerRt;
+                so.FindProperty("playerMarker").objectReferenceValue = markerRt;
+                so.ApplyModifiedProperties();
+
+                // Setup Mock Player with IPlayerContext
+                playerGo = new GameObject("Test_Player_MapTracking");
+                playerGo.tag = "Player";
+                playerGo.transform.position = new Vector3(-70f, 0f, 35f);
+                playerGo.transform.rotation = Quaternion.Euler(0f, 90f, 0f); // Facing East
+                var pControl = playerGo.AddComponent<PlayerControl>();
+
+                mapUi.SetPlayerTarget(playerGo.transform, pControl);
+                ServiceLocator.Register<IPlayerContext>(pControl);
+
+                // Initial state
+                if (mapUi.IsOpen)
+                {
+                    Debug.LogError("[Test 107] WorldMapUI must be initially closed!");
+                    return false;
+                }
+                if (pControl.isInputLocked)
+                {
+                    Debug.LogError("[Test 107] PlayerControl must not be input locked before map is opened!");
+                    return false;
+                }
+
+                // 1. Open Map
+                mapUi.OpenModal();
+
+                if (!mapUi.IsOpen)
+                {
+                    Debug.LogError("[Test 107] WorldMapUI.IsOpen failed to become true!");
+                    return false;
+                }
+                if (!ModalStackManager.Instance.HasActiveModal)
+                {
+                    Debug.LogError("[Test 107] ModalStackManager must register WorldMapUI as active modal!");
+                    return false;
+                }
+                if (!pControl.isInputLocked || !pControl.HasInputLock("WorldMapUI"))
+                {
+                    Debug.LogError("[Test 107] PlayerControl input lock 'WorldMapUI' was not acquired on open!");
+                    return false;
+                }
+
+                // Check marker anchored position (at center world position -70, 35 -> anchored pos 0, 0)
+                if (markerRt.anchoredPosition.sqrMagnitude > 0.01f)
+                {
+                    Debug.LogError($"[Test 107] Player marker anchored position did not match center! Anchored={markerRt.anchoredPosition}");
+                    return false;
+                }
+                // Check marker rotation: facing East (90 deg) -> local Euler Z = -90 (or 270)
+                float rotZ = markerRt.localEulerAngles.z;
+                if (Mathf.Abs(rotZ - 270f) > 0.5f && Mathf.Abs(rotZ - (-90f)) > 0.5f)
+                {
+                    Debug.LogError($"[Test 107] Player marker rotation did not match player yaw! RotZ={rotZ}");
+                    return false;
+                }
+
+                // 2. Move Player to Farmhouse (21.49, 42.91) facing North (0 deg)
+                playerGo.transform.position = new Vector3(21.49f, 1.75f, 42.91f);
+                playerGo.transform.rotation = Quaternion.Euler(0f, 0f, 0f);
+
+                mapUi.ForceUpdateTracking();
+
+                var expectedAnchored = FarmBeware.Core.Runtime.MapProjectionMath.WorldToMapAnchoredPosition(
+                    playerGo.transform.position,
+                    mapUi.MapBounds,
+                    containerRt.rect.size
+                );
+
+                if ((markerRt.anchoredPosition - expectedAnchored).sqrMagnitude > 0.05f)
+                {
+                    Debug.LogError($"[Test 107] Player marker position did not update after player moved! Marker={markerRt.anchoredPosition}, Expected={expectedAnchored}");
+                    return false;
+                }
+
+                // 3. Close Map
+                mapUi.CloseModal();
+
+                if (mapUi.IsOpen)
+                {
+                    Debug.LogError("[Test 107] WorldMapUI.IsOpen did not become false after CloseModal!");
+                    return false;
+                }
+                if (pControl.HasInputLock("WorldMapUI"))
+                {
+                    Debug.LogError("[Test 107] 'WorldMapUI' input lock was not released on close!");
+                    return false;
+                }
+
+                // 4. Toggle Modal
+                mapUi.ToggleModal();
+                if (!mapUi.IsOpen || !pControl.HasInputLock("WorldMapUI"))
+                {
+                    Debug.LogError("[Test 107] ToggleModal failed to open map!");
+                    return false;
+                }
+                mapUi.ToggleModal();
+                if (mapUi.IsOpen || pControl.HasInputLock("WorldMapUI"))
+                {
+                    Debug.LogError("[Test 107] ToggleModal failed to close map!");
+                    return false;
+                }
+
+                // 5. Zoom In / Zoom Out and Pan verification
+                mapUi.OpenModal();
+                if (Mathf.Abs(mapUi.CurrentZoom - 1.0f) > 0.001f)
+                {
+                    Debug.LogError("[Test 107] WorldMapUI zoom did not reset to 1.0f on open!");
+                    return false;
+                }
+
+                mapUi.SetZoom(2.5f);
+                if (Mathf.Abs(mapUi.CurrentZoom - 2.5f) > 0.001f || Mathf.Abs(containerRt.localScale.x - 2.5f) > 0.001f)
+                {
+                    Debug.LogError("[Test 107] SetZoom(2.5f) failed to update CurrentZoom or content scale!");
+                    return false;
+                }
+
+                mapUi.SetPan(new Vector2(100f, -50f));
+                if (Mathf.Abs(mapUi.PanOffset.x - 100f) > 0.001f || Mathf.Abs(mapUi.PanOffset.y - (-50f)) > 0.001f)
+                {
+                    Debug.LogError("[Test 107] SetPan failed to update PanOffset!");
+                    return false;
+                }
+
+                // Reopening map resets zoom & pan to default overview
+                mapUi.CloseModal();
+                mapUi.OpenModal();
+                if (Mathf.Abs(mapUi.CurrentZoom - 1.0f) > 0.001f || mapUi.PanOffset.sqrMagnitude > 0.001f)
+                {
+                    Debug.LogError("[Test 107] Reopening map did not reset zoom & pan!");
+                    return false;
+                }
+                mapUi.CloseModal();
+
+                Debug.Log("✅ Test 107: WorldMapUI ModalStack integration, player input lock gating, marker tracking, and mouse wheel zoom/pan verified.");
+                return true;
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogError($"[Test 107] Exception: {ex.Message}\n{ex.StackTrace}");
+                return false;
+            }
+            finally
+            {
+                if (mapGo != null) Object.DestroyImmediate(mapGo);
+                if (canvasGo != null) Object.DestroyImmediate(canvasGo);
+                if (playerGo != null) Object.DestroyImmediate(playerGo);
+                if (prevStack != null) prevStack.Clear();
+                if (origPlayer != null) ServiceLocator.Register<IPlayerContext>(origPlayer);
+                else ServiceLocator.Unregister<IPlayerContext>();
             }
         }
 
