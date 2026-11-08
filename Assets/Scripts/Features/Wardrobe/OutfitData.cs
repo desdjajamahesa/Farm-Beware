@@ -39,27 +39,35 @@ namespace FeaturesWardrobe
             // direct children, which broke after the Player prefab swap).
             Transform[] allChildren = character.GetComponentsInChildren<Transform>(true);
 
-            // Always-on parts: body, hair.
+            // Always-on parts: body, head, hands, hair.
             TogglePart(allChildren, "body", true);
+            TogglePart(allChildren, "head", true);
+            TogglePart(allChildren, "hand_L", true);
+            TogglePart(allChildren, "hand_R", true);
             TogglePart(allChildren, "hair1", true);
             TogglePart(allChildren, "hair2", true);
 
-            // Top — exclusive pair.
+            // Top — variant options (cloth1, cloth2, cloth_vest).
             TogglePart(allChildren, "cloth1", topVariant == 0);
             TogglePart(allChildren, "cloth2", topVariant == 1);
+            TogglePart(allChildren, "cloth_vest", topVariant == 2);
 
-            // Bottom — exclusive pair.
+            // Bottom — variant options (pants1 / pant1, pants2 / pant2).
             TogglePart(allChildren, "pants1", bottomVariant == 0);
+            TogglePart(allChildren, "pant1", bottomVariant == 0);
             TogglePart(allChildren, "pants2", bottomVariant == 1);
+            TogglePart(allChildren, "pant2", bottomVariant == 1);
 
-            // Shoes — exclusive pair (left + right). The "shoes2_rigth"
-            // (missing 'h') spelling on the prefab is handled by an
-            // extra fallback lookup below.
+            // Shoes — variant options (left + right, supporting both naming conventions).
             TogglePart(allChildren, "shoes1_left",  shoesVariant == 0);
             TogglePart(allChildren, "shoes1_right", shoesVariant == 0);
+            TogglePart(allChildren, "shoes1_L",     shoesVariant == 0);
+            TogglePart(allChildren, "shoes1_R",     shoesVariant == 0);
             TogglePart(allChildren, "shoes2_left",  shoesVariant == 1);
+            TogglePart(allChildren, "shoes2_L",     shoesVariant == 1);
             if (!TogglePart(allChildren, "shoes2_right", shoesVariant == 1))
                 TogglePart(allChildren, "shoes2_rigth", shoesVariant == 1);
+            TogglePart(allChildren, "shoes2_R",     shoesVariant == 1);
 
             // Hat — driven by isHatEquipped, not the asset's hatVariant, to keep
             // the Topi button authoritative over the standalone toggle.
