@@ -2,6 +2,28 @@
 
 Semua perubahan penting pada proyek ini oleh M-Roihan (Roi) dari `branch-roi-1` dicatat di halaman ini.
 
+## - 2026-11-08
+
+### Ditambahkan (Added)
+- **Pipeline Akuisisi Senjata & Perlengkapan Armor ([`PlayerEquipment.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Player/PlayerEquipment.cs), [`EquipmentSlotUI.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Player/UI/EquipmentSlotUI.cs))**:
+  - Mengimplementasikan alur akuisisi dan penggunaan armor tempur serta senjata melalui transaksi pedagang dan resep crafting.
+  - Memperbarui antarmuka loadout peralatan (`Equipment UI`) dengan indikator nilai pertahanan (Armor Rating), badge durabilitas, dan slot pintas perlengkapan.
+  - Mengonfigurasi penempatan soket visual model armor dan senjata baru pada rig karakter `character_player_v2`.
+- **Rework Mekanik Slingshot (Ketapel Taktis) ([`SlingshotWeapon.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Combat/SlingshotWeapon.cs), [`CombatProjectile.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Combat/CombatProjectile.cs))**:
+  - Merombak mekanisme penembakan ketapel dengan lintasan proyektil balistik yang lebih responsif, indikator jangkauan bidikan, dan konsumsi amunisi batu/biji tanaman.
+- **Pemberian Detail Lingkungan Western Roadway & Trading Post**:
+  - Mengonfigurasi prop lingkungan frontier, apron halaman, batas pagar perimeter luar, dan marka jalan di sepanjang jalur barat 225m menuju outpost pedagang.
+
+### Diubah & Dioptimasi (Changed & Optimized)
+- **Pembersihan Aset dan Skrip Usang**:
+  - Menghapus skrip dummy tempur dan aset testing sementara yang sudah digantikan oleh sistem produksi penuh.
+  - Mengoptimasi material dan LOD prop lingkungan di sekitar trading post barat untuk menjaga target 60 FPS pada URP Deferred+.
+
+### Pemeliharaan Integrasi Stabil & Verifikasi (Stable Integration & Verification)
+- Menggabungkan pembaruan pipeline senjata, armor, dan lingkungan ke dalam `Rafi-branch` dan `Sprint-branch` serta memvalidasi keselarasan dengan rangkaian 107 tes otomatis.
+
+---
+
 ## - 2026-10-26
 
 ### Ditambahkan (Added)

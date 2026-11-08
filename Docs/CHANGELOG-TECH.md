@@ -12,6 +12,7 @@ Konsolidasi dokumentasi teknis dari seluruh kontributor tim pengembang (`Rafi`, 
 ---
 
 ## Daftar Isi Kronologis
+- [2026-11-08](#--2026-11-08)
 - [2026-10-26](#--2026-10-26)
 - [2026-10-25](#--2026-10-25)
 - [2026-10-22](#--2026-10-22)
@@ -27,6 +28,55 @@ Konsolidasi dokumentasi teknis dari seluruh kontributor tim pengembang (`Rafi`, 
 - [2026-10-02](#--2026-10-02)
 - [2026-10-01](#--2026-10-01)
 - [2026-09-30](#--2026-09-30)
+
+---
+
+## - 2026-11-08
+
+### Ditambahkan & Diintegrasikan (Added & Integrated)
+
+#### 1. Subsistem Peta Dunia Interaktif & Map Projection Math Engine `[Bhaskoro]`
+- **Antarmuka Peta & Proyeksi Matematis ([`WorldMapUI.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Map/UI/WorldMapUI.cs), [`MapProjectionMath.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Map/Core/MapProjectionMath.cs), [`WorldMapMarker.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Map/UI/WorldMapMarker.cs))**:
+  - Mengimplementasikan sistem peta modal bertekstur perkamen fantasi yang dapat dibuka/ditutup secara cepat menggunakan tombol pintas **`M`**.
+  - Mengintegrasikan antarmuka dengan `ModalStackManager` untuk mengunci input pergerakan pemain secara aman selama peta aktif.
+  - Membangun pure POCO mathematical algorithm `MapProjectionMath` yang memproyeksikan koordinat dunia 3D $(X, Z)$ ke bidang RectTransform 2D kanvas peta $(U, V)$ secara normalisasi dan Zero-GC.
+  - Mengimplementasikan marker penanda dinamis untuk pin posisi pemain (dengan rotasi dinamis mengikuti heading karakter) dan titik-titik penting lembah: `Marker_House`, `Marker_Farm`, `Marker_Merchant`, dan `Marker_Danger`.
+  - Mengimpor aset tekstur resolusi tinggi kanonikal di `Assets/Art/Textures/UI/Map/`.
+
+#### 2. Kompleks Commercial Trading Post & Western Scenic Roadway `[Rafi, Roi]`
+- **Relokasi Barat & Tata Ruang Isometrik 3D ([`ShopInteractable.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Economy/ShopInteractable.cs), [`MerchantShopUI.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Economy/MerchantShopUI.cs))**:
+  - Merelokasi Trading Post dan infrastruktur jalan raya ke sektor Barat (West) agar konsisten dengan arah kedatangan truk pada intro cutscene dan sudut pandang kamera isometrik.
+  - Membangun jalan raya 225m+ berstruktur Catmull-Rom mulus yang menghubungkan gerbang depan compound menuju area outpost barat.
+  - Mengimplementasikan arsitektur tri-mass rustic: ruang dagang utama, cupola pengawas, elevated boardwalk, turnaround vehicle bay dengan jarak aman >= 4.0m, serta counter toko interaktif untuk transaksi hasil panen dan perkakas.
+  - Menambahkan item sertifikat perluasan lahan (*Land Expansion Deed* seharga 2.500G untuk +2 plot lahan) via kontrak `IFarmingService`.
+
+#### 3. Sinematik Malam Day 1 & Pacing Gelombang Musuh `[Rafi]`
+- **Koreografi Sinematik & Supresi Kendaraan ([`Night1CutsceneController.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Storyline/Cutscenes/Night1CutsceneController.cs), [`CutsceneLetterboxUI.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Storyline/Cutscenes/CutsceneLetterboxUI.cs), [`NightBrawlManager.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Combat/NightBrawlManager.cs))**:
+  - Mengimplementasikan 4-shot cutscene malam pertama: getaran tanah kebun, semburan partikel tanah & erupsi mutan ubi jalar, fokus kabut gerbang pagar utara, dan kesiapan tempur Ucup.
+  - Mengintegrasikan supresi instan pada antarmuka kendaraan via `VehicleDrivingHUD.SnapHidden()` saat cutscene berlangsung.
+  - Mengkalibrasi interval kemunculan musuh malam menjadi 6f–10f (dari sebelumnya 15s–20s) dengan auto-migration di `Awake()` / `OnValidate()`.
+  - Mencegah cutscene kedatangan truk berulang setelah pemain tidur di kasur Day 0.
+
+#### 4. Pipeline Akuisisi Senjata, Armor & Rework Ketapel `[Roi, Rafi]`
+- **Alur Perlengkapan & Mekanik Tempur ([`PlayerEquipment.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Player/PlayerEquipment.cs), [`EquipmentSlotUI.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Player/UI/EquipmentSlotUI.cs), [`SlingshotWeapon.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Combat/SlingshotWeapon.cs))**:
+  - Mengintegrasikan akuisisi senjata dan armor tempur melalui transaksi merchant dan resep crafting.
+  - Merombak mekanisme penembakan ketapel taktis dengan kurva proyektil balistik, jangkauan serang, dan amunisi batu/biji tanaman.
+  - Memperbarui panel perlengkapan dengan nilai proteksi armor dan badge durabilitas.
+
+### Diperbaiki & Dikalibrasi (Fixed & Calibrated)
+
+#### 5. Resolusi 11 Isu Playtest & Kalibrasi 4-Axis `[Rafi]`
+- Mengunci upgrade senjata di Workbench agar memverifikasi kepemilikan senjata dasar dan material monster Node 1 (2x drops).
+- Membersihkan peti awal `StorageChest` dan katalog toko dari perlengkapan tempur militer pada Day 0.
+- Mengoptimalkan pengumpulan panen: memprioritaskan penambahan stack hotbar aktif sebelum mengisi slot ransel.
+- Mencegah kaleng penyiram kosong (<10L) memicu animasi siram atau berinteraksi dengan tanah.
+- Menambahkan auto-teleport pemain ke dalam dapur saat batas jam malam 18:00 tiba.
+- Mengizinkan penyimpanan bahan masak sekunder (minyak goreng, tepung, garam/bumbu) ke dalam kulkas.
+- Memperbaiki kurung kurawal nyasar dan duplikasi scope variabel lokal pada `PlayerEquipment.OnDisable()`.
+
+#### 6. Modernisasi Dokumentasi & Ekspansi Test Suite ke 107 Tes `[Rafi, Bhaskoro]`
+- Menghapus 5 file spesifikasi dan perencanaan usang yang fiturnya sudah selesai 100%: `PROJECT_ARCHITECTURE_AND_LORE.md`, `STORYLINE_BASE_SYSTEM_ANALYSIS.md`, `STORYLINE_BASE_SYSTEM_UPGRADE_PLAN.md`, `plan.md`, dan `TEST_INFRA.md`.
+- Memperluas automated audit test suite pada [`GameplayAndHUDTests.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Editor/GameplayAndHUDTests.cs) hingga mencapai **107 tes audit komprehensif** (107/107 Passed).
 
 ---
 

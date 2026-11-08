@@ -4,6 +4,31 @@ Welcome to the **Farm-Beware** patch notes! Here you'll find the latest updates,
 
 ---
 
+## 2026-11-08
+
+### Added
+* **Interactive World Map**: Press `M` to view a stylized parchment map of the valley displaying your real-time position, homestead compound, the western trading post, and danger breach zones.
+* **Western Scenic Roadway & Frontier Trading Post**: Follow the 225-meter western roadway out of the farmstead to explore the expanded commercial trading post, featuring an elevated boardwalk, turnaround bay, and interactive merchant counter.
+* **Night 1 Cinematic Awakening**: Experience a cinematic sequence as darkness falls on Day 1, capturing ground tremors, sweet potato mutations erupting from the soil, and frontline defense preparation.
+* **Weapon & Armor Equipment Progression**: Suit up with craftable armor sets, upgraded weapon tiers, and a reworked tactical slingshot for ranged crowd control.
+* **Farmland Expansion Deeds**: Purchase official land expansion deeds from the merchant outpost to unlock additional garden plots for larger daily crop yields.
+
+### Changed
+* **Paced Nocturnal Wave Intervals**: Tightened monster arrival intervals during night combat to 6–10 seconds, creating a tighter and more engaging siege rhythm.
+* **Streamlined Starter Inventory**: Cleaned starter storage containers of late-game armor and weapons on Day 0, properly pacing combat gear through merchant trade and monster drops.
+* **Smart Seed & Produce Stacking**: Harvesting crops and gathering seeds now automatically tops off existing hotbar stacks before creating new backpack slots.
+* **Automated Kitchen Retreat at Nightfall**: Enforced an automatic retreat to the indoor kitchen when the 18:00 curfew arrives, keeping the farmer protected as monsters awaken.
+
+### Fixed
+* Fixed an issue where the opening vehicle arrival cutscene could unexpectedly replay after sleeping on Day 0.
+* Fixed empty watering cans playing full pouring animations and interacting with dry plots when completely drained.
+* Fixed weapon upgrades unlocking prior to acquiring the base weapon or gathering required monster materials.
+* Fixed kitchen refrigerators rejecting cooking oil, flour, and seasonings from ingredient storage.
+* Fixed vehicle driving HUDs and speedometer dials remaining visible during story cutscenes.
+* Fixed cutscene letterbox bars clipping through room walls during interior camera transitions.
+
+---
+
 ## 2026-10-26
 
 ### Added

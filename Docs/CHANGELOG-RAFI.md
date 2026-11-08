@@ -2,6 +2,43 @@
 
 Semua perubahan penting pada proyek ini oleh Rafi akan dicatat di halaman ini.
 
+## - 2026-11-08
+
+### Ditambahkan & Diintegrasikan (Added & Integrated)
+- **Kompleks Commercial Trading Post & Western Scenic Roadway ([`ShopInteractable.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Economy/ShopInteractable.cs), [`MerchantShopUI.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Economy/MerchantShopUI.cs), [`ArcadeVehicleController.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Vehicles/ArcadeVehicleController.cs))**:
+  - Merelokasi Trading Post dan lintasan jalan raya ke sektor Barat (West) agar sejajar dengan arah kedatangan kendaraan pada opening cutscene dan sudut pandang kamera isometrik 3D.
+  - Membangun jalan raya aspal/tanah sepanjang 225m+ dengan kurva Catmull-Rom yang menghubungkan gerbang depan compound menuju outpost barat.
+  - Mengimplementasikan kompleks Trading Post berarsitektur tri-mass rustic: ruang dagang utama, cupola pengawas, elevated boardwalk, area putar balik truk (*turnaround bay*) dengan margin ruang bebas >= 4.0m, serta counter toko interaktif untuk jual-beli hasil panen, perkakas, dan sertifikat tanah.
+- **Sinematik Malam Hari Pertama & Pacing Gelombang Musuh ([`Night1CutsceneController.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Storyline/Cutscenes/Night1CutsceneController.cs), [`CutsceneLetterboxUI.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Storyline/Cutscenes/CutsceneLetterboxUI.cs), [`NightBrawlManager.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Combat/NightBrawlManager.cs), [`VehicleDrivingHUD.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Vehicles/UI/VehicleDrivingHUD.cs))**:
+  - Mengimplementasikan controller sinematik malam Day 1 (`Night1CutsceneController`) berurutan 4 shot dramatis:
+    1. Shot 1: Getaran seismik pada plot tanah pertanian.
+    2. Shot 2: Semburan partikel tanah dan erupsi monster mutan ubi jalar (*Tuber Maw*).
+    3. Shot 3: Siluet kabut dan pergerakan gerombolan musuh di luar gerbang pagar perimeter.
+    4. Shot 4: Reaksi karakter Ucup menyiapkan senjata dengan dialog kanonikal terintegrasi.
+  - Menghubungkan supresi otomatis pada antarmuka kendaraan (`VehicleDrivingHUD.SnapHidden()`) saat cutscene aktif agar HUD berkendara tidak tumpang tindih dengan bilah letterbox.
+  - Mempersingkat jeda interval kemunculan musuh malam (*staggered spawn intervals*) menjadi 6f–10f (dari sebelumnya 15s–20s) lengkap dengan validasi auto-migration di `Awake()` dan `OnValidate()`.
+- **Ekspansi Lahan Pertanian Melalui Akta Tanah ([`MerchantShopUI.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Economy/MerchantShopUI.cs), [`FarmlandExpansionManager.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Farming/FarmlandExpansionManager.cs), [`IFarmingService.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Core/Contracts/IFarmingService.cs))**:
+  - Menambahkan item pembelian akta perluasan lahan (*Land Expansion Deed* seharga 2.500 Gold untuk +2 plot) pada katalog pedagang yang langsung membuka plot tanah tambahan di kebun.
+- **Pembersihan File Dokumentasi & Spesifikasi Usang**:
+  - Menghapus 5 file dokumentasi kadaluarsa yang seluruh fiturnya telah terimplementasi penuh di codebase: `PROJECT_ARCHITECTURE_AND_LORE.md`, `STORYLINE_BASE_SYSTEM_ANALYSIS.md`, `STORYLINE_BASE_SYSTEM_UPGRADE_PLAN.md`, `plan.md`, dan `TEST_INFRA.md`.
+
+### Diperbaiki & Dikalibrasi (Fixed & Calibrated)
+- **Resolusi 11 Isu Audit Playtest ([`PlayerEquipment.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Player/PlayerEquipment.cs), [`BedInteractable.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Interaction/BedInteractable.cs), [`InventoryComponent.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Inventory/InventoryComponent.cs), [`WorkbenchUI.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Workbench/UI/WorkbenchUI.cs))**:
+  - Mengunci pohon upgrade senjata dan doktrin tempur di Workbench agar hanya dapat diakses setelah pemain memiliki senjata terkait dan material monster Node 1 (dengan kalibrasi drop rate 2x).
+  - Membersihkan peti awal `StorageChest` dan toko dari senjata berat, slingshot, dan armor tempur pada Day 0 untuk menjaga progresi alami.
+  - Mengoreksi logika panen tanaman agar memprioritaskan penambahan stack bibit/hasil panen yang sudah ada di hotbar sebelum mengalokasikan slot tas baru.
+  - Mencegah PlantWaterer kosong (<10L) memicu animasi penyiraman atau mengurangi aksi pada tanah kering.
+  - Memindahkan posisi pemain secara otomatis ke dalam dapur saat jam malam 18:00 tiba (*curfew transition*).
+  - Mengunci senjata tempur yang dipegang pada malam hari secara fungsional dan visual ke peralatan yang diequip, sambil tetap mendukung konsumsi makanan/air melalui double-click.
+  - Mengizinkan penyimpanan bahan dapur sekunder (minyak goreng, tepung, garam/bumbu) ke dalam lemari es (*refrigerator*).
+  - Mencegah cutscene kedatangan truk berulang kembali setelah tidur malam Day 0.
+  - Memperbaiki kurung kurawal nyasar dan duplikasi scope variabel lokal pada `PlayerEquipment.OnDisable()`.
+
+### Verifikasi & Test Suite Expansion
+- Menambahkan **Test 105** ke dalam [`GameplayAndHUDTests.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Editor/GameplayAndHUDTests.cs) yang menguji regresi 11 isu playtest secara komprehensif, mendukung total 107 pengujian otomatis yang lulus 100%.
+
+---
+
 ## - 2026-10-26
 
 ### Ditambahkan & Diintegrasikan (Added & Integrated)

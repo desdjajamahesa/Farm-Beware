@@ -180,5 +180,29 @@ Implementasi alur misi pembuka (*Side Quest: First Steps*) yang membimbing pemai
 - [`GameplayAndHUDTests.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Editor/GameplayAndHUDTests.cs):
   - Penambahan unit test otomatis **Test 62** untuk memvalidasi evaluasi logika quest, transisi checklist, dan deteksi sinyal petak lahan.
 
+---
+
+## 9. Interactive World Map & Map Projection Subsystem (2026-11-08)
+
+Implementasi sistem peta dunia interaktif (`WorldMapUI`) dengan proyeksi koordinat matematis normalisasi dan pelacakan orientasi pemain real-time (`bhaskoro-branch`, diintegrasikan ke `Sprint-branch` via commit `38582b8b`).
+
+### Komponen & Arsitektur:
+- [`WorldMapUI.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Map/UI/WorldMapUI.cs):
+  - Antarmuka modal peta bertekstur perkamen fantasi yang dapat dibuka/ditutup secara cepat menggunakan tombol pintas **`M`**.
+  - Mengimplementasikan `IModalWindow` dan terdaftar ke `ModalStackManager`, mengunci pergerakan dan aksi pemain secara aman saat peta aktif.
+- [`MapProjectionMath.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Map/Core/MapProjectionMath.cs):
+  - Modul matematika murni POCO (Zero-GC) yang memetakan koordinat 3D dunia game $(X, Z)$ ke bidang 2D RectTransform peta $(U, V)$ secara deterministik dan presisi.
+- [`WorldMapMarker.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Map/UI/WorldMapMarker.cs):
+  - Penanda visual dinamis untuk posisi pemain (dengan pin berputar sesuai rotasi arah pandang pemain) dan titik-titik penting (POI):
+    - **Marker_House**: Lokasi kabin utama dan kamar tidur.
+    - **Marker_Farm**: Lokasi 16 petak lahan pertanian.
+    - **Marker_Merchant**: Lokasi outpost Commercial Trading Post di barat.
+    - **Marker_Danger**: Titik-titik rawan penerobosan monster malam hari (*breach spawn zones*).
+- **Aset Tekstur UI**:
+  - Penambahan tekstur peta kanonikal di `Assets/Art/Textures/UI/Map/` (`Marker_Player.png`, `Marker_House.png`, `Marker_Farm.png`, `Marker_Merchant.png`, `Marker_Danger.png`).
+- [`GameplayAndHUDTests.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Editor/GameplayAndHUDTests.cs):
+  - Penambahan rangkaian tes otomatis baru yang memperluas test suite audit hingga mencapai **107 tes komprehensif** (107/107 Passed).
+
+
 
 
