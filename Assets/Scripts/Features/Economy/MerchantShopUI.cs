@@ -1250,6 +1250,13 @@ namespace FeaturesEconomy
             if (uiCanvasGO != null && uiCanvasGO.TryGetComponent<Canvas>(out var c) && c.renderMode == RenderMode.ScreenSpaceOverlay)
             {
                 screenCanvas = c;
+                var existing = uiCanvasGO.transform.Find("Panel_MerchantShop");
+                if (existing != null)
+                {
+                    shopPanel = existing.gameObject;
+                    ResolveReferencesAndBind();
+                    return;
+                }
             }
 
             if (screenCanvas == null)
@@ -1260,6 +1267,13 @@ namespace FeaturesEconomy
                     if (canvas != null && canvas.renderMode == RenderMode.ScreenSpaceOverlay)
                     {
                         screenCanvas = canvas;
+                        var existing = canvas.transform.Find("Panel_MerchantShop");
+                        if (existing != null)
+                        {
+                            shopPanel = existing.gameObject;
+                            ResolveReferencesAndBind();
+                            return;
+                        }
                         break;
                     }
                 }

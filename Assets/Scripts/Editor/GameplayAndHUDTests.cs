@@ -217,6 +217,20 @@ namespace FarmBeware.EditorTests
                 Debug.LogError($"❌ [AUDIT-SUITE] {total - passed} AUDIT TESTS FAILED!");
             }
             Debug.Log("[AUDIT-SUITE] ========================================================");
+
+            // Post-run scene cleanup: trim transient floating combat texts spawned during testing
+            var fctManager = Object.FindFirstObjectByType<PlayerUI.FloatingCombatTextManager>();
+            if (fctManager != null)
+            {
+                var rt = fctManager.GetComponent<RectTransform>();
+                if (rt != null)
+                {
+                    while (rt.childCount > 10)
+                    {
+                        Object.DestroyImmediate(rt.GetChild(rt.childCount - 1).gameObject);
+                    }
+                }
+            }
         }
 
         #region Shared Test Mocks

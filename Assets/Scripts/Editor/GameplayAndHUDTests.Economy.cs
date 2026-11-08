@@ -694,165 +694,160 @@ namespace FarmBeware.EditorTests
                 }
             }
 
-            // 2. Verify Merchant Table stock initialization includes all 8 items
-            var tableGo = new GameObject("Test91_MerchantTable");
-            cleanupList.Add(tableGo);
-            var table = tableGo.AddComponent<MerchantTableInteractable>();
-            table.InitializeDefaultStock();
-
-            foreach (var wid in weaponIds)
-            {
-                if (!table.StockItems.Any(it => it != null && it.itemId == wid))
-                {
-                    Debug.LogError($"[Test 91] MerchantTable stock missing weapon '{wid}'!");
-                    return false;
-                }
-            }
-            foreach (var aid in armorIds)
-            {
-                if (!table.StockItems.Any(it => it != null && it.itemId == aid))
-                {
-                    Debug.LogError($"[Test 91] MerchantTable stock missing armor '{aid}'!");
-                    return false;
-                }
-            }
-
-            // 3. Verify TradingPost ShopInteractable stock includes all 8 items
-            var postGo = new GameObject("Test91_ShopCounter");
-            cleanupList.Add(postGo);
-            var shop = postGo.AddComponent<ShopInteractable>();
-            shop.InitializeDefaultStock();
-
-            foreach (var wid in weaponIds)
-            {
-                if (!shop.StockItems.Any(it => it != null && it.itemId == wid))
-                {
-                    Debug.LogError($"[Test 91] TradingPost stock missing weapon '{wid}'!");
-                    return false;
-                }
-            }
-            foreach (var aid in armorIds)
-            {
-                if (!shop.StockItems.Any(it => it != null && it.itemId == aid))
-                {
-                    Debug.LogError($"[Test 91] TradingPost stock missing armor '{aid}'!");
-                    return false;
-                }
-            }
-
-            // 4. Verify MerchantShopUI purchasing simulation
-            var playerGo = new GameObject("Test91_Player");
-            cleanupList.Add(playerGo);
-            playerGo.tag = "Player";
-            var inv = playerGo.AddComponent<InventoryComponent>();
-            inv.ResetInventory(16);
-
             var walletField = typeof(PlayerWallet).GetField("instance", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
             var prevWallet = walletField?.GetValue(null);
-            var wallet = playerGo.AddComponent<PlayerWallet>();
-            walletField?.SetValue(null, wallet);
-            wallet.AddGold(50000);
-
             var prevWalletSvc = ServiceLocator.Resolve<IWalletService>();
-            ServiceLocator.Register<IWalletService>(wallet);
 
-            var shopUiGo = new GameObject("Test91_MerchantShopUI");
-            cleanupList.Add(shopUiGo);
-            var shopUi = shopUiGo.AddComponent<MerchantShopUI>();
-
-            var invField = typeof(MerchantShopUI).GetField("playerInventory", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            invField?.SetValue(shopUi, inv);
-
-            // Test purchasing Root Cleaver
-            var cleaverItem = db.GetItem("tool_weapon_root_cleaver");
-            var buyMethod = typeof(MerchantShopUI).GetMethod("TryBuyItem", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            if (buyMethod == null)
+            try
             {
-                Debug.LogError("[Test 91] MerchantShopUI.TryBuyItem method not found!");
+                // 2. Verify Merchant Table stock initialization includes all 8 items
+                var tableGo = new GameObject("Test91_MerchantTable");
+                cleanupList.Add(tableGo);
+                var table = tableGo.AddComponent<MerchantTableInteractable>();
+                table.InitializeDefaultStock();
+
+                foreach (var wid in weaponIds)
+                {
+                    if (!table.StockItems.Any(it => it != null && it.itemId == wid))
+                    {
+                        Debug.LogError($"[Test 91] MerchantTable stock missing weapon '{wid}'!");
+                        return false;
+                    }
+                }
+                foreach (var aid in armorIds)
+                {
+                    if (!table.StockItems.Any(it => it != null && it.itemId == aid))
+                    {
+                        Debug.LogError($"[Test 91] MerchantTable stock missing armor '{aid}'!");
+                        return false;
+                    }
+                }
+
+                // 3. Verify TradingPost ShopInteractable stock includes all 8 items
+                var postGo = new GameObject("Test91_ShopCounter");
+                cleanupList.Add(postGo);
+                var shop = postGo.AddComponent<ShopInteractable>();
+                shop.InitializeDefaultStock();
+
+                foreach (var wid in weaponIds)
+                {
+                    if (!shop.StockItems.Any(it => it != null && it.itemId == wid))
+                    {
+                        Debug.LogError($"[Test 91] TradingPost stock missing weapon '{wid}'!");
+                        return false;
+                    }
+                }
+                foreach (var aid in armorIds)
+                {
+                    if (!shop.StockItems.Any(it => it != null && it.itemId == aid))
+                    {
+                        Debug.LogError($"[Test 91] TradingPost stock missing armor '{aid}'!");
+                        return false;
+                    }
+                }
+
+                // 4. Verify MerchantShopUI purchasing simulation
+                var playerGo = new GameObject("Test91_Player");
+                cleanupList.Add(playerGo);
+                playerGo.tag = "Player";
+                var inv = playerGo.AddComponent<InventoryComponent>();
+                inv.ResetInventory(16);
+
+                var wallet = playerGo.AddComponent<PlayerWallet>();
+                walletField?.SetValue(null, wallet);
+                wallet.AddGold(50000);
+                ServiceLocator.Register<IWalletService>(wallet);
+
+                var shopUiGo = new GameObject("Test91_MerchantShopUI");
+                cleanupList.Add(shopUiGo);
+                var shopUi = shopUiGo.AddComponent<MerchantShopUI>();
+
+                var invField = typeof(MerchantShopUI).GetField("playerInventory", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                invField?.SetValue(shopUi, inv);
+
+                // Test purchasing Root Cleaver
+                var cleaverItem = db.GetItem("tool_weapon_root_cleaver");
+                var buyMethod = typeof(MerchantShopUI).GetMethod("TryBuyItem", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                if (buyMethod == null)
+                {
+                    Debug.LogError("[Test 91] MerchantShopUI.TryBuyItem method not found!");
+                    return false;
+                }
+
+                int goldBefore = wallet.CurrentGold;
+                buyMethod.Invoke(shopUi, new object[] { cleaverItem, 1 });
+                if (inv.CountItem(cleaverItem) != 1 || wallet.CurrentGold != goldBefore - cleaverItem.buyPrice)
+                {
+                    Debug.LogError($"[Test 91] Failed purchasing Root Cleaver from shop! invCount={inv.CountItem(cleaverItem)}, gold={wallet.CurrentGold}");
+                    return false;
+                }
+
+                // Test purchasing Burrow Hood
+                var hoodItem = db.GetItem("item_burrow_hood");
+                goldBefore = wallet.CurrentGold;
+                buyMethod.Invoke(shopUi, new object[] { hoodItem, 1 });
+                if (inv.CountItem(hoodItem) != 1 || wallet.CurrentGold != goldBefore - hoodItem.buyPrice)
+                {
+                    Debug.LogError($"[Test 91] Failed purchasing Burrow Hood from shop! invCount={inv.CountItem(hoodItem)}, gold={wallet.CurrentGold}");
+                    return false;
+                }
+
+                // 5. Verify Workbench Crafting of weapons and armor
+                var armorState = playerGo.AddComponent<FeaturesWorkbench.PlayerArmorUpgradeState>();
+                var wepState = playerGo.AddComponent<FeaturesWorkbench.PlayerWeaponUpgradeState>();
+                var rootMat = db.GetItem("mat_mutated_root");
+                inv.AddItem(rootMat, 20);
+
+                var wbGo = new GameObject("Test91_WorkbenchUI");
+                cleanupList.Add(wbGo);
+                var wb = wbGo.AddComponent<FeaturesWorkbench.UI.WorkbenchUI>();
+
+                var wbInvField = typeof(FeaturesWorkbench.UI.WorkbenchUI).GetField("playerInventory", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                wbInvField?.SetValue(wb, inv);
+                var wbArmorField = typeof(FeaturesWorkbench.UI.WorkbenchUI).GetField("armorState", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                wbArmorField?.SetValue(wb, armorState);
+                var wbWepField = typeof(FeaturesWorkbench.UI.WorkbenchUI).GetField("weaponState", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                wbWepField?.SetValue(wb, wepState);
+
+                // Craft Homestead Slingshot via WorkbenchUI
+                var repeaterItem = db.GetItem("tool_weapon_corn_repeater");
+                goldBefore = wallet.CurrentGold;
+                int rootsBefore = inv.CountItem(rootMat);
+                wb.CraftSetPiece("tool_weapon_corn_repeater", 450, "mat_mutated_root", 3);
+
+                bool hasRepeater = inv.CountItem(repeaterItem) > 0 || armorState.GetEquippedItem(EquipmentSlotType.MainWeapon) == repeaterItem;
+                if (!hasRepeater || inv.CountItem(rootMat) != rootsBefore - 3 || wallet.CurrentGold != goldBefore - 450)
+                {
+                    Debug.LogError($"[Test 91] Failed crafting Homestead Slingshot! hasRepeater={hasRepeater}, roots={inv.CountItem(rootMat)}, gold={wallet.CurrentGold}");
+                    return false;
+                }
+
+                // Craft Swift Root Armor via WorkbenchUI
+                var armorPiece = db.GetItem("item_swift_root_armor");
+                goldBefore = wallet.CurrentGold;
+                rootsBefore = inv.CountItem(rootMat);
+                wb.CraftSetPiece("item_swift_root_armor", 6000, "mat_mutated_root", 10);
+
+                bool hasArmor = inv.CountItem(armorPiece) > 0 || armorState.GetEquippedItem(EquipmentSlotType.Chest) == armorPiece;
+                if (!hasArmor || inv.CountItem(rootMat) != rootsBefore - 10 || wallet.CurrentGold != goldBefore - 6000)
+                {
+                    Debug.LogError($"[Test 91] Failed crafting Swift Root Armor! hasArmor={hasArmor}, roots={inv.CountItem(rootMat)}, gold={wallet.CurrentGold}");
+                    return false;
+                }
+
+                Debug.Log("✅ Test 91: Complete accessibility of all 3 weapons and 5 armor pieces via Merchant Purchasing and Workbench Crafting verified.");
+                return true;
+            }
+            finally
+            {
                 walletField?.SetValue(null, prevWallet);
                 if (prevWalletSvc != null) ServiceLocator.Register<IWalletService>(prevWalletSvc);
-                return false;
+
+                foreach (var o in cleanupList)
+                {
+                    if (o != null) Object.DestroyImmediate(o);
+                }
             }
-
-            int goldBefore = wallet.CurrentGold;
-            buyMethod.Invoke(shopUi, new object[] { cleaverItem, 1 });
-            if (inv.CountItem(cleaverItem) != 1 || wallet.CurrentGold != goldBefore - cleaverItem.buyPrice)
-            {
-                Debug.LogError($"[Test 91] Failed purchasing Root Cleaver from shop! invCount={inv.CountItem(cleaverItem)}, gold={wallet.CurrentGold}");
-                walletField?.SetValue(null, prevWallet);
-                if (prevWalletSvc != null) ServiceLocator.Register<IWalletService>(prevWalletSvc);
-                return false;
-            }
-
-            // Test purchasing Burrow Hood
-            var hoodItem = db.GetItem("item_burrow_hood");
-            goldBefore = wallet.CurrentGold;
-            buyMethod.Invoke(shopUi, new object[] { hoodItem, 1 });
-            if (inv.CountItem(hoodItem) != 1 || wallet.CurrentGold != goldBefore - hoodItem.buyPrice)
-            {
-                Debug.LogError($"[Test 91] Failed purchasing Burrow Hood from shop! invCount={inv.CountItem(hoodItem)}, gold={wallet.CurrentGold}");
-                walletField?.SetValue(null, prevWallet);
-                if (prevWalletSvc != null) ServiceLocator.Register<IWalletService>(prevWalletSvc);
-                return false;
-            }
-
-            // 5. Verify Workbench Crafting of weapons and armor
-            var armorState = playerGo.AddComponent<FeaturesWorkbench.PlayerArmorUpgradeState>();
-            var wepState = playerGo.AddComponent<FeaturesWorkbench.PlayerWeaponUpgradeState>();
-            var rootMat = db.GetItem("mat_mutated_root");
-            inv.AddItem(rootMat, 20);
-
-            var wbGo = new GameObject("Test91_WorkbenchUI");
-            cleanupList.Add(wbGo);
-            var wb = wbGo.AddComponent<FeaturesWorkbench.UI.WorkbenchUI>();
-
-            var wbInvField = typeof(FeaturesWorkbench.UI.WorkbenchUI).GetField("playerInventory", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            wbInvField?.SetValue(wb, inv);
-            var wbArmorField = typeof(FeaturesWorkbench.UI.WorkbenchUI).GetField("armorState", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            wbArmorField?.SetValue(wb, armorState);
-            var wbWepField = typeof(FeaturesWorkbench.UI.WorkbenchUI).GetField("weaponState", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            wbWepField?.SetValue(wb, wepState);
-
-            // Craft Homestead Slingshot via WorkbenchUI
-            var repeaterItem = db.GetItem("tool_weapon_corn_repeater");
-            goldBefore = wallet.CurrentGold;
-            int rootsBefore = inv.CountItem(rootMat);
-            wb.CraftSetPiece("tool_weapon_corn_repeater", 450, "mat_mutated_root", 3);
-
-            bool hasRepeater = inv.CountItem(repeaterItem) > 0 || armorState.GetEquippedItem(EquipmentSlotType.MainWeapon) == repeaterItem;
-            if (!hasRepeater || inv.CountItem(rootMat) != rootsBefore - 3 || wallet.CurrentGold != goldBefore - 450)
-            {
-                Debug.LogError($"[Test 91] Failed crafting Homestead Slingshot! hasRepeater={hasRepeater}, roots={inv.CountItem(rootMat)}, gold={wallet.CurrentGold}");
-                walletField?.SetValue(null, prevWallet);
-                if (prevWalletSvc != null) ServiceLocator.Register<IWalletService>(prevWalletSvc);
-                return false;
-            }
-
-            // Craft Swift Root Armor via WorkbenchUI
-            var armorPiece = db.GetItem("item_swift_root_armor");
-            goldBefore = wallet.CurrentGold;
-            rootsBefore = inv.CountItem(rootMat);
-            wb.CraftSetPiece("item_swift_root_armor", 6000, "mat_mutated_root", 10);
-
-            bool hasArmor = inv.CountItem(armorPiece) > 0 || armorState.GetEquippedItem(EquipmentSlotType.Chest) == armorPiece;
-            if (!hasArmor || inv.CountItem(rootMat) != rootsBefore - 10 || wallet.CurrentGold != goldBefore - 6000)
-            {
-                Debug.LogError($"[Test 91] Failed crafting Swift Root Armor! hasArmor={hasArmor}, roots={inv.CountItem(rootMat)}, gold={wallet.CurrentGold}");
-                walletField?.SetValue(null, prevWallet);
-                if (prevWalletSvc != null) ServiceLocator.Register<IWalletService>(prevWalletSvc);
-                return false;
-            }
-
-            walletField?.SetValue(null, prevWallet);
-            if (prevWalletSvc != null) ServiceLocator.Register<IWalletService>(prevWalletSvc);
-
-            foreach (var o in cleanupList)
-            {
-                if (o != null) Object.DestroyImmediate(o);
-            }
-
-            Debug.Log("✅ Test 91: Complete accessibility of all 3 weapons and 5 armor pieces via Merchant Purchasing and Workbench Crafting verified.");
-            return true;
         }
 
         // Test 96: Verify Taro Corn Stew recipe opportunity cost does not exceed 4,000 G
