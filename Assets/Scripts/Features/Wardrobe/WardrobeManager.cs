@@ -669,7 +669,7 @@ namespace FeaturesWardrobe
             {
                 foreach (var t in PlayerContext.Transform.GetComponentsInChildren<Transform>(true))
                 {
-                    if (t.name.ToLower().Contains("head") && !t.name.ToLower().Contains("end"))
+                    if (t.name.ToLower().Contains("head") && !t.name.ToLower().Contains("end") && t.GetComponent<SkinnedMeshRenderer>() == null)
                     {
                         playerHead = t;
                         break;

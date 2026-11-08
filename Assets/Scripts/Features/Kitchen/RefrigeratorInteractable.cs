@@ -38,6 +38,8 @@ public class RefrigeratorInteractable : MonoBehaviour, IInteractable
         ApplyRestriction(GetComponent<InventoryComponent>());
     }
 
+    [SerializeField] private bool hasSeededQuestIngredients = false;
+
     private void Start()
     {
         EnsureQuestIngredients();
@@ -45,10 +47,15 @@ public class RefrigeratorInteractable : MonoBehaviour, IInteractable
 
     public void EnsureQuestIngredients()
     {
+        if (hasSeededQuestIngredients) return;
+
         var inventory = GetComponent<InventoryComponent>();
         if (inventory == null) return;
 
         ApplyRestriction(inventory);
+
+        var player = GameObject.FindWithTag("Player");
+        var playerInv = player != null ? player.GetComponent<InventoryComponent>() : null;
 
         var db = Resources.Load<ItemDatabase>("Database/ItemDatabase");
         if (db == null) return;
@@ -56,14 +63,16 @@ public class RefrigeratorInteractable : MonoBehaviour, IInteractable
         var taroItem = db.GetItem("crop_taro");
         var coconutItem = db.GetItem("mat_coconut");
 
-        if (taroItem != null && inventory.CountItem(taroItem) == 0)
+        if (taroItem != null && inventory.CountItem(taroItem) == 0 && (playerInv == null || playerInv.CountItem(taroItem) == 0))
         {
             inventory.AddItem(taroItem, 1);
         }
-        if (coconutItem != null && inventory.CountItem(coconutItem) == 0)
+        if (coconutItem != null && inventory.CountItem(coconutItem) == 0 && (playerInv == null || playerInv.CountItem(coconutItem) == 0))
         {
             inventory.AddItem(coconutItem, 1);
         }
+
+        hasSeededQuestIngredients = true;
     }
 
     private void ApplyRestriction(InventoryComponent inventory)
@@ -81,7 +90,6 @@ public class RefrigeratorInteractable : MonoBehaviour, IInteractable
 
         // Pastikan pembatasan kategori selalu aktif (backend, bukan UI).
         ApplyRestriction(inventory);
-        EnsureQuestIngredients();
 
         OnRefrigeratorOpened?.Invoke();
 

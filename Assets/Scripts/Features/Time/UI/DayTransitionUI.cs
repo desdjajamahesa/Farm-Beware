@@ -157,17 +157,33 @@ public class DayTransitionUI : MonoBehaviour
         EnsureUIHierarchy();
     }
 
+    private void Start()
+    {
+        EnsureUIHierarchy();
+        SubscribeTimeEvents();
+    }
+
     private void OnEnable()
+    {
+        SubscribeTimeEvents();
+    }
+
+    private void SubscribeTimeEvents()
     {
         if (TimeManager.Instance != null)
         {
+            TimeManager.Instance.OnDayChanged -= HandleDayChanged;
             TimeManager.Instance.OnDayChanged += HandleDayChanged;
+            TimeManager.Instance.OnPhaseChanged -= HandlePhaseChanged;
             TimeManager.Instance.OnPhaseChanged += HandlePhaseChanged;
         }
 
         if (DayNightTimeManager.Instance != null)
         {
+            DayNightTimeManager.Instance.OnTimePhaseChanged -= HandleTimePhaseChanged;
             DayNightTimeManager.Instance.OnTimePhaseChanged += HandleTimePhaseChanged;
+            DayNightTimeManager.Instance.OnDayChanged -= HandleDayChanged;
+            DayNightTimeManager.Instance.OnDayChanged += HandleDayChanged;
         }
     }
 
@@ -182,6 +198,7 @@ public class DayTransitionUI : MonoBehaviour
         if (DayNightTimeManager.Instance != null)
         {
             DayNightTimeManager.Instance.OnTimePhaseChanged -= HandleTimePhaseChanged;
+            DayNightTimeManager.Instance.OnDayChanged -= HandleDayChanged;
         }
     }
 

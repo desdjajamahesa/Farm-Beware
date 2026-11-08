@@ -1010,6 +1010,23 @@ public class MainMenuController : MonoBehaviour
     public void OnLoadGameClicked()
     {
         if (currentState == MenuState.FadingOut) return;
+
+        bool isMainMenu = SceneManager.GetActiveScene().name == "MainMenuScene";
+        if (!isMainMenu)
+        {
+            var timeService = FarmBeware.Core.Runtime.ServiceLocator.Resolve<FarmBeware.Core.Runtime.ITimeService>();
+            if ((timeService != null && timeService.IsNight && !timeService.IsNightEncounterCleared) ||
+                (FeaturesCombat.NightBrawlManager.Instance != null && FeaturesCombat.NightBrawlManager.Instance.IsNightBrawlActive))
+            {
+                var player = GameObject.FindWithTag("Player");
+                FarmBeware.Core.Runtime.ServiceLocator.Resolve<FarmBeware.Core.Runtime.IFloatingTextService>()?.SpawnText(
+                    player != null ? player.transform.position + Vector3.up * 1.5f : Vector3.zero,
+                    "Cannot load game during Night Brawl! Clear all waves first.",
+                    new Color(1f, 0.4f, 0.4f));
+                return;
+            }
+        }
+
         if (FeaturesSaveSystem.SaveSystemUI.Instance != null)
         {
             FeaturesSaveSystem.SaveSystemUI.Instance.Open();

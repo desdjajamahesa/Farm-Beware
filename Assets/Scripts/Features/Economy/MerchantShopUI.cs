@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
@@ -141,6 +142,8 @@ namespace FeaturesEconomy
             {
                 if (item == null || item.isDirty || (item.itemId != null && item.itemId.Contains("dirty"))) return false;
                 if (string.Equals(item.itemId, "dummysword", System.StringComparison.OrdinalIgnoreCase)) return false;
+                // Finished dishes can only be obtained through cooking at the kitchen, NEVER sold by merchants
+                if (item is FoodItemData food && food.foodCategory == ItemData.FoodCategory.Dish) return false;
                 if (item.category == ItemCategory.Seed) return true;
                 if (item.category == ItemCategory.Material && item.buyPrice > 0) return true;
                 if (item.itemId == "food_bottle_water") return true;
@@ -192,7 +195,8 @@ namespace FeaturesEconomy
 
             if (customStock != null && customStock.Count > 0)
             {
-                itemsForSale = customStock;
+                // Finished dishes can only be obtained through cooking, never sold by merchants
+                itemsForSale = customStock.FindAll(item => !(item is FoodItemData food && food.foodCategory == ItemData.FoodCategory.Dish));
             }
             else if (itemsForSale == null || itemsForSale.Count == 0)
             {
@@ -949,7 +953,7 @@ namespace FeaturesEconomy
                 {
                     DailyEconomyManager.Instance.RecordCropSold(item, sellCount, earnedGold);
                 }
-                ShowFloatingNotify($"+{earnedGold:N0} G (Sold {sellCount}x {item.itemName})", new Color(1f, 0.85f, 0.2f));
+                ShowFloatingNotify($"+{earnedGold:N0} G (Sold {sellCount}x {item.itemName})", new Color(1f, 0.85f, 0.2f), isSell: true);
                 UpdateGoldDisplay(PlayerWallet.Instance.CurrentGold);
                 RefreshSellList();
             }
@@ -990,8 +994,108 @@ namespace FeaturesEconomy
             return null;
         }
 
-        private void ShowFloatingNotify(string msg, Color col)
+        private TextMeshProUGUI toastBannerText;
+        private Coroutine toastRoutine;
+        private AudioSource audioSource;
+        private static AudioClip cachedCoinBuyClip;
+        private static AudioClip cachedCoinSellClip;
+
+        private void EnsureAudioSource()
         {
+            if (audioSource == null)
+            {
+                audioSource = GetComponent<AudioSource>();
+                if (audioSource == null)
+                {
+                    audioSource = gameObject.AddComponent<AudioSource>();
+                }
+                audioSource.playOnAwake = false;
+                audioSource.spatialBlend = 0f;
+            }
+        }
+
+        private void PlayCoinSfx(bool isSell = false)
+        {
+            EnsureAudioSource();
+            if (audioSource == null) return;
+
+            if (isSell)
+            {
+                if (cachedCoinSellClip == null) cachedCoinSellClip = CreateProceduralCoinClip(1200f, 1600f);
+                audioSource.pitch = UnityEngine.Random.Range(0.97f, 1.03f);
+                audioSource.PlayOneShot(cachedCoinSellClip, 0.75f);
+            }
+            else
+            {
+                if (cachedCoinBuyClip == null) cachedCoinBuyClip = CreateProceduralCoinClip(988f, 1318f);
+                audioSource.pitch = UnityEngine.Random.Range(0.97f, 1.03f);
+                audioSource.PlayOneShot(cachedCoinBuyClip, 0.75f);
+            }
+        }
+
+        private static AudioClip CreateProceduralCoinClip(float freq1, float freq2)
+        {
+            int sampleRate = 44100;
+            float duration = 0.28f;
+            int samples = Mathf.FloorToInt(sampleRate * duration);
+            float[] data = new float[samples];
+
+            for (int i = 0; i < samples; i++)
+            {
+                float t = (float)i / sampleRate;
+                float env = Mathf.Exp(-t * 14f);
+                float wave = Mathf.Sin(2f * Mathf.PI * freq1 * t) * 0.6f +
+                             Mathf.Sin(2f * Mathf.PI * freq2 * t) * 0.4f +
+                             Mathf.Sin(2f * Mathf.PI * freq2 * 2.2f * t) * 0.15f;
+                data[i] = wave * env * 0.8f;
+            }
+
+            var clip = AudioClip.Create("SFX_CoinPurchaseChime", samples, 1, sampleRate, false);
+            clip.SetData(data, 0);
+            return clip;
+        }
+
+        private IEnumerator RoutineFadeToast()
+        {
+            if (toastBannerText == null) yield break;
+            toastBannerText.gameObject.SetActive(true);
+            Color initial = toastBannerText.color;
+            toastBannerText.color = new Color(initial.r, initial.g, initial.b, 1f);
+
+            yield return new WaitForSecondsRealtime(2.4f);
+
+            float fade = 0.5f;
+            float elapsed = 0f;
+            while (elapsed < fade)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                float a = Mathf.Lerp(1f, 0f, elapsed / fade);
+                if (toastBannerText != null)
+                {
+                    toastBannerText.color = new Color(initial.r, initial.g, initial.b, a);
+                }
+                yield return null;
+            }
+
+            if (toastBannerText != null)
+            {
+                toastBannerText.text = "";
+            }
+            toastRoutine = null;
+        }
+
+        private void ShowFloatingNotify(string msg, Color col, bool isSell = false)
+        {
+            PlayCoinSfx(isSell);
+
+            if (toastBannerText != null)
+            {
+                toastBannerText.text = msg;
+                toastBannerText.color = col;
+                if (toastRoutine != null) StopCoroutine(toastRoutine);
+                toastRoutine = StartCoroutine(RoutineFadeToast());
+            }
+
             var fct = ServiceLocator.Resolve<IFloatingTextService>();
             var playerCtx = ServiceLocator.Resolve<IPlayerContext>();
             if (fct != null && playerCtx != null)
@@ -1231,6 +1335,32 @@ namespace FeaturesEconomy
 
             var subTxt = cardTr.Find("HeaderBar/SubtitleText")?.GetComponent<TextMeshProUGUI>();
             if (subTxt != null) subTxt.text = "Purchase seeds, weapons, armor, or trade harvested crops for gold";
+
+            EnsureAudioSource();
+
+            var toastTr = cardTr.Find("ToastBannerText");
+            if (toastTr != null)
+            {
+                toastBannerText = toastTr.GetComponent<TextMeshProUGUI>();
+            }
+            else
+            {
+                GameObject toastGO = new GameObject("ToastBannerText", typeof(RectTransform), typeof(TextMeshProUGUI));
+                toastGO.transform.SetParent(cardTr, false);
+                var tRect = toastGO.GetComponent<RectTransform>();
+                tRect.anchorMin = new Vector2(0f, 0f);
+                tRect.anchorMax = new Vector2(1f, 0f);
+                tRect.pivot = new Vector2(0.5f, 0f);
+                tRect.anchoredPosition = new Vector2(0f, 16f);
+                tRect.sizeDelta = new Vector2(-40f, 26f);
+
+                toastBannerText = toastGO.GetComponent<TextMeshProUGUI>();
+                toastBannerText.fontSize = 15;
+                toastBannerText.fontStyle = FontStyles.Bold;
+                toastBannerText.alignment = TextAlignmentOptions.Center;
+                toastBannerText.raycastTarget = false;
+                toastBannerText.text = "";
+            }
         }
 
         /// <summary>

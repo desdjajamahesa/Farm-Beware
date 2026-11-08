@@ -17,6 +17,7 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
     [Tooltip("Durasi penguncian pergerakan saat menanam benih (detik).")]
     public float plantDuration = 1.56f;
     private bool isPlanting = false;
+    private Coroutine farmActionRoutine = null;
 
     [Tooltip("Durasi karakter diam di tempat saat mengayunkan serangan pedang (detik).")]
     public float attackLockDuration = 1.1f;
@@ -251,12 +252,14 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
             }
 
             // Pastikan velocity benar-benar nol dan animasi idle saat UI terbuka
+            CheckGrounded();
             inputVector = Vector3.zero;
             isRunning = false;
             if (rb != null && !rb.isKinematic)
                 rb.linearVelocity = new Vector3(0f, rb.linearVelocity.y, 0f);
             if (animator != null && !animator.GetBool("Driving"))
             {
+                animator.SetBool("Grounded", isGrounded);
                 animator.SetFloat("Vel", 0f, 0.05f, Time.deltaTime);
                 animator.SetBool("Idle", true);
                 animator.SetBool("Sprinting", false);
@@ -264,18 +267,30 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
             return;
         }
 
-        // Saat menanam benih, karakter diam di tempat (tidak bisa bergerak/berlari/lompat/interact)
+        // Saat menanam benih / menyiram, karakter diam di tempat (tidak bisa bergerak/berlari/lompat/interact)
+        // KECUALI pemain memberikan input gerak (WASD) untuk membatalkan animasi menyiram/menanam secara instan!
         if (isPlanting)
         {
-            inputVector = Vector3.zero;
-            isRunning = false;
-            if (animator != null && !animator.GetBool("Driving"))
+            Vector2 moveVal = (inputActions != null)
+                ? inputActions.Player.Move.ReadValue<Vector2>()
+                : Vector2.zero;
+
+            if (moveVal.sqrMagnitude > 0.04f)
             {
-                animator.SetFloat("Vel", 0f, 0.1f, Time.deltaTime);
-                animator.SetBool("Idle", true);
-                animator.SetBool("Sprinting", false);
+                CancelFarmAction();
             }
-            return;
+            else
+            {
+                inputVector = Vector3.zero;
+                isRunning = false;
+                if (animator != null && !animator.GetBool("Driving"))
+                {
+                    animator.SetFloat("Vel", 0f, 0.1f, Time.deltaTime);
+                    animator.SetBool("Idle", true);
+                    animator.SetBool("Sprinting", false);
+                }
+                return;
+            }
         }
 
         // 1. Cek apakah karakter menginjak tanah
@@ -1159,12 +1174,32 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
 
 
     /// <summary>
+    /// Membatalkan aksi menanam atau menyiram secara seketika saat pemain menekan tombol gerak.
+    /// </summary>
+    public void CancelFarmAction()
+    {
+        if (farmActionRoutine != null)
+        {
+            StopCoroutine(farmActionRoutine);
+            farmActionRoutine = null;
+        }
+        isPlanting = false;
+        if (animator != null)
+        {
+            animator.ResetTrigger("Watering");
+            animator.ResetTrigger("PlantSeed");
+            animator.SetBool("Idle", false);
+        }
+    }
+
+    /// <summary>
     /// Memanggil animasi menanam secara kontekstual (mis. saat berinteraksi dengan FarmlandTile).
     /// </summary>
     public void TriggerPlantAnimation()
     {
         if (isPlanting || isAttacking) return;
-        StartCoroutine(RoutinePlantSeed());
+        if (farmActionRoutine != null) StopCoroutine(farmActionRoutine);
+        farmActionRoutine = StartCoroutine(RoutinePlantSeed());
     }
 
     /// <summary>
@@ -1173,7 +1208,8 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
     public void TriggerHarvestAnimation()
     {
         if (isPlanting || isAttacking) return;
-        StartCoroutine(RoutinePlantSeed());
+        if (farmActionRoutine != null) StopCoroutine(farmActionRoutine);
+        farmActionRoutine = StartCoroutine(RoutinePlantSeed());
     }
 
     private IEnumerator RoutinePlantSeed()
@@ -1203,6 +1239,16 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
         {
             timer += Time.deltaTime;
 
+            // Early cancel jika pemain mulai bergerak
+            if (timer > 0.15f && inputActions != null)
+            {
+                Vector2 moveInput = inputActions.Player.Move.ReadValue<Vector2>();
+                if (moveInput.sqrMagnitude > 0.04f)
+                {
+                    break;
+                }
+            }
+
             // Jika animasi sudah selesai dan bertransisi kembali ke Idle/Moving setelah minimal 0.25 detik (kecepatan 2x)
             if (timer > 0.25f && animator != null)
             {
@@ -1216,7 +1262,12 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
             yield return null;
         }
 
+        if (animator != null)
+        {
+            animator.ResetTrigger("PlantSeed");
+        }
         isPlanting = false;
+        farmActionRoutine = null;
     }
 
     /// <summary>
@@ -1229,7 +1280,8 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
         {
             return;
         }
-        StartCoroutine(RoutineWaterCrop());
+        if (farmActionRoutine != null) StopCoroutine(farmActionRoutine);
+        farmActionRoutine = StartCoroutine(RoutineWaterCrop());
     }
 
     private IEnumerator RoutineWaterCrop()
@@ -1258,6 +1310,16 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
         {
             timer += Time.deltaTime;
 
+            // Early cancel jika pemain mulai bergerak
+            if (timer > 0.12f && inputActions != null)
+            {
+                Vector2 moveInput = inputActions.Player.Move.ReadValue<Vector2>();
+                if (moveInput.sqrMagnitude > 0.04f)
+                {
+                    break;
+                }
+            }
+
             if (timer > 0.2f && animator != null)
             {
                 var stateInfo = animator.GetCurrentAnimatorStateInfo(0);
@@ -1270,7 +1332,12 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
             yield return null;
         }
 
+        if (animator != null)
+        {
+            animator.ResetTrigger("Watering");
+        }
         isPlanting = false;
+        farmActionRoutine = null;
     }
 
     // Tombol Tab / I membuka-menutup panel pemain. Jika storage terbuka, tutup semua.
@@ -1849,8 +1916,10 @@ public class PlayerControl : MonoBehaviour, IPlayerContext
                 attackCoroutine = null;
             }
             playerEquipment?.CancelActiveAttackSwing();
+            CheckGrounded();
             if (animator != null && !animator.GetBool("Driving"))
             {
+                animator.SetBool("Grounded", isGrounded);
                 animator.SetFloat("Vel", 0f);
                 animator.SetBool("Idle", true);
                 animator.SetBool("Sprinting", false);

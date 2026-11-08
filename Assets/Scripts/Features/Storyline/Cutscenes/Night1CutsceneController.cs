@@ -732,10 +732,14 @@ namespace FeaturesStoryline.Cutscenes
                 CutsceneLetterboxUI.Instance.SnapLetterboxHidden();
             }
 
-            // 3. Restore gameplay and driving HUD
+            // 3. Mark cutscene completed FIRST so UI queries (ShouldHotbarBeVisible) evaluate true
+            _isCutscenePlaying = false;
+            _skipHoldTimer = 0f;
+
+            // 4. Restore gameplay and driving HUD
             SetGameplayHUDVisible(true);
 
-            // 4. Restore Camera to Gameplay mode
+            // 5. Restore Camera to Gameplay mode
             var cam = ServiceLocator.Resolve<ICameraService>();
             if (cam != null)
             {
@@ -768,9 +772,6 @@ namespace FeaturesStoryline.Cutscenes
             {
                 StorylineManager.Instance.Engine.RecordBeatTriggered("D1_NIGHT_START");
             }
-
-            _isCutscenePlaying = false;
-            _skipHoldTimer = 0f;
 
             if (OpeningCutsceneController.HasInstance && ReferenceEquals(ServiceLocator.Resolve<ICutsceneService>(), this))
             {

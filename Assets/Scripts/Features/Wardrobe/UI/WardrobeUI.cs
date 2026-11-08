@@ -90,6 +90,7 @@ namespace FeaturesWardrobe
         {
             CaptureInitialState();
             WireActionButtons();
+            RefreshItemGrid();
         }
 
         private void OnDisable()
@@ -201,15 +202,38 @@ namespace FeaturesWardrobe
 
         public void RefreshItemGrid()
         {
-            var playerOutfit = WardrobeManager.Instance?.PlayerOutfitProp;
+            var playerOutfit = WardrobeManager.Instance?.PlayerOutfitProp 
+                ?? PlayerOutfit.Instance 
+                ?? FindFirstObjectByType<PlayerOutfit>(FindObjectsInactive.Include);
+
+            if (itemGridContent == null)
+            {
+                InitializeReferences();
+            }
+
             if (itemGridContent == null || itemSlotPrefab == null || playerOutfit == null) return;
 
             List<OutfitData> outfits = playerOutfit.unlockedOutfits;
+            if (outfits == null || outfits.Count == 0)
+            {
+                playerOutfit.LoadWardrobe();
+                outfits = playerOutfit.unlockedOutfits;
+            }
             if (outfits == null || outfits.Count == 0) return;
 
-            // Destroy ALL existing children (dummies + previously spawned slots)
-            foreach (Transform child in itemGridContent)
-                if (child != null) Destroy(child.gameObject);
+            // Clear ALL existing children safely and immediately
+            for (int i = itemGridContent.childCount - 1; i >= 0; i--)
+            {
+                var child = itemGridContent.GetChild(i);
+                if (child != null)
+                {
+                    child.gameObject.SetActive(false);
+                    if (Application.isPlaying)
+                        Destroy(child.gameObject);
+                    else
+                        DestroyImmediate(child.gameObject);
+                }
+            }
             itemSlots.Clear();
 
             GridLayoutGroup gridLayout = itemGridContent.GetComponent<GridLayoutGroup>();
@@ -226,25 +250,27 @@ namespace FeaturesWardrobe
             for (int i = 0; i < outfits.Count; i++)
             {
                 var outfit = outfits[i];
+                if (outfit == null) continue;
+
                 var slotGO = Instantiate(itemSlotPrefab, itemGridContent);
                 slotGO.name = $"ItemSlot_{outfit.name}";
                 slotGO.SetActive(true);
 
-                // Set text label so the user can distinguish slots
-                var txt = slotGO.GetComponentInChildren<Text>(true);
-                if (txt != null) txt.text = outfit.name.Replace("Outfit_", "");
+                // Set clean human readable title
+                string displayName = !string.IsNullOrEmpty(outfit.outfitName)
+                    ? outfit.outfitName
+                    : outfit.name.Replace("Outfit_", "").Replace("Set_", "Set ");
 
                 var tmp = slotGO.GetComponentInChildren<TMPro.TextMeshProUGUI>(true);
-                if (tmp != null) tmp.text = outfit.name.Replace("Outfit_", "");
+                var txt = slotGO.GetComponentInChildren<Text>(true);
+                if (tmp != null) tmp.text = displayName;
+                else if (txt != null) txt.text = displayName;
 
-                // Icon image: find dedicated child or fallback to first non-button Image
-                Image iconImage = null;
-                Transform iconTransform = slotGO.transform.Find("Icon") ?? slotGO.transform.Find("ItemIcon");
-                if (iconTransform != null)
-                {
-                    iconImage = iconTransform.GetComponent<Image>();
-                }
-                else
+                // Configure Icon image
+                Image iconImage = slotGO.transform.Find("IconImage")?.GetComponent<Image>()
+                    ?? slotGO.transform.Find("Icon")?.GetComponent<Image>()
+                    ?? slotGO.transform.Find("ItemIcon")?.GetComponent<Image>();
+                if (iconImage == null)
                 {
                     var images = slotGO.GetComponentsInChildren<Image>(true);
                     foreach (var img in images)
@@ -267,6 +293,14 @@ namespace FeaturesWardrobe
                     }
                 }
 
+                // Setup selection highlight
+                var slotComp = slotGO.GetComponent<ItemSlot>();
+                if (slotComp != null)
+                {
+                    slotComp.SetSelected(previewOutfit == outfit || (previewOutfit == null && initialOutfit == outfit));
+                    itemSlots.Add(slotComp);
+                }
+
                 var btn = slotGO.GetComponent<Button>();
                 if (btn != null)
                 {
@@ -282,10 +316,17 @@ namespace FeaturesWardrobe
                             po.ApplyOutfit(previewOutfit);
                             po.SetHatActive(previewHatEquipped);
                         }
+
+                        // Update selection visuals across all slots
+                        foreach (var s in itemSlots)
+                        {
+                            if (s != null)
+                            {
+                                s.SetSelected(s.gameObject == slotGO);
+                            }
+                        }
                     });
                 }
-
-                itemSlots.Add(slotGO.GetComponent<ItemSlot>());
             }
 
             if (itemGridScrollRect != null)

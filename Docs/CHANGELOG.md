@@ -7,6 +7,17 @@ Welcome to the **Farm-Beware** patch notes! Here you'll find the latest updates,
 ## 2026-11-08
 
 ### Added
+* **Playtest Feedback 11 Critical Fixes**:
+  * **Instant Watering Cancel**: Walking with WASD now cancels the watering animation instantly.
+  * **Fridge Duplication Fix**: Storage slots are cleanly reset before opening to prevent item cloning.
+  * **Cooking Exclusivity & Store SFX**: Cooked meals are reserved for stove recipes; merchant purchases now play audio chimes and pop floating notification text.
+  * **Sleep Crop Growth Calculation**: Skipping time by going to bed early properly credits crop growth progress.
+  * **Persistent Night Hotbar**: Hotbar remains accessible throughout the night for quick consumable access.
+  * **Atmospheric Day/Night Transitions**: Added procedural day-to-night and night-to-day visual transition banners.
+  * **Night Combat Save Lock**: Prohibited saving or loading while Night Brawl waves are actively attacking.
+  * **Monster Wall Occlusion & Campfire Navigation**: Fixed enemy melee attacks penetrating walls and prevented monster bunching around campfires with dynamic NavMesh carving.
+  * **Wardrobe Vest Outfits**: Added Explorer, Ranger, and FieldMaster vest sets to wardrobe collections.
+* **Player Rig & Combat Motion Stability**: Restored native character rig (`character_player_v2`) and `AsepAnimator_V2` controller with native combat animations (`sword_up`, `sword_cross`, `sword_combo`, `sword_dash`, `sword_idle`), eliminating scale distortion, disappearing meshes, and hollow vest torso issues.
 * **Interactive World Map**: Press `M` to view a stylized parchment map of the valley displaying your real-time position, homestead compound, the western trading post, and danger breach zones.
 * **Western Scenic Roadway & Frontier Trading Post**: Follow the 225-meter western roadway out of the farmstead to explore the expanded commercial trading post, featuring an elevated boardwalk, turnaround bay, and interactive merchant counter.
 * **Night 1 Cinematic Awakening**: Experience a cinematic sequence as darkness falls on Day 1, capturing ground tremors, sweet potato mutations erupting from the soil, and frontline defense preparation.

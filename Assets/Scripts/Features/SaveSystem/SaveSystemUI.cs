@@ -188,6 +188,21 @@ namespace FeaturesSaveSystem
 
         public void Open()
         {
+            if (UnityEngine.SceneManagement.SceneManager.GetActiveScene().name != "MainMenuScene")
+            {
+                var timeService = FarmBeware.Core.Runtime.ServiceLocator.Resolve<FarmBeware.Core.Runtime.ITimeService>();
+                if ((timeService != null && timeService.IsNight && !timeService.IsNightEncounterCleared) ||
+                    (FeaturesCombat.NightBrawlManager.Instance != null && FeaturesCombat.NightBrawlManager.Instance.IsNightBrawlActive))
+                {
+                    var player = GameObject.FindWithTag("Player");
+                    FarmBeware.Core.Runtime.ServiceLocator.Resolve<FarmBeware.Core.Runtime.IFloatingTextService>()?.SpawnText(
+                        player != null ? player.transform.position + Vector3.up * 1.5f : Vector3.zero,
+                        "Cannot save or load during Night Brawl! Clear all waves first.",
+                        new Color(1f, 0.4f, 0.4f));
+                    return;
+                }
+            }
+
             EnsureUIHierarchy();
             WireButtonListeners();
 

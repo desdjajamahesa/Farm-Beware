@@ -473,11 +473,33 @@ namespace FeaturesSaveSystem
 
         #region Save / Overwrite / Load / Delete API
 
+        public static bool IsNightCombatActive()
+        {
+            if (UnityEngine.SceneManagement.SceneManager.GetActiveScene().name == "MainMenuScene") return false;
+            var timeService = FarmBeware.Core.Runtime.ServiceLocator.Resolve<FarmBeware.Core.Runtime.ITimeService>();
+            if (timeService != null && timeService.IsNight && !timeService.IsNightEncounterCleared)
+            {
+                return true;
+            }
+            if (FeaturesCombat.NightBrawlManager.Instance != null && FeaturesCombat.NightBrawlManager.Instance.IsNightBrawlActive)
+            {
+                return true;
+            }
+            return false;
+        }
+
         /// <summary>
         /// Creates a brand new save slot with a custom player name.
         /// </summary>
         public bool CreateNewSave(string customName, out string statusMessage)
         {
+            if (IsNightCombatActive())
+            {
+                statusMessage = "Cannot save during Night Brawl! Clear all waves first.";
+                ShowNotification("[Warning] Cannot save during Night Brawl! Clear all waves first.", new Color(1f, 0.4f, 0.4f));
+                return false;
+            }
+
             EnsureDirectory();
 
             string safeDisplayName = SanitizeSaveName(customName);
@@ -534,6 +556,13 @@ namespace FeaturesSaveSystem
         /// </summary>
         public bool OverwriteSave(string saveId, out string statusMessage, string updatedName = null)
         {
+            if (IsNightCombatActive())
+            {
+                statusMessage = "Cannot save during Night Brawl! Clear all waves first.";
+                ShowNotification("[Warning] Cannot save during Night Brawl! Clear all waves first.", new Color(1f, 0.4f, 0.4f));
+                return false;
+            }
+
             EnsureDirectory();
 
             var existingMeta = GetMetadataById(saveId);
@@ -604,6 +633,13 @@ namespace FeaturesSaveSystem
         /// </summary>
         public bool LoadSave(string saveId, out string statusMessage)
         {
+            if (IsNightCombatActive())
+            {
+                statusMessage = "Cannot load during Night Brawl! Clear all waves first.";
+                ShowNotification("[Warning] Cannot load during Night Brawl! Clear all waves first.", new Color(1f, 0.4f, 0.4f));
+                return false;
+            }
+
             var meta = GetMetadataById(saveId);
             if (meta == null)
             {

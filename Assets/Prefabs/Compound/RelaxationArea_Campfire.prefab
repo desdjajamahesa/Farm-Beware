@@ -774,6 +774,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1021686747646763982}
   - component: {fileID: 1087472432376510557}
+  - component: {fileID: 2160263376829455735}
   m_Layer: 12
   m_Name: Bench_West
   m_TagString: Untagged
@@ -821,6 +822,22 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1.65, y: 0.46, z: 0.5}
   m_Center: {x: 0, y: 0.23, z: 0}
+--- !u!208 &2160263376829455735
+NavMeshObstacle:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 343205844844150120}
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Shape: 1
+  m_Extents: {x: 0.925, y: 0.33, z: 0.35}
+  m_MoveThreshold: 0.1
+  m_Carve: 1
+  m_CarveOnlyStationary: 0
+  m_Center: {x: 0, y: 0.23, z: 0}
+  m_TimeToStationary: 0.5
 --- !u!1 &797332084421972339
 GameObject:
   m_ObjectHideFlags: 0
@@ -2969,6 +2986,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 6463503745560544793}
+  - component: {fileID: -3363942281798561318}
   m_Layer: 0
   m_Name: FirePit
   m_TagString: Untagged
@@ -2998,6 +3016,22 @@ Transform:
   - {fileID: 1789820485948855629}
   m_Father: {fileID: 4952556350622857607}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!208 &-3363942281798561318
+NavMeshObstacle:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3626055958625211401}
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Shape: 1
+  m_Extents: {x: 1.6, y: 0.75, z: 1.6}
+  m_MoveThreshold: 0.1
+  m_Carve: 1
+  m_CarveOnlyStationary: 0
+  m_Center: {x: 0, y: 0.5, z: 0}
+  m_TimeToStationary: 0.5
 --- !u!1 &3758296182674720074
 GameObject:
   m_ObjectHideFlags: 0
@@ -3504,6 +3538,7 @@ GameObject:
   m_Component:
   - component: {fileID: 4750202858604060019}
   - component: {fileID: 2676177064288180430}
+  - component: {fileID: -4729705636435861873}
   m_Layer: 12
   m_Name: Bench_East
   m_TagString: Untagged
@@ -3551,6 +3586,22 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1.65, y: 0.46, z: 0.5}
   m_Center: {x: 0, y: 0.23, z: 0}
+--- !u!208 &-4729705636435861873
+NavMeshObstacle:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4184450075378178885}
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Shape: 1
+  m_Extents: {x: 0.925, y: 0.33, z: 0.35}
+  m_MoveThreshold: 0.1
+  m_Carve: 1
+  m_CarveOnlyStationary: 0
+  m_Center: {x: 0, y: 0.23, z: 0}
+  m_TimeToStationary: 0.5
 --- !u!1 &4202370427647055615
 GameObject:
   m_ObjectHideFlags: 0
@@ -3853,6 +3904,7 @@ GameObject:
   m_Component:
   - component: {fileID: 6663669634496783280}
   - component: {fileID: 455506176512208537}
+  - component: {fileID: -4429885624664231986}
   m_Layer: 12
   m_Name: Bench_North
   m_TagString: Untagged
@@ -3900,6 +3952,22 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1.65, y: 0.46, z: 0.5}
   m_Center: {x: 0, y: 0.23, z: 0}
+--- !u!208 &-4429885624664231986
+NavMeshObstacle:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4536251322637187024}
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Shape: 1
+  m_Extents: {x: 0.925, y: 0.33, z: 0.35}
+  m_MoveThreshold: 0.1
+  m_Carve: 1
+  m_CarveOnlyStationary: 0
+  m_Center: {x: 0, y: 0.23, z: 0}
+  m_TimeToStationary: 0.5
 --- !u!1 &4568502922727840723
 GameObject:
   m_ObjectHideFlags: 0
@@ -5566,6 +5634,7 @@ GameObject:
   m_Component:
   - component: {fileID: 2382520390544753444}
   - component: {fileID: 2594903057822067870}
+  - component: {fileID: -1128591826861825600}
   m_Layer: 12
   m_Name: FirewoodStack
   m_TagString: Untagged
@@ -5624,6 +5693,22 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 0.75, y: 0.65, z: 1.4}
   m_Center: {x: 0, y: 0.32, z: 0}
+--- !u!208 &-1128591826861825600
+NavMeshObstacle:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6516244606567284564}
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Shape: 1
+  m_Extents: {x: 0.8, y: 0.6, z: 0.9}
+  m_MoveThreshold: 0.1
+  m_Carve: 1
+  m_CarveOnlyStationary: 0
+  m_Center: {x: 0, y: 0.4, z: 0}
+  m_TimeToStationary: 0.5
 --- !u!1 &6590285437156489112
 GameObject:
   m_ObjectHideFlags: 0
@@ -5850,6 +5935,11 @@ MonoBehaviour:
   baseIntensity: 8.5
   flickerRange: 1.8
   flickerSpeed: 7
+  flameParticles: {fileID: 0}
+  sparkParticles: {fileID: 0}
+  embersRenderer: {fileID: 0}
+  nightEmbersColor: {r: 2, g: 0.6, b: 0.1, a: 1}
+  dayEmbersColor: {r: 0, g: 0, b: 0, a: 1}
 --- !u!114 &7657875356920951030
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -11333,6 +11423,7 @@ GameObject:
   m_Component:
   - component: {fileID: 7833842601361134674}
   - component: {fileID: 8346602800479675119}
+  - component: {fileID: -5740213428306476086}
   m_Layer: 12
   m_Name: Bench_South
   m_TagString: Untagged
@@ -11380,6 +11471,22 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1.65, y: 0.46, z: 0.5}
   m_Center: {x: 0, y: 0.23, z: 0}
+--- !u!208 &-5740213428306476086
+NavMeshObstacle:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7666871908866869642}
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Shape: 1
+  m_Extents: {x: 0.925, y: 0.33, z: 0.35}
+  m_MoveThreshold: 0.1
+  m_Carve: 1
+  m_CarveOnlyStationary: 0
+  m_Center: {x: 0, y: 0.23, z: 0}
+  m_TimeToStationary: 0.5
 --- !u!1 &7755514617643628172
 GameObject:
   m_ObjectHideFlags: 0

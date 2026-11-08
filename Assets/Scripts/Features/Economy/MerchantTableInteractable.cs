@@ -42,6 +42,8 @@ namespace FeaturesEconomy
                 {
                     if (item == null || item.isDirty || (item.itemId != null && item.itemId.Contains("dirty"))) continue;
                     if (string.Equals(item.itemId, "dummysword", System.StringComparison.OrdinalIgnoreCase)) continue;
+                    // Finished dishes can only be obtained through cooking at the kitchen, NEVER sold by merchants
+                    if (item is FoodItemData food && food.foodCategory == ItemData.FoodCategory.Dish) continue;
                     if (item.category == ItemCategory.Seed ||
                         item.category == ItemCategory.Tool ||
                         item.category == ItemCategory.Weapon ||

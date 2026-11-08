@@ -5,6 +5,23 @@ Semua perubahan penting pada proyek ini oleh Rafi akan dicatat di halaman ini.
 ## - 2026-11-08
 
 ### Ditambahkan & Diintegrasikan (Added & Integrated)
+- **Resolusi 11 Temuan Audit Playtest ([`PlayerControl.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Player/PlayerControl.cs), [`RefrigeratorInteractable.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Kitchen/RefrigeratorInteractable.cs), [`MerchantShopUI.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Economy/MerchantShopUI.cs), [`FarmlandTile.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Farming/FarmlandTile.cs), [`EnemyBase.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Combat/Enemy/EnemyBase.cs), [`SaveStationInteractable.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/SaveSystem/SaveStationInteractable.cs), [`DayTransitionUI.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Time/UI/DayTransitionUI.cs), [`WardrobeUI.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Wardrobe/UI/WardrobeUI.cs))**:
+  - **Pembatalan Siram Tanaman Instan**: Animasi menyiram tanaman langsung tercancel ketika pemain menggerakkan karakter via input WASD.
+  - **Anti-Duplikasi Kulkas**: Membersihkan container slot sebelum mempopulasi ulang item penyimpanan dapur.
+  - **Eksklusivitas Memasak**: Menghapus makanan matang siap saji dari katalog toko Merchant sehingga makanan hanya didapat dari memasak di kompor.
+  - **Notifikasi Pembelian Toko**: Menambahkan sound effect pembelian dan floating combat text (+Item Name) saat transaksi merchant berhasil.
+  - **Kredit Waktu Tumbuh Saat Tidur**: Tidur lebih cepat mengakselerasi sisa waktu pertumbuhan tanaman secara proporsional.
+  - **Quick-Access Hotbar Malam**: Hotbar tetap aktif dan terlihat di malam hari untuk quick-access konsumsi makanan/minuman.
+  - **Transisi Waktu Day-Night-Day**: Menambahkan visual banner transisi Day-to-Night dan Night-to-Day procedural dengan vignette.
+  - **Gating Save/Load Malam Hari**: Memblokir save/load saat wave Night Brawl sedang berlangsung sampai seluruh gelombang musuh di hari tersebut bersih.
+  - **Occlusion LoS Serangan Melee Monster**: Memastikan serangan melee monster tidak dapat menembus tembok kabin dan struktur solid.
+  - **Anti-Stuck Monster di Api Unggun**: Menambahkan 5 NavMeshObstacle carving pada prefab RelaxationArea_Campfire dan steering unstuck force.
+  - **Koleksi Outfit Vest di Wardrobe**: Menambahkan 3 varian pakaian vest (Explorer, Ranger, FieldMaster) ke ScriptableObject dan katalog Wardrobe.
+- **Stabilisasi Rig & Animasi Karakter Player ([`MainScene.unity`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scenes/MainScene.unity), [`character_player_v2.prefab`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Prefabs/Player/character_player_v2.prefab), [`AsepAnimator_V2.controller`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Resources/Player/AsepAnimator_V2.controller), [`OutfitData.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Wardrobe/OutfitData.cs))**:
+  - Mengembalikan model karakter aktif di scene ke `character_player_v2` dengan controller `AsepAnimator_V2` (memulihkan rangkaian animasi tempur native non-legacy `sword_up`, `sword_cross`, `sword_combo`, `sword_dash`, `sword_idle`).
+  - Mengeliminasi bug skala raksasa 100x dan bug karakter melayang/hilang akibat root translation klip Generic jump.
+  - Memperbaiki logika vest pada `OutfitData` sehingga baju dasar (`cloth1`) tetap aktif di bawah rompi vest untuk mencegah badan berlubang.
+- **Verifikasi Test 109**: Menambahkan Test 109 pada test suite; seluruh 109/109 pengujian audit otomatis lulus (100% Green, 0 compiler error, 0 warning).
 - **Kompleks Commercial Trading Post & Western Scenic Roadway ([`ShopInteractable.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Economy/ShopInteractable.cs), [`MerchantShopUI.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Economy/MerchantShopUI.cs), [`ArcadeVehicleController.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Vehicles/ArcadeVehicleController.cs))**:
   - Merelokasi Trading Post dan lintasan jalan raya ke sektor Barat (West) agar sejajar dengan arah kedatangan kendaraan pada opening cutscene dan sudut pandang kamera isometrik 3D.
   - Membangun jalan raya aspal/tanah sepanjang 225m+ dengan kurva Catmull-Rom yang menghubungkan gerbang depan compound menuju outpost barat.

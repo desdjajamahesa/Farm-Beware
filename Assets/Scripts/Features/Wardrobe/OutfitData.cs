@@ -48,7 +48,9 @@ namespace FeaturesWardrobe
             TogglePart(allChildren, "hair2", true);
 
             // Top — variant options (cloth1, cloth2, cloth_vest).
-            TogglePart(allChildren, "cloth1", topVariant == 0);
+            // cloth1 acts as base inner shirt/torso layer when wearing cloth_vest (variant 2)
+            // to ensure the chest and arms remain visible on modular rigs.
+            TogglePart(allChildren, "cloth1", topVariant == 0 || topVariant == 2);
             TogglePart(allChildren, "cloth2", topVariant == 1);
             TogglePart(allChildren, "cloth_vest", topVariant == 2);
 

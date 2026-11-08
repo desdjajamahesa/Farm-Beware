@@ -152,6 +152,9 @@ namespace FeaturesCombat
         private float nextRepathTime = 0f;
         private bool hasValidNavPath = false;
         private Vector3 smoothedAvoidanceDir = Vector3.forward;
+        private Vector3 lastUnstuckPosition;
+        private float stuckDuration = 0f;
+        private Vector3 unstuckEvasionVector = Vector3.zero;
 
         [Header("Tactical AI & Pack Dynamics")]
         private FeaturesCombat.Core.PureLogic.MonsterTacticalEvaluator tacticalEvaluator;
@@ -723,7 +726,40 @@ namespace FeaturesCombat
             // 3. Terapkan Dynamic Obstacle Avoidance (Whisker Sensors) agar monster tidak menabrak rintangan atau kawanan lain
             Vector3 finalMoveDir = ApplyObstacleAvoidance(desiredDir);
 
+            // 4. Anti-Stuck & Physical Collider Obstacle Auto-Recovery
             float effectiveSpeed = moveSpeed * speedMultiplier;
+            float deltaPos = Vector3.Distance(transform.position, lastUnstuckPosition);
+            if (deltaPos < 0.08f && effectiveSpeed > 0.5f)
+            {
+                stuckDuration += Time.deltaTime;
+                if (stuckDuration > 0.35f)
+                {
+                    if (unstuckEvasionVector == Vector3.zero)
+                    {
+                        Vector3 lateral = Vector3.Cross(Vector3.up, desiredDir);
+                        unstuckEvasionVector = ((gameObject.GetInstanceID() % 2 == 0) ? lateral : -lateral).normalized;
+                    }
+                    finalMoveDir = (desiredDir * 0.2f + unstuckEvasionVector * 0.8f).normalized;
+
+                    if (stuckDuration > 1.2f)
+                    {
+                        if (NavMesh.SamplePosition(transform.position + unstuckEvasionVector * 1.5f, out NavMeshHit unHit, 3.0f, NavMesh.AllAreas))
+                        {
+                            transform.position = unHit.position;
+                            if (rb != null) rb.position = unHit.position;
+                        }
+                        stuckDuration = 0f;
+                        unstuckEvasionVector = Vector3.zero;
+                    }
+                }
+            }
+            else
+            {
+                stuckDuration = Mathf.Max(0f, stuckDuration - Time.deltaTime * 2f);
+                if (stuckDuration <= 0f) unstuckEvasionVector = Vector3.zero;
+                lastUnstuckPosition = transform.position;
+            }
+
             SetLinearVelocity(new Vector3(finalMoveDir.x * effectiveSpeed, GetLinearVelocityY(), finalMoveDir.z * effectiveSpeed));
 
             // Putar hadap monster mengikuti arah gerak navigasi secara halus
@@ -918,10 +954,31 @@ namespace FeaturesCombat
                 // Pemain terkena serangan jika berada di dalam jangkauan melee dan berada di depan atau menempel sangat dekat dengan monster
                 if (currentDist <= telegraphHitRange && (dot >= 0.10f || currentDist <= 1.2f))
                 {
-                    IDamageable playerDamageable = playerTarget.GetComponent<IDamageable>() ?? playerTarget.GetComponentInParent<IDamageable>();
-                    if (playerDamageable != null && !playerDamageable.IsDead)
+                    Vector3 enemyChest = transform.position + Vector3.up * 1f;
+                    Vector3 playerChest = playerTarget.position + Vector3.up * 1f;
+                    Collider playerCol = playerTarget.GetComponent<Collider>() ?? playerTarget.GetComponentInChildren<Collider>();
+
+                    bool isBlockedByWall = FarmBeware.Core.Runtime.NonAllocPhysics.IsLineOfSightBlocked(
+                        enemyChest, playerChest, playerCol, gameObject, 0);
+
+                    if (isBlockedByWall)
                     {
-                        playerDamageable.TakeDamage(contactDamage, playerTarget.position + Vector3.up * 1f, transform.forward);
+                        // Serangan terhalang oleh dinding/tembok solid! Mencegah damage dari balik tembok
+                        if (FloatingCombatTextManager.Instance != null)
+                        {
+                            FloatingCombatTextManager.Instance.SpawnText(
+                                transform.position + Vector3.up * 1.6f,
+                                "Blocked!",
+                                new Color(0.7f, 0.7f, 0.7f, 0.85f));
+                        }
+                    }
+                    else
+                    {
+                        IDamageable playerDamageable = playerTarget.GetComponent<IDamageable>() ?? playerTarget.GetComponentInParent<IDamageable>();
+                        if (playerDamageable != null && !playerDamageable.IsDead)
+                        {
+                            playerDamageable.TakeDamage(contactDamage, playerTarget.position + Vector3.up * 1f, transform.forward);
+                        }
                     }
                 }
                 else
@@ -1409,8 +1466,14 @@ namespace FeaturesCombat
 
             if (playerTarget != null && !NightBrawlManager.IsInsideHouse(playerTarget.position) && Vector3.Distance(transform.position, playerTarget.position) <= eruptionRadius)
             {
-                var target = playerTarget.GetComponent<IDamageable>();
-                target?.TakeDamage(contactDamage + 10, playerTarget.position, Vector3.up);
+                Vector3 enemyChest = transform.position + Vector3.up * 1f;
+                Vector3 playerChest = playerTarget.position + Vector3.up * 1f;
+                Collider playerCol = playerTarget.GetComponent<Collider>() ?? playerTarget.GetComponentInChildren<Collider>();
+                if (!FarmBeware.Core.Runtime.NonAllocPhysics.IsLineOfSightBlocked(enemyChest, playerChest, playerCol, gameObject, 0))
+                {
+                    var target = playerTarget.GetComponent<IDamageable>();
+                    target?.TakeDamage(contactDamage + 10, playerTarget.position, Vector3.up);
+                }
             }
 
             yield return new WaitForSeconds(0.35f);
@@ -1515,8 +1578,14 @@ namespace FeaturesCombat
 
             if (playerTarget != null && !NightBrawlManager.IsInsideHouse(playerTarget.position) && Vector3.Distance(transform.position, playerTarget.position) <= 4f)
             {
-                var target = playerTarget.GetComponent<IDamageable>();
-                target?.TakeDamage(35, slamTarget, Vector3.up);
+                Vector3 enemyChest = transform.position + Vector3.up * 1f;
+                Vector3 playerChest = playerTarget.position + Vector3.up * 1f;
+                Collider playerCol = playerTarget.GetComponent<Collider>() ?? playerTarget.GetComponentInChildren<Collider>();
+                if (!FarmBeware.Core.Runtime.NonAllocPhysics.IsLineOfSightBlocked(enemyChest, playerChest, playerCol, gameObject, 0))
+                {
+                    var target = playerTarget.GetComponent<IDamageable>();
+                    target?.TakeDamage(35, slamTarget, Vector3.up);
+                }
             }
 
             yield return new WaitForSeconds(0.6f);

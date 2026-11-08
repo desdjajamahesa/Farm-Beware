@@ -52,11 +52,31 @@ namespace FeaturesSaveSystem
 
         public bool CanInteract(GameObject interactor)
         {
+            var timeService = ServiceLocator.Resolve<ITimeService>();
+            if (timeService != null && timeService.IsNight && !timeService.IsNightEncounterCleared)
+            {
+                return false;
+            }
+            if (FeaturesCombat.NightBrawlManager.Instance != null && FeaturesCombat.NightBrawlManager.Instance.IsNightBrawlActive)
+            {
+                return false;
+            }
             return true;
         }
 
         public void Interact(GameObject interactor)
         {
+            var timeService = ServiceLocator.Resolve<ITimeService>();
+            if ((timeService != null && timeService.IsNight && !timeService.IsNightEncounterCleared) ||
+                (FeaturesCombat.NightBrawlManager.Instance != null && FeaturesCombat.NightBrawlManager.Instance.IsNightBrawlActive))
+            {
+                ServiceLocator.Resolve<IFloatingTextService>()?.SpawnText(
+                    transform.position + Vector3.up * 1.5f,
+                    "Cannot save or load during Night Brawl! Clear all waves first.",
+                    new Color(1f, 0.4f, 0.4f));
+                return;
+            }
+
             if (SaveSystemUI.Instance != null)
             {
                 SaveSystemUI.Instance.Open();

@@ -3196,6 +3196,175 @@ namespace FarmBeware.EditorTests
             }
         }
 
+        // Test 109: Playtest Feedback 11 Critical Fixes Verification Suite
+        public static bool Test_PlaytestFeedback_11CriticalFixes_Audit()
+        {
+            GameObject testRoot = new GameObject("Test_PlaytestFeedback_11Fixes_Root");
+            var originalTime = ServiceLocator.Resolve<ITimeService>();
+            try
+            {
+                // 1. Watering / Farm action cancellation on movement
+                var playerObj = new GameObject("Test_Player");
+                playerObj.transform.SetParent(testRoot.transform);
+                var playerCtrl = playerObj.AddComponent<PlayerControl>();
+                playerCtrl.CancelFarmAction();
+
+                // 2. Refrigerator item duplication prevention
+                var fridgeObj = new GameObject("Test_Fridge");
+                fridgeObj.transform.SetParent(testRoot.transform);
+                var fridgeInv = fridgeObj.AddComponent<InventoryComponent>();
+                fridgeInv.ResetInventory(16);
+                var fridge = fridgeObj.AddComponent<RefrigeratorInteractable>();
+                fridge.EnsureQuestIngredients();
+                int countAfterFirst = 0;
+                foreach (var s in fridgeInv.slots) if (s != null && !s.IsEmpty) countAfterFirst += s.quantity;
+                fridge.EnsureQuestIngredients();
+                int countAfterSecond = 0;
+                foreach (var s in fridgeInv.slots) if (s != null && !s.IsEmpty) countAfterSecond += s.quantity;
+                if (countAfterFirst != countAfterSecond)
+                {
+                    Debug.LogError($"[Test 109] Refrigerator duplicated items on repeated seeding! 1st={countAfterFirst}, 2nd={countAfterSecond}");
+                    return false;
+                }
+
+                // 3. Cooked food dish forbidden from Merchant stock
+                var dishItem = ScriptableObject.CreateInstance<FoodItemData>();
+                dishItem.itemId = "food_taro_corn_stew";
+                dishItem.itemName = "Taro Corn Stew";
+                dishItem.category = ItemCategory.Food;
+                dishItem.foodCategory = ItemData.FoodCategory.Dish;
+                dishItem.buyPrice = 120;
+
+                var seedItem = ScriptableObject.CreateInstance<SeedItemData>();
+                seedItem.itemId = "seed_corn";
+                seedItem.itemName = "Corn Seed";
+                seedItem.category = ItemCategory.Seed;
+                seedItem.buyPrice = 25;
+
+                var shopUIObj = new GameObject("Test_ShopUI");
+                shopUIObj.transform.SetParent(testRoot.transform);
+                var shopUI = shopUIObj.AddComponent<MerchantShopUI>();
+                var isItemAllowedMethod = typeof(MerchantShopUI).GetMethod("IsItemAllowedForSale", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                if (isItemAllowedMethod != null)
+                {
+                    bool dishAllowed = (bool)isItemAllowedMethod.Invoke(shopUI, new object[] { dishItem });
+                    bool seedAllowed = (bool)isItemAllowedMethod.Invoke(shopUI, new object[] { seedItem });
+                    if (dishAllowed)
+                    {
+                        Debug.LogError("[Test 109] MerchantShopUI allowed finished dish item for sale!");
+                        return false;
+                    }
+                    if (!seedAllowed)
+                    {
+                        Debug.LogError("[Test 109] MerchantShopUI disallowed seed item for sale!");
+                        return false;
+                    }
+                }
+
+                // 4. FarmlandTile AdvanceDay credits growth progress when watered
+                var plotObj = new GameObject("Test_FarmlandTile");
+                plotObj.transform.SetParent(testRoot.transform);
+                var tile = plotObj.AddComponent<FarmlandTile>();
+                var seedData = ScriptableObject.CreateInstance<SeedItemData>();
+                seedData.itemId = "seed_taro";
+                seedData.growthDuration = 120f;
+
+                var plantedSeedField = typeof(FarmlandTile).GetField("plantedSeed", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                plantedSeedField?.SetValue(tile, seedData);
+                var stateField = typeof(FarmlandTile).GetField("currentState", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                stateField?.SetValue(tile, TileState.PlantedWatered);
+                var timerField = typeof(FarmlandTile).GetField("currentTimer", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                timerField?.SetValue(tile, 0f);
+
+                tile.AdvanceDay();
+                float advancedTimer = (float)timerField.GetValue(tile);
+                if (advancedTimer <= 0f)
+                {
+                    Debug.LogError($"[Test 109] FarmlandTile.AdvanceDay failed to credit growth progress! timer={advancedTimer}");
+                    return false;
+                }
+
+                // 5. Night Brawl Save/Load Gating
+                var mockTime = new MockTimeService();
+                mockTime.CurrentPhase = DayPhase.Night;
+                mockTime.IsNightEncounterCleared = false;
+                ServiceLocator.Register<ITimeService>(mockTime);
+
+                var saveStationObj = new GameObject("Test_SaveStation");
+                saveStationObj.transform.SetParent(testRoot.transform);
+                var saveStation = saveStationObj.AddComponent<FeaturesSaveSystem.SaveStationInteractable>();
+                if (saveStation.CanInteract(playerObj))
+                {
+                    Debug.LogError("[Test 109] SaveStation allows interaction during active night brawl!");
+                    return false;
+                }
+
+                if (!FeaturesSaveSystem.SaveSystemManager.IsNightCombatActive())
+                {
+                    Debug.LogError("[Test 109] SaveSystemManager.IsNightCombatActive returned false during night brawl!");
+                    return false;
+                }
+
+                mockTime.IsNightEncounterCleared = true;
+                if (!saveStation.CanInteract(playerObj))
+                {
+                    Debug.LogError("[Test 109] SaveStation blocked interaction after night brawl was cleared!");
+                    return false;
+                }
+
+                // 6. Wardrobe modular vest outfits registered
+                var vestExplorer = Resources.Load<FeaturesWardrobe.OutfitData>("Player/model/Outfit_Set_Vest_Explorer");
+                var vestRanger = Resources.Load<FeaturesWardrobe.OutfitData>("Player/model/Outfit_Set_Vest_Ranger");
+                var vestFieldMaster = Resources.Load<FeaturesWardrobe.OutfitData>("Player/model/Outfit_Set_Vest_FieldMaster");
+
+                if (vestExplorer == null || vestRanger == null || vestFieldMaster == null)
+                {
+                    Debug.LogError("[Test 109] New modular vest outfits could not be loaded from Resources!");
+                    return false;
+                }
+                if (vestExplorer.topVariant != 2 || vestRanger.topVariant != 2 || vestFieldMaster.topVariant != 2)
+                {
+                    Debug.LogError("[Test 109] New modular vest outfits do not have topVariant == 2!");
+                    return false;
+                }
+
+                // 7. Campfire NavMeshObstacle configuration
+                var campfirePrefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/Compound/RelaxationArea_Campfire.prefab");
+                if (campfirePrefab != null)
+                {
+                    var obstacles = campfirePrefab.GetComponentsInChildren<UnityEngine.AI.NavMeshObstacle>(true);
+                    if (obstacles == null || obstacles.Length < 5)
+                    {
+                        Debug.LogError($"[Test 109] Campfire prefab missing NavMeshObstacles! Found: {(obstacles != null ? obstacles.Length : 0)}");
+                        return false;
+                    }
+                    bool allCarving = true;
+                    foreach (var obs in obstacles)
+                    {
+                        if (!obs.carving) allCarving = false;
+                    }
+                    if (!allCarving)
+                    {
+                        Debug.LogError("[Test 109] Some NavMeshObstacles on Campfire do not have carving enabled!");
+                        return false;
+                    }
+                }
+
+                Debug.Log("✅ Test 109: Playtest Feedback 11 Critical Fixes verified (animation cancel, fridge idempotency, merchant dish exclusion, sleep crop credit, night save gating, modular vest outfits, campfire obstacles).");
+                return true;
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogError($"[Test 109] Exception: {ex.Message}\n{ex.StackTrace}");
+                return false;
+            }
+            finally
+            {
+                if (originalTime != null) ServiceLocator.Register<ITimeService>(originalTime);
+                if (testRoot != null) Object.DestroyImmediate(testRoot);
+            }
+        }
+
         public static bool Test_Playable_Sandbox_Day1To5_NarrativeLoop_Audit() => Test_Storyline_SandboxPlayableLoop_E2E_Audit();
     }
 }

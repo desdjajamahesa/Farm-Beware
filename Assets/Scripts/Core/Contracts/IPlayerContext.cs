@@ -13,6 +13,7 @@ namespace FarmBeware.Core.Runtime
         void TriggerPlantAnimation();
         void TriggerWaterAnimation();
         void TriggerHarvestAnimation();
+        void CancelFarmAction();
         void ApplyKnockback(Vector3 direction, float force);
         void ApplyStun(float duration);
         void SetControlLock(bool locked);

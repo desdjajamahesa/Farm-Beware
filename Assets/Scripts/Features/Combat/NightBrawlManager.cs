@@ -456,6 +456,13 @@ namespace FeaturesCombat
             EnsureHealthBarManagers();
             EnsureWaveTrackerActive();
 
+            // Explicitly ensure player hotbar HUD is visible for quick access to food/drinks during combat
+            var invUI = UnityEngine.Object.FindFirstObjectByType<InventoryManagerUI>();
+            if (invUI != null && invUI.playerHotbarContainer != null)
+            {
+                invUI.playerHotbarContainer.gameObject.SetActive(true);
+            }
+
             isWaveInProgress = true;
             waveEngine.StartNight(currentDay);
             totalWaves = waveEngine.TotalWavesForDay;

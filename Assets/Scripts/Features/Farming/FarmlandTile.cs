@@ -623,24 +623,56 @@ namespace FeaturesFarming
 
         /// <summary>
         /// Dipanggil saat transisi hari baru (AdvanceToNextDay) oleh TimeManager / FarmingManager.
-        /// Sesuai MVP Version Guideline V0.1:
-        /// "Crops keep their progress. Sleeping early: Allowed, but the remaining daytime is lost. Crops keep their progress."
+        /// Saat pemain tidur (termasuk tidur lebih awal), tanaman yang telah disiram menerima kemajuan pertumbuhan harian.
         /// </summary>
         public void AdvanceDay()
         {
             if (currentState == TileState.PlantedWatered)
             {
-                // Tanaman mempertahankan akumulasi durasi pertumbuhan dari fase siang sebelumnya.
-                // Tidak matang instan otomatis saat tidur malam.
+                float daysRequired = 1f;
+                if (plantedSeed != null)
+                {
+                    string id = (plantedSeed.itemId ?? plantedSeed.name).ToLower();
+                    if (id.Contains("corn")) daysRequired = 3f;
+                    else if (id.Contains("taro")) daysRequired = 2f;
+                    else daysRequired = 1f;
+                }
+
+                float growthCredit = (plantedSeed != null && plantedSeed.growthDuration > 0f)
+                    ? (plantedSeed.growthDuration / daysRequired)
+                    : growthDuration;
+
+                currentTimer += growthCredit;
+                growthProgress = Mathf.Clamp01(currentTimer / Mathf.Max(1f, growthDuration));
+
                 if (currentTimer >= growthDuration)
                 {
                     growthProgress = 1f;
+                    currentTimer = growthDuration;
                     SetState(TileState.ReadyToHarvest);
+                }
+                else
+                {
+                    // Tanah mengering semalam, membutuhkan penyiraman di hari baru untuk melanjutkan pertumbuhan
+                    SetState(TileState.PlantedDry);
+                }
+
+                int currentStage = (growthProgress >= 1f) ? 2 : (growthProgress >= 0.5f ? 1 : 0);
+                lastVisualStage = currentStage;
+                if (visualController != null)
+                {
+                    visualController.UpdateVisuals(currentState, plantedSeed, growthProgress);
+                }
+
+                if (countdownUI != null)
+                {
+                    float remainingSec = Mathf.Max(0f, growthDuration - currentTimer);
+                    countdownUI.UpdateTileState(currentState, growthProgress, remainingSec, plantedSeed != null ? plantedSeed.itemName : "");
                 }
             }
             else if (currentState == TileState.PlantedDry)
             {
-                // Belum disiram, tidak bertumbuh
+                // Belum disiram, tidak bertumbuh semalam
                 Debug.Log("[FarmlandTile] Dry crops did not grow overnight because they were not watered.");
             }
         }
