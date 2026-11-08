@@ -96,7 +96,17 @@ namespace FeaturesCombat
         private int originalArmor;
 
         private FeaturesCombat.Core.PureLogic.PoiseTracker poiseTracker;
-        public FeaturesCombat.Core.PureLogic.PoiseTracker PoiseTracker => poiseTracker;
+        public FeaturesCombat.Core.PureLogic.PoiseTracker PoiseTracker
+        {
+            get
+            {
+                if (poiseTracker == null)
+                {
+                    InitializePoise();
+                }
+                return poiseTracker;
+            }
+        }
         private FeaturesCombat.Adapters.HitFeedbackRenderer hitFeedback;
         private FeaturesCombat.Core.Physics.AirborneHazardEntity airborneHazard;
 
@@ -1721,13 +1731,20 @@ namespace FeaturesCombat
             OnAnyEnemyDied?.Invoke(this);
             ServiceLocator.Resolve<IDailyEconomyService>()?.RecordMonsterSlain();
 
-            if (EnemyObjectPool.Instance != null)
+            if (Application.isPlaying)
             {
-                StartCoroutine(RoutineReturnToPool(0.04f));
+                if (EnemyObjectPool.Instance != null)
+                {
+                    StartCoroutine(RoutineReturnToPool(0.04f));
+                }
+                else
+                {
+                    Destroy(gameObject, 0.04f);
+                }
             }
             else
             {
-                Destroy(gameObject, 0.04f);
+                DestroyImmediate(gameObject);
             }
         }
 
@@ -1740,7 +1757,14 @@ namespace FeaturesCombat
             }
             else
             {
-                Destroy(gameObject);
+                if (Application.isPlaying)
+                {
+                    Destroy(gameObject);
+                }
+                else
+                {
+                    DestroyImmediate(gameObject);
+                }
             }
         }
 

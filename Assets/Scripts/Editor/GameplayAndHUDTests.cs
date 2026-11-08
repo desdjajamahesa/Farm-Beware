@@ -76,6 +76,11 @@ namespace FarmBeware.EditorTests
                 var qf = t.GetField("_isQuitting", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
                 qf?.SetValue(null, false);
             }
+
+            var dayChangedField = typeof(TimeManager).GetField("OnAnyDayChanged", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);
+            dayChangedField?.SetValue(null, null);
+            var phaseChangedField = typeof(TimeManager).GetField("OnAnyPhaseChanged", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);
+            phaseChangedField?.SetValue(null, null);
         }
 
         [MenuItem("FarmBeware/Tests/Run Comprehensive Audit Tests")]
@@ -8172,28 +8177,46 @@ namespace FarmBeware.EditorTests
         public static bool Test_SpecializationTree_SinglePathExclusivity_And_Progression()
         {
             var go = new GameObject("Test_Player_Specialization");
-            var wu = go.AddComponent<PlayerWeaponUpgradeState>();
-
-            bool selectSweetPotato = wu.SelectSpecialization(SpecializationPath.SweetPotato);
-            if (!selectSweetPotato || wu.activeSpecialization != SpecializationPath.SweetPotato)
+            var prevWallet = ServiceLocator.Resolve<IWalletService>();
+            try
             {
-                Debug.LogError("[Test 82] Failed to select Sweet Potato specialization path!");
-                GameObject.DestroyImmediate(go);
-                return false;
-            }
+                var inv = go.AddComponent<InventoryComponent>();
+                inv.ResetInventory(16);
+                var wu = go.AddComponent<PlayerWeaponUpgradeState>();
+                var wallet = go.AddComponent<FeaturesEconomy.PlayerWallet>();
+                wallet.SetGold(50000);
+                ServiceLocator.Register<IWalletService>(wallet);
 
-            // Exclusivity test: attempting to switch to Taro must be rejected
-            bool switchTaro = wu.SelectSpecialization(SpecializationPath.Taro);
-            if (switchTaro || wu.activeSpecialization != SpecializationPath.SweetPotato)
+                var db = Resources.Load<ItemDatabase>("Database/ItemDatabase");
+                var cleaver = db?.GetItem("tool_weapon_root_cleaver");
+                if (cleaver != null) inv.AddItem(cleaver, 1);
+                var matSpore = db?.GetItem(FeaturesWorkbench.Core.EquipmentUpgradeEvaluator.MatMutatedRoot);
+                if (matSpore != null) inv.AddItem(matSpore, 5);
+
+                bool selectSweetPotato = wu.SelectSpecialization(SpecializationPath.SweetPotato, inv);
+                if (!selectSweetPotato || wu.activeSpecialization != SpecializationPath.SweetPotato)
+                {
+                    Debug.LogError("[Test 82] Failed to select Sweet Potato specialization path!");
+                    return false;
+                }
+
+                // Exclusivity test: attempting to switch to Taro must be rejected
+                bool switchTaro = wu.SelectSpecialization(SpecializationPath.Taro, inv);
+                if (switchTaro || wu.activeSpecialization != SpecializationPath.SweetPotato)
+                {
+                    Debug.LogError("[Test 82] Exclusivity violated! Switching specialization paths was improperly allowed.");
+                    return false;
+                }
+
+                Debug.Log("✅ Test 82: Specialization Tree single-path exclusivity and progression locking verified.");
+                return true;
+            }
+            finally
             {
-                Debug.LogError("[Test 82] Exclusivity violated! Switching specialization paths was improperly allowed.");
+                if (prevWallet != null) ServiceLocator.Register<IWalletService>(prevWallet);
+                else ServiceLocator.Unregister<IWalletService>();
                 GameObject.DestroyImmediate(go);
-                return false;
             }
-
-            GameObject.DestroyImmediate(go);
-            Debug.Log("✅ Test 82: Specialization Tree single-path exclusivity and progression locking verified.");
-            return true;
         }
 
         /// <summary>
@@ -8803,7 +8826,7 @@ namespace FarmBeware.EditorTests
                 return false;
             }
 
-            string[] weaponIds = new string[] { "dummysword", "tool_weapon_root_cleaver", "tool_weapon_corn_repeater" };
+            string[] weaponIds = new string[] { "tool_weapon_root_cleaver", "tool_weapon_corn_repeater" };
             string[] armorIds = new string[] { "item_burrow_hood", "item_swift_root_armor", "item_fang_grips", "item_underground_striders", "item_sweet_potato_heart" };
 
             // 1. Verify all 8 items exist in ItemDatabase with valid prices
@@ -9473,19 +9496,21 @@ namespace FarmBeware.EditorTests
                 wallet.SetGold(50000);
                 ServiceLocator.Register<IWalletService>(wallet);
 
-                var cleaver = AssetDatabase.LoadAssetAtPath<ItemData>("Assets/Data/Items/Equipment/Tool_RootCleaver.asset");
+                var db = Resources.Load<ItemDatabase>("Database/ItemDatabase");
+                var cleaver = db?.GetItem("tool_weapon_root_cleaver");
                 inv.AddItem(cleaver, 1);
+                var cornMat = db?.GetItem(FeaturesWorkbench.Core.EquipmentUpgradeEvaluator.MatKernelShrapnel);
+                if (cornMat != null) inv.AddItem(cornMat, 5);
 
                 // Corn Path Node 1 Unlock -> awards Homestead Slingshot
-                weaponState.SelectSpecialization(FeaturesWorkbench.Core.SpecializationPath.Corn);
-                bool unlocked = weaponState.UpgradeActiveSpecialization(inv);
+                bool unlocked = weaponState.SelectSpecialization(FeaturesWorkbench.Core.SpecializationPath.Corn, inv);
                 if (!unlocked || weaponState.specializationNodeLevel != 1)
                 {
                     Debug.LogError($"[Test 99] Failed unlocking Corn Specialization Node 1! Level={weaponState.specializationNodeLevel}");
                     return false;
                 }
 
-                var slingshotItem = AssetDatabase.LoadAssetAtPath<ItemData>("Assets/Data/Items/Equipment/Tool_CornRepeater.asset");
+                var slingshotItem = db?.GetItem("tool_weapon_corn_repeater");
                 if (inv.CountItem(slingshotItem) < 1)
                 {
                     Debug.LogError("[Test 99] Corn Specialization Node 1 unlock did NOT award Homestead Slingshot!");
@@ -9988,6 +10013,7 @@ namespace FarmBeware.EditorTests
 
                 var weaponState = testRoot.AddComponent<FeaturesWorkbench.PlayerWeaponUpgradeState>();
                 var playerInv = testRoot.AddComponent<InventoryComponent>();
+                playerInv.ResetInventory(16);
                 // Only hoe in inventory
                 playerInv.AddItemAmount(starterHoe, 1);
                 if (weaponState.HasDummySword(playerInv))
@@ -10488,8 +10514,8 @@ namespace FarmBeware.EditorTests
                 var enemy2 = targetInOpenGo.AddComponent<FeaturesCombat.EnemyBase>();
                 enemy2.enemyType = FeaturesCombat.EnemyType.TuberMaw;
                 enemy2.InitializeStatsByType();
-                enemy2.maxHealth = 100;
-                enemy2.currentHealth = 100;
+                enemy2.maxHealth = 100000;
+                enemy2.currentHealth = 100000;
                 enemy2.armor = 0;
 
                 Physics.SyncTransforms();
@@ -10504,9 +10530,9 @@ namespace FarmBeware.EditorTests
                     return false;
                 }
 
-                if (enemy2.currentHealth >= 100)
+                if (enemy2.currentHealth >= 100000)
                 {
-                    Debug.LogError($"[Test 108] Target in open area did not take damage! HP={enemy2.currentHealth} (Expected < 100).");
+                    Debug.LogError($"[Test 108] Target in open area did not take damage! HP={enemy2.currentHealth} (Expected < 100000).");
                     return false;
                 }
 

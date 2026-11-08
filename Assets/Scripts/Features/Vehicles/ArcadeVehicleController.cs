@@ -140,8 +140,20 @@ namespace FarmBeware.Features.Vehicles
             TimeManager.OnAnyPhaseChanged -= HandlePhaseChanged;
         }
 
+        private void OnDestroy()
+        {
+            TimeManager.OnAnyDayChanged -= HandleDayChanged;
+            TimeManager.OnAnyPhaseChanged -= HandlePhaseChanged;
+        }
+
         private void HandlePhaseChanged(TimeManager.DayPhase phase)
         {
+            if (this == null)
+            {
+                TimeManager.OnAnyPhaseChanged -= HandlePhaseChanged;
+                return;
+            }
+
             if (phase == TimeManager.DayPhase.Night && _isDriverOccupied)
             {
                 PlayerControl pc = _playerControl;
@@ -167,6 +179,12 @@ namespace FarmBeware.Features.Vehicles
 
         private void HandleDayChanged(int day)
         {
+            if (this == null)
+            {
+                TimeManager.OnAnyDayChanged -= HandleDayChanged;
+                return;
+            }
+
             if (day >= 1 && !_isDriverOccupied)
             {
                 var cutscene = ServiceLocator.Resolve<ICutsceneService>();
@@ -297,6 +315,12 @@ namespace FarmBeware.Features.Vehicles
         public void EnterVehicle(GameObject player)
         {
             if (_isDriverOccupied || player == null) return;
+
+            // Ensure event subscriptions are active even in edit mode / headless test environments
+            TimeManager.OnAnyPhaseChanged -= HandlePhaseChanged;
+            TimeManager.OnAnyPhaseChanged += HandlePhaseChanged;
+            TimeManager.OnAnyDayChanged -= HandleDayChanged;
+            TimeManager.OnAnyDayChanged += HandleDayChanged;
 
             _doorDebounceTimer = 0.4f;
             _occupantPlayer = player;
@@ -443,7 +467,10 @@ namespace FarmBeware.Features.Vehicles
 
             if (_occupantPlayer == null)
             {
-                _isDriverOccupied = false;
+                TimeManager.OnAnyPhaseChanged -= HandlePhaseChanged;
+            TimeManager.OnAnyDayChanged -= HandleDayChanged;
+
+            _isDriverOccupied = false;
                 _occupantPlayer = null;
                 _playerControl = null;
                 _occupantPlayerRb = null;
@@ -598,6 +625,9 @@ namespace FarmBeware.Features.Vehicles
             {
                 engineAudio.Stop();
             }
+
+            TimeManager.OnAnyPhaseChanged -= HandlePhaseChanged;
+            TimeManager.OnAnyDayChanged -= HandleDayChanged;
 
             _isDriverOccupied = false;
             _occupantPlayer = null;

@@ -14,7 +14,19 @@ namespace FeaturesCombat
     /// </summary>
     public class NightBrawlManager : MonoBehaviour
     {
-        public static NightBrawlManager Instance { get; private set; }
+        private static NightBrawlManager _instance;
+        public static NightBrawlManager Instance
+        {
+            get
+            {
+                if (_instance == null)
+                {
+                    _instance = FindFirstObjectByType<NightBrawlManager>(FindObjectsInactive.Include);
+                }
+                return _instance;
+            }
+            set => _instance = value;
+        }
 
         public FeaturesCombat.Core.PureLogic.AttackTokenDispatcher TokenDispatcher { get; private set; } = new FeaturesCombat.Core.PureLogic.AttackTokenDispatcher();
 
@@ -266,12 +278,13 @@ namespace FeaturesCombat
 
         private void Awake()
         {
-            if (Instance != null && Instance != this)
+            if (_instance != null && _instance != this)
             {
-                Destroy(gameObject);
+                if (Application.isPlaying) Destroy(gameObject);
+                else DestroyImmediate(gameObject);
                 return;
             }
-            Instance = this;
+            _instance = this;
             ValidateSpawnIntervals();
         }
 
