@@ -88,7 +88,7 @@ namespace FarmBeware.EditorTests
             ResetTestAuditHarness();
 
             int passed = 0;
-            int total = 107;
+            int total = 108;
 
             if (Test_DayNight_PhaseProgression_DuskUntilNight()) passed++;
             if (Test_BedInteractable_Logic_AllowsDuskAndBlocksNightOnly()) passed++;
@@ -198,6 +198,7 @@ namespace FarmBeware.EditorTests
             if (Test_PlaytestAudit_11Bugs_RegressionSuite()) passed++;
             if (Test_WorldMap_ProjectionMath_ZeroGC_And_StyleCBoundaryCalculations()) passed++;
             if (Test_WorldMap_ModalStack_And_PlayerTracking_Audit()) passed++;
+            if (Test_MeleeAttack_LineOfSight_ObstacleOcclusion_Audit()) passed++;
 
             Debug.Log("[AUDIT-SUITE] ========================================================");
             Debug.Log($"[AUDIT-SUITE] Complete! Passed: {passed}/{total}");
@@ -10440,6 +10441,132 @@ namespace FarmBeware.EditorTests
                 if (prevStack != null) prevStack.Clear();
                 if (origPlayer != null) ServiceLocator.Register<IPlayerContext>(origPlayer);
                 else ServiceLocator.Unregister<IPlayerContext>();
+            }
+        }
+
+        // Test 108: Zero-GC Line-of-Sight (LoS) Melee Occlusion & Solid Wall Anti-Penetration Audit
+        public static bool Test_MeleeAttack_LineOfSight_ObstacleOcclusion_Audit()
+        {
+            GameObject playerGo = null;
+            GameObject wallGo = null;
+            GameObject targetBehindWallGo = null;
+            GameObject targetInOpenGo = null;
+
+            try
+            {
+                // 1. Setup Attacker with PlayerEquipment
+                playerGo = new GameObject("TestAttacker_Player");
+                playerGo.transform.position = Vector3.zero;
+                playerGo.transform.forward = Vector3.forward;
+                playerGo.AddComponent<CapsuleCollider>();
+                var equip = playerGo.AddComponent<PlayerEquipment>();
+
+                // 2. Setup Solid Wall Obstacle on layer 'Wall'
+                int wallLayer = LayerMask.NameToLayer("Wall");
+                if (wallLayer < 0) wallLayer = 12; // Standard fallback
+                wallGo = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                wallGo.name = "Test_SolidWall";
+                wallGo.transform.position = new Vector3(0f, 0f, 1.5f);
+                wallGo.transform.localScale = new Vector3(4f, 3f, 0.2f);
+                wallGo.layer = wallLayer;
+
+                // 3. Setup Target 1 directly behind wall (0, 0, 2.5) -> must be occluded
+                targetBehindWallGo = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+                targetBehindWallGo.name = "Test_Target_BehindWall";
+                targetBehindWallGo.transform.position = new Vector3(0f, 0f, 2.5f);
+                var enemy1 = targetBehindWallGo.AddComponent<FeaturesCombat.EnemyBase>();
+                enemy1.enemyType = FeaturesCombat.EnemyType.TuberMaw;
+                enemy1.InitializeStatsByType();
+                enemy1.maxHealth = 100;
+                enemy1.currentHealth = 100;
+                enemy1.armor = 0;
+
+                // 4. Setup Target 2 in clear line-of-sight in frontal arc (1.2, 0, 1.2) -> must be hit
+                targetInOpenGo = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+                targetInOpenGo.name = "Test_Target_InOpen";
+                targetInOpenGo.transform.position = new Vector3(1.2f, 0f, 1.2f);
+                var enemy2 = targetInOpenGo.AddComponent<FeaturesCombat.EnemyBase>();
+                enemy2.enemyType = FeaturesCombat.EnemyType.TuberMaw;
+                enemy2.InitializeStatsByType();
+                enemy2.maxHealth = 100;
+                enemy2.currentHealth = 100;
+                enemy2.armor = 0;
+
+                Physics.SyncTransforms();
+
+                // 5. Execute Melee Attack Sweep from PlayerEquipment
+                equip.SetObstacleLayerMask(1 << wallLayer);
+                equip.PerformDirectMeleeSweep(damage: 30, knockback: 2f, is360: false, rangeOverride: 3.5f);
+
+                if (enemy1.currentHealth != 100)
+                {
+                    Debug.LogError($"[Test 108] Target behind solid wall took damage! HP={enemy1.currentHealth} (Expected 100). LoS check failed!");
+                    return false;
+                }
+
+                if (enemy2.currentHealth >= 100)
+                {
+                    Debug.LogError($"[Test 108] Target in open area did not take damage! HP={enemy2.currentHealth} (Expected < 100).");
+                    return false;
+                }
+
+                // 6. Test Zero-GC Memory Allocation during attack sweeps with obstacles
+                for (int i = 0; i < 5; i++)
+                {
+                    equip.PerformDirectMeleeSweep(damage: 30, knockback: 2f, is360: false, rangeOverride: 3.5f);
+                }
+
+                long startBytes = System.GC.GetAllocatedBytesForCurrentThread();
+                for (int i = 0; i < 100; i++)
+                {
+                    equip.PerformDirectMeleeSweep(damage: 30, knockback: 2f, is360: false, rangeOverride: 3.5f);
+                }
+                long allocatedBytes = System.GC.GetAllocatedBytesForCurrentThread() - startBytes;
+
+                if (allocatedBytes != 0)
+                {
+                    Debug.LogError($"[Test 108] Zero-GC violation! Allocated {allocatedBytes} bytes during 100 LoS melee sweeps.");
+                    return false;
+                }
+
+                // 7. Verify WeaponHitbox component adheres to same LoS occlusion
+                var hitbox = playerGo.AddComponent<FeaturesCombat.WeaponHitbox>();
+                hitbox.SetObstacleLayerMask(1 << wallLayer);
+                hitbox.ConfigureHitRange(3.5f);
+                hitbox.Activate(playerGo, damage: 25, knockback: 1f, direction: Vector3.forward);
+
+                if (enemy1.currentHealth != 100)
+                {
+                    Debug.LogError($"[Test 108] WeaponHitbox dealt damage through wall! HP={enemy1.currentHealth} (Expected 100).");
+                    return false;
+                }
+
+                // 8. Remove Wall Obstacle -> Target 1 must now receive damage
+                Object.DestroyImmediate(wallGo);
+                wallGo = null;
+                Physics.SyncTransforms();
+
+                equip.PerformDirectMeleeSweep(damage: 30, knockback: 2f, is360: false, rangeOverride: 3.5f);
+                if (enemy1.currentHealth >= 100)
+                {
+                    Debug.LogError($"[Test 108] Target did not take damage after wall removal! HP={enemy1.currentHealth} (Expected < 100).");
+                    return false;
+                }
+
+                Debug.Log("✅ Test 108: Zero-GC Line-of-Sight (LoS) Melee Occlusion & Solid Wall Anti-Penetration verified (0 damage through walls, full damage in open, 0 B GC).");
+                return true;
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogError($"[Test 108] Exception: {ex.Message}\n{ex.StackTrace}");
+                return false;
+            }
+            finally
+            {
+                if (playerGo != null) Object.DestroyImmediate(playerGo);
+                if (wallGo != null) Object.DestroyImmediate(wallGo);
+                if (targetBehindWallGo != null) Object.DestroyImmediate(targetBehindWallGo);
+                if (targetInOpenGo != null) Object.DestroyImmediate(targetInOpenGo);
             }
         }
 

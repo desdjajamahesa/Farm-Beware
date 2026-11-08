@@ -26,6 +26,7 @@ Welcome to the **Farm-Beware** patch notes! Here you'll find the latest updates,
 * Fixed kitchen refrigerators rejecting cooking oil, flour, and seasonings from ingredient storage.
 * Fixed vehicle driving HUDs and speedometer dials remaining visible during story cutscenes.
 * Fixed cutscene letterbox bars clipping through room walls during interior camera transitions.
+* Fixed melee weapon attacks penetrating solid house walls and perimeter fences to hit monsters on the other side.
 
 ---
 

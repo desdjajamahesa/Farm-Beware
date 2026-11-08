@@ -23,6 +23,25 @@ namespace FeaturesCombat
         [SerializeField] private float sweepRadius = 1.6f;
         [SerializeField] private float minForwardDot = 0.2f; // Minimum dot product to ensure frontal arc (rejects behind player)
 
+        [Header("Occlusion / Line-of-Sight")]
+        [Tooltip("LayerMask for solid obstacles blocking attacks.")]
+        [SerializeField] private LayerMask obstacleLayerMask;
+
+        public LayerMask ObstacleLayerMask
+        {
+            get
+            {
+                if (obstacleLayerMask.value == 0)
+                {
+                    obstacleLayerMask = NonAllocPhysics.GetDefaultObstacleLayerMask();
+                }
+                return obstacleLayerMask;
+            }
+            set => obstacleLayerMask = value;
+        }
+
+        public void SetObstacleLayerMask(LayerMask mask) => ObstacleLayerMask = mask;
+
         private static readonly Collider[] _sharedSweepBuffer = new Collider[32];
         private GameObject attacker;
         private int currentDamage;
@@ -154,6 +173,15 @@ namespace FeaturesCombat
 
                 if (hitTargets.Contains(target)) continue;
 
+                Vector3 targetPoint;
+                try { targetPoint = col.ClosestPoint(origin); }
+                catch { targetPoint = col.bounds.center; }
+
+                if (NonAllocPhysics.IsLineOfSightBlocked(origin, targetPoint, col, attacker, ObstacleLayerMask.value))
+                {
+                    continue; // Blocked by wall/obstacle
+                }
+
                 Vector3 hitPoint = col.ClosestPoint(sweepCenter);
                 ProcessHit(target, col.gameObject, hitPoint);
             }
@@ -181,6 +209,15 @@ namespace FeaturesCombat
             IDamageable target = other.GetComponent<IDamageable>() ?? other.GetComponentInParent<IDamageable>();
             if (target == null || target.IsDead || hitTargets.Contains(target))
                 return;
+
+            Vector3 targetPoint;
+            try { targetPoint = other.ClosestPoint(origin); }
+            catch { targetPoint = other.bounds.center; }
+
+            if (NonAllocPhysics.IsLineOfSightBlocked(origin, targetPoint, other, attacker, ObstacleLayerMask.value))
+            {
+                return; // Blocked by wall/obstacle
+            }
 
             Vector3 hitPoint = other.ClosestPoint(transform.position);
             ProcessHit(target, other.gameObject, hitPoint);

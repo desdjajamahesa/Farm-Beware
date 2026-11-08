@@ -73,10 +73,15 @@ Konsolidasi dokumentasi teknis dari seluruh kontributor tim pengembang (`Rafi`, 
 - Menambahkan auto-teleport pemain ke dalam dapur saat batas jam malam 18:00 tiba.
 - Mengizinkan penyimpanan bahan masak sekunder (minyak goreng, tepung, garam/bumbu) ke dalam kulkas.
 - Memperbaiki kurung kurawal nyasar dan duplikasi scope variabel lokal pada `PlayerEquipment.OnDisable()`.
+- **Sistem Line-of-Sight (LoS) Melee Occlusion Zero-GC ([`NonAllocPhysics.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Core/Physics/NonAllocPhysics.cs), [`PlayerEquipment.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Player/PlayerEquipment.cs), [`WeaponHitbox.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Combat/WeaponHitbox.cs))**:
+  - Mencegah serangan melee pemain maupun hitbox senjata menembus dinding kabin atau pagar perimeter untuk melukai monster di sisi sebaliknya.
+  - Memvalidasi linecast oklusi Zero-GC (`Physics.Linecast`, 0 B GC) dari torso penyerang (`origin = position + Vector3.up * 0.8f`) ke `c.ClosestPoint(origin)`.
+  - Mengabaikan collider target, penyerang, tanaman, dan trigger sehingga mekanik cleave multi-target tetap utuh 100%.
+  - Menyertakan visual debug gizmo `Debug.DrawLine` (hijau untuk serangan lolos, merah untuk serangan terhalang dinding).
 
-#### 6. Modernisasi Dokumentasi & Ekspansi Test Suite ke 107 Tes `[Rafi, Bhaskoro]`
+#### 6. Modernisasi Dokumentasi & Ekspansi Test Suite ke 108 Tes `[Rafi, Bhaskoro]`
 - Menghapus 5 file spesifikasi dan perencanaan usang yang fiturnya sudah selesai 100%: `PROJECT_ARCHITECTURE_AND_LORE.md`, `STORYLINE_BASE_SYSTEM_ANALYSIS.md`, `STORYLINE_BASE_SYSTEM_UPGRADE_PLAN.md`, `plan.md`, dan `TEST_INFRA.md`.
-- Memperluas automated audit test suite pada [`GameplayAndHUDTests.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Editor/GameplayAndHUDTests.cs) hingga mencapai **107 tes audit komprehensif** (107/107 Passed).
+- Menambahkan **Test 108** yang memvalidasi determinisme spasial oklusi dinding dan invarian 0 B GC, memperluas automated test suite pada [`GameplayAndHUDTests.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Editor/GameplayAndHUDTests.cs) hingga mencapai **108 tes audit komprehensif**.
 
 ---
 

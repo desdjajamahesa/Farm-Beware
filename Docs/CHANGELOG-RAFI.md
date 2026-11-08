@@ -33,9 +33,14 @@ Semua perubahan penting pada proyek ini oleh Rafi akan dicatat di halaman ini.
   - Mengizinkan penyimpanan bahan dapur sekunder (minyak goreng, tepung, garam/bumbu) ke dalam lemari es (*refrigerator*).
   - Mencegah cutscene kedatangan truk berulang kembali setelah tidur malam Day 0.
   - Memperbaiki kurung kurawal nyasar dan duplikasi scope variabel lokal pada `PlayerEquipment.OnDisable()`.
+- **Implementasi Sistem Line-of-Sight (LoS) Melee Occlusion Zero-GC ([`NonAllocPhysics.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Core/Physics/NonAllocPhysics.cs), [`PlayerEquipment.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Player/PlayerEquipment.cs), [`WeaponHitbox.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Combat/WeaponHitbox.cs))**:
+  - Mencegah serangan melee pemain dan hitbox senjata menembus dinding kabin, pagar perimeter, atau struktur solid untuk melukai monster di sisi sebaliknya.
+  - Mengimplementasikan `NonAllocPhysics.IsLineOfSightBlocked` dengan `Physics.Linecast` (Zero-GC, 0 B GC Alloc) dari ketinggian torso penyerang (`origin = position + Vector3.up * 0.8f`) ke titik benturan terdekat target (`c.ClosestPoint(origin)`).
+  - Menyediakan filter layer mask dinamis `obstacleLayerMask` (mencakup layer `Wall`, `Obstacle`, `Structures`, `Environment`) yang mengabaikan trigger dan layer musuh sehingga serangan cleave multi-target tetap utuh 100%.
+  - Menyertakan visual debug gizmo (`Debug.DrawLine` hijau saat lolos dan merah saat terhalang dinding).
 
 ### Verifikasi & Test Suite Expansion
-- Menambahkan **Test 105** ke dalam [`GameplayAndHUDTests.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Editor/GameplayAndHUDTests.cs) yang menguji regresi 11 isu playtest secara komprehensif, mendukung total 107 pengujian otomatis yang lulus 100%.
+- Menambahkan **Test 108** ke dalam [`GameplayAndHUDTests.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Editor/GameplayAndHUDTests.cs) yang menguji determinisme spasial rintangan dinding (memverifikasi target di balik dinding menerima 0 damage, target di ruang terbuka menerima damage penuh, dan verifikasi alokasi 0 B GC pada 100 sapuan serang). Total pengujian audit otomatis bertambah menjadi **108 tes**.
 
 ---
 

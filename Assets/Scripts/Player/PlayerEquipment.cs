@@ -130,6 +130,25 @@ public class PlayerEquipment : MonoBehaviour
     public bool IsExecutingSkill => isExecutingSkill;
     public bool IsHoldingWeapon => currentWeaponModel != null;
 
+    [Header("Combat Occlusion / Line-of-Sight")]
+    [Tooltip("LayerMask for solid obstacles (walls, fences, structures) that block melee attacks.")]
+    [SerializeField] private LayerMask obstacleLayerMask;
+
+    public LayerMask ObstacleLayerMask
+    {
+        get
+        {
+            if (obstacleLayerMask.value == 0)
+            {
+                obstacleLayerMask = FarmBeware.Core.Runtime.NonAllocPhysics.GetDefaultObstacleLayerMask();
+            }
+            return obstacleLayerMask;
+        }
+        set => obstacleLayerMask = value;
+    }
+
+    public void SetObstacleLayerMask(LayerMask mask) => ObstacleLayerMask = mask;
+
     public enum RangeIndicatorVisibility
     {
         WhenHoldingWeapon,
@@ -1125,7 +1144,7 @@ public class PlayerEquipment : MonoBehaviour
     /// <summary>
     /// Direct melee sweep query (zero-GC, non-alloc, supporting frontal cone or 360 spins with visual impulse juice).
     /// </summary>
-    private void PerformDirectMeleeSweep(int damage, float knockback, bool is360 = false, float rangeOverride = -1f, bool isFinisher = false, bool isHeavy = false, bool isDash = false, bool isRiposte = false)
+    public void PerformDirectMeleeSweep(int damage, float knockback, bool is360 = false, float rangeOverride = -1f, bool isFinisher = false, bool isHeavy = false, bool isDash = false, bool isRiposte = false)
     {
         float activeRange = rangeOverride > 0f ? rangeOverride : attackHitRange;
         Vector3 origin = transform.position + Vector3.up * 0.8f;
@@ -1154,6 +1173,16 @@ public class PlayerEquipment : MonoBehaviour
             var target = c.GetComponent<FeaturesCombat.IDamageable>() ?? c.GetComponentInParent<FeaturesCombat.IDamageable>();
             if (target != null && !target.IsDead && !HasTargetBeenHit(target))
             {
+                // Line-of-sight occlusion check: verify attack is not obstructed by solid walls or fences
+                Vector3 targetPoint;
+                try { targetPoint = c.ClosestPoint(origin); }
+                catch { targetPoint = c.bounds.center; }
+
+                if (FarmBeware.Core.Runtime.NonAllocPhysics.IsLineOfSightBlocked(origin, targetPoint, c, gameObject, ObstacleLayerMask.value))
+                {
+                    continue; // Blocked by wall/obstacle!
+                }
+
                 RecordTargetHit(target);
                 landedHit = true;
 
