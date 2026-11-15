@@ -68,15 +68,8 @@ namespace FeaturesTime
         [Tooltip("Total durasi dunia nyata (dalam detik) untuk fase siang (06:00 s/d 18:00). Default 1080 detik = 18 menit sesuai tabel linimasa.")]
         [SerializeField] private float daytimeDurationRealSeconds = 1080f;
 
-        [Tooltip("Total durasi dunia nyata (dalam detik) untuk menyelesaikan 1 hari permainan (24 jam in-game). Default 2160 detik = 36 menit.")]
-        [SerializeField] private float realSecondsPerInGameDay = 2160f;
-
         [Tooltip("Jika true, simulasi waktu berjalan secara realtime kontinu pada siang hari sesuai linimasa (18 menit real = 12 jam in-game).")]
         [SerializeField] private bool useContinuousTime = true;
-
-        [Tooltip("Jam awal saat game pertama kali dimulai (0.0f - 24.0f). Default 6.0f = 06:00.")]
-        [Range(0f, 24f)]
-        [SerializeField] private float initialHour = 6.0f;
 
         [Tooltip("Hari awal kalender saat game dimulai.")]
         [Min(1)]
@@ -245,7 +238,6 @@ namespace FeaturesTime
             duskWarningHour = 16.0f;
 
             daytimeDurationRealSeconds = 1080f;
-            realSecondsPerInGameDay = 2160f;
             currentSpeedMultiplier = 1.0f;
 
             if (GetComponent<DayActivityTimelineManager>() == null)

@@ -841,7 +841,7 @@ namespace FeaturesTime.Atmosphere
         public void ApplyInstant(EnvironmentPhase phase) => ApplyPhaseSettingsInstant(phase);
 
         /// <summary>
-        /// Overload kompatibilitas untuk SceneLightingEditorUtility / legacy callers berbasis TimeManager.DayPhase.
+        /// Compatibility overload for legacy callers using TimeManager.DayPhase.
         /// </summary>
         public void ApplyInstant(TimeManager.DayPhase phase)
         {

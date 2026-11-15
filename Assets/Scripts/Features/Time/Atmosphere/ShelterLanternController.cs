@@ -112,8 +112,6 @@ namespace FeaturesTime.Atmosphere
             }
         }
 
-        private bool isSubscribed = false;
-
         private void Start()
         {
             EnsureSubscriptions();
@@ -138,24 +136,16 @@ namespace FeaturesTime.Atmosphere
 
         private void EnsureSubscriptions()
         {
-            bool subscribedAny = false;
             if (TimeManager.Instance != null)
             {
                 TimeManager.Instance.OnPhaseChanged -= HandleTimeManagerPhaseChanged;
                 TimeManager.Instance.OnPhaseChanged += HandleTimeManagerPhaseChanged;
-                subscribedAny = true;
             }
 
             if (DayNightTimeManager.Instance != null)
             {
                 DayNightTimeManager.Instance.OnTimePhaseChanged -= HandleDayNightServicePhaseChanged;
                 DayNightTimeManager.Instance.OnTimePhaseChanged += HandleDayNightServicePhaseChanged;
-                subscribedAny = true;
-            }
-
-            if (subscribedAny)
-            {
-                isSubscribed = true;
             }
         }
 
@@ -170,7 +160,6 @@ namespace FeaturesTime.Atmosphere
             {
                 DayNightTimeManager.Instance.OnTimePhaseChanged -= HandleDayNightServicePhaseChanged;
             }
-            isSubscribed = false;
 
             StopAllActiveCoroutines();
         }

@@ -94,8 +94,6 @@ namespace FeaturesTime.Atmosphere
             propBlock = new MaterialPropertyBlock();
         }
 
-        private bool isSubscribed = false;
-
         private void Start()
         {
             EnsureSubscriptions();
@@ -120,23 +118,15 @@ namespace FeaturesTime.Atmosphere
 
         private void EnsureSubscriptions()
         {
-            bool subscribedAny = false;
             if (TimeManager.Instance != null)
             {
                 TimeManager.Instance.OnPhaseChanged -= HandlePhaseChanged;
                 TimeManager.Instance.OnPhaseChanged += HandlePhaseChanged;
-                subscribedAny = true;
             }
             if (DayNightTimeManager.Instance != null)
             {
                 DayNightTimeManager.Instance.OnTimePhaseChanged -= HandleEnvironmentPhaseChanged;
                 DayNightTimeManager.Instance.OnTimePhaseChanged += HandleEnvironmentPhaseChanged;
-                subscribedAny = true;
-            }
-
-            if (subscribedAny)
-            {
-                isSubscribed = true;
             }
         }
 
@@ -150,7 +140,6 @@ namespace FeaturesTime.Atmosphere
             {
                 DayNightTimeManager.Instance.OnTimePhaseChanged -= HandleEnvironmentPhaseChanged;
             }
-            isSubscribed = false;
 
             if (transitionCoroutine != null) StopCoroutine(transitionCoroutine);
             if (flickerCoroutine != null) StopCoroutine(flickerCoroutine);

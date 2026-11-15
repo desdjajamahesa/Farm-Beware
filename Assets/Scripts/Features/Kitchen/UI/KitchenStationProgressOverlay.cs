@@ -24,20 +24,12 @@ public class KitchenStationProgressOverlay : MonoBehaviour
     [Header("Tampilan")]
     [Tooltip("Warna dasar overlay.")]
     [SerializeField] private Color overlayColor = new Color(0.35f, 0.85f, 1f, 0.90f);
-#pragma warning disable 0414
-    [Tooltip("Lebar overlay dalam satuan dunia (panjang garis).")]
-    [SerializeField] private float overlayWidth = 0.9f;
-#pragma warning restore 0414
     [Tooltip("Ketebalan garis progress (satuan dunia).")]
     [SerializeField] private float barThickness = 0.045f;
     [Tooltip("Tinggi maksimum overlay saat progress penuh (satuan dunia).")]
     [SerializeField] private float maxHeight = 0.7f;
     [Tooltip("Bila true, overlay menghadap kamera (billboard, terkunci sumbu Y = tetap naik ke atas).")]
     [SerializeField] private bool useBillboard = true;
-#pragma warning disable 0414
-    [Tooltip("Tag kamera utama untuk billboard.")]
-    [SerializeField] private string billboardCameraTag = "MainCamera";
-#pragma warning restore 0414
 
     [Header("Feedback Selesai")]
     [Tooltip("Lama panel 'Selesai!' tampil sebelum overlay disembunyikan.")]
@@ -260,11 +252,6 @@ public class KitchenStationProgressOverlay : MonoBehaviour
                     mesh.material = overlayMaterial;
                     mesh.material.renderQueue = 4000;
                 }
-                else if (!warnedMissing)
-                {
-                    Debug.LogWarning("[KitchenStationProgressOverlay] overlayMaterial is null on '" + gameObject.name + "'. Rendering fallback veil.", this);
-                    warnedMissing = true;
-                }
                 mesh.material.color = color;
             }
             else
@@ -272,11 +259,6 @@ public class KitchenStationProgressOverlay : MonoBehaviour
                 if (overlayMaterial != null)
                 {
                     mesh.sharedMaterial = overlayMaterial;
-                }
-                else if (!warnedMissing)
-                {
-                    Debug.LogWarning("[KitchenStationProgressOverlay] overlayMaterial is null on '" + gameObject.name + "'. Rendering fallback veil.", this);
-                    warnedMissing = true;
                 }
                 var meshBlock = new MaterialPropertyBlock();
                 mesh.GetPropertyBlock(meshBlock);
