@@ -12,7 +12,7 @@ namespace FarmBeware.Features.Quest
     /// Thin MonoBehaviour adapter managing quest progression and game event listening.
     /// Bridges runtime Unity events (inventory changes, farming actions) to pure C# POCO models.
     /// </summary>
-    public class QuestManager : MonoBehaviour, INarrativeObjectiveService
+    public class QuestManager : MonoBehaviour, INarrativeObjectiveService, IResettableQuestService
     {
         private static QuestManager _instance;
         public static bool HasInstance => _instance != null;
@@ -37,6 +37,7 @@ namespace FarmBeware.Features.Quest
                     if (found != null && found.Length > 0)
                     {
                         _instance = found[0];
+                        _instance.EnsureInitialized();
                     }
                     else if (Application.isPlaying)
                     {
@@ -65,6 +66,7 @@ namespace FarmBeware.Features.Quest
         private FarmlandTile[] _cachedFarmlandTiles;
         private Transform _playerTransform;
         private float _firstStepsCompletedTimer = 0f;
+        private bool _isInitialized = false;
         private const float TransitionToCookingQuestDelay = 3.5f;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
@@ -82,25 +84,37 @@ namespace FarmBeware.Features.Quest
             }
         }
 
+        private void EnsureInitialized()
+        {
+            if (_isInitialized) return;
+            if (_instance != null && _instance != this) return;
+
+            _instance = this;
+            _isInitialized = true;
+            ServiceLocator.Register<INarrativeObjectiveService>(this);
+            _model.OnStateChanged -= HandleModelStateChanged;
+            _model.OnStateChanged += HandleModelStateChanged;
+        }
+
         private void Awake()
         {
-            if (Instance != null && Instance != this)
+            if (_instance != null && _instance != this)
             {
-                Destroy(gameObject);
+                if (Application.isPlaying) Destroy(gameObject);
+                else DestroyImmediate(gameObject);
                 return;
             }
 
-            Instance = this;
-            ServiceLocator.Register<INarrativeObjectiveService>(this);
-            if (transform.parent == null)
+            EnsureInitialized();
+            if (transform.parent == null && Application.isPlaying)
             {
                 DontDestroyOnLoad(gameObject);
             }
-            _model.OnStateChanged += HandleModelStateChanged;
         }
 
         private void OnEnable()
         {
+            UnityEngine.SceneManagement.SceneManager.sceneLoaded += HandleSceneLoaded;
             FarmlandTile.OnCropPlanted += HandleCropPlanted;
             FarmlandTile.OnCropWatered += HandleCropWatered;
             InventoryComponent.OnItemConsumed += HandleItemConsumed;
@@ -112,6 +126,7 @@ namespace FarmBeware.Features.Quest
 
         private void OnDisable()
         {
+            UnityEngine.SceneManagement.SceneManager.sceneLoaded -= HandleSceneLoaded;
             FarmlandTile.OnCropPlanted -= HandleCropPlanted;
             FarmlandTile.OnCropWatered -= HandleCropWatered;
             InventoryComponent.OnItemConsumed -= HandleItemConsumed;
@@ -119,6 +134,21 @@ namespace FarmBeware.Features.Quest
             KitchenStove.OnAnyCookingCompleted -= HandleCookingCompleted;
             UnsubscribeTimeEvents();
             UnbindPlayerInventory();
+        }
+
+        private void HandleSceneLoaded(UnityEngine.SceneManagement.Scene scene, UnityEngine.SceneManagement.LoadSceneMode mode)
+        {
+            _cachedFarmlandTiles = null;
+            UnbindPlayerInventory();
+            _playerInventory = null;
+            _playerTransform = null;
+
+            SubscribeTimeEvents();
+            CacheFarmlandTiles();
+            TryBindPlayerInventory();
+            RefreshInventoryEvaluation();
+            RefreshFarmingProgress();
+            OnQuestUpdated?.Invoke(_model);
         }
 
         private void SubscribeTimeEvents()
@@ -153,6 +183,7 @@ namespace FarmBeware.Features.Quest
             {
                 NotifyPlayerOfStageProgress(QuestStage.GatheringSupplies);
             }
+            OnQuestUpdated?.Invoke(_model);
         }
 
         private void OnApplicationQuit()
@@ -163,7 +194,11 @@ namespace FarmBeware.Features.Quest
         private void OnDestroy()
         {
             _model.OnStateChanged -= HandleModelStateChanged;
-            ServiceLocator.Unregister<INarrativeObjectiveService>();
+            _isInitialized = false;
+            if (ReferenceEquals(ServiceLocator.Resolve<INarrativeObjectiveService>(), this))
+            {
+                ServiceLocator.Unregister<INarrativeObjectiveService>();
+            }
             if (_instance == this)
             {
                 _instance = null;
@@ -255,6 +290,7 @@ namespace FarmBeware.Features.Quest
         {
             if (_playerInventory == null)
             {
+                _isInventorySubscribed = false;
                 var player = GameObject.FindWithTag("Player");
                 if (player != null)
                 {
@@ -276,6 +312,7 @@ namespace FarmBeware.Features.Quest
 
             if (_playerInventory != null && !_isInventorySubscribed)
             {
+                _playerInventory.OnInventoryChanged -= HandleInventoryChanged;
                 _playerInventory.OnInventoryChanged += HandleInventoryChanged;
                 _isInventorySubscribed = true;
                 RefreshInventoryEvaluation();
@@ -327,7 +364,7 @@ namespace FarmBeware.Features.Quest
             if (_model.CurrentStage == QuestStage.GatheringSupplies || _model.CurrentStage == QuestStage.Completed)
                 return;
 
-            if (_cachedFarmlandTiles == null || _cachedFarmlandTiles.Length == 0)
+            if (_cachedFarmlandTiles == null || _cachedFarmlandTiles.Length == 0 || _cachedFarmlandTiles[0] == null)
             {
                 CacheFarmlandTiles();
                 if (_cachedFarmlandTiles == null || _cachedFarmlandTiles.Length == 0) return;
@@ -424,47 +461,47 @@ namespace FarmBeware.Features.Quest
             switch (stage)
             {
                 case QuestStage.GatheringSupplies:
-                    message = "📦 Side Quest: Take your farming tools from the Storage Chest!";
+                    message = "Side Quest: Take your farming tools from the Storage Chest!";
                     textColor = new Color(0.40f, 0.85f, 1f);
                     break;
 
                 case QuestStage.PlantingCrop:
-                    message = "📋 Quest Updated: Till soil with Hoe & plant Sweet Potato!";
+                    message = "Quest Updated: Till soil with Hoe & plant Sweet Potato!";
                     textColor = new Color(0.35f, 0.95f, 0.45f);
                     break;
 
                 case QuestStage.WateringCrop:
-                    message = "💧 Quest Updated: Water the planted Sweet Potato!";
+                    message = "Quest Updated: Water the planted Sweet Potato!";
                     textColor = new Color(0.35f, 0.75f, 1f);
                     break;
 
                 case QuestStage.Completed:
-                    message = "🎉 Side Quest Completed: First Steps!";
+                    message = "Side Quest Completed: First Steps!";
                     textColor = new Color(1f, 0.84f, 0.25f);
                     break;
 
                 case QuestStage.EnterKitchen:
-                    message = "🍳 Side Quest: Enter the Kitchen to prepare a meal!";
+                    message = "Side Quest: Enter the Kitchen to prepare a meal!";
                     textColor = new Color(1f, 0.70f, 0.25f);
                     break;
 
                 case QuestStage.RetrieveIngredients:
-                    message = "🧊 Quest Updated: Take Taro & Coconut from the Refrigerator!";
+                    message = "Quest Updated: Take Taro & Coconut from the Refrigerator!";
                     textColor = new Color(0.35f, 0.85f, 1f);
                     break;
 
                 case QuestStage.CookStew:
-                    message = "🍲 Quest Updated: Cook Taro Coconut Stew Bowl at the Kitchen Stove!";
+                    message = "Quest Updated: Cook Taro Coconut Stew Bowl at the Kitchen Stove!";
                     textColor = new Color(0.40f, 0.95f, 0.45f);
                     break;
 
                 case QuestStage.ConsumeDish:
-                    message = "😋 Dish Ready! Double-click Taro Coconut Stew Bowl in inventory to Eat & Drink!";
+                    message = "Dish Ready! Double-click Taro Coconut Stew Bowl in inventory to Eat & Drink!";
                     textColor = new Color(1f, 0.85f, 0.25f);
                     break;
 
                 case QuestStage.CookingQuestCompleted:
-                    message = "🎉 Side Quest Completed: Home Cooking! Fully nourished & buffed!";
+                    message = "Side Quest Completed: Home Cooking! Fully nourished & buffed!";
                     textColor = new Color(1f, 0.84f, 0.25f);
                     break;
             }
@@ -506,6 +543,7 @@ namespace FarmBeware.Features.Quest
         public void AssignStoryObjective(string objectiveId, NarrativeObjectiveCategory category, string title, string description, int targetCount, NarrativeFactKey trackingKey)
         {
             if (string.IsNullOrEmpty(objectiveId)) return;
+            EnsureInitialized();
 
             var existing = GetObjective(objectiveId);
             if (existing != null)
@@ -542,9 +580,9 @@ namespace FarmBeware.Features.Quest
                 var player = ServiceLocator.Resolve<IPlayerContext>();
                 if (floatingText != null && player != null && player.Transform != null)
                 {
-                    floatingText.SpawnText(player.Transform.position + Vector3.up * 2.2f, $"✨ Objective Complete: {obj.title}!", new Color(1f, 0.85f, 0.25f));
+                    floatingText.SpawnText(player.Transform.position + Vector3.up * 2.2f, $"Objective Complete: {obj.title}!", new Color(1f, 0.85f, 0.25f));
                 }
-                Debug.Log($"[QuestManager] ✨ Story objective completed: '{obj.title}' ({objectiveId})");
+                Debug.Log($"[QuestManager] Story objective completed: '{obj.title}' ({objectiveId})");
             }
         }
 
@@ -655,6 +693,21 @@ namespace FarmBeware.Features.Quest
 
             OnQuestUpdated?.Invoke(_model);
             OnObjectiveStateChanged?.Invoke(string.Empty, false);
+        }
+
+        /// <summary>
+        /// Resets side quests and all story objectives back to New Game initial state.
+        /// </summary>
+        public void ResetQuests()
+        {
+            EnsureInitialized();
+            _firstStepsCompletedTimer = 0f;
+            _lastAnnouncedStage = QuestStage.GatheringSupplies;
+            _storyObjectives.Clear();
+            _model.Reset();
+
+            OnObjectiveStateChanged?.Invoke(string.Empty, false);
+            OnQuestUpdated?.Invoke(_model);
         }
 
         #endregion

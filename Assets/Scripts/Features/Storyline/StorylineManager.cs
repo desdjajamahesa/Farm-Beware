@@ -528,6 +528,7 @@ namespace FeaturesStoryline
             switch (day)
             {
                 case 1:
+                    UpdatePlantedCropCounts();
                     objService.AssignStoryObjective(
                         "OBJ_D1_FIRST_STEPS",
                         NarrativeObjectiveCategory.MainStory,
@@ -535,6 +536,11 @@ namespace FeaturesStoryline
                         "Till 1 plot, draw well water, and plant Sweet Potato",
                         1,
                         NarrativeFactKey.PlantedCount_SweetPotato);
+                    if (_facts != null)
+                    {
+                        int sp = _facts.GetFact(NarrativeFactKey.PlantedCount_SweetPotato);
+                        if (sp > 0) objService.UpdateObjectiveProgress("OBJ_D1_FIRST_STEPS", sp);
+                    }
                     break;
 
                 case 2:
@@ -545,6 +551,11 @@ namespace FeaturesStoryline
                         "Harvest Taro and wash 3 roots at the Kitchen Sink",
                         3,
                         NarrativeFactKey.WashedCount_Taro);
+                    if (_facts != null)
+                    {
+                        int washed = _facts.GetFact(NarrativeFactKey.WashedCount_Taro);
+                        if (washed > 0) objService.UpdateObjectiveProgress("OBJ_D2_ARMORED_TARO", washed);
+                    }
                     break;
 
                 case 3:
@@ -555,6 +566,10 @@ namespace FeaturesStoryline
                         "Upgrade weapon at Workbench before Dusk",
                         1,
                         NarrativeFactKey.WeaponUpgradeTier_Speed);
+                    if (_facts != null && _facts.GetFact(NarrativeFactKey.WeaponUpgradeTier_Speed) > 0)
+                    {
+                        objService.CompleteStoryObjective("OBJ_D3_WORKBENCH");
+                    }
                     break;
 
                 case 4:
@@ -565,6 +580,11 @@ namespace FeaturesStoryline
                         "Cook 3 combat buff dishes at the Kitchen Stove",
                         3,
                         NarrativeFactKey.MealsCookedCount);
+                    if (_facts != null)
+                    {
+                        int meals = _facts.GetFact(NarrativeFactKey.MealsCookedCount);
+                        if (meals > 0) objService.UpdateObjectiveProgress("OBJ_D4_BATTLE_PREP", meals);
+                    }
                     break;
 
                 case 5:
@@ -575,6 +595,10 @@ namespace FeaturesStoryline
                         "Defeat The Ranger and purge subterranean Reagent 7",
                         1,
                         NarrativeFactKey.TheRangerSlayed);
+                    if (_facts != null && _facts.GetFact(NarrativeFactKey.TheRangerSlayed) > 0)
+                    {
+                        objService.CompleteStoryObjective("OBJ_D5_PURGE_VALVE");
+                    }
                     break;
             }
         }
@@ -768,7 +792,6 @@ namespace FeaturesStoryline
             int sp = _facts != null ? _facts.GetFact(NarrativeFactKey.PlantedCount_SweetPotato) : 0;
             var objService = ServiceLocator.Resolve<INarrativeObjectiveService>();
             objService?.UpdateObjectiveProgress("OBJ_D1_FIRST_STEPS", sp);
-            objService?.ReportProgress(NarrativeFactKey.PlantedCount_SweetPotato, 1);
 
             EvaluateTrigger(StoryTriggerType.FirstPlant, currentDay);
         }
@@ -786,7 +809,7 @@ namespace FeaturesStoryline
 
             int sp = 0, taro = 0, corn = 0;
 
-            if (FarmingManager.Instance != null && FarmingManager.Instance.FarmTiles != null)
+            if (FarmingManager.Instance != null && FarmingManager.Instance.FarmTiles != null && FarmingManager.Instance.FarmTiles.Count > 0)
             {
                 var tiles = FarmingManager.Instance.FarmTiles;
                 for (int i = 0; i < tiles.Count; i++)

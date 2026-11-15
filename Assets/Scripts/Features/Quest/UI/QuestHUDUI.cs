@@ -20,11 +20,15 @@ namespace FarmBeware.Features.Quest.UI
 
         private bool _isSubscribed = false;
         private INarrativeObjectiveService _objectiveService;
+        private FeaturesTime.DayNightTimeManager _subscribedDayNight;
+        private ITimeService _subscribedTimeService;
         private int _cachedStage = -1;
+        private int _cachedFlagsMask = -1;
         private int _cachedPlanted = -1;
         private int _cachedWatered = -1;
-        private bool _cachedCompleted = false;
+        private int _cachedDayHidden = -1;
         private int _cachedObjectiveVersion = -1;
+        private int _lastRenderedObjectiveVersion = -1;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void AutoAttachToHUD()
@@ -100,7 +104,7 @@ namespace FarmBeware.Features.Quest.UI
         /// </summary>
         public void SimulateFrame(float deltaTime)
         {
-            if (!_isSubscribed || _objectiveService == null)
+            if (!_isSubscribed || _objectiveService == null || (_subscribedTimeService == null && _subscribedDayNight == null))
             {
                 TrySubscribe();
             }
@@ -108,21 +112,51 @@ namespace FarmBeware.Features.Quest.UI
 
         private void TrySubscribe()
         {
+            bool newlySubscribed = false;
+
             if (!_isSubscribed && QuestManager.Instance != null)
             {
+                QuestManager.Instance.OnQuestUpdated -= HandleQuestUpdated;
                 QuestManager.Instance.OnQuestUpdated += HandleQuestUpdated;
                 _isSubscribed = true;
-                RefreshDisplay();
+                newlySubscribed = true;
             }
 
             if (_objectiveService == null)
             {
-                if (ServiceLocator.TryResolve<INarrativeObjectiveService>(out var svc) && svc != null)
+                INarrativeObjectiveService svc = ServiceLocator.Resolve<INarrativeObjectiveService>();
+                if (svc == null && QuestManager.HasInstance)
+                {
+                    svc = QuestManager.Instance;
+                }
+                if (svc != null)
                 {
                     _objectiveService = svc;
+                    _objectiveService.OnObjectiveStateChanged -= HandleObjectiveStateChanged;
                     _objectiveService.OnObjectiveStateChanged += HandleObjectiveStateChanged;
-                    RefreshDisplay();
+                    newlySubscribed = true;
                 }
+            }
+
+            if (_subscribedTimeService == null && ServiceLocator.TryResolve<ITimeService>(out var timeSvc) && timeSvc != null)
+            {
+                _subscribedTimeService = timeSvc;
+                _subscribedTimeService.OnDayChanged -= HandleDayChanged;
+                _subscribedTimeService.OnDayChanged += HandleDayChanged;
+                newlySubscribed = true;
+            }
+
+            if (_subscribedDayNight == null && FeaturesTime.DayNightTimeManager.Instance != null)
+            {
+                _subscribedDayNight = FeaturesTime.DayNightTimeManager.Instance;
+                _subscribedDayNight.OnDayChanged -= HandleDayChanged;
+                _subscribedDayNight.OnDayChanged += HandleDayChanged;
+                newlySubscribed = true;
+            }
+
+            if (newlySubscribed)
+            {
+                RefreshDisplay();
             }
         }
 
@@ -141,6 +175,22 @@ namespace FarmBeware.Features.Quest.UI
                 _objectiveService.OnObjectiveStateChanged -= HandleObjectiveStateChanged;
                 _objectiveService = null;
             }
+            if (_subscribedTimeService != null)
+            {
+                _subscribedTimeService.OnDayChanged -= HandleDayChanged;
+                _subscribedTimeService = null;
+            }
+            if (_subscribedDayNight != null)
+            {
+                _subscribedDayNight.OnDayChanged -= HandleDayChanged;
+                _subscribedDayNight = null;
+            }
+        }
+
+        private void HandleDayChanged(int day)
+        {
+            _cachedObjectiveVersion++;
+            RefreshDisplay();
         }
 
         private void HandleObjectiveStateChanged(string objectiveId, bool isCompleted)
@@ -154,22 +204,54 @@ namespace FarmBeware.Features.Quest.UI
             if (model == null) return;
 
             int stage = (int)model.CurrentStage;
+            int flagsMask = ComputeFlagsMask(model);
             int planted = model.PlantedCount;
             int watered = model.WateredCount;
-            bool completed = model.IsCompleted;
+            int dayHidden = ResolveCurrentGameDay() == 0 ? 1 : 0;
 
             // Zero string formatting if state has not mutated
-            if (stage == _cachedStage && planted == _cachedPlanted && watered == _cachedWatered && completed == _cachedCompleted)
+            if (stage == _cachedStage &&
+                flagsMask == _cachedFlagsMask &&
+                planted == _cachedPlanted &&
+                watered == _cachedWatered &&
+                dayHidden == _cachedDayHidden &&
+                _lastRenderedObjectiveVersion == _cachedObjectiveVersion)
             {
                 return;
             }
 
-            _cachedStage = stage;
-            _cachedPlanted = planted;
-            _cachedWatered = watered;
-            _cachedCompleted = completed;
-
             UpdateDisplayFromModel(model);
+        }
+
+        private static int ComputeFlagsMask(QuestProgressModel model)
+        {
+            int mask = 0;
+            if (model.HasHoe) mask |= 1 << 0;
+            if (model.HasPlantWaterer) mask |= 1 << 1;
+            if (model.HasWaterBottle) mask |= 1 << 2;
+            if (model.HasSweetPotatoSeed) mask |= 1 << 3;
+            if (model.HasPlantedCrop) mask |= 1 << 4;
+            if (model.HasWateredCrop) mask |= 1 << 5;
+            if (model.IsCompleted) mask |= 1 << 6;
+            if (model.HasEnteredKitchen) mask |= 1 << 7;
+            if (model.HasTaro) mask |= 1 << 8;
+            if (model.HasCoconut) mask |= 1 << 9;
+            if (model.HasCookedStew) mask |= 1 << 10;
+            if (model.HasConsumedStew) mask |= 1 << 11;
+            return mask;
+        }
+
+        private static int ResolveCurrentGameDay()
+        {
+            if (ServiceLocator.TryResolve<ITimeService>(out var timeService) && timeService != null)
+            {
+                return timeService.CurrentDay;
+            }
+            if (FeaturesTime.DayNightTimeManager.Instance != null)
+            {
+                return FeaturesTime.DayNightTimeManager.Instance.CurrentDay;
+            }
+            return 1;
         }
 
         public void RefreshDisplay()
@@ -184,16 +266,13 @@ namespace FarmBeware.Features.Quest.UI
         {
             if (model == null) return;
 
-            // Suppress Side Quest card on Day 0 per narrative progression (player only sleeps on Day 0)
-            int currentDay = 1;
-            if (ServiceLocator.TryResolve<ITimeService>(out var timeService) && timeService != null)
-            {
-                currentDay = timeService.CurrentDay;
-            }
-            else if (FeaturesTime.DayNightTimeManager.Instance != null)
-            {
-                currentDay = FeaturesTime.DayNightTimeManager.Instance.CurrentDay;
-            }
+            int currentDay = ResolveCurrentGameDay();
+            _cachedStage = (int)model.CurrentStage;
+            _cachedFlagsMask = ComputeFlagsMask(model);
+            _cachedPlanted = model.PlantedCount;
+            _cachedWatered = model.WateredCount;
+            _cachedDayHidden = currentDay == 0 ? 1 : 0;
+            _lastRenderedObjectiveVersion = _cachedObjectiveVersion;
 
             if (currentDay == 0)
             {
@@ -222,7 +301,7 @@ namespace FarmBeware.Features.Quest.UI
                 {
                     statusTag = model.IsCompleted ? "• COMPLETED" : "• FIRST STEPS";
                 }
-                questHeaderBadgeText.text = $"• SIDE QUEST {statusTag}";
+                questHeaderBadgeText.text = $"• SIDE QUEST {statusTag} [Q]";
                 questHeaderBadgeText.color = (model.CurrentStage == QuestStage.Completed || model.CurrentStage == QuestStage.CookingQuestCompleted)
                     ? new Color(1f, 0.84f, 0.25f)
                     : new Color(0.40f, 0.85f, 1f);
@@ -268,11 +347,62 @@ namespace FarmBeware.Features.Quest.UI
                     if (t.gameObject.name.Equals("QuestHeader", System.StringComparison.OrdinalIgnoreCase)) questHeaderBadgeText = t;
                     else if (t.gameObject.name.Equals("QuestDetail", System.StringComparison.OrdinalIgnoreCase)) questDetailText = t;
                 }
+                AttachQuestCardClickHandler();
+                ApplyCardLayout();
             }
             else
             {
                 BuildProceduralQuestUI();
             }
+        }
+
+        private void ApplyCardLayout()
+        {
+            if (questCardRoot != null && questCardRoot.TryGetComponent<RectTransform>(out var cardRt))
+            {
+                cardRt.sizeDelta = new Vector2(cardRt.sizeDelta.x, Mathf.Max(cardRt.sizeDelta.y, 98f));
+            }
+            if (questHeaderBadgeText != null)
+            {
+                RectTransform headerRt = questHeaderBadgeText.rectTransform;
+                headerRt.anchorMin = new Vector2(0.05f, 0.72f);
+                headerRt.anchorMax = new Vector2(0.95f, 0.96f);
+                headerRt.offsetMin = Vector2.zero;
+                headerRt.offsetMax = Vector2.zero;
+            }
+            if (questDetailText != null)
+            {
+                RectTransform detailRt = questDetailText.rectTransform;
+                detailRt.anchorMin = new Vector2(0.05f, 0.05f);
+                detailRt.anchorMax = new Vector2(0.95f, 0.71f);
+                detailRt.offsetMin = Vector2.zero;
+                detailRt.offsetMax = Vector2.zero;
+            }
+        }
+
+        private void AttachQuestCardClickHandler()
+        {
+            if (questCardRoot == null) return;
+
+            if (questCardRoot.TryGetComponent<Image>(out var bgImg))
+            {
+                bgImg.raycastTarget = true;
+            }
+            if (questHeaderBadgeText != null) questHeaderBadgeText.raycastTarget = false;
+            if (questDetailText != null) questDetailText.raycastTarget = false;
+
+            if (!questCardRoot.TryGetComponent<Button>(out var cardBtn))
+            {
+                cardBtn = questCardRoot.AddComponent<Button>();
+            }
+            cardBtn.transition = Selectable.Transition.None;
+            cardBtn.onClick.RemoveListener(HandleQuestCardClicked);
+            cardBtn.onClick.AddListener(HandleQuestCardClicked);
+        }
+
+        private static void HandleQuestCardClicked()
+        {
+            QuestLogUI.EnsureInstance()?.ToggleQuestLog();
         }
 
         public void BuildProceduralQuestUI()
@@ -286,15 +416,16 @@ namespace FarmBeware.Features.Quest.UI
             cardRt.pivot = new Vector2(0.5f, 1f);
             // Positioned 6px below ActivityCard (ActivityCard is anchored at -8f with height 72f -> bottom is -80f)
             cardRt.anchoredPosition = new Vector2(0f, -86f);
-            cardRt.sizeDelta = new Vector2(0f, 84f);
+            cardRt.sizeDelta = new Vector2(0f, 98f);
 
             Image bg = questCardRoot.GetComponent<Image>();
             bg.color = new Color(0.06f, 0.08f, 0.13f, 0.94f);
+            bg.raycastTarget = true;
 
             GameObject headerObj = new GameObject("QuestHeader", typeof(RectTransform), typeof(TextMeshProUGUI));
             headerObj.transform.SetParent(questCardRoot.transform, false);
             RectTransform headerRt = headerObj.GetComponent<RectTransform>();
-            headerRt.anchorMin = new Vector2(0.05f, 0.68f);
+            headerRt.anchorMin = new Vector2(0.05f, 0.72f);
             headerRt.anchorMax = new Vector2(0.95f, 0.96f);
             headerRt.offsetMin = Vector2.zero;
             headerRt.offsetMax = Vector2.zero;
@@ -303,13 +434,14 @@ namespace FarmBeware.Features.Quest.UI
             questHeaderBadgeText.fontStyle = FontStyles.Bold;
             questHeaderBadgeText.color = new Color(0.40f, 0.85f, 1f);
             questHeaderBadgeText.alignment = TextAlignmentOptions.Left;
-            questHeaderBadgeText.text = "• SIDE QUEST • FIRST STEPS";
+            questHeaderBadgeText.raycastTarget = false;
+            questHeaderBadgeText.text = "• SIDE QUEST • FIRST STEPS [Q]";
 
             GameObject detailObj = new GameObject("QuestDetail", typeof(RectTransform), typeof(TextMeshProUGUI));
             detailObj.transform.SetParent(questCardRoot.transform, false);
             RectTransform detailRt = detailObj.GetComponent<RectTransform>();
-            detailRt.anchorMin = new Vector2(0.05f, 0.06f);
-            detailRt.anchorMax = new Vector2(0.95f, 0.68f);
+            detailRt.anchorMin = new Vector2(0.05f, 0.05f);
+            detailRt.anchorMax = new Vector2(0.95f, 0.71f);
             detailRt.offsetMin = Vector2.zero;
             detailRt.offsetMax = Vector2.zero;
             questDetailText = detailObj.GetComponent<TextMeshProUGUI>();
@@ -319,7 +451,10 @@ namespace FarmBeware.Features.Quest.UI
             questDetailText.textWrappingMode = TextWrappingModes.Normal;
             questDetailText.overflowMode = TextOverflowModes.Ellipsis;
             questDetailText.alignment = TextAlignmentOptions.TopLeft;
+            questDetailText.raycastTarget = false;
             questDetailText.text = "Take farming tools from Storage Chest:\n<color=#FFA0A0>[  ]</color> Hoe  <color=#FFA0A0>[  ]</color> Waterer\n<color=#FFA0A0>[  ]</color> Bottle  <color=#FFA0A0>[  ]</color> Sweet Potato Seed";
+
+            AttachQuestCardClickHandler();
         }
     }
 }

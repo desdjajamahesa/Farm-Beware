@@ -119,6 +119,15 @@ namespace FarmBeware.Core.Runtime
     }
 
     /// <summary>
+    /// Optional reset contract allowing session initialization flows to clear quest progress for a new game.
+    /// </summary>
+    public interface IResettableQuestService
+    {
+        /// <summary>Resets all tracked side quests and story objectives back to initial New Game defaults.</summary>
+        void ResetQuests();
+    }
+
+    /// <summary>
     /// Decoupled event bus for publishing cross-subsystem narrative telemetry hooks.
     /// Preserves acyclic assembly boundaries without direct module coupling.
     /// </summary>

@@ -476,6 +476,29 @@ namespace FarmBeware.Logic.Quests
         }
 
         /// <summary>
+        /// Resets all onboarding side quest progress back to Day 1 initial defaults for a fresh session.
+        /// </summary>
+        public void Reset()
+        {
+            CurrentStage = QuestStage.GatheringSupplies;
+            HasHoe = false;
+            HasPlantWaterer = false;
+            HasWaterBottle = false;
+            HasSweetPotatoSeed = false;
+            HasPlantedCrop = false;
+            HasWateredCrop = false;
+            PlantedCount = 0;
+            WateredCount = 0;
+            HasEnteredKitchen = false;
+            HasTaro = false;
+            HasCoconut = false;
+            HasCookedStew = false;
+            HasConsumedStew = false;
+
+            OnStateChanged?.Invoke();
+        }
+
+        /// <summary>
         /// Formats the current quest objectives into display text for the HUD.
         /// </summary>
         public string GetFormattedObjectiveDetails()
@@ -500,7 +523,7 @@ namespace FarmBeware.Logic.Quests
                 case QuestStage.WateringCrop:
                     string plantedCropStr = PlantedCount == 1 ? "1 Sweet Potato" : $"{PlantedCount} Sweet Potatoes";
                     return $"Till soil, plant & water all crops:\n" +
-                           $"<color=#FFA0A0>[  ]</color> Planted: {plantedCropStr}\n" +
+                           $"<color=#80FF80>[OK]</color> Planted: {plantedCropStr}\n" +
                            $"<color=#FFA0A0>[  ]</color> Watered: {WateredCount}/{PlantedCount} crops";
 
                 case QuestStage.Completed:

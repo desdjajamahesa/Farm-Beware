@@ -135,6 +135,11 @@ namespace FeaturesSaveSystem
             var facts = ServiceLocator.Resolve<INarrativeFactBoard>();
             facts?.ResetFacts();
 
+            if (ServiceLocator.Resolve<INarrativeObjectiveService>() is IResettableQuestService resettableQuests)
+            {
+                resettableQuests.ResetQuests();
+            }
+
             // 2. Play Opening Cutscene or Fallback Position
             var cutscene = ServiceLocator.Resolve<ICutsceneService>();
             if (cutscene == null)
@@ -770,6 +775,11 @@ namespace FeaturesSaveSystem
 
             var facts = ServiceLocator.Resolve<INarrativeFactBoard>();
             facts?.ResetFacts();
+
+            if (ServiceLocator.Resolve<INarrativeObjectiveService>() is IResettableQuestService resettableQuests)
+            {
+                resettableQuests.ResetQuests();
+            }
 
             if (DailyEconomyManager.Instance != null)
             {

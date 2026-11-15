@@ -456,6 +456,13 @@ public class MainMenuController : MonoBehaviour
             closedAny = true;
         }
 
+        // 10. Quest Log UI
+        if (FarmBeware.Features.Quest.UI.QuestLogUI.HasInstance && FarmBeware.Features.Quest.UI.QuestLogUI.Instance.IsOpen)
+        {
+            FarmBeware.Features.Quest.UI.QuestLogUI.Instance.CloseQuestLog();
+            closedAny = true;
+        }
+
         return closedAny;
     }
 
