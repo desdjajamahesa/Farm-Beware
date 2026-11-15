@@ -15,8 +15,10 @@ using FeaturesCombat.Core.PureLogic;
 using FeaturesCombat.UI;
 using FeaturesCombat.Wave;
 using FeaturesEconomy;
+using FeaturesEconomy.PureLogic;
 using UnityEngine.EventSystems;
 using FarmBeware.Core.Runtime;
+using FarmBeware.Data.Runtime;
 using PlayerUI;
 using FeaturesStoryline;
 using FeaturesStoryline.Data;
@@ -435,19 +437,19 @@ namespace FarmBeware.EditorTests
                 for (int i = 0; i < 50; i++)
                 {
                     mgr.RollDailyMarketPrices();
-                    if (mgr.SweetPotatoPrice < 750 || mgr.SweetPotatoPrice > 1000)
+                    if (mgr.SweetPotatoPrice < 375 || mgr.SweetPotatoPrice > 500)
                     {
-                        Debug.LogError($"[Test 78] SweetPotatoPrice {mgr.SweetPotatoPrice} out of [750, 1000] range!");
+                        Debug.LogError($"[Test 78] SweetPotatoPrice {mgr.SweetPotatoPrice} out of [375, 500] range!");
                         return false;
                     }
-                    if (mgr.TaroPrice < 1400 || mgr.TaroPrice > 1800)
+                    if (mgr.TaroPrice < 700 || mgr.TaroPrice > 900)
                     {
-                        Debug.LogError($"[Test 78] TaroPrice {mgr.TaroPrice} out of [1400, 1800] range!");
+                        Debug.LogError($"[Test 78] TaroPrice {mgr.TaroPrice} out of [700, 900] range!");
                         return false;
                     }
-                    if (mgr.CornPrice < 1400 || mgr.CornPrice > 1800)
+                    if (mgr.CornPrice < 700 || mgr.CornPrice > 900)
                     {
-                        Debug.LogError($"[Test 78] CornPrice {mgr.CornPrice} out of [1400, 1800] range!");
+                        Debug.LogError($"[Test 78] CornPrice {mgr.CornPrice} out of [700, 900] range!");
                         return false;
                     }
                 }
@@ -886,7 +888,7 @@ namespace FarmBeware.EditorTests
                 return false;
             }
 
-            Debug.Log("✅ Test 96: Recipe_TaroCornStew calibrated to 1 Taro + 1 Corn + 1 Bottle of Water (3,200 G cost) verified.");
+            Debug.Log("✅ Test 96: Recipe_TaroCornStew calibrated to 1 Taro + 1 Corn + 1 Bottle of Water (1,600 G balanced crop cost) verified.");
             return true;
         }
 
@@ -934,6 +936,305 @@ namespace FarmBeware.EditorTests
             {
                 Debug.LogError($"[Test 101] Exception: {ex.Message}\n{ex.StackTrace}");
                 return false;
+            }
+        }
+
+        // Test 112: Board Orders (HayDay-style outside perimeter fence), 1.2x multiplier, GDD clean vs dirty crop value alignment, & atomic delivery
+        private static bool Test_BoardOrders_GDDDirtyCleanPricing_Multiplier12x_Delivery_And_ScenePlacement_Audit()
+        {
+            var cleanupList = new List<Object>();
+            var econField = typeof(DailyEconomyManager).GetField("_instance", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            var prevEcon = econField?.GetValue(null);
+            var walletField = typeof(PlayerWallet).GetField("instance", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            var prevWallet = walletField?.GetValue(null);
+            var prevWalletService = ServiceLocator.Resolve<IWalletService>();
+            var prevCatalogService = ServiceLocator.Resolve<IItemCatalog>();
+
+            try
+            {
+                // 1. GDD Crop Asset & Drop-Rate Balance Audit:
+                // Multi-drop 1-3 items/plot (avg 2.0) => Clean unit = 375-500 SP, 700-900 Taro/Corn; Dirty = 50% (188/400/400)
+                var cleanSp = AssetDatabase.LoadAssetAtPath<ItemData>("Assets/Data/Items/Crops/Crop_SweetPotato.asset");
+                var dirtySp = AssetDatabase.LoadAssetAtPath<ItemData>("Assets/Data/Items/Crops/Crop_SweetPotato_Dirty.asset");
+                var cleanTaro = AssetDatabase.LoadAssetAtPath<ItemData>("Assets/Data/Items/Crops/Crop_Taro.asset");
+                var dirtyTaro = AssetDatabase.LoadAssetAtPath<ItemData>("Assets/Data/Items/Crops/Crop_Taro_Dirty.asset");
+                var cleanCorn = AssetDatabase.LoadAssetAtPath<ItemData>("Assets/Data/Items/Crops/Crop_Corn.asset");
+                var dirtyCorn = AssetDatabase.LoadAssetAtPath<ItemData>("Assets/Data/Items/Crops/Crop_Corn_Dirty.asset");
+
+                var seedSp = AssetDatabase.LoadAssetAtPath<SeedItemData>("Assets/Data/Items/Seeds/Seed_SweetPotato.asset");
+                var seedTaro = AssetDatabase.LoadAssetAtPath<SeedItemData>("Assets/Data/Items/Seeds/Seed_Taro.asset");
+                var seedCorn = AssetDatabase.LoadAssetAtPath<SeedItemData>("Assets/Data/Items/Seeds/Seed_Corn.asset");
+
+                if (cleanSp == null || dirtySp == null || cleanTaro == null || dirtyTaro == null || cleanCorn == null || dirtyCorn == null ||
+                    seedSp == null || seedTaro == null || seedCorn == null)
+                {
+                    Debug.LogError("[Test 112] One or more clean/dirty crop or seed ScriptableObjects could not be loaded.");
+                    return false;
+                }
+
+                if (seedSp.minYield != 1 || seedSp.maxYield != 3 ||
+                    seedTaro.minYield != 1 || seedTaro.maxYield != 3 ||
+                    seedCorn.minYield != 1 || seedCorn.maxYield != 3)
+                {
+                    Debug.LogError("[Test 112] Seed minYield/maxYield must remain 1..3 (avg 2.0) to match Option 2 per-unit crop pricing.");
+                    return false;
+                }
+
+                if (cleanSp.sellPrice != 375 || dirtySp.sellPrice != 188 ||
+                    cleanTaro.sellPrice != 800 || dirtyTaro.sellPrice != 400 ||
+                    cleanCorn.sellPrice != 800 || dirtyCorn.sellPrice != 400)
+                {
+                    Debug.LogError($"[Test 112] Crop asset sellPrice mismatch vs drop-rate-balanced GDD/50% dirty rule: " +
+                                   $"SP={cleanSp.sellPrice}/{dirtySp.sellPrice}, Taro={cleanTaro.sellPrice}/{dirtyTaro.sellPrice}, Corn={cleanCorn.sellPrice}/{dirtyCorn.sellPrice}.");
+                    return false;
+                }
+
+                if (cleanSp.isDirty || cleanTaro.isDirty || cleanCorn.isDirty ||
+                    !dirtySp.isDirty || !dirtyTaro.isDirty || !dirtyCorn.isDirty ||
+                    dirtySp.cleanVariant != cleanSp || dirtyTaro.cleanVariant != cleanTaro || dirtyCorn.cleanVariant != cleanCorn)
+                {
+                    Debug.LogError("[Test 112] Dirty crop metadata (isDirty / cleanVariant link) is misaligned.");
+                    return false;
+                }
+
+                // 2. DailyEconomyManager dynamic clean vs 50% dirty sell rate & 1.2x Board Order Pure Logic math
+                if (!Mathf.Approximately(BoardOrderEvaluator.PriceMultiplier, 1.2f))
+                {
+                    Debug.LogError($"[Test 112] Expected BoardOrderEvaluator.PriceMultiplier=1.2f, got {BoardOrderEvaluator.PriceMultiplier}");
+                    return false;
+                }
+
+                if (BoardOrderEvaluator.CalculateBoardTotalReward(375, 1) != 450 ||
+                    BoardOrderEvaluator.CalculateBoardTotalReward(425, 2) != 1020 ||
+                    BoardOrderEvaluator.CalculateBoardTotalReward(800, 2) != 1920)
+                {
+                    Debug.LogError("[Test 112] BoardOrderEvaluator 1.2x payout math failed exact integer expectations.");
+                    return false;
+                }
+
+                var dailyOrders = BoardOrderEvaluator.GenerateDailyOrders(1, 0u, BoardOrderEvaluator.DefaultOrderCount);
+                if (dailyOrders == null || dailyOrders.Count != 4)
+                {
+                    Debug.LogError("[Test 112] GenerateDailyOrders must return 4 slots.");
+                    return false;
+                }
+
+                for (int i = 0; i < dailyOrders.Count; i++)
+                {
+                    if (dailyOrders[i] == null || !BoardOrderEvaluator.IsCleanCropTemplateId(dailyOrders[i].ItemId))
+                    {
+                        Debug.LogError($"[Test 112] Board Order slot {i} ({dailyOrders[i]?.ItemId}) must be a clean crop only!");
+                        return false;
+                    }
+                }
+
+                for (int i = 0; i < 12; i++)
+                {
+                    var rep = BoardOrderEvaluator.CreateReplacementOrder(i % 4, 2, (uint)(500 + i), "crop_sweet_potato");
+                    if (rep == null || !BoardOrderEvaluator.IsCleanCropTemplateId(rep.ItemId))
+                    {
+                        Debug.LogError($"[Test 112] Replacement order generated non-clean item {rep?.ItemId}!");
+                        return false;
+                    }
+                }
+
+                var cleanSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+                {
+                    dailyOrders[0].ItemId,
+                    dailyOrders[1].ItemId,
+                    dailyOrders[2].ItemId
+                };
+                if (!cleanSet.Contains("crop_sweet_potato") || !cleanSet.Contains("crop_taro") || !cleanSet.Contains("crop_corn"))
+                {
+                    Debug.LogError("[Test 112] Daily clean order slots 0..2 failed to cover all three GDD crop tiers.");
+                    return false;
+                }
+
+                // 3. End-to-End Board Fulfillment & Replacement (Clean + Dirty + Rejection on Insufficient Bag)
+                econField?.SetValue(null, null);
+                walletField?.SetValue(null, null);
+
+                var econGO = new GameObject("Test_Board_DailyEconomy");
+                cleanupList.Add(econGO);
+                var econ = econGO.AddComponent<DailyEconomyManager>();
+                econField?.SetValue(null, econ);
+                econ.RollDailyMarketPrices();
+
+                int spDirtyMarket = econ.GetCropSellPrice(dirtySp);
+                int taroDirtyMarket = econ.GetCropSellPrice(dirtyTaro);
+                int cornDirtyMarket = econ.GetCropSellPrice(dirtyCorn);
+                if (spDirtyMarket != Mathf.Max(1, Mathf.RoundToInt(econ.GetCropSellPrice(cleanSp) * 0.5f)) ||
+                    taroDirtyMarket != Mathf.Max(1, Mathf.RoundToInt(econ.GetCropSellPrice(cleanTaro) * 0.5f)) ||
+                    cornDirtyMarket != Mathf.Max(1, Mathf.RoundToInt(econ.GetCropSellPrice(cleanCorn) * 0.5f)))
+                {
+                    Debug.LogError("[Test 112] DailyEconomyManager dirty produce 50% rate invariant failed.");
+                    return false;
+                }
+
+                var actorGO = new GameObject("Test_Board_Actor");
+                cleanupList.Add(actorGO);
+                var inventory = actorGO.AddComponent<InventoryComponent>();
+                inventory.ResetInventory(16);
+                var wallet = actorGO.AddComponent<PlayerWallet>();
+
+                var boardGO = new GameObject("Test_Board_Station");
+                cleanupList.Add(boardGO);
+                var board = boardGO.AddComponent<OrderBoardInteractable>();
+                board.RefreshOrdersForDay(1, 1337u);
+
+                // Insufficient bag stock must reject cleanly without mutating gold/inventory
+                if (board.TryFulfillOrder(0, inventory, wallet, out int rejectedGold, out _) || rejectedGold != 0 || wallet.CurrentGold != 0)
+                {
+                    Debug.LogError("[Test 112] Board fulfilled or mutated wallet when player lacked requested crops.");
+                    return false;
+                }
+
+                // Fulfill clean order at 1.2x
+                BoardOrderSlot cleanSlot = board.ActiveOrders[0];
+                string initialCleanOrderId = cleanSlot.OrderId;
+                ItemData cleanReqItem = board.ResolveOrderItem(cleanSlot);
+                BoardOrderPriceBreakdown cleanBreakdown = board.GetOrderPricing(cleanSlot);
+                if (cleanReqItem == null || cleanBreakdown.BoardTotalReward <= cleanBreakdown.BaseTotalPrice)
+                {
+                    Debug.LogError("[Test 112] Clean order item resolution or 1.2x pricing breakdown invalid.");
+                    return false;
+                }
+
+                inventory.AddItemAmount(cleanReqItem, cleanSlot.RequiredQuantity);
+                if (!board.TryFulfillOrder(0, inventory, wallet, out int cleanPayout, out _))
+                {
+                    Debug.LogError("[Test 112] Clean order fulfillment failed despite sufficient inventory.");
+                    return false;
+                }
+
+                if (cleanPayout != cleanBreakdown.BoardTotalReward ||
+                    wallet.CurrentGold != cleanPayout ||
+                    inventory.CountItem(cleanReqItem) != 0 ||
+                    econ.dailyCropsSold != cleanSlot.RequiredQuantity ||
+                    econ.dailyGoldEarnedTrading != cleanPayout ||
+                    board.ActiveOrders[0].OrderId == initialCleanOrderId)
+                {
+                    Debug.LogError("[Test 112] Clean order atomic payout, inventory deduction, telemetry, or slot replacement mismatch.");
+                    return false;
+                }
+
+                // Dirty item guard: even if slot 3 is forced to a dirty ID, Board Order must reject dirty produce
+                var boardOrdersListField = typeof(OrderBoardInteractable).GetField("activeOrders", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                var rawOrders = boardOrdersListField?.GetValue(board) as List<BoardOrderSlot>;
+                if (rawOrders != null && rawOrders.Count > 3)
+                {
+                    var originalSlot3 = rawOrders[3];
+                    rawOrders[3] = new BoardOrderSlot { OrderId = "DIRTY-GUARD-TEST", CustomerName = "Guard", FlavorNote = "Test", ItemId = "crop_sweet_potato_dirty", RequiredQuantity = 1 };
+                    inventory.AddItemAmount(dirtySp, 1);
+                    int goldBeforeGuard = wallet.CurrentGold;
+                    bool acceptedDirty = board.TryFulfillOrder(3, inventory, wallet, out int rejectedDirtyGold, out _);
+                    inventory.RemoveItem(dirtySp, 1);
+                    rawOrders[3] = originalSlot3;
+
+                    if (acceptedDirty || rejectedDirtyGold != 0 || wallet.CurrentGold != goldBeforeGuard)
+                    {
+                        Debug.LogError("[Test 112] Board Order accepted or mutated wallet for a dirty crop!");
+                        return false;
+                    }
+                }
+
+                // Slot 3 generated order must also be clean and fulfill at 1.2x
+                BoardOrderSlot fourthSlot = board.ActiveOrders[3];
+                ItemData fourthItem = board.ResolveOrderItem(fourthSlot);
+                BoardOrderPriceBreakdown fourthBreakdown = board.GetOrderPricing(fourthSlot);
+                if (fourthItem == null || fourthItem.isDirty || !BoardOrderEvaluator.IsCleanCropTemplateId(fourthItem.itemId))
+                {
+                    Debug.LogError("[Test 112] Board Order slot 3 must resolve to a clean crop only!");
+                    return false;
+                }
+
+                inventory.AddItemAmount(fourthItem, fourthSlot.RequiredQuantity);
+                int goldBeforeFourth = wallet.CurrentGold;
+                if (!board.TryFulfillOrder(3, inventory, wallet, out int fourthPayout, out _))
+                {
+                    Debug.LogError("[Test 112] Clean slot 3 order fulfillment failed despite sufficient inventory.");
+                    return false;
+                }
+
+                if (fourthPayout != fourthBreakdown.BoardTotalReward ||
+                    wallet.CurrentGold != goldBeforeFourth + fourthPayout ||
+                    inventory.CountItem(fourthItem) != 0)
+                {
+                    Debug.LogError("[Test 112] Clean slot 3 1.2x payout or inventory deduction mismatch.");
+                    return false;
+                }
+
+                // Skip/Replace button behavior
+                string beforeSkipId = board.ActiveOrders[1].OrderId;
+                if (!board.TryReplaceOrder(1) || board.ActiveOrders[1].OrderId == beforeSkipId ||
+                    !BoardOrderEvaluator.IsCleanCropTemplateId(board.ActiveOrders[1].ItemId))
+                {
+                    Debug.LogError("[Test 112] TryReplaceOrder failed to issue a fresh clean crop slip.");
+                    return false;
+                }
+
+                // 4. MainScene placement outside North perimeter fence (z > 48.11) & clean-only serialized slots
+                var sceneBoardGO = GameObject.Find("OrderBoard_Outdoor");
+                if (sceneBoardGO == null)
+                {
+                    Debug.LogError("[Test 112] OrderBoard_Outdoor GameObject is missing from MainScene.");
+                    return false;
+                }
+
+                if (sceneBoardGO.transform.position.z <= 48.11f)
+                {
+                    Debug.LogError($"[Test 112] OrderBoard_Outdoor ({sceneBoardGO.transform.position}) is not outside the North perimeter fence (z > 48.11).");
+                    return false;
+                }
+
+                var sceneBoard = sceneBoardGO.GetComponent<OrderBoardInteractable>();
+                var sceneCol = sceneBoardGO.GetComponent<BoxCollider>();
+                var sceneLabel = sceneBoardGO.GetComponent<WorldLabel>();
+                var sceneHighlight = sceneBoardGO.GetComponent<Highlightable>();
+                if (sceneBoard == null || sceneCol == null || sceneLabel == null || sceneHighlight == null ||
+                    sceneBoard.ActiveOrders == null || sceneBoard.ActiveOrders.Count < 4)
+                {
+                    Debug.LogError("[Test 112] OrderBoard_Outdoor in MainScene is missing required components or default 4 slips.");
+                    return false;
+                }
+
+                foreach (var sceneSlot in sceneBoard.ActiveOrders)
+                {
+                    var slotItem = sceneBoard.ResolveOrderItem(sceneSlot);
+                    if (slotItem == null || slotItem.isDirty || !BoardOrderEvaluator.IsCleanCropTemplateId(slotItem.itemId))
+                    {
+                        Debug.LogError($"[Test 112] Scene OrderBoard_Outdoor contains non-clean crop request: {sceneSlot?.ItemId}");
+                        return false;
+                    }
+                }
+
+                Debug.Log($"✅ Test 112: Board Orders (HayDay outdoor @ {sceneBoardGO.transform.position}, Clean-Only crops), GDD clean/dirty crop pricing (50% dirty), 1.2x multiplier, & atomic fulfillment audit passed.");
+                return true;
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogError($"[Test 112] Exception: {ex.Message}\n{ex.StackTrace}");
+                return false;
+            }
+            finally
+            {
+                foreach (var obj in cleanupList)
+                {
+                    if (obj != null) Object.DestroyImmediate(obj);
+                }
+
+                econField?.SetValue(null, prevEcon);
+                walletField?.SetValue(null, prevWallet);
+
+                if (prevWalletService != null)
+                    ServiceLocator.Register<IWalletService>(prevWalletService);
+                else
+                    ServiceLocator.Unregister<IWalletService>();
+
+                if (prevCatalogService != null)
+                    ServiceLocator.Register<IItemCatalog>(prevCatalogService);
+                else
+                    ServiceLocator.Unregister<IItemCatalog>();
             }
         }
     }
