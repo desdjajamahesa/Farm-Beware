@@ -206,7 +206,7 @@ namespace FeaturesEconomy
             playerInventory = GetPlayerInventory();
             var playerCtx = ServiceLocator.Resolve<IPlayerContext>();
             if (playerCtx != null)
-                playerCtx.IsInputLocked = true;
+                playerCtx.AddInputLock("MerchantShopUI");
 
             Cursor.visible = true;
             Cursor.lockState = CursorLockMode.None;
@@ -271,7 +271,7 @@ namespace FeaturesEconomy
 
             var playerCtx = ServiceLocator.Resolve<IPlayerContext>();
             if (playerCtx != null)
-                playerCtx.IsInputLocked = false;
+                playerCtx.RemoveInputLock("MerchantShopUI");
 
             Cursor.visible = true;
             Cursor.lockState = CursorLockMode.None;
@@ -1014,6 +1014,18 @@ namespace FeaturesEconomy
             }
         }
 
+        /// <summary>
+        /// Returns the shared procedural sell coin chime AudioClip for reuse across economy UIs.
+        /// </summary>
+        public static AudioClip GetSellCoinClip()
+        {
+            if (cachedCoinSellClip == null)
+            {
+                cachedCoinSellClip = CreateProceduralCoinClip(1200f, 1600f);
+            }
+            return cachedCoinSellClip;
+        }
+
         private void PlayCoinSfx(bool isSell = false)
         {
             EnsureAudioSource();
@@ -1021,9 +1033,8 @@ namespace FeaturesEconomy
 
             if (isSell)
             {
-                if (cachedCoinSellClip == null) cachedCoinSellClip = CreateProceduralCoinClip(1200f, 1600f);
                 audioSource.pitch = UnityEngine.Random.Range(0.97f, 1.03f);
-                audioSource.PlayOneShot(cachedCoinSellClip, 0.75f);
+                audioSource.PlayOneShot(GetSellCoinClip(), 0.75f);
             }
             else
             {
