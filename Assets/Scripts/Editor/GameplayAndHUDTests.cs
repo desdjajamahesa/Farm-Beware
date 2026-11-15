@@ -69,7 +69,8 @@ namespace FarmBeware.EditorTests
                 typeof(FeaturesStoryline.UI.BossIntroSequence),
                 typeof(FeaturesStoryline.UI.JournalUI),
                 typeof(DayTransitionUI),
-                typeof(FarmBeware.Features.Quest.QuestManager)
+                typeof(FarmBeware.Features.Quest.QuestManager),
+                typeof(FarmBeware.Features.Quest.UI.QuestLogUI)
             };
 
             foreach (var t in singletonTypes)
@@ -94,7 +95,7 @@ namespace FarmBeware.EditorTests
             ResetTestAuditHarness();
 
             int passed = 0;
-            int total = 112;
+            int total = 113;
 
             if (Test_DayNight_PhaseProgression_DuskUntilNight()) passed++;
             if (Test_BedInteractable_Logic_AllowsDuskAndBlocksNightOnly()) passed++;
@@ -209,6 +210,7 @@ namespace FarmBeware.EditorTests
             if (Test_ExplicitStateMachines_PauseLock_RefillFSM_And_ActionHygiene_Audit()) passed++;
             if (Test_SystemArchitecture_AssetDeduplication_SharedProceduralCache_And_CatalogUnification_Audit()) passed++;
             if (Test_BoardOrders_GDDDirtyCleanPricing_Multiplier12x_Delivery_And_ScenePlacement_Audit()) passed++;
+            if (Test_QuestLogUI_Aggregation_Progress_FinishUnfinishFilters_And_ZeroGC_Audit()) passed++;
 
             Debug.Log("[AUDIT-SUITE] ========================================================");
             Debug.Log($"[AUDIT-SUITE] Complete! Passed: {passed}/{total}");

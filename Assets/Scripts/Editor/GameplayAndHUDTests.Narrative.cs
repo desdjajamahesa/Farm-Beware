@@ -3366,5 +3366,382 @@ namespace FarmBeware.EditorTests
         }
 
         public static bool Test_Playable_Sandbox_Day1To5_NarrativeLoop_Audit() => Test_Storyline_SandboxPlayableLoop_E2E_Audit();
+
+        // Test 113: Quest Log UI Aggregation, Progress Tracking, Finish/Unfinish State Filters, Modal Stack & Zero-GC Audit
+        public static bool Test_QuestLogUI_Aggregation_Progress_FinishUnfinishFilters_And_ZeroGC_Audit()
+        {
+            var cleanup = new List<GameObject>();
+            var entries = new List<QuestEntrySnapshot>();
+            var filtered = new List<QuestEntrySnapshot>();
+
+            ITimeService originalTime = ServiceLocator.Resolve<ITimeService>();
+            IPlayerContext originalPlayer = ServiceLocator.Resolve<IPlayerContext>();
+            bool hadQuestManager = QuestManager.HasInstance;
+            bool hadQuestLog = QuestLogUI.HasInstance || GameObject.Find("QuestLogUI") != null;
+            bool hadPanel = canvasPanelExists("Panel_QuestLog");
+
+            static bool canvasPanelExists(string panelName)
+            {
+                var c = GameObject.Find("UI_Canvas");
+                return c != null && c.transform.Find(panelName) != null;
+            }
+
+            try
+            {
+                // 1. Pure POCO QuestLogAggregator lifecycle across Day 0 -> Day 1 -> First Steps Finished -> Home Cooking -> All Finished
+                var model = new QuestProgressModel();
+                var storyObjectives = new List<NarrativeObjective>();
+
+                // Day 0: No side quests accepted yet
+                QuestLogAggregator.BuildEntries(model, storyObjectives, currentDay: 0, entries);
+                if (entries.Count != 0)
+                {
+                    Debug.LogError($"[Test 113] Expected 0 accepted quests on Day 0, got {entries.Count}!");
+                    return false;
+                }
+
+                // Day 1 starts: First Steps is received (Unfinished, 0/6) + story objective added
+                storyObjectives.Add(new NarrativeObjective(
+                    "OBJ_D1_FIRST_STEPS",
+                    "First Steps: Till & Plant",
+                    "Till 1 plot and plant Sweet Potato",
+                    1,
+                    NarrativeObjectiveCategory.MainStory,
+                    NarrativeFactKey.PlantedCount_SweetPotato));
+
+                QuestLogAggregator.BuildEntries(model, storyObjectives, currentDay: 1, entries);
+                QuestLogSummary summaryDay1 = QuestLogAggregator.ComputeSummary(entries);
+                if (summaryDay1.TotalCount != 2 || summaryDay1.UnfinishedCount != 2 || summaryDay1.FinishedCount != 0)
+                {
+                    Debug.LogError($"[Test 113] Day 1 summary mismatch! Total={summaryDay1.TotalCount}, Unfinished={summaryDay1.UnfinishedCount}, Finished={summaryDay1.FinishedCount}");
+                    return false;
+                }
+
+                // Partial progress: 2 supplies gathered -> First Steps progress = 2/6 Unfinished
+                model.EvaluateInventory(new[] { QuestProgressModel.ItemIdHoe, QuestProgressModel.ItemIdPlantWaterer });
+                QuestLogAggregator.BuildEntries(model, storyObjectives, currentDay: 1, entries);
+                var firstStepsPartial = entries.Find(e => e.QuestId == QuestProgressModel.QuestIdFirstSteps);
+                if (firstStepsPartial == null || firstStepsPartial.IsFinished || firstStepsPartial.CurrentProgress != 2 || firstStepsPartial.TargetProgress != 6)
+                {
+                    Debug.LogError($"[Test 113] Expected First Steps 2/6 Unfinished, got {firstStepsPartial?.CurrentProgress}/{firstStepsPartial?.TargetProgress} ({firstStepsPartial?.State})!");
+                    return false;
+                }
+
+                // Complete First Steps & Story objective, then advance to Home Cooking
+                model.EvaluateInventory(new[]
+                {
+                    QuestProgressModel.ItemIdHoe,
+                    QuestProgressModel.ItemIdPlantWaterer,
+                    QuestProgressModel.ItemIdWaterBottle,
+                    QuestProgressModel.ItemIdSweetPotatoSeed
+                });
+                model.OnCropPlanted(QuestProgressModel.ItemIdSweetPotatoSeed);
+                model.OnCropWatered(QuestProgressModel.ItemIdSweetPotatoSeed);
+                model.AdvanceToCookingQuest();
+                storyObjectives[0].currentCount = 1;
+                storyObjectives[0].isCompleted = true;
+
+                QuestLogAggregator.BuildEntries(model, storyObjectives, currentDay: 1, entries);
+                QuestLogSummary summaryMid = QuestLogAggregator.ComputeSummary(entries);
+                if (summaryMid.TotalCount != 3 || summaryMid.UnfinishedCount != 1 || summaryMid.FinishedCount != 2)
+                {
+                    Debug.LogError($"[Test 113] Mid-progression summary mismatch! Expected 3 total (1 unfinished, 2 finished), got Total={summaryMid.TotalCount}, Unfinished={summaryMid.UnfinishedCount}, Finished={summaryMid.FinishedCount}");
+                    return false;
+                }
+
+                // Unfinished quest must be partitioned first (Home Cooking)
+                if (entries[0].QuestId != QuestProgressModel.QuestIdHomeCooking || entries[0].IsFinished)
+                {
+                    Debug.LogError($"[Test 113] Expected Unfinished quest Home Cooking sorted first, got {entries[0].QuestId} ({entries[0].State})!");
+                    return false;
+                }
+
+                var firstStepsDone = entries.Find(e => e.QuestId == QuestProgressModel.QuestIdFirstSteps);
+                if (firstStepsDone == null || !firstStepsDone.IsFinished || firstStepsDone.CurrentProgress != 6)
+                {
+                    Debug.LogError($"[Test 113] Expected First Steps to remain visible as Finished (6/6) after advancing to Home Cooking!");
+                    return false;
+                }
+
+                // Filter validation (Unfinished vs Finished vs All)
+                QuestLogAggregator.FilterEntries(entries, QuestStateFilter.Unfinished, filtered);
+                if (filtered.Count != 1 || filtered[0].QuestId != QuestProgressModel.QuestIdHomeCooking)
+                {
+                    Debug.LogError($"[Test 113] Unfinished filter returned wrong entries (count={filtered.Count})!");
+                    return false;
+                }
+
+                QuestLogAggregator.FilterEntries(entries, QuestStateFilter.Finished, filtered);
+                if (filtered.Count != 2 || !filtered.TrueForAll(e => e.IsFinished))
+                {
+                    Debug.LogError($"[Test 113] Finished filter returned wrong entries (count={filtered.Count})!");
+                    return false;
+                }
+
+                // Complete Home Cooking too -> 3 Finished, 0 Unfinished
+                model.OnEnteredKitchen();
+                model.EvaluateInventory(new[] { QuestProgressModel.ItemIdTaro, QuestProgressModel.ItemIdCoconut });
+                model.OnStewCooked();
+                model.OnDishConsumed(QuestProgressModel.ItemIdTaroCoconutStew);
+
+                QuestLogAggregator.BuildEntries(model, storyObjectives, currentDay: 1, entries);
+                QuestLogSummary summaryComplete = QuestLogAggregator.ComputeSummary(entries);
+                if (summaryComplete.TotalCount != 3 || summaryComplete.UnfinishedCount != 0 || summaryComplete.FinishedCount != 3)
+                {
+                    Debug.LogError($"[Test 113] Final completion summary mismatch! Expected 3/3 Finished, got Unfinished={summaryComplete.UnfinishedCount}, Finished={summaryComplete.FinishedCount}");
+                    return false;
+                }
+
+                // 2. QuestManager Reset & Runtime QuestLogUI + Modal + Filter + Zero-GC Audit
+                var mockTime = new MockTimeService { CurrentDay = 2, CurrentPhase = DayPhase.Day };
+                ServiceLocator.Register<ITimeService>(mockTime);
+
+                QuestManager qm = QuestManager.Instance;
+                if (qm == null)
+                {
+                    var qmGo = new GameObject("Test_QuestManager_113");
+                    cleanup.Add(qmGo);
+                    qm = qmGo.AddComponent<QuestManager>();
+                }
+                else if (!hadQuestManager)
+                {
+                    cleanup.Add(qm.gameObject);
+                }
+
+                qm.ResetQuests();
+                qm.Model.EvaluateInventory(new[]
+                {
+                    QuestProgressModel.ItemIdHoe,
+                    QuestProgressModel.ItemIdPlantWaterer,
+                    QuestProgressModel.ItemIdWaterBottle,
+                    QuestProgressModel.ItemIdSweetPotatoSeed
+                });
+                qm.Model.OnCropPlanted(QuestProgressModel.ItemIdSweetPotatoSeed);
+                qm.Model.OnCropWatered(QuestProgressModel.ItemIdSweetPotatoSeed);
+                qm.Model.AdvanceToCookingQuest();
+                qm.AssignStoryObjective("OBJ_D2_TEST", NarrativeObjectiveCategory.MainStory, "Clean Taro", "Wash 3 taro roots", 3, NarrativeFactKey.WashedCount_Taro);
+                qm.UpdateObjectiveProgress("OBJ_D2_TEST", 2);
+
+                Canvas targetCanvas = CanvasHelper.ResolveMainUICanvas();
+                if (!hadPanel && targetCanvas == null)
+                {
+                    var tempCanvasGo = new GameObject("UI_Canvas", typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
+                    cleanup.Add(tempCanvasGo);
+                }
+
+                QuestLogUI ui = QuestLogUI.EnsureInstance();
+                if (!hadQuestLog && ui != null) cleanup.Add(ui.gameObject);
+
+                ui.OpenQuestLog();
+                if (!ui.IsOpen)
+                {
+                    Debug.LogError("[Test 113] QuestLogUI failed to open!");
+                    return false;
+                }
+
+                // Verify All (3 entries: Home Cooking Unfinished, OBJ_D2_TEST Unfinished 2/3, First Steps Finished)
+                if (ui.Summary.TotalCount != 3 || ui.Summary.UnfinishedCount != 2 || ui.Summary.FinishedCount != 1)
+                {
+                    Debug.LogError($"[Test 113] QuestLogUI summary mismatch! Total={ui.Summary.TotalCount}, Unfinished={ui.Summary.UnfinishedCount}, Finished={ui.Summary.FinishedCount}");
+                    return false;
+                }
+
+                var rootPanel = targetCanvas != null ? targetCanvas.transform.Find("Panel_QuestLog") : GameObject.Find("Panel_QuestLog")?.transform;
+                if (rootPanel == null)
+                {
+                    Debug.LogError("[Test 113] Panel_QuestLog hierarchy missing!");
+                    return false;
+                }
+                if (!hadPanel) cleanup.Add(rootPanel.gameObject);
+
+                var questsContent = rootPanel.Find("QuestLogModalCard/QuestScrollView/Viewport/QuestsContent");
+                if (questsContent == null || questsContent.childCount != 3)
+                {
+                    Debug.LogError($"[Test 113] Expected 3 rendered quest cards under QuestsContent, found {questsContent?.childCount ?? 0}!");
+                    return false;
+                }
+
+                // Verify State badge texts and progress ratio bar on cards
+                var finishedCardBadge = questsContent.Find($"QuestRow_{QuestProgressModel.QuestIdFirstSteps}/Content/TopRow/StateBadge/StateText")?.GetComponent<TextMeshProUGUI>();
+                var unfinishedObjCount = questsContent.Find("QuestRow_OBJ_D2_TEST/Content/ProgressRow/ProgressCount")?.GetComponent<TextMeshProUGUI>();
+                if (finishedCardBadge == null || finishedCardBadge.text != "FINISHED")
+                {
+                    Debug.LogError($"[Test 113] First Steps card StateText mismatch! Expected FINISHED, got '{finishedCardBadge?.text}'");
+                    return false;
+                }
+                if (unfinishedObjCount == null || !unfinishedObjCount.text.Contains("2/3"))
+                {
+                    Debug.LogError($"[Test 113] OBJ_D2_TEST progress count mismatch! Expected '2/3', got '{unfinishedObjCount?.text}'");
+                    return false;
+                }
+
+                // Switch UI filter tabs -> Finished only (1 card)
+                ui.SetFilter(QuestStateFilter.Finished);
+                if (ui.DisplayedEntries.Count != 1 || questsContent.childCount != 1)
+                {
+                    Debug.LogError($"[Test 113] Finished tab mismatch! Displayed={ui.DisplayedEntries.Count}, Children={questsContent.childCount}");
+                    return false;
+                }
+
+                // Switch UI filter tabs -> Unfinished only (2 cards)
+                ui.SetFilter(QuestStateFilter.Unfinished);
+                if (ui.DisplayedEntries.Count != 2 || questsContent.childCount != 2)
+                {
+                    Debug.LogError($"[Test 113] Unfinished tab mismatch! Displayed={ui.DisplayedEntries.Count}, Children={questsContent.childCount}");
+                    return false;
+                }
+
+                ui.CloseQuestLog();
+                if (ui.IsOpen)
+                {
+                    Debug.LogError("[Test 113] QuestLogUI failed to close!");
+                    return false;
+                }
+
+                // 3. QuestHUDUI clickable QuestCard + [Q] hint + incremental update regression check
+                var hudHost = new GameObject("Test_QuestHUD_113", typeof(RectTransform));
+                cleanup.Add(hudHost);
+                var hudUi = hudHost.AddComponent<QuestHUDUI>();
+                hudUi.BuildProceduralQuestUI();
+                var cardBtn = hudHost.transform.Find("QuestCard")?.GetComponent<Button>();
+                var hudHeader = hudHost.transform.Find("QuestCard/QuestHeader")?.GetComponent<TextMeshProUGUI>();
+                var hudDetail = hudHost.transform.Find("QuestCard/QuestDetail")?.GetComponent<TextMeshProUGUI>();
+                if (cardBtn == null || hudHeader == null || hudDetail == null || !hudHeader.text.Contains("SIDE QUEST") || !hudHeader.text.Contains("[Q]"))
+                {
+                    Debug.LogError($"[Test 113] QuestHUDUI clickable card or [Q] hint missing! Header='{hudHeader?.text}'");
+                    return false;
+                }
+
+                var bindingFlags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
+                var trySubscribeMethod = typeof(QuestHUDUI).GetMethod("TrySubscribe", bindingFlags);
+                var unsubscribeMethod = typeof(QuestHUDUI).GetMethod("Unsubscribe", bindingFlags);
+                var handleUpdatedMethod = typeof(QuestHUDUI).GetMethod("HandleQuestUpdated", bindingFlags);
+                if (trySubscribeMethod == null || unsubscribeMethod == null || handleUpdatedMethod == null)
+                {
+                    Debug.LogError("[Test 113] Required QuestHUDUI internal subscription/handler methods missing!");
+                    return false;
+                }
+
+                trySubscribeMethod.Invoke(hudUi, null);
+                try
+                {
+                    qm.ResetQuests();
+                    qm.Model.EvaluateInventory(new[] { QuestProgressModel.ItemIdHoe });
+                    handleUpdatedMethod.Invoke(hudUi, new object[] { qm.Model });
+                    if (!hudDetail.text.Contains("[OK]</color> Hoe") || hudDetail.text.Contains("[OK]</color> Waterer"))
+                    {
+                        Debug.LogError($"[Test 113] Incremental Hoe pickup failed to render accurately! Detail='{hudDetail.text}'");
+                        return false;
+                    }
+
+                    qm.Model.EvaluateInventory(new[] { QuestProgressModel.ItemIdHoe, QuestProgressModel.ItemIdPlantWaterer });
+                    handleUpdatedMethod.Invoke(hudUi, new object[] { qm.Model });
+                    if (!hudDetail.text.Contains("[OK]</color> Waterer"))
+                    {
+                        Debug.LogError($"[Test 113] Intermediate PlantWaterer pickup was dropped by HandleQuestUpdated! Detail='{hudDetail.text}'");
+                        return false;
+                    }
+
+                    qm.Model.EvaluateInventory(new[]
+                    {
+                        QuestProgressModel.ItemIdHoe,
+                        QuestProgressModel.ItemIdPlantWaterer,
+                        QuestProgressModel.ItemIdWaterBottle,
+                        QuestProgressModel.ItemIdSweetPotatoSeed
+                    });
+                    qm.Model.OnCropPlanted(QuestProgressModel.ItemIdSweetPotatoSeed);
+                    handleUpdatedMethod.Invoke(hudUi, new object[] { qm.Model });
+                    if (!hudDetail.text.Contains("<color=#80FF80>[OK]</color> Planted:"))
+                    {
+                        Debug.LogError($"[Test 113] WateringCrop stage must render green [OK] for Planted line! Detail='{hudDetail.text}'");
+                        return false;
+                    }
+
+                    qm.AssignStoryObjective("OBJ_D1_FIRST_STEPS", NarrativeObjectiveCategory.MainStory, "First Steps: Till & Plant", "Plant 2 Sweet Potatoes", 2, NarrativeFactKey.PlantedCount_SweetPotato);
+                    handleUpdatedMethod.Invoke(hudUi, new object[] { qm.Model });
+                    if (!hudDetail.text.Contains("STORY:") || !hudDetail.text.Contains("(0/2)"))
+                    {
+                        Debug.LogError($"[Test 113] Story objective line missing or initial count wrong in QuestHUDUI! Detail='{hudDetail.text}'");
+                        return false;
+                    }
+
+                    qm.UpdateObjectiveProgress("OBJ_D1_FIRST_STEPS", 1);
+                    handleUpdatedMethod.Invoke(hudUi, new object[] { qm.Model });
+                    if (!hudDetail.text.Contains("STORY:") || !hudDetail.text.Contains("(1/2)"))
+                    {
+                        Debug.LogError($"[Test 113] Partial story objective progress update was dropped by QuestHUDUI! Detail='{hudDetail.text}'");
+                        return false;
+                    }
+
+                    qm.UpdateObjectiveProgress("OBJ_D1_FIRST_STEPS", 2);
+                    handleUpdatedMethod.Invoke(hudUi, new object[] { qm.Model });
+                    if (hudDetail.text.Contains("STORY:"))
+                    {
+                        Debug.LogError($"[Test 113] Completed story objective should be cleared from active HUD tracker! Detail='{hudDetail.text}'");
+                        return false;
+                    }
+
+                    // 4. Zero-GC SimulateFrame check (QuestLogUI + QuestHUDUI after subscribing)
+                    ui.SimulateFrame(0.016f); // Warmup
+                    hudUi.SimulateFrame(0.016f); // Warmup
+                    long allocStart = GC.GetAllocatedBytesForCurrentThread();
+                    for (int frame = 0; frame < 1000; frame++)
+                    {
+                        ui.SimulateFrame(0.016f);
+                        hudUi.SimulateFrame(0.016f);
+                    }
+                    long allocDelta = GC.GetAllocatedBytesForCurrentThread() - allocStart;
+                    if (allocDelta > 0)
+                    {
+                        Debug.LogError($"[Test 113] QuestLogUI/QuestHUDUI SimulateFrame breached Zero-GC invariant ({allocDelta} bytes allocated)!");
+                        return false;
+                    }
+                }
+                finally
+                {
+                    unsubscribeMethod.Invoke(hudUi, null);
+                }
+
+                Debug.Log("✅ Test 113: Quest Log UI aggregation, Finish/Unfinish state & filters, step progress bars, HUD integration, and Zero-GC tick verified.");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[Test 113] Exception: {ex.Message}\n{ex.StackTrace}");
+                return false;
+            }
+            finally
+            {
+                if (QuestLogUI.HasInstance && QuestLogUI.Instance != null && QuestLogUI.Instance.IsOpen)
+                {
+                    QuestLogUI.Instance.CloseQuestLog();
+                }
+
+                if (QuestManager.HasInstance && QuestManager.Instance != null && hadQuestManager)
+                {
+                    QuestManager.Instance.ResetQuests();
+                }
+
+                if (originalTime != null) ServiceLocator.Register<ITimeService>(originalTime);
+                if (originalPlayer != null) ServiceLocator.Register<IPlayerContext>(originalPlayer);
+
+                if (!hadPanel)
+                {
+                    var leakedCanvasPanel = GameObject.Find("UI_Canvas")?.transform.Find("Panel_QuestLog")?.gameObject
+                                            ?? GameObject.Find("Panel_QuestLog");
+                    if (leakedCanvasPanel != null)
+                    {
+                        Object.DestroyImmediate(leakedCanvasPanel);
+                    }
+                }
+
+                for (int i = cleanup.Count - 1; i >= 0; i--)
+                {
+                    if (cleanup[i] != null) Object.DestroyImmediate(cleanup[i]);
+                }
+
+                CanvasHelper.ClearCache();
+            }
+        }
     }
 }
