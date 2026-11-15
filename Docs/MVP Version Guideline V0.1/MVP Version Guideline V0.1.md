@@ -35,11 +35,16 @@ Or
 
 **Harvest → Cooking → Food Buff 1:1**
 
-| Seed | Growth | Harvest Value | Monster | Seed Drop |
-| --- | --- | --- | --- | --- |
-| Sweet Potato | Fast (6min) | 750-1000 Gold (random) | Tuber Maw | 1-4 SP(60/20/10/10%) |
-| Taro | Medium(15min) | 1400-1800 Gold (random) | Taro Brute | 1-3 T (70/20/10%) |
-| Corn | Medium(15min) | 1400-1800 Gold (random) | Corn Musketeer | 1-3 C (70/20/10%) |
+| Seed | Growth | Drop / Plot | Per-Unit Sell (Clean / Dirty) | Target Harvest Value / Plot | Monster | Seed Drop |
+| --- | --- | --- | --- | --- | --- | --- |
+| Sweet Potato | Fast (6min) | 1-3 (avg 2) | 375-500 G (Clean) / 50% (Dirty) | 750-1000 Gold avg (Clean) | Tuber Maw | 1-4 SP(60/20/10/10%) |
+| Taro | Medium(15min) | 1-3 (avg 2) | 700-900 G (Clean) / 50% (Dirty) | 1400-1800 Gold avg (Clean) | Taro Brute | 1-3 T (70/20/10%) |
+| Corn | Medium(15min) | 1-3 (avg 2) | 700-900 G (Clean) / 50% (Dirty) | 1400-1800 Gold avg (Clean) | Corn Musketeer | 1-3 C (70/20/10%) |
+
+> **Dirty vs Clean & Board Order Notes:**
+> - Harvests drop **1-3 Dirty crops** per plot (avg 2). Dirty produce sells to the Merchant for **50%** of Clean value.
+> - Washing Dirty produce at the Kitchen Sink converts **1:1** to Clean (`100%` value).
+> - Outdoor **Farm Order Board** accepts **Clean crops only** for **1.2x (+20%)** of Clean Merchant prices.
 
 Each crop have purpose:
 

@@ -22,6 +22,6 @@ MonoBehaviour:
   maxStack: 20
   type: 0
   buyPrice: 500
-  sellPrice: 1600
+  sellPrice: 800
   isDirty: 0
   cleanVariant: {fileID: 0}

@@ -7,7 +7,8 @@ namespace FeaturesEconomy
 {
     /// <summary>
     /// Central manager for daily market rates and morning financial summary.
-    /// Manages randomized daily crop prices within MVP ranges (Sweet Potato: 750-1000G, Taro: 1400-1800G, Corn: 1400-1800G),
+    /// Manages randomized daily per-unit clean crop prices balanced around 1-3 drops/plot (avg 2.0):
+    /// Sweet Potato: 375-500G/unit (avg 750-1000G/plot), Taro & Corn: 700-900G/unit (avg 1400-1800G/plot),
     /// and logs operational metrics (monsters slain, crops harvested/sold, gold earned) for the Daily Morning Report.
     /// </summary>
     public class DailyEconomyManager : MonoBehaviour, IDailyEconomyService
@@ -35,10 +36,10 @@ namespace FeaturesEconomy
         }
         private static DailyEconomyManager _instance;
 
-        [Header("Current Daily Market Prices (Gold)")]
-        [SerializeField] private int sweetPotatoPrice = 850;
-        [SerializeField] private int taroPrice = 1600;
-        [SerializeField] private int cornPrice = 1600;
+        [Header("Current Daily Market Prices (Gold per Clean Unit)")]
+        [SerializeField] private int sweetPotatoPrice = 425;
+        [SerializeField] private int taroPrice = 800;
+        [SerializeField] private int cornPrice = 800;
 
         public int SweetPotatoPrice => sweetPotatoPrice;
         public int TaroPrice => taroPrice;
@@ -194,16 +195,16 @@ namespace FeaturesEconomy
         }
 
         /// <summary>
-        /// Rolls daily market prices within the official MVP Guideline ranges:
-        /// - Sweet Potato: 750 – 1,000 Gold
-        /// - Taro: 1,400 – 1,800 Gold
-        /// - Corn: 1,400 – 1,800 Gold
+        /// Rolls daily per-unit clean market prices balanced around 1-3 harvest drops per plot (avg 2.0):
+        /// - Sweet Potato: 375 – 500 Gold / unit (~750 – 1,000 G per plot avg)
+        /// - Taro: 700 – 900 Gold / unit (~1,400 – 1,800 G per plot avg)
+        /// - Corn: 700 – 900 Gold / unit (~1,400 – 1,800 G per plot avg)
         /// </summary>
         public void RollDailyMarketPrices()
         {
-            sweetPotatoPrice = UnityEngine.Random.Range(750, 1001);
-            taroPrice = UnityEngine.Random.Range(1400, 1801);
-            cornPrice = UnityEngine.Random.Range(1400, 1801);
+            sweetPotatoPrice = UnityEngine.Random.Range(375, 501);
+            taroPrice = UnityEngine.Random.Range(700, 901);
+            cornPrice = UnityEngine.Random.Range(700, 901);
 
             Debug.Log($"[DailyEconomyManager] Market prices updated today: Sweet Potato={sweetPotatoPrice}G, Taro={taroPrice}G, Corn={cornPrice}G");
             OnMarketPricesChanged?.Invoke();

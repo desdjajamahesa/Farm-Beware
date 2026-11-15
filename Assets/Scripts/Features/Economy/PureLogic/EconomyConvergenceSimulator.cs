@@ -9,20 +9,24 @@ namespace FeaturesEconomy.PureLogic
     /// </summary>
     public static class EconomyConvergenceSimulator
     {
-        // Canonical MVP Crop Constants
+        // Canonical MVP Crop Constants (per-unit Clean prices calibrated to 1-3 harvest drops/plot, avg 2.0)
+        public const int CropMinYieldPerPlot = 1;
+        public const int CropMaxYieldPerPlot = 3;
+        public const float MeanCropYieldPerPlot = 0.5f * (CropMinYieldPerPlot + CropMaxYieldPerPlot);
+
         public const int SweetPotatoSeedCost = 100;
-        public const int SweetPotatoSellMin = 750;
-        public const int SweetPotatoSellMax = 1000;
+        public const int SweetPotatoSellMin = 375;
+        public const int SweetPotatoSellMax = 500;
         public const float SweetPotatoGrowthSeconds = 360f;
 
         public const int TaroSeedCost = 300;
-        public const int TaroSellMin = 1400;
-        public const int TaroSellMax = 1800;
+        public const int TaroSellMin = 700;
+        public const int TaroSellMax = 900;
         public const float TaroGrowthSeconds = 480f;
 
         public const int CornSeedCost = 300;
-        public const int CornSellMin = 1400;
-        public const int CornSellMax = 1800;
+        public const int CornSellMin = 700;
+        public const int CornSellMax = 900;
         public const float CornGrowthSeconds = 600f;
 
         public const float PlotMoistureDurationSeconds = 240f;
@@ -128,9 +132,10 @@ namespace FeaturesEconomy.PureLogic
             int minSellPrice,
             int maxSellPrice,
             float growthSeconds,
-            bool isSingleWateringExempt)
+            bool isSingleWateringExempt,
+            float meanYieldPerPlot = 1f)
         {
-            float meanSell = 0.5f * (minSellPrice + maxSellPrice);
+            float meanSell = 0.5f * (minSellPrice + maxSellPrice) * Math.Max(1f, meanYieldPerPlot);
             int waterings = isSingleWateringExempt
                 ? 1
                 : Math.Max(1, (int)Math.Ceiling(growthSeconds / PlotMoistureDurationSeconds));
@@ -196,8 +201,8 @@ namespace FeaturesEconomy.PureLogic
             float meanGold = standardTrials > 0 ? (float)((double)sumGold / standardTrials) : 0f;
             float meanPlots = standardTrials > 0 ? (float)sumPlots / standardTrials : InitialUnlockedPlots;
 
-            var spMetrics = EvaluateCropMetrics(SweetPotatoSeedCost, SweetPotatoSellMin, SweetPotatoSellMax, SweetPotatoGrowthSeconds, true);
-            var taroMetrics = EvaluateCropMetrics(TaroSeedCost, TaroSellMin, TaroSellMax, TaroGrowthSeconds, false);
+            var spMetrics = EvaluateCropMetrics(SweetPotatoSeedCost, SweetPotatoSellMin, SweetPotatoSellMax, SweetPotatoGrowthSeconds, true, MeanCropYieldPerPlot);
+            var taroMetrics = EvaluateCropMetrics(TaroSeedCost, TaroSellMin, TaroSellMax, TaroGrowthSeconds, false, MeanCropYieldPerPlot);
 
             float spPayback = CalculateLandDeedPaybackCycles(spMetrics.MeanNetProfitPerPlot);
             float taroPayback = CalculateLandDeedPaybackCycles(taroMetrics.MeanNetProfitPerPlot);
@@ -292,7 +297,13 @@ namespace FeaturesEconomy.PureLogic
                     int harvestedCount = Math.Min(targetPlantings, seedCount);
                     seedCount -= harvestedCount;
 
-                    int harvestRevenue = harvestedCount * unitSellPrice;
+                    int totalCropsDropped = 0;
+                    for (int p = 0; p < harvestedCount; p++)
+                    {
+                        totalCropsDropped += NextRange(ref rng, CropMinYieldPerPlot, CropMaxYieldPerPlot + 1);
+                    }
+
+                    int harvestRevenue = totalCropsDropped * unitSellPrice;
                     walletGold += harvestRevenue;
                     cumulativeGoldEarned += harvestRevenue;
                 }
