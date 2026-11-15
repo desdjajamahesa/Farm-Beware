@@ -4,14 +4,14 @@ using UnityEngine;
 namespace FeaturesFarming
 {
     /// <summary>
-    /// Manager sentral sistem pertanian.
-    /// Mengontrol seluruh petak kebun dan sinkronisasi dengan siklus waktu (TimeManager).
+    /// Central farming system manager.
+    /// Controls all farmland plots and synchronizes crop lifecycle with TimeManager.
     /// </summary>
     public class FarmingManager : MonoBehaviour, FarmBeware.Core.Runtime.IFarmingService
     {
         public static FarmingManager Instance { get; private set; }
 
-        [Header("Daftar Petak Kebun")]
+        [Header("Farmland Plot Registry")]
         [SerializeField] private List<FarmlandTile> farmTiles = new List<FarmlandTile>();
         public IReadOnlyList<FarmlandTile> FarmTiles => farmTiles;
 
@@ -68,12 +68,12 @@ namespace FeaturesFarming
             farmTiles.Clear();
             var found = FindObjectsByType<FarmlandTile>(FindObjectsInactive.Include, FindObjectsSortMode.None);
             farmTiles.AddRange(found);
-            Debug.Log($"[FarmingManager] Terdaftar {farmTiles.Count} petak kebun aktif.");
+            Debug.Log($"[FarmingManager] Registered {farmTiles.Count} active farmland plots.");
         }
 
         private void HandleDayChanged(int newDay)
         {
-            Debug.Log($"[FarmingManager] Hari baru {newDay}! Memperbarui seluruh petak kebun...");
+            Debug.Log($"[FarmingManager] New day {newDay}! Updating all farmland plots...");
             foreach (var tile in farmTiles)
             {
                 if (tile != null)

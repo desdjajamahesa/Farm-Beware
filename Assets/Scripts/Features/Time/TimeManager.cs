@@ -2,18 +2,17 @@ using System;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-// Backend waktu berbasis fase (Day/Night) yang decoupled (singleton).
-// Murni data + event sinyal; tidak menempel pada UI maupun gameplay tertentu.
+// Decoupled phase-based (Day/Night) time backend singleton.
+// Pure data and event signaling; independent of UI or specific gameplay features.
 public class TimeManager : MonoBehaviour
 {
-    // Fase hari: Day = pagi/siang, Night = malam.
+    // Day phase: Day = morning/afternoon, Night = night.
     public enum DayPhase { Day, Night }
 
     private static TimeManager _instance;
 
-    // Singleton dengan resolver lazy sebagai pengaman: bila static belum ter-set
-    // (mis. karena urutan lifecycle tidak terpanggil), Instance tetap berhasil
-    // di-resolve dari objek aktif yang ada di scene.
+    // Singleton with lazy fallback resolver: if static reference is not yet assigned
+    // (e.g. due to lifecycle execution order), resolve from active or inactive scene instances.
     public static TimeManager Instance
     {
         get
@@ -29,15 +28,15 @@ public class TimeManager : MonoBehaviour
         private set { _instance = value; }
     }
 
-    // State waktu (statis berbasis fase, bukan jam yang berjalan).
+    // Time state (discrete phase-based rather than continuous clock progression).
     public int currentDay { get; private set; } = 1;
     public DayPhase currentPhase { get; private set; } = DayPhase.Day;
 
-    // Status penyelesaian encounter malam (Night Brawl).
-    // Diset false saat malam dimulai, dan diubah menjadi true saat seluruh wave malam dikalahkan.
+    // Night encounter (Night Brawl) completion state.
+    // Reset to false when night starts and set true when all night waves are cleared.
     public bool isNightEncounterCleared { get; set; } = false;
 
-    // Event sinyal (data-driven) untuk listener UI/backend lain.
+    // Data-driven event signals for UI and backend listeners.
     public static event Action<int> OnAnyDayChanged;
     public static event Action<DayPhase> OnAnyPhaseChanged;
     public event Action<int> OnDayChanged;
@@ -45,7 +44,7 @@ public class TimeManager : MonoBehaviour
 
     private void Awake()
     {
-        // Jaga hanya satu instance aktif; buang duplikat bila ada.
+        // Enforce single active instance; destroy duplicates if present.
         if (Instance != null && Instance != this)
         {
             Destroy(gameObject);
@@ -70,7 +69,7 @@ public class TimeManager : MonoBehaviour
     {
     }
 
-    // Transisi hari: pemain bangun di fase Day pada hari berikutnya.
+    // Day transition: player wakes up in Day phase on the next day.
     public void AdvanceToNextDay()
     {
         currentDay++;
@@ -85,7 +84,7 @@ public class TimeManager : MonoBehaviour
         Debug.Log($"Day changed to {currentDay}, Phase: {currentPhase}");
     }
 
-    // Memulai fase malam (dipanggil dari kasur saat siang atau dari spawner).
+    // Starts the night phase (invoked from bed during daytime or spawners).
     public void StartNightPhase()
     {
         if (currentPhase == DayPhase.Night)
@@ -99,7 +98,7 @@ public class TimeManager : MonoBehaviour
         Debug.Log($"Phase changed to {currentPhase} (Night Brawl begins!)");
     }
 
-    // Lompat ke fase malam; no-op bila sudah malam.
+    // Skips to night phase; no-op if already night.
     public void SkipToNight()
     {
         StartNightPhase();

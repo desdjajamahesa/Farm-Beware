@@ -312,34 +312,22 @@ namespace Features.Time.Atmosphere
 
             if (isDay)
             {
-                float dayDuration = sunsetHour - sunriseHour;
-                float normalizedDay = Mathf.Clamp01((hour - sunriseHour) / dayDuration);
+                var solar = EnvironmentLightingTheme.EvaluateSolarTrajectory(
+                    hour,
+                    sunriseHour,
+                    sunsetHour,
+                    sunriseAzimuth,
+                    sunsetAzimuth,
+                    minElevation,
+                    maxElevation,
+                    afternoonStartHour,
+                    noonKelvin,
+                    duskKelvin,
+                    kelvinFalloffExponent,
+                    minDayIntensity,
+                    maxDayIntensity);
 
-                // 1. Azimuth
-                float azimuth = Mathf.Lerp(sunriseAzimuth, sunsetAzimuth, normalizedDay);
-
-                // 2. Elevation
-                float elevationFactor = Mathf.Sin(normalizedDay * Mathf.PI);
-                float elevation = Mathf.Lerp(minElevation, maxElevation, elevationFactor);
-
-                // 3. Kelvin Color
-                float kelvin;
-                if (hour < afternoonStartHour)
-                {
-                    kelvin = noonKelvin;
-                }
-                else
-                {
-                    float afternoonDuration = sunsetHour - afternoonStartHour;
-                    float normalizedAfternoon = Mathf.Clamp01((hour - afternoonStartHour) / afternoonDuration);
-                    float expFactor = Mathf.Pow(normalizedAfternoon, kelvinFalloffExponent);
-                    kelvin = Mathf.Lerp(noonKelvin, duskKelvin, expFactor);
-                }
-
-                float intensity = Mathf.Lerp(minDayIntensity, maxDayIntensity, elevationFactor);
-                Color lightColor = EnvironmentLightingTheme.ConvertKelvinToRGB(kelvin);
-
-                ApplyLightParameters(elevation, azimuth, lightColor, intensity);
+                ApplyLightParameters(solar.Elevation, solar.Azimuth, solar.LightColor, solar.Intensity);
 
                 // Discrete ambient sync (06:00 to 17:00 is Day)
                 EnvironmentLightingTheme activeTheme = (hour < 6.0f) ? dawnTheme : ((hour > 17.0f) ? duskTheme : dayTheme);

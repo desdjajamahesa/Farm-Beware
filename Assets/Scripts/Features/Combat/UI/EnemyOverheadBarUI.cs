@@ -350,27 +350,7 @@ namespace FeaturesCombat.UI
 
         private static Sprite CreateRoundedBarSprite()
         {
-            int w = 32;
-            int h = 16;
-            Texture2D tex = new Texture2D(w, h, TextureFormat.RGBA32, false);
-            tex.filterMode = FilterMode.Bilinear;
-            tex.wrapMode = TextureWrapMode.Clamp;
-
-            Color solid = Color.white;
-            Color clear = new Color(0, 0, 0, 0);
-
-            for (int y = 0; y < h; y++)
-            {
-                for (int x = 0; x < w; x++)
-                {
-                    // Sudut melengkung halus 2px
-                    bool isCorner = (x <= 1 && y <= 1) || (x <= 1 && y >= h - 2) || (x >= w - 2 && y <= 1) || (x >= w - 2 && y >= h - 2);
-                    tex.SetPixel(x, y, isCorner ? clear : solid);
-                }
-            }
-
-            tex.Apply();
-            return Sprite.Create(tex, new Rect(0, 0, w, h), new Vector2(0.5f, 0.5f), 100f, 0, SpriteMeshType.FullRect, new Vector4(3, 3, 3, 3));
+            return FarmBeware.Core.Runtime.ProceduralUIAssetCache.GetRoundedBarSprite();
         }
 
         private void OnDisable()

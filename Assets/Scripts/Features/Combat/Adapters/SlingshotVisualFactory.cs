@@ -244,9 +244,7 @@ namespace FeaturesCombat.Adapters
 
         private static void EnsureMaterials()
         {
-            Shader shader = Shader.Find("Universal Render Pipeline/Lit")
-                         ?? Shader.Find("Universal Render Pipeline/Simple Lit")
-                         ?? Shader.Find("Standard");
+            Shader shader = FarmBeware.Core.Runtime.ShaderFallbackResolver.ResolveLitShader();
 
             if (_woodMaterial == null && shader != null)
             {

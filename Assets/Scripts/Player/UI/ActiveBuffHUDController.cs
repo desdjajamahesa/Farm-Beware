@@ -28,6 +28,10 @@ namespace PlayerUI
         [SerializeField] private Sprite attackSpeedBuffIcon;
 
         private static ActiveBuffHUDController instance;
+        private static Sprite _cachedFrameBg;
+        private static Sprite _cachedCooldownOverlay;
+        private static Sprite _cachedFrameBorder;
+        private static readonly Dictionary<BuffType, Sprite> _cachedFallbackIcons = new Dictionary<BuffType, Sprite>();
         private readonly List<BuffSlotUI> activeSlots = new List<BuffSlotUI>();
 
         private void Awake()
@@ -161,7 +165,8 @@ namespace PlayerUI
             bgRt.offsetMin = Vector2.zero;
             bgRt.offsetMax = Vector2.zero;
             Image bgImg = bgObj.GetComponent<Image>();
-            bgImg.sprite = Resources.Load<Sprite>("Icons/Buffs/Buff_Frame_Background");
+            if (_cachedFrameBg == null) _cachedFrameBg = Resources.Load<Sprite>("Icons/Buffs/Buff_Frame_Background");
+            bgImg.sprite = _cachedFrameBg;
             bgImg.type = Image.Type.Sliced;
             bgImg.color = Color.white;
 
@@ -185,7 +190,8 @@ namespace PlayerUI
             radialRt.offsetMin = Vector2.zero;
             radialRt.offsetMax = Vector2.zero;
             Image radialImg = radialObj.GetComponent<Image>();
-            radialImg.sprite = Resources.Load<Sprite>("Icons/Buffs/Buff_Cooldown_Overlay");
+            if (_cachedCooldownOverlay == null) _cachedCooldownOverlay = Resources.Load<Sprite>("Icons/Buffs/Buff_Cooldown_Overlay");
+            radialImg.sprite = _cachedCooldownOverlay;
             radialImg.type = Image.Type.Filled;
             radialImg.fillMethod = Image.FillMethod.Radial360;
             radialImg.fillOrigin = (int)Image.Origin360.Top;
@@ -201,7 +207,8 @@ namespace PlayerUI
             borderRt.offsetMin = Vector2.zero;
             borderRt.offsetMax = Vector2.zero;
             Image borderImg = borderObj.GetComponent<Image>();
-            borderImg.sprite = Resources.Load<Sprite>("Icons/Buffs/Buff_Frame_Border");
+            if (_cachedFrameBorder == null) _cachedFrameBorder = Resources.Load<Sprite>("Icons/Buffs/Buff_Frame_Border");
+            borderImg.sprite = _cachedFrameBorder;
             borderImg.type = Image.Type.Sliced;
             borderImg.color = Color.white;
             borderImg.raycastTarget = false;
@@ -267,7 +274,12 @@ namespace PlayerUI
                 if (instIcon != null) return instIcon;
             }
 
-            return type switch
+            if (_cachedFallbackIcons.TryGetValue(type, out Sprite cached) && cached != null)
+            {
+                return cached;
+            }
+
+            Sprite loaded = type switch
             {
                 BuffType.MaxHealthPercent => Resources.Load<Sprite>("Icons/Buffs/Icon_Buff_Heart"),
                 BuffType.HealthRegenTick or BuffType.HealthRegenPercent => Resources.Load<Sprite>("Icons/Buffs/Icon_Buff_HealthRegen") ?? Resources.Load<Sprite>("Icons/Buffs/Icon_Buff_Heart"),
@@ -278,6 +290,13 @@ namespace PlayerUI
                 BuffType.AttackSpeedPercent => Resources.Load<Sprite>("Icons/Buffs/Icon_Buff_AttackSpeed"),
                 _ => null
             };
+
+            if (loaded != null)
+            {
+                _cachedFallbackIcons[type] = loaded;
+            }
+
+            return loaded;
         }
     }
 }

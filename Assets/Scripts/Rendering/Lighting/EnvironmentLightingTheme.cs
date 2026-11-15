@@ -189,12 +189,77 @@ namespace FeaturesRendering.Lighting
         }
 
         /// <summary>
-        /// Menghitung warna akhir directional light dengan menggabungkan temperatur Kelvin dan Color Filter.
+        /// Computes the final directional light color by multiplying the Kelvin temperature color and Color Filter.
         /// </summary>
         public Color GetEvaluatedLightColor()
         {
             Color kelvinRgb = ConvertKelvinToRGB(colorTemperatureKelvin);
             return kelvinRgb * lightColorFilter;
+        }
+
+        /// <summary>
+        /// Immutable pure-value result produced by <see cref="EvaluateSolarTrajectory"/>.
+        /// </summary>
+        public readonly struct SolarEvaluationResult
+        {
+            public readonly float Azimuth;
+            public readonly float Elevation;
+            public readonly float Kelvin;
+            public readonly float Intensity;
+            public readonly Color LightColor;
+
+            public SolarEvaluationResult(float azimuth, float elevation, float kelvin, float intensity, Color lightColor)
+            {
+                Azimuth = azimuth;
+                Elevation = elevation;
+                Kelvin = kelvin;
+                Intensity = intensity;
+                LightColor = lightColor;
+            }
+        }
+
+        /// <summary>
+        /// Evaluates directional sun azimuth, sinusoidal elevation, afternoon Kelvin warmth curve, intensity, and RGB color.
+        /// Pure Zero-GC helper shared by runtime atmosphere directors and sun lighting observers.
+        /// </summary>
+        public static SolarEvaluationResult EvaluateSolarTrajectory(
+            float hour,
+            float sunriseHour,
+            float sunsetHour,
+            float sunriseAzimuth,
+            float sunsetAzimuth,
+            float minElevation,
+            float maxElevation,
+            float afternoonStartHour,
+            float noonKelvin,
+            float duskKelvin,
+            float kelvinFalloffExponent,
+            float minDayIntensity,
+            float maxDayIntensity)
+        {
+            float dayDuration = Mathf.Max(0.0001f, sunsetHour - sunriseHour);
+            float normalizedDay = Mathf.Clamp01((hour - sunriseHour) / dayDuration);
+
+            float azimuth = Mathf.Lerp(sunriseAzimuth, sunsetAzimuth, normalizedDay);
+            float elevationFactor = Mathf.Sin(normalizedDay * Mathf.PI);
+            float elevation = Mathf.Lerp(minElevation, maxElevation, elevationFactor);
+
+            float kelvin;
+            if (hour < afternoonStartHour)
+            {
+                kelvin = noonKelvin;
+            }
+            else
+            {
+                float afternoonDuration = Mathf.Max(0.0001f, sunsetHour - afternoonStartHour);
+                float normalizedAfternoon = Mathf.Clamp01((hour - afternoonStartHour) / afternoonDuration);
+                float expFactor = Mathf.Pow(normalizedAfternoon, kelvinFalloffExponent);
+                kelvin = Mathf.Lerp(noonKelvin, duskKelvin, expFactor);
+            }
+
+            float intensity = Mathf.Lerp(minDayIntensity, maxDayIntensity, elevationFactor);
+            Color lightColor = ConvertKelvinToRGB(kelvin);
+            return new SolarEvaluationResult(azimuth, elevation, kelvin, intensity, lightColor);
         }
 
         #endregion

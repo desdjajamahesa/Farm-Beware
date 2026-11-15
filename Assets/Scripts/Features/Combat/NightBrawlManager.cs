@@ -14,6 +14,16 @@ namespace FeaturesCombat
     /// </summary>
     public class NightBrawlManager : MonoBehaviour
     {
+        public enum NightEncounterPhase
+        {
+            DaytimeDormant,
+            WaitingForCutscene,
+            SpawningWave,
+            WaveCombatActive,
+            InterWaveRest,
+            EncounterCleared
+        }
+
         private static NightBrawlManager _instance;
         public static NightBrawlManager Instance
         {
@@ -52,23 +62,33 @@ namespace FeaturesCombat
         public Transform[] FrontGateSpawnTransforms => frontGateSpawnTransforms;
         public float SpawnScatterRadius => spawnScatterRadius;
 
+        private Transform _cachedMonsterSpawnPointsRoot;
+
         /// <summary>
-        /// Mengumpulkan seluruh titik spawn aktif dari MonsterSpawnPoints (dan children-nya) atau frontGateSpawnTransforms.
-        /// Menghormati 100% posisi yang ditentukan user di scene.
+        /// Collects all active spawn points from MonsterSpawnPoints (and its children) or frontGateSpawnTransforms.
+        /// Respects 100% of scene-configured spawn positions.
         /// </summary>
         public List<Vector3> GetAllActiveSpawnPoints()
         {
             var points = new List<Vector3>();
 
-            // 1. Cek dari GameObject MonsterSpawnPoints di hierarki scene
-            var mspObj = GameObject.Find("MonsterSpawnPoints");
-            if (mspObj != null)
+            // 1. Resolve and cache MonsterSpawnPoints root transform in the scene hierarchy
+            if (_cachedMonsterSpawnPointsRoot == null)
             {
-                if (mspObj.transform.childCount > 0)
+                var mspObj = GameObject.Find("MonsterSpawnPoints");
+                if (mspObj != null)
                 {
-                    for (int i = 0; i < mspObj.transform.childCount; i++)
+                    _cachedMonsterSpawnPointsRoot = mspObj.transform;
+                }
+            }
+
+            if (_cachedMonsterSpawnPointsRoot != null && _cachedMonsterSpawnPointsRoot.gameObject.activeInHierarchy)
+            {
+                if (_cachedMonsterSpawnPointsRoot.childCount > 0)
+                {
+                    for (int i = 0; i < _cachedMonsterSpawnPointsRoot.childCount; i++)
                     {
-                        var child = mspObj.transform.GetChild(i);
+                        var child = _cachedMonsterSpawnPointsRoot.GetChild(i);
                         if (child != null && child.gameObject.activeInHierarchy)
                         {
                             points.Add(child.position);
@@ -77,11 +97,11 @@ namespace FeaturesCombat
                 }
                 else
                 {
-                    points.Add(mspObj.transform.position);
+                    points.Add(_cachedMonsterSpawnPointsRoot.position);
                 }
             }
 
-            // 2. Jika tidak ada / kosong, cek frontGateSpawnTransforms yang di-assign di inspector
+            // 2. Fallback to Inspector-assigned frontGateSpawnTransforms if none were found
             if (points.Count == 0 && frontGateSpawnTransforms != null && frontGateSpawnTransforms.Length > 0)
             {
                 for (int i = 0; i < frontGateSpawnTransforms.Length; i++)
@@ -149,6 +169,19 @@ namespace FeaturesCombat
 
         public bool HasNight1CutscenePlayed => _hasNight1CutscenePlayed;
         public bool IsOverdriveNightActive { get; private set; }
+
+        public NightEncounterPhase CurrentEncounterPhase
+        {
+            get
+            {
+                if (_night1CutsceneWaitingRoutine != null) return NightEncounterPhase.WaitingForCutscene;
+                if (isSpawningWave) return NightEncounterPhase.SpawningWave;
+                if (intermissionCoroutine != null) return NightEncounterPhase.InterWaveRest;
+                if (isWaveInProgress || activeEnemies.Count > 0) return NightEncounterPhase.WaveCombatActive;
+                if (currentWave >= totalWaves && totalWaves > 0 && currentWave > 0) return NightEncounterPhase.EncounterCleared;
+                return NightEncounterPhase.DaytimeDormant;
+            }
+        }
 
         public void SetOverdriveNightActive(bool active)
         {

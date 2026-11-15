@@ -16,6 +16,24 @@ public class ItemDatabase : ScriptableObject, IItemCatalog
         _customCatalog = catalog;
     }
 
+    /// <summary>
+    /// Resolves the active item catalog from custom injection, ServiceLocator, or the singleton asset.
+    /// </summary>
+    public static IItemCatalog ResolveCatalog()
+    {
+        return _customCatalog ?? ServiceLocator.Resolve<IItemCatalog>() ?? Instance;
+    }
+
+    /// <summary>
+    /// Resolves an item by ID through the active unified item catalog.
+    /// </summary>
+    public static ItemData ResolveItem(string itemId)
+    {
+        if (string.IsNullOrEmpty(itemId)) return null;
+        IItemCatalog catalog = ResolveCatalog();
+        return catalog != null ? catalog.GetItem(itemId) : null;
+    }
+
     private static ItemDatabase _instance;
     public static ItemDatabase Instance
     {
@@ -24,6 +42,10 @@ public class ItemDatabase : ScriptableObject, IItemCatalog
             if (_instance == null)
             {
                 _instance = Resources.Load<ItemDatabase>("Database/ItemDatabase");
+            }
+            if (_instance != null && ServiceLocator.Resolve<IItemCatalog>() == null)
+            {
+                ServiceLocator.Register<IItemCatalog>(_instance);
             }
             return _instance;
         }
@@ -87,6 +109,10 @@ public class ItemDatabase : ScriptableObject, IItemCatalog
             }
         }
         isInitialized = true;
+        if (ServiceLocator.Resolve<IItemCatalog>() == null)
+        {
+            ServiceLocator.Register<IItemCatalog>(this);
+        }
     }
 
     public ItemData GetItem(string itemId)
@@ -132,7 +158,7 @@ public class ItemDatabase : ScriptableObject, IItemCatalog
             }
         }
 
-        Debug.LogWarning($"[ItemDatabase] Item dengan ID '{itemId}' tidak ditemukan di database!");
+        Debug.LogWarning($"[ItemDatabase] Item with ID '{itemId}' was not found in the database!");
         return null;
     }
 

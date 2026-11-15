@@ -278,41 +278,27 @@ namespace FeaturesRendering.Lighting
             if (hour >= sunriseHour && hour <= sunsetHour)
             {
                 isDaytime = true;
-                float dayDuration = sunsetHour - sunriseHour;
-                float normalizedDay = Mathf.Clamp01((hour - sunriseHour) / dayDuration);
+                var solar = EnvironmentLightingTheme.EvaluateSolarTrajectory(
+                    hour,
+                    sunriseHour,
+                    sunsetHour,
+                    sunriseAzimuth,
+                    sunsetAzimuth,
+                    minElevation,
+                    maxElevation,
+                    afternoonStartHour,
+                    noonKelvin,
+                    duskKelvin,
+                    kelvinFalloffExponent,
+                    minDayIntensity,
+                    maxIntensity);
 
-                // 1. Azimuth: Pergerakan linear dari sunriseAzimuth (135°) ke sunsetAzimuth (225°)
-                currentAzimuth = Mathf.Lerp(sunriseAzimuth, sunsetAzimuth, normalizedDay);
+                currentAzimuth = solar.Azimuth;
+                currentElevation = solar.Elevation;
+                currentKelvin = solar.Kelvin;
+                currentIntensity = solar.Intensity;
+                currentEvaluatedColor = solar.LightColor;
 
-                // 2. Elevasi (Altitude): Kurva sinus halus dari cakrawala -> puncak tengah hari -> cakrawala
-                // sin(0) = 0, sin(pi/2) = 1 (tengah hari), sin(pi) = 0
-                float elevationFactor = Mathf.Sin(normalizedDay * Mathf.PI);
-                currentElevation = Mathf.Lerp(minElevation, maxElevation, elevationFactor);
-
-                // 3. Suhu Kelvin: Penurunan eksponensial di sore hari (5500K -> 3200K)
-                if (hour < afternoonStartHour)
-                {
-                    // Pagi s/d Siang Puncak: Suhu daylight netral stabil (5500K)
-                    currentKelvin = noonKelvin;
-                }
-                else
-                {
-                    // Sore ke Senja: Penurunan eksponensial akibat hamburan Rayleigh
-                    float afternoonDuration = sunsetHour - afternoonStartHour;
-                    float normalizedAfternoon = Mathf.Clamp01((hour - afternoonStartHour) / afternoonDuration);
-
-                    // t^p: penurunan lambat di awal sore, lalu melandai curam ke oranye hangat di senja
-                    float expFactor = Mathf.Pow(normalizedAfternoon, kelvinFalloffExponent);
-                    currentKelvin = Mathf.Lerp(noonKelvin, duskKelvin, expFactor);
-                }
-
-                // 4. Intensitas Matahari: Mengikuti elevasi matahari di langit
-                currentIntensity = Mathf.Lerp(minDayIntensity, maxIntensity, elevationFactor);
-
-                // Evaluasi warna RGB dari Kelvin
-                currentEvaluatedColor = EnvironmentLightingTheme.ConvertKelvinToRGB(currentKelvin);
-
-                // Terapkan ke Directional Light
                 ApplyToLight(currentElevation, currentAzimuth, currentEvaluatedColor, currentIntensity);
             }
             else

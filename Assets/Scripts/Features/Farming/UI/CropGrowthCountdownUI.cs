@@ -220,7 +220,11 @@ namespace FeaturesFarming
         {
             if (indicatorGO != null)
             {
-                Destroy(indicatorGO);
+                if (Application.isPlaying)
+                    Destroy(indicatorGO);
+                else
+                    DestroyImmediate(indicatorGO);
+                indicatorGO = null;
             }
         }
 
@@ -228,6 +232,15 @@ namespace FeaturesFarming
         {
             Transform parentContainer = GetOrCreateContainer();
             if (parentContainer == null) return;
+
+            if (indicatorGO != null)
+            {
+                if (Application.isPlaying)
+                    Destroy(indicatorGO);
+                else
+                    DestroyImmediate(indicatorGO);
+                indicatorGO = null;
+            }
 
             // Root Screen Indicator GO
             indicatorGO = new GameObject($"CropCountdown_{gameObject.name}", typeof(RectTransform));
@@ -379,51 +392,8 @@ namespace FeaturesFarming
         private static void EnsureSprites()
         {
             if (cachedCircleSprite != null && cachedRingSprite != null) return;
-
-            int size = 128;
-            float radius = (size - 2) * 0.5f;
-            float innerRadius = radius * 0.72f;
-            Vector2 center = new Vector2(size * 0.5f, size * 0.5f);
-
-            // 1. Circle disk texture
-            Texture2D circleTex = new Texture2D(size, size, TextureFormat.RGBA32, false);
-            circleTex.wrapMode = TextureWrapMode.Clamp;
-            circleTex.filterMode = FilterMode.Bilinear;
-
-            Color[] circlePixels = new Color[size * size];
-            for (int y = 0; y < size; y++)
-            {
-                for (int x = 0; x < size; x++)
-                {
-                    float dist = Vector2.Distance(new Vector2(x, y), center);
-                    float alpha = Mathf.Clamp01((radius - dist) + 0.5f);
-                    circlePixels[y * size + x] = new Color(1f, 1f, 1f, alpha);
-                }
-            }
-            circleTex.SetPixels(circlePixels);
-            circleTex.Apply();
-            cachedCircleSprite = Sprite.Create(circleTex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), 100f);
-
-            // 2. Ring texture (for radial fill border)
-            Texture2D ringTex = new Texture2D(size, size, TextureFormat.RGBA32, false);
-            ringTex.wrapMode = TextureWrapMode.Clamp;
-            ringTex.filterMode = FilterMode.Bilinear;
-
-            Color[] ringPixels = new Color[size * size];
-            for (int y = 0; y < size; y++)
-            {
-                for (int x = 0; x < size; x++)
-                {
-                    float dist = Vector2.Distance(new Vector2(x, y), center);
-                    float outerAlpha = Mathf.Clamp01((radius - dist) + 0.5f);
-                    float innerAlpha = Mathf.Clamp01((dist - innerRadius) + 0.5f);
-                    float ringAlpha = Mathf.Min(outerAlpha, innerAlpha);
-                    ringPixels[y * size + x] = new Color(1f, 1f, 1f, ringAlpha);
-                }
-            }
-            ringTex.SetPixels(ringPixels);
-            ringTex.Apply();
-            cachedRingSprite = Sprite.Create(ringTex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), 100f);
+            cachedCircleSprite = ProceduralUIAssetCache.GetCircleSprite();
+            cachedRingSprite = ProceduralUIAssetCache.GetRingSprite();
         }
     }
 }

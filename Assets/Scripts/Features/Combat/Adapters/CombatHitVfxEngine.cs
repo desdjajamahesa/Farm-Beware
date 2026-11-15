@@ -98,6 +98,15 @@ namespace FeaturesCombat.Adapters
         {
             if (_sparkParticleSystem == null)
             {
+                var existingSpark = transform.Find("HitSparkEmitter");
+                if (existingSpark != null)
+                {
+                    _sparkParticleSystem = existingSpark.GetComponent<ParticleSystem>();
+                }
+            }
+
+            if (_sparkParticleSystem == null)
+            {
                 var sparkGo = new GameObject("HitSparkEmitter");
                 sparkGo.transform.SetParent(transform, false);
                 _sparkParticleSystem = sparkGo.AddComponent<ParticleSystem>();
@@ -134,7 +143,7 @@ namespace FeaturesCombat.Adapters
                 var renderer = sparkGo.GetComponent<ParticleSystemRenderer>();
                 if (_sharedSparkMaterial == null)
                 {
-                    Shader s = Shader.Find("Universal Render Pipeline/Particles/Unlit") ?? Shader.Find("Sprites/Default");
+                    Shader s = FarmBeware.Core.Runtime.ShaderFallbackResolver.ResolveParticleUnlitShader();
                     if (s != null)
                     {
                         _sharedSparkMaterial = new Material(s);
@@ -144,6 +153,15 @@ namespace FeaturesCombat.Adapters
                 if (_sharedSparkMaterial != null)
                 {
                     renderer.material = _sharedSparkMaterial;
+                }
+            }
+
+            if (_defeatParticleSystem == null)
+            {
+                var existingDefeat = transform.Find("DefeatBurstEmitter");
+                if (existingDefeat != null)
+                {
+                    _defeatParticleSystem = existingDefeat.GetComponent<ParticleSystem>();
                 }
             }
 
