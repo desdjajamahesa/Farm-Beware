@@ -206,7 +206,7 @@ public class SinkManager : MonoBehaviour
 
         var player = ServiceLocator.Resolve<IPlayerContext>();
         if (player != null)
-            player.IsInputLocked = false;
+            player.RemoveInputLock("KitchenSinkUI");
 
         gameObject.SetActive(false);
     }

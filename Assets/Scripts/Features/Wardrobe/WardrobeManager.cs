@@ -89,11 +89,6 @@ namespace FeaturesWardrobe
         [Tooltip("Animator on the chest lid (child 'lid' of Wardrobe). Controls open/close animation via 'IsOpen' bool.")]
         [SerializeField] private Animator chestLidAnimator;
 
-#pragma warning disable 0414
-        [Header("Debug")]
-        [SerializeField] private bool debugCameraAudit = false;
-#pragma warning restore 0414
-
         private bool isInWardrobeMode;
         private static bool _isInWardrobeMode;
         public static bool IsInWardrobeMode
@@ -253,7 +248,7 @@ namespace FeaturesWardrobe
 
                     // Lock input and cursor manually
                     if (PlayerContext != null)
-                        PlayerContext.IsInputLocked = true;
+                        PlayerContext.AddInputLock("CameraModeLock");
 
                     Cursor.lockState = CursorLockMode.None;
                     Cursor.visible = true;
@@ -406,8 +401,8 @@ namespace FeaturesWardrobe
             {
                 if (PlayerContext != null)
                 {
-                    PlayerContext.IsInputLocked = false;
-                    UnityEngine.Debug.Log("[DEBUG] Forcefully unlocked PlayerContext.IsInputLocked.");
+                    PlayerContext.RemoveInputLock("CameraModeLock");
+                    UnityEngine.Debug.Log("[DEBUG] Forcefully unlocked PlayerContext CameraModeLock.");
                 }
             }
             catch (System.Exception e)

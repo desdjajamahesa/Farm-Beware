@@ -178,6 +178,7 @@ public class PlayerRespawnController : MonoBehaviour
         isDefeated = false;
 
         // Pulihkan kecepatan simulasi game
+        UIModalHelper.RemovePauseLock("DeathScreenUI");
         Time.timeScale = 1f;
 
         // Kunci input kontrol pemain selama transisi respawn

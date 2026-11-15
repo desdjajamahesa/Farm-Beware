@@ -198,9 +198,9 @@ public class StoveUIManager : MonoBehaviour, IModalWindow
 
         // Ensure player movement lock is safely released if panel is disabled externally
         var playerControl = ServiceLocator.Resolve<IPlayerContext>();
-        if (playerControl != null && playerControl.IsInputLocked)
+        if (playerControl != null)
         {
-            playerControl.IsInputLocked = false;
+            playerControl.RemoveInputLock("StoveUI");
         }
 
         Cursor.visible = true;
@@ -295,7 +295,7 @@ public class StoveUIManager : MonoBehaviour, IModalWindow
         // Lock player input
         var playerControl = ServiceLocator.Resolve<IPlayerContext>();
         if (playerControl != null)
-            playerControl.IsInputLocked = true;
+            playerControl.AddInputLock("StoveUI");
     }
 
     /// <summary>Closes the stove panel without cancelling background cooking.</summary>
@@ -330,7 +330,7 @@ public class StoveUIManager : MonoBehaviour, IModalWindow
         // Unlock player input
         var playerClose = ServiceLocator.Resolve<IPlayerContext>();
         if (playerClose != null)
-            playerClose.IsInputLocked = false;
+            playerClose.RemoveInputLock("StoveUI");
 
         ModalStackManager.Instance?.PopSpecific(this);
     }

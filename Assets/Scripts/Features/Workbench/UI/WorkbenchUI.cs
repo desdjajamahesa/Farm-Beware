@@ -240,7 +240,7 @@ namespace FeaturesWorkbench.UI
 
             if (PlayerContext != null)
             {
-                PlayerContext.IsInputLocked = true;
+                PlayerContext.AddInputLock("WorkbenchUI");
                 PlayerContext.StopMovement();
             }
 
@@ -268,7 +268,7 @@ namespace FeaturesWorkbench.UI
 
             if (PlayerContext != null)
             {
-                PlayerContext.IsInputLocked = false;
+                PlayerContext.RemoveInputLock("WorkbenchUI");
             }
 
             UIModalHelper.LastFrameUIPanelClosed = Time.frameCount;

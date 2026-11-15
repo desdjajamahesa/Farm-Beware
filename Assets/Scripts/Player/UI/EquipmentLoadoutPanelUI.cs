@@ -205,9 +205,9 @@ namespace PlayerUI
             // 4. Sweet Potato Set Bonus Tracker Card (y: -266 to -378, height 112)
             var setCard = CreatePanel(containerRt, "SetBonusCard", new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -266f), new Vector2(0f, 112f), new Color(0.12f, 0.13f, 0.18f, 0.96f));
             setHeaderCountText = CreateText(setCard.transform, "SetHeader", "SWEET POTATO COMBAT SET [0/5]", font, 10, FontStyle.Bold, TextAnchor.MiddleCenter, new Color(0.96f, 0.78f, 0.32f, 1f), new Vector2(0f, -5f), new Vector2(-8f, 18f));
-            setTier2Text = CreateText(setCard.transform, "SetTier2", "◇ [2-PC] +10% Attack Speed", font, 9, FontStyle.Normal, TextAnchor.MiddleLeft, TierInactiveColor, new Vector2(4f, -30f), new Vector2(-12f, 22f));
-            setTier4Text = CreateText(setCard.transform, "SetTier4", "◇ [4-PC] +15% Post-Dodge Dmg (3s)", font, 9, FontStyle.Normal, TextAnchor.MiddleLeft, TierInactiveColor, new Vector2(4f, -56f), new Vector2(-12f, 22f));
-            setTier5Text = CreateText(setCard.transform, "SetTier5", "◇ [5-PC] Shadow Dash Reset", font, 9, FontStyle.Normal, TextAnchor.MiddleLeft, TierInactiveColor, new Vector2(4f, -82f), new Vector2(-12f, 22f));
+            setTier2Text = CreateText(setCard.transform, "SetTier2", "o [2-PC] +10% Attack Speed", font, 9, FontStyle.Normal, TextAnchor.MiddleLeft, TierInactiveColor, new Vector2(4f, -30f), new Vector2(-12f, 22f));
+            setTier4Text = CreateText(setCard.transform, "SetTier4", "o [4-PC] +15% Post-Dodge Dmg (3s)", font, 9, FontStyle.Normal, TextAnchor.MiddleLeft, TierInactiveColor, new Vector2(4f, -56f), new Vector2(-12f, 22f));
+            setTier5Text = CreateText(setCard.transform, "SetTier5", "o [5-PC] Shadow Dash Reset", font, 9, FontStyle.Normal, TextAnchor.MiddleLeft, TierInactiveColor, new Vector2(4f, -82f), new Vector2(-12f, 22f));
 
             // 5. Bottom Slot Inspector & Action Hint Footer (y: -382 to -452, height 70)
             var footerCard = CreatePanel(containerRt, "InspectorFooter", new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -382f), new Vector2(0f, 70f), new Color(0.15f, 0.14f, 0.19f, 0.98f));
@@ -407,8 +407,8 @@ namespace PlayerUI
             {
                 bool active2 = count >= 2;
                 setTier2Text.text = active2
-                    ? "◆ [2-PC] +10% Attack Speed  [ACTIVE]"
-                    : "◇ [2-PC] +10% Attack Speed";
+                    ? "• [2-PC] +10% Attack Speed  [ACTIVE]"
+                    : "o [2-PC] +10% Attack Speed";
                 setTier2Text.color = active2 ? TierActiveEmeraldColor : TierInactiveColor;
                 setTier2Text.fontStyle = active2 ? FontStyle.Bold : FontStyle.Normal;
             }
@@ -417,8 +417,8 @@ namespace PlayerUI
             {
                 bool active4 = count >= 4;
                 setTier4Text.text = active4
-                    ? "◆ [4-PC] +15% Post-Dodge Surge Dmg  [ACTIVE]"
-                    : "◇ [4-PC] +15% Post-Dodge Surge Dmg (3s)";
+                    ? "• [4-PC] +15% Post-Dodge Surge Dmg  [ACTIVE]"
+                    : "o [4-PC] +15% Post-Dodge Surge Dmg (3s)";
                 setTier4Text.color = active4 ? TierActiveEmeraldColor : TierInactiveColor;
                 setTier4Text.fontStyle = active4 ? FontStyle.Bold : FontStyle.Normal;
             }
@@ -427,8 +427,8 @@ namespace PlayerUI
             {
                 bool active5 = count >= 5;
                 setTier5Text.text = active5
-                    ? "◆ [5-PC] Shadow Dash Cooldown Reset  [MAX SET]"
-                    : "◇ [5-PC] Shadow Dash Cooldown Reset";
+                    ? "• [5-PC] Shadow Dash Cooldown Reset  [MAX SET]"
+                    : "o [5-PC] Shadow Dash Cooldown Reset";
                 setTier5Text.color = active5 ? TierActiveGoldColor : TierInactiveColor;
                 setTier5Text.fontStyle = active5 ? FontStyle.Bold : FontStyle.Normal;
             }

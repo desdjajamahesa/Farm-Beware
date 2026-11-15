@@ -17,6 +17,14 @@ namespace FeaturesCommon
     [DisallowMultipleComponent]
     public class CloudTransitionManager : MonoBehaviour
     {
+        public enum CloudTransitionPhase
+        {
+            UncoveredIdle,
+            ClosingToCover,
+            CoveredHolding,
+            OpeningToReveal
+        }
+
         public static CloudTransitionManager Instance { get; private set; }
 
         [Header("Cinematic Timing Settings")]
@@ -76,12 +84,14 @@ namespace FeaturesCommon
 
         private AudioSource audioSource;
         private Coroutine activeTransitionCoroutine;
+        private CloudTransitionPhase _currentPhase = CloudTransitionPhase.UncoveredIdle;
         private bool isCoveringScreen = false;
         private bool isTransitioning = false;
         private bool isTransitioningToScene = false;
         private bool shouldRevealOnReady = false;
         private float idleTimer = 0f;
 
+        public CloudTransitionPhase CurrentPhase => _currentPhase;
         public bool IsTransitioning => isTransitioning;
         public bool IsScreenCovered => isCoveringScreen;
 
@@ -533,6 +543,7 @@ namespace FeaturesCommon
 
         private IEnumerator RoutinePlayCover(float duration, Action onComplete)
         {
+            _currentPhase = CloudTransitionPhase.ClosingToCover;
             isTransitioning = true;
             LockPlayer();
             canvasGroup.alpha = 1f;
@@ -553,6 +564,7 @@ namespace FeaturesCommon
             SetCloudProgress(1f, 0f);
             isCoveringScreen = true;
             isTransitioning = false;
+            _currentPhase = CloudTransitionPhase.CoveredHolding;
             activeTransitionCoroutine = null;
 
             onComplete?.Invoke();
@@ -560,6 +572,7 @@ namespace FeaturesCommon
 
         private IEnumerator RoutinePlayReveal(float duration, Action onComplete)
         {
+            _currentPhase = CloudTransitionPhase.OpeningToReveal;
             isTransitioning = true;
             canvasGroup.alpha = 1f;
             canvasGroup.blocksRaycasts = true;
@@ -584,6 +597,7 @@ namespace FeaturesCommon
             canvasGroup.blocksRaycasts = false;
             isCoveringScreen = false;
             isTransitioning = false;
+            _currentPhase = CloudTransitionPhase.UncoveredIdle;
             activeTransitionCoroutine = null;
             UnlockPlayer();
 

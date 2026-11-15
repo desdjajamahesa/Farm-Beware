@@ -114,7 +114,7 @@ namespace FeaturesCamera
             Cursor.visible = true;
             var player = ServiceLocator.Resolve<IPlayerContext>();
             if (player != null)
-                player.IsInputLocked = false;
+                player.RemoveInputLock("CameraModeLock");
         }
 
         private void OnDestroy()
@@ -246,7 +246,7 @@ namespace FeaturesCamera
             var player = ServiceLocator.Resolve<IPlayerContext>();
             if (player != null)
             {
-                player.IsInputLocked = false;
+                player.RemoveInputLock("CameraModeLock");
                 Debug.Log("[DEBUG] CameraManager successfully unlocked player input.");
             }
             else
@@ -298,7 +298,7 @@ namespace FeaturesCamera
             // Lock input, free cursor
             var player = ServiceLocator.Resolve<IPlayerContext>();
             if (player != null)
-                player.IsInputLocked = true;
+                player.AddInputLock("CameraModeLock");
 
             Cursor.lockState = CursorLockMode.None;
             Cursor.visible = true;
@@ -336,7 +336,7 @@ namespace FeaturesCamera
             // Lock input, free cursor
             var player = ServiceLocator.Resolve<IPlayerContext>();
             if (player != null)
-                player.IsInputLocked = true;
+                player.AddInputLock("CameraModeLock");
 
             Cursor.lockState = CursorLockMode.None;
             Cursor.visible = true;

@@ -72,8 +72,9 @@ public class MainMenuController : MonoBehaviour
     private Camera mainCamera;
     private Vector3 cameraOriginalPos;
 
-    private enum MenuState { Hidden, FadingIn, Active, SettingsOpening, SettingsOpen, SettingsClosing, FadingOut }
+    public enum MenuState { Hidden, FadingIn, Active, SettingsOpening, SettingsOpen, SettingsClosing, FadingOut }
     private MenuState currentState = MenuState.Hidden;
+    public MenuState CurrentMenuState => currentState;
     private float stateTimer = 0f;
     private float stateDuration = 0f;
 
@@ -193,7 +194,7 @@ public class MainMenuController : MonoBehaviour
         {
             isReturningToMainMenu = false;
             hasStartedGame = false;
-            Time.timeScale = 1f;
+            FarmBeware.Core.Runtime.UIModalHelper.ClearAllPauseLocks();
             LockPlayerInput(false);
             Cursor.visible = true;
             Cursor.lockState = CursorLockMode.None;
@@ -213,7 +214,7 @@ public class MainMenuController : MonoBehaviour
             currentState = MenuState.Hidden;
             SetMenuVisualsActive(false);
             LockPlayerInput(false);
-            Time.timeScale = 1f;
+            FarmBeware.Core.Runtime.UIModalHelper.RemovePauseLock("PauseMenu");
 
             if (FadeManager.Instance != null && FadeManager.Instance.IsFading)
             {
@@ -286,6 +287,17 @@ public class MainMenuController : MonoBehaviour
         // If Main Menu is currently active
         if (currentState == MenuState.Active)
         {
+            // Do not resume Pause Menu if a sub-modal (such as SaveSystemUI) is currently open or was just dismissed this frame
+            if (Time.frameCount == LastFrameUIPanelClosed ||
+                Time.frameCount == FarmBeware.Core.Runtime.UIModalHelper.LastFrameUIPanelClosed ||
+                FarmBeware.Core.Runtime.UIModalHelper.IsSaveUIOpen ||
+                (FarmBeware.Core.Runtime.ModalStackManager.HasInstance &&
+                 FarmBeware.Core.Runtime.ModalStackManager.Instance != null &&
+                 FarmBeware.Core.Runtime.ModalStackManager.Instance.HasActiveModal))
+            {
+                return;
+            }
+
             if (hasStartedGame)
             {
                 ResumeGame();
@@ -502,7 +514,7 @@ public class MainMenuController : MonoBehaviour
         {
             SetMenuVisualsActive(false);
             LockPlayerInput(false);
-            Time.timeScale = 1f;
+            FarmBeware.Core.Runtime.UIModalHelper.RemovePauseLock("PauseMenu");
             if (mainCamera != null)
                 mainCamera.transform.position = cameraOriginalPos;
             currentState = MenuState.Hidden;
@@ -714,7 +726,14 @@ public class MainMenuController : MonoBehaviour
         gameObject.SetActive(true);
         transform.SetAsLastSibling();
 
-        Time.timeScale = isPause ? 0f : 1f;
+        if (isPause)
+        {
+            FarmBeware.Core.Runtime.UIModalHelper.AddPauseLock("PauseMenu");
+        }
+        else
+        {
+            FarmBeware.Core.Runtime.UIModalHelper.RemovePauseLock("PauseMenu");
+        }
 
         SetMenuVisualsActive(true);
         UpdateStartButtonLabel();
@@ -937,7 +956,7 @@ public class MainMenuController : MonoBehaviour
         hasStartedGame = true;
         menuActive = false;
         currentState = MenuState.Hidden;
-        Time.timeScale = 1f;
+        FarmBeware.Core.Runtime.UIModalHelper.RemovePauseLock("PauseMenu");
         LockPlayerInput(false);
 
         if (menuCanvasGroup != null)
@@ -1070,7 +1089,7 @@ public class MainMenuController : MonoBehaviour
 
     private void ExecuteNewGame()
     {
-        Time.timeScale = 1f;
+        FarmBeware.Core.Runtime.UIModalHelper.ClearAllPauseLocks();
         LockPlayerInput(false);
         menuActive = false;
         currentState = MenuState.Hidden;
@@ -1109,7 +1128,7 @@ public class MainMenuController : MonoBehaviour
         if (isReturningToMainMenu) return;
         isReturningToMainMenu = true;
 
-        Time.timeScale = 1f;
+        FarmBeware.Core.Runtime.UIModalHelper.ClearAllPauseLocks();
         LockPlayerInput(false);
         Cursor.visible = true;
         Cursor.lockState = CursorLockMode.None;
@@ -1331,7 +1350,13 @@ public class MainMenuController : MonoBehaviour
     public void LockPlayerInput(bool lockInput)
     {
         if (playerControl == null) playerControl = FindFirstObjectByType<PlayerControl>();
-        if (playerControl != null) playerControl.isInputLocked = lockInput;
+        if (playerControl != null)
+        {
+            if (lockInput)
+                playerControl.AddInputLock("PauseMenu");
+            else
+                playerControl.RemoveInputLock("PauseMenu");
+        }
     }
 
     public bool IsMenuActive => menuActive;

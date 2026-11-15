@@ -149,9 +149,9 @@ namespace FeaturesSaveSystem
 
             if (isOpen)
             {
-                Time.timeScale = 1f;
                 isOpen = false;
                 FarmBeware.Core.Runtime.UIModalHelper.IsSaveUIOpen = false;
+                FarmBeware.Core.Runtime.UIModalHelper.RemovePauseLock("SaveSystemUI");
             }
         }
 
@@ -206,7 +206,7 @@ namespace FeaturesSaveSystem
             EnsureUIHierarchy();
             WireButtonListeners();
 
-            Time.timeScale = 0f;
+            FarmBeware.Core.Runtime.UIModalHelper.AddPauseLock("SaveSystemUI");
 
             var playerCtx = FarmBeware.Core.Runtime.ServiceLocator.Resolve<FarmBeware.Core.Runtime.IPlayerContext>();
             if (playerCtx != null)
@@ -281,7 +281,7 @@ namespace FeaturesSaveSystem
             FarmBeware.Core.Runtime.UIModalHelper.IsSaveUIOpen = false;
             CloseConfirmDialog();
 
-            Time.timeScale = 1f;
+            FarmBeware.Core.Runtime.UIModalHelper.RemovePauseLock("SaveSystemUI");
 
             if (modalPanel != null)
             {

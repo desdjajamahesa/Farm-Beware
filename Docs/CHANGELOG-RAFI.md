@@ -2,6 +2,25 @@
 
 Semua perubahan penting pada proyek ini oleh Rafi akan dicatat di halaman ini.
 
+## - 2026-11-15
+
+### Diubah & Ditingkatkan (Changed & Upgraded)
+- **Upgrade Arsitektur & Konsolidasi Sistem Bertahap (Tahap 1–5, Tanpa Fitur Gameplay Baru)**:
+  - **Tahap 1 — Pembersihan Aset Duplikat & Sentralisasi Konstanta Scene ([`SceneNames.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Core/SceneNames.cs), [`GameInitializer.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Core/GameInitializer.cs), [`SaveSystemManager.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/SaveSystem/SaveSystemManager.cs))**:
+    - Menghapus 25 path aset/folder duplikat di `Assets/Resources/` yang terverifikasi tidak direferensikan oleh `MainScene.unity` maupun `StorylinePrototypeSandbox.unity` via `AssetDatabase.GetDependencies` (tetap mempertahankan `bedroom/table.fbx`, `Furniture/FBX Bedroom/bedroom.fbx`, tekstur aktif, dan aset `OBJ_files` yang dipakai scene).
+    - Menambahkan `FarmBeware.Core.Runtime.SceneNames` untuk mengeliminasi string scene hardcoded pada `SaveSystemManager` dan memastikan inisialisasi awal di `GameInitializer.Awake()`.
+  - **Tahap 2 — Shared Procedural UI Cache & Shader Fallback Resolver ([`ProceduralUIAssetCache.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Core/UI/ProceduralUIAssetCache.cs))**:
+    - Memusatkan generasi `Sprite` procedural (circle, ring, rounded bar, box) dan fallback lookup `Shader` (`Lit`, `Unlit`, `Sprites/Default`, `Particles/Unlit`) ke utilitas singleton cached di `FarmBeware.Core.Runtime`, serta menghubungkan pemanggil pada `CropGrowthCountdownUI`, `WaterRefillProgressUI`, `EnemyOverheadBarUI`, `BossHealthBarSlotUI`, `SlingshotVisualFactory`, `CombatHitVfxEngine`, `EnemyBase`, dan `PlayerEquipment`.
+  - **Tahap 3 — Unifikasi Katalog Item, Cache Ikon Buff, & Pure Solar Trajectory ([`ItemDatabase.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Inventory/Data/ItemDatabase.cs), [`ActiveBuffHUDController.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Player/UI/ActiveBuffHUDController.cs), [`EnvironmentLightingTheme.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Rendering/Lighting/EnvironmentLightingTheme.cs), [`LightingAndAtmosphereDirector.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Time/Atmosphere/LightingAndAtmosphereDirector.cs), [`DaySunLightingObserver.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Rendering/Lighting/DaySunLightingObserver.cs))**:
+    - Menambahkan `ItemDatabase.ResolveCatalog()`, `ItemDatabase.ResolveItem(string)`, serta auto-registrasi `IItemCatalog` ke `ServiceLocator` pada `Instance` dan `Initialize()`.
+    - Menambahkan static sprite caching (`_cachedFrameBg`, `_cachedCooldownOverlay`, `_cachedFrameBorder`, `_cachedFallbackIcons`) pada `ActiveBuffHUDController`.
+    - Mengekstrak perhitungan sudut azimuth/elevasi matahari, kurva temperatur Kelvin sore hari, dan intensitas ke struct `SolarEvaluationResult` dan metode murni `EnvironmentLightingTheme.EvaluateSolarTrajectory(...)` untuk menghilangkan duplikasi antara `LightingAndAtmosphereDirector` dan `DaySunLightingObserver`.
+  - **Tahap 4 — Eliminasi Hot-Path `GameObject.Find` & Standardisasi Bahasa Inggris ([`NightBrawlManager.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Combat/NightBrawlManager.cs), [`EnemyBase.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Combat/Enemy/EnemyBase.cs), [`TimeManager.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Time/TimeManager.cs), [`FarmingManager.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Farming/FarmingManager.cs))**:
+    - Meng-cache root transform `MonsterSpawnPoints` di `NightBrawlManager.GetAllActiveSpawnPoints()` dan memprioritaskan `ServiceLocator.TryResolve<IPlayerContext>` di `EnemyBase.FindPlayerTarget()`.
+    - Menstandarkan komentar, `[Header]`, dan log debug pada `TimeManager.cs`, `FarmingManager.cs`, serta `ItemDatabase.cs` ke Bahasa Inggris penuh tanpa mengubah kontrak serialisasi maupun signature publik.
+  - **Tahap 5 — Regresi Audit Test 111 ([`GameplayAndHUDTests.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Editor/GameplayAndHUDTests.cs), [`GameplayAndHUDTests.Core.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Editor/GameplayAndHUDTests.Core.cs))**:
+    - Menambahkan `Test_SystemArchitecture_AssetDeduplication_SharedProceduralCache_And_CatalogUnification_Audit()` (Test 111); seluruh **111/111** audit test lulus penuh dengan **0** error kompilasi dan **0** warning baru.
+
 ## - 2026-11-08
 
 ### Ditambahkan & Diintegrasikan (Added & Integrated)

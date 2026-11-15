@@ -24,10 +24,28 @@ namespace FeaturesCombat
         private EnemyBase bossEnemy;
         private float lastGrappleTime = 0f;
         private bool isGrappling = false;
+        private IPlayerContext lockedPlayerContext;
+
+        public bool IsGrappling => isGrappling;
 
         private void Awake()
         {
-            bossEnemy = GetComponent<EnemyBase>();
+            EnsureSubscribed();
+        }
+
+        private void OnEnable()
+        {
+            EnsureSubscribed();
+        }
+
+        public void EnsureSubscribed()
+        {
+            if (bossEnemy == null) bossEnemy = GetComponent<EnemyBase>();
+            if (bossEnemy != null)
+            {
+                bossEnemy.OnActionInterrupted -= HandleBossActionInterrupted;
+                bossEnemy.OnActionInterrupted += HandleBossActionInterrupted;
+            }
         }
 
         private void Start()
@@ -50,8 +68,37 @@ namespace FeaturesCombat
             }
         }
 
+        private void HandleBossActionInterrupted()
+        {
+            if (!isGrappling) return;
+
+            StopAllCoroutines();
+            ReleaseGrappleLock();
+            if (bossEnemy != null)
+            {
+                bossEnemy.IsPerformingSkill = false;
+            }
+            isGrappling = false;
+            lastGrappleTime = Time.time;
+        }
+
+        private void ReleaseGrappleLock()
+        {
+            if (lockedPlayerContext != null)
+            {
+                lockedPlayerContext.RemoveInputLock("ColossusGrapple");
+                lockedPlayerContext = null;
+            }
+            else if (bossEnemy != null && bossEnemy.PlayerTarget != null)
+            {
+                var playerCtrl = bossEnemy.PlayerTarget.GetComponent<IPlayerContext>();
+                playerCtrl?.RemoveInputLock("ColossusGrapple");
+            }
+        }
+
         private IEnumerator RoutineGrappleSlam()
         {
+            EnsureSubscribed();
             isGrappling = true;
             bossEnemy.IsPerformingSkill = true;
 
@@ -75,14 +122,15 @@ namespace FeaturesCombat
 
             yield return new WaitForSeconds(0.4f);
 
-            // 2. Evaluasi apakah target masih berada di dalam jangkauan
-            if (bossEnemy.PlayerTarget != null && !NightBrawlManager.IsInsideHouse(bossEnemy.PlayerTarget.position))
+            // 2. Evaluasi apakah bos masih hidup dan target masih berada di dalam jangkauan
+            if (bossEnemy != null && !bossEnemy.IsDead && bossEnemy.PlayerTarget != null && !NightBrawlManager.IsInsideHouse(bossEnemy.PlayerTarget.position))
             {
                 float currentDist = Vector3.Distance(transform.position, bossEnemy.PlayerTarget.position);
                 if (currentDist <= grabRange + 0.6f && playerCtrl != null)
                 {
-                    // Cengkeraman sukses: Kunci kontrol pemain
-                    playerCtrl.SetControlLock(true);
+                    // Cengkeraman sukses: Kunci kontrol pemain dengan named lock
+                    lockedPlayerContext = playerCtrl;
+                    playerCtrl.AddInputLock("ColossusGrapple");
 
                     if (FloatingCombatTextManager.Instance != null)
                     {
@@ -95,16 +143,19 @@ namespace FeaturesCombat
                     // Tahan pemain (hold phase)
                     yield return new WaitForSeconds(holdDuration);
 
-                    // Bantingan (Slam phase)
-                    var playerDmg = playerCtrl.GetPlayerComponent<IDamageable>() ?? bossEnemy.PlayerTarget.GetComponent<IDamageable>();
-                    playerDmg?.TakeDamage(grappleDamage, playerCtrl.Transform.position, Vector3.down);
+                    if (bossEnemy != null && !bossEnemy.IsDead)
+                    {
+                        // Bantingan (Slam phase)
+                        var playerDmg = playerCtrl.GetPlayerComponent<IDamageable>() ?? bossEnemy.PlayerTarget.GetComponent<IDamageable>();
+                        playerDmg?.TakeDamage(grappleDamage, playerCtrl.Transform.position, Vector3.down);
 
-                    // Terapkan stun dan knockback terukur sesuai batasan PlayerControl
-                    playerCtrl.ApplyStun(stunDuration);
-                    playerCtrl.ApplyKnockback(-transform.forward + Vector3.up * 0.2f, 7.5f);
+                        // Terapkan stun dan knockback terukur sesuai batasan PlayerControl
+                        playerCtrl.ApplyStun(stunDuration);
+                        playerCtrl.ApplyKnockback(-transform.forward + Vector3.up * 0.2f, 7.5f);
+                    }
 
                     // Buka kembali kunci kontrol (safety unlock)
-                    playerCtrl.SetControlLock(false);
+                    ReleaseGrappleLock();
                 }
                 else
                 {
@@ -122,27 +173,28 @@ namespace FeaturesCombat
             yield return new WaitForSeconds(0.4f);
 
             // Jaminan keamanan tambahan jika terjadi interupsi tak terduga
-            if (playerCtrl != null)
-            {
-                playerCtrl.SetControlLock(false);
-            }
+            ReleaseGrappleLock();
 
-            bossEnemy.IsPerformingSkill = false;
+            if (bossEnemy != null)
+            {
+                bossEnemy.IsPerformingSkill = false;
+            }
             isGrappling = false;
             lastGrappleTime = Time.time;
         }
 
         private void OnDisable()
         {
+            if (bossEnemy != null)
+            {
+                bossEnemy.OnActionInterrupted -= HandleBossActionInterrupted;
+            }
+
             if (isGrappling)
             {
-                if (bossEnemy != null && bossEnemy.PlayerTarget != null)
+                ReleaseGrappleLock();
+                if (bossEnemy != null)
                 {
-                    var playerCtrl = bossEnemy.PlayerTarget.GetComponent<IPlayerContext>();
-                    if (playerCtrl != null)
-                    {
-                        playerCtrl.SetControlLock(false);
-                    }
                     bossEnemy.IsPerformingSkill = false;
                 }
                 isGrappling = false;

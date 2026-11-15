@@ -16,12 +16,6 @@ namespace FeaturesWardrobe
         [SerializeField] private Transform playerTarget; // Player head/body untuk face
         
         [Header("Positioning")]
-        [Tooltip("Jarak kamera dari permukaan cermin (dalam satuan dunia).")]
-        [SerializeField] private float distanceFromMirror = 1.8f;
-        [Tooltip("Offset vertikal dari posisi player (untuk face ke wajah).")]
-        [SerializeField] private float verticalOffset = 0.1f;
-        [Tooltip("Tinggi bidikan minimal di atas titik target (agar tidak membidik kaki).")]
-        [SerializeField] private float aimHeightOffset = 1.25f;
         [Tooltip("Transform permukaan cermin (static) - kamera diposisikan relatif ke ini")]
         [SerializeField] private Transform mirrorSurface;
 

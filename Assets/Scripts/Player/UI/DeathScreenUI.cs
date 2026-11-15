@@ -95,8 +95,29 @@ public class DeathScreenUI : MonoBehaviour, IModalWindow
     [Header("Audio Feedback")]
     [SerializeField] private AudioSource audioSource;
 
+    public enum DeathScreenState
+    {
+        Hidden,
+        IntroAnimating,
+        MenuActive,
+        BrowsingSaveUI,
+        ExecutingAction
+    }
+
     public bool IsOpen => isOpen;
     public bool CanDismissWithEscape => false;
+
+    public DeathScreenState CurrentState
+    {
+        get
+        {
+            if (!isOpen) return DeathScreenState.Hidden;
+            if (isHandlingAction) return DeathScreenState.ExecutingAction;
+            if (isBrowsingSaveUI) return DeathScreenState.BrowsingSaveUI;
+            if (isIntroAnimating) return DeathScreenState.IntroAnimating;
+            return DeathScreenState.MenuActive;
+        }
+    }
 
     private bool isOpen = false;
     private bool isIntroAnimating = false;
@@ -193,6 +214,7 @@ public class DeathScreenUI : MonoBehaviour, IModalWindow
 
     private void OnDestroy()
     {
+        UIModalHelper.RemovePauseLock("DeathScreenUI");
         if (ModalStackManager.HasInstance && ModalStackManager.Instance != null)
         {
             ModalStackManager.Instance.PopSpecific(this);
@@ -747,7 +769,7 @@ public class DeathScreenUI : MonoBehaviour, IModalWindow
         Cursor.lockState = CursorLockMode.None;
 
         // Jeda waktu game seketika
-        Time.timeScale = 0f;
+        UIModalHelper.AddPauseLock("DeathScreenUI");
 
         if (activeSequenceCoroutine != null) StopCoroutine(activeSequenceCoroutine);
         activeSequenceCoroutine = StartCoroutine(RoutineDeathIntroSequence());
@@ -971,6 +993,7 @@ public class DeathScreenUI : MonoBehaviour, IModalWindow
         if (!isOpen) return;
         isOpen = false;
         isIntroAnimating = false;
+        UIModalHelper.RemovePauseLock("DeathScreenUI");
 
         if (ModalStackManager.Instance != null)
         {
@@ -998,6 +1021,7 @@ public class DeathScreenUI : MonoBehaviour, IModalWindow
     {
         isOpen = false;
         isIntroAnimating = false;
+        UIModalHelper.RemovePauseLock("DeathScreenUI");
 
         if (ModalStackManager.Instance != null)
         {
@@ -1116,7 +1140,7 @@ public class DeathScreenUI : MonoBehaviour, IModalWindow
         else
         {
             Close();
-            Time.timeScale = 1f;
+            UIModalHelper.RemovePauseLock("DeathScreenUI");
         }
     }
 
@@ -1150,7 +1174,7 @@ public class DeathScreenUI : MonoBehaviour, IModalWindow
             feedbackText.text = "Returning to Main Menu...";
         }
 
-        Time.timeScale = 1f;
+        UIModalHelper.ClearAllPauseLocks();
         Cursor.visible = true;
         Cursor.lockState = CursorLockMode.None;
 

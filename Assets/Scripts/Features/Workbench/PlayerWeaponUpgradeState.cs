@@ -198,7 +198,6 @@ namespace FeaturesWorkbench
 
             if (!HasDummySword(inv))
             {
-                Debug.LogWarning("[PlayerWeaponUpgradeState] Failed upgrade: Player does not possess weapon!");
                 return false;
             }
 
@@ -235,13 +234,11 @@ namespace FeaturesWorkbench
 
             if (activeSpecialization != SpecializationPath.None && activeSpecialization != path)
             {
-                Debug.LogWarning($"[PlayerWeaponUpgradeState] Cannot switch path to {path}: Player already specialized in {activeSpecialization}!");
                 return false;
             }
 
             if (!HasDummySword(inv))
             {
-                Debug.LogWarning("[PlayerWeaponUpgradeState] Cannot commit specialization doctrine: Player does not possess weapon!");
                 return false;
             }
 

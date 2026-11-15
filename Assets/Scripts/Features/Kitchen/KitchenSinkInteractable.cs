@@ -32,6 +32,12 @@ public class KitchenSinkInteractable : KitchenStation, IInteractable, IModalWind
     [SerializeField] private GameObject panelSink;
 
     // ── Washing State (owned by processor) ──
+    public enum SinkWashState
+    {
+        Idle,
+        Washing
+    }
+
     private InventorySlot inputSlot;
     private InventorySlot outputSlot;
     private bool isWashing;
@@ -48,6 +54,7 @@ public class KitchenSinkInteractable : KitchenStation, IInteractable, IModalWind
 
     public InventorySlot InputSlot { get { if (inputSlot == null) inputSlot = new InventorySlot(); return inputSlot; } }
     public InventorySlot OutputSlot { get { if (outputSlot == null) outputSlot = new InventorySlot(); return outputSlot; } }
+    public SinkWashState CurrentWashState => isWashing ? SinkWashState.Washing : SinkWashState.Idle;
     public bool IsWashing => isWashing;
     public float WashProgress => washProgress;
     public float WashDurationPerItem => washDurationPerItem;
@@ -59,18 +66,28 @@ public class KitchenSinkInteractable : KitchenStation, IInteractable, IModalWind
     [Tooltip("Time required to refill the drinking water bottle in seconds (30s per MVP guideline).")]
     [SerializeField] private float refillWaterDuration = 30f;
 
-    // ── Water Refill State ──
+    // ── Water Refill State (Pure-Logic FSM + synchronized fields) ──
+    private RefillStationStateMachine _refillFSM;
     private bool hasBottleInSink;
     private bool isRefillingWater;
     private bool isBottleReadyToCollect;
     private float refillWaterProgress;
     private WaterRefillProgressUI refillProgressUI;
 
+    public RefillStationState CurrentRefillState => _refillFSM.State;
     public bool HasBottleInSink => hasBottleInSink;
     public bool IsRefillingWater => isRefillingWater;
     public bool IsBottleReadyToCollect => isBottleReadyToCollect;
     public float RefillWaterProgress => refillWaterProgress;
     public float RefillWaterDuration => refillWaterDuration;
+
+    private void SyncRefillFieldsFromFSM()
+    {
+        hasBottleInSink = _refillFSM.HasItem;
+        isRefillingWater = _refillFSM.IsRefilling;
+        isBottleReadyToCollect = _refillFSM.IsReadyToCollect;
+        refillWaterProgress = _refillFSM.Progress01;
+    }
 
     protected override void Awake()
     {
@@ -161,7 +178,7 @@ public class KitchenSinkInteractable : KitchenStation, IInteractable, IModalWind
 
         var playerControl = interactor != null ? interactor.GetComponent<IPlayerContext>() : ServiceLocator.Resolve<IPlayerContext>();
         if (playerControl != null)
-            playerControl.IsInputLocked = true;
+            playerControl.AddInputLock("KitchenSinkUI");
 
         // Sync UI to current processor state
         if (sinkMgr != null)
@@ -179,8 +196,15 @@ public class KitchenSinkInteractable : KitchenStation, IInteractable, IModalWind
         // ── Water Refill Timer (runs always, even when panel is closed) ──
         if (isRefillingWater)
         {
-            refillWaterProgress += (Time.deltaTime * timeMultiplier) / Mathf.Max(0.1f, refillWaterDuration);
-            if (refillWaterProgress >= 1f)
+            if (_refillFSM.State != RefillStationState.Refilling)
+            {
+                _refillFSM.Restore(hasBottleInSink, isBottleReadyToCollect, refillWaterProgress);
+            }
+
+            bool completed = _refillFSM.Tick(Time.deltaTime * timeMultiplier, refillWaterDuration);
+            SyncRefillFieldsFromFSM();
+
+            if (completed)
             {
                 CompleteWaterRefill();
             }
@@ -326,7 +350,8 @@ public class KitchenSinkInteractable : KitchenStation, IInteractable, IModalWind
         if (playerInv == null)
             playerInv = ServiceLocator.Resolve<IPlayerContext>()?.GetPlayerComponent<InventoryComponent>();
 
-        var bottle = FeaturesKitchen.PlayerWaterBottle.Instance;
+        var bottle = (playerInv != null ? playerInv.GetComponent<FeaturesKitchen.PlayerWaterBottle>() : null)
+            ?? FeaturesKitchen.PlayerWaterBottle.Instance;
         if (bottle != null && bottle.CurrentWater >= bottle.MaxWater)
         {
             SpawnFloatingAlert("💧 Water Bottle is already full!");
@@ -349,10 +374,8 @@ public class KitchenSinkInteractable : KitchenStation, IInteractable, IModalWind
 
         // Place bottle into the sink (removes from player inventory)
         playerInv.RemoveItem(bottleItem, 1);
-        hasBottleInSink = true;
-        isRefillingWater = true;
-        isBottleReadyToCollect = false;
-        refillWaterProgress = 0f;
+        _refillFSM.PlaceItem();
+        SyncRefillFieldsFromFSM();
 
         SpawnFloatingAlert("💧 Water Bottle placed in Sink! Refilling (30s)...");
         SyncUIIfOpen();
@@ -370,12 +393,16 @@ public class KitchenSinkInteractable : KitchenStation, IInteractable, IModalWind
         var bottleItem = db?.GetItem("food_bottle_water");
         if (bottleItem != null && playerInv != null)
         {
-            playerInv.AddItem(bottleItem, 1);
+            int added = playerInv.AddItemAmount(bottleItem, 1);
+            if (added <= 0)
+            {
+                SpawnFloatingAlert("❌ Inventory full! Free space to retrieve Water Bottle.");
+                return;
+            }
         }
 
-        hasBottleInSink = false;
-        isRefillingWater = false;
-        refillWaterProgress = 0f;
+        _refillFSM.ResetToEmpty();
+        SyncRefillFieldsFromFSM();
 
         SpawnFloatingAlert("💧 Water refill cancelled. Bottle returned to inventory.");
         SyncUIIfOpen();
@@ -383,9 +410,8 @@ public class KitchenSinkInteractable : KitchenStation, IInteractable, IModalWind
 
     private void CompleteWaterRefill()
     {
-        isRefillingWater = false;
-        refillWaterProgress = 1f;
-        isBottleReadyToCollect = true;
+        _refillFSM.CompleteImmediate();
+        SyncRefillFieldsFromFSM();
 
         // Note: Item stays in the sink and does NOT immediately teleport to player's inventory!
         SpawnFloatingAlert("💧 Water Bottle in Sink is full! Ready to take.");
@@ -410,15 +436,15 @@ public class KitchenSinkInteractable : KitchenStation, IInteractable, IModalWind
             return false;
         }
 
-        var bottle = FeaturesKitchen.PlayerWaterBottle.Instance;
+        var bottle = (playerInv != null ? playerInv.GetComponent<FeaturesKitchen.PlayerWaterBottle>() : null)
+            ?? FeaturesKitchen.PlayerWaterBottle.Instance;
         if (bottle != null)
         {
             bottle.RefillWater(bottle.MaxWater);
         }
 
-        hasBottleInSink = false;
-        isBottleReadyToCollect = false;
-        refillWaterProgress = 0f;
+        _refillFSM.ResetToEmpty();
+        SyncRefillFieldsFromFSM();
 
         SpawnFloatingAlert("💧 Taken Full Water Bottle from Sink (4/4 Charges)!");
         SyncUIIfOpen();
@@ -458,7 +484,7 @@ public class KitchenSinkInteractable : KitchenStation, IInteractable, IModalWind
 
         var player = ServiceLocator.Resolve<IPlayerContext>();
         if (player != null)
-            player.IsInputLocked = false;
+            player.RemoveInputLock("KitchenSinkUI");
     }
 
     /// <summary>

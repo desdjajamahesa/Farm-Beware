@@ -151,7 +151,7 @@ namespace FeaturesEconomy
             if (pc != null)
             {
                 pc.StopMovement();
-                pc.IsInputLocked = true;
+                pc.AddInputLock("DailyReportUI");
             }
         }
 
@@ -171,7 +171,7 @@ namespace FeaturesEconomy
 
             var pc = ServiceLocator.Resolve<IPlayerContext>();
             if (pc != null)
-                pc.IsInputLocked = false;
+                pc.RemoveInputLock("DailyReportUI");
 
             onContinueCallback?.Invoke();
             onContinueCallback = null;

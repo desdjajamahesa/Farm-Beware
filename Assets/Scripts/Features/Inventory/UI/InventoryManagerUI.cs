@@ -435,7 +435,12 @@ public class InventoryManagerUI : MonoBehaviour, IModalWindow
 
         var player = ServiceLocator.Resolve<IPlayerContext>();
         if (player != null)
-            player.IsInputLocked = isPlayerOpen;
+        {
+            if (isPlayerOpen)
+                player.AddInputLock("InventoryUI");
+            else
+                player.RemoveInputLock("InventoryUI");
+        }
 
         SetCursorFree(isPlayerOpen);
     }
@@ -567,7 +572,7 @@ if (customPanel != null)
         if (rightTitleText != null) rightTitleText.text = storageTitle;
 
         var pc = ServiceLocator.Resolve<IPlayerContext>();
-        if (pc != null) pc.IsInputLocked = true;
+        if (pc != null) pc.AddInputLock("InventoryUI");
 
         SetCursorFree(true);
         ModalStackManager.Instance?.Push(this);
@@ -675,7 +680,7 @@ if (customPanel != null)
         if (rightTitleText != null) rightTitleText.text = "Trophy Rack";
 
         var pcCabinet = ServiceLocator.Resolve<IPlayerContext>();
-        if (pcCabinet != null) pcCabinet.IsInputLocked = true;
+        if (pcCabinet != null) pcCabinet.AddInputLock("InventoryUI");
 
         SetCursorFree(true);
         ModalStackManager.Instance?.Push(this);
@@ -726,11 +731,14 @@ if (customPanel != null)
         var pcClose = ServiceLocator.Resolve<IPlayerContext>();
         if (pcClose != null)
         {
-            pcClose.IsInputLocked = false;
+            pcClose.RemoveInputLock("InventoryUI");
         }
 
-        // Restore time scale in case it was paused
-        Time.timeScale = 1f;
+        // Restore time scale only if no active pause lock is held
+        if (!UIModalHelper.HasActivePauseLock)
+        {
+            Time.timeScale = 1f;
+        }
 
         SetCursorFree(false);
     }

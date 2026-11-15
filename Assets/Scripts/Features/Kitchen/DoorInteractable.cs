@@ -23,15 +23,6 @@ public class DoorInteractable : MonoBehaviour, IInteractable, IDynamicLabelProvi
     [Tooltip("Spawn point when player is outside (teleporting inside).")]
     [SerializeField] private Transform spawnPointOutside;
 
-#pragma warning disable 0414
-    [Header("Detection")]
-    [Tooltip("Axis to use for inside/outside detection.")]
-    [SerializeField] private ThresholdAxis thresholdAxis = ThresholdAxis.Z;
-    
-    [Tooltip("Threshold value on selected axis: player coordinate > threshold = inside (for X/Z), player coordinate < threshold = inside (for Y).")]
-    [SerializeField] private float insideThreshold = 14.0f;
-#pragma warning restore 0414
-
     [Header("Fade Effect")]
     [Tooltip("Fade in/out duration in seconds.")]
     [SerializeField] private float fadeDuration = 0.5f;
@@ -106,7 +97,7 @@ public class DoorInteractable : MonoBehaviour, IInteractable, IDynamicLabelProvi
             return;
 
         // Kunci gerakan pemain selama proses teleport
-        player.IsInputLocked = true;
+        player.AddInputLock("DoorTeleport");
 
         // Deteksi posisi player: bandingkan jarak ke spawnPointInside vs spawnPointOutside
         // Jika lebih dekat ke luar -> target adalah ke dalam (spawnPointInside)
@@ -125,7 +116,7 @@ public class DoorInteractable : MonoBehaviour, IInteractable, IDynamicLabelProvi
         else
         {
             TeleportPlayer(player, targetSpawn.position);
-            player.IsInputLocked = false; // Langsung buka kunci jika tanpa fade
+            player.RemoveInputLock("DoorTeleport"); // Langsung buka kunci jika tanpa fade
         }
 
         Debug.Log($"[DoorInteractable] Player teleported to " + (isInside ? "outside" : "inside") + " via " + gameObject.name);
@@ -149,7 +140,7 @@ public class DoorInteractable : MonoBehaviour, IInteractable, IDynamicLabelProvi
 
         // Buka kunci gerakan setelah fade selesai
         if (player != null)
-            player.IsInputLocked = false;
+            player.RemoveInputLock("DoorTeleport");
     }
 
     private void TeleportPlayer(IPlayerContext player, Vector3 targetPosition)
@@ -160,25 +151,6 @@ public class DoorInteractable : MonoBehaviour, IInteractable, IDynamicLabelProvi
             safePos.y = 0.04f;
         }
 
-        Rigidbody rb = player.Transform.GetComponent<Rigidbody>();
-        if (rb != null)
-        {
-            rb.linearVelocity = Vector3.zero;
-            rb.angularVelocity = Vector3.zero;
-            rb.position = safePos;
-        }
-        player.Transform.position = safePos;
-        Physics.SyncTransforms();
-    }
-
-    private float GetCoordinate(Vector3 pos, ThresholdAxis axis)
-    {
-        return axis switch
-        {
-            ThresholdAxis.X => pos.x,
-            ThresholdAxis.Y => pos.y,
-            ThresholdAxis.Z => pos.z,
-            _ => pos.z
-        };
+        player.Teleport(safePos, player.Transform.rotation);
     }
 }

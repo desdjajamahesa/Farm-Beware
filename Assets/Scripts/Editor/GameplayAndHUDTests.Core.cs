@@ -2114,6 +2114,12 @@ namespace FarmBeware.EditorTests
 
                 var modalRoot = GameObject.Find("SleepConfirmModalRoot");
                 if (modalRoot != null) cleanupList.Add(modalRoot);
+                var uiCanvas = GameObject.Find("UI_Canvas");
+                if (uiCanvas != null)
+                {
+                    var tr = uiCanvas.transform.Find("SleepConfirmModalRoot");
+                    if (tr != null && !cleanupList.Contains(tr.gameObject)) cleanupList.Add(tr.gameObject);
+                }
                 var modalBedUI = GameObject.Find("BedSleepConfirmationUI");
                 if (modalBedUI != null) cleanupList.Add(modalBedUI);
                 if (ModalStackManager.HasInstance && ModalStackManager.Instance != null)
@@ -2799,7 +2805,16 @@ namespace FarmBeware.EditorTests
             }
             finally
             {
-                if (plotObj != null) Object.DestroyImmediate(plotObj);
+                if (plotObj != null)
+                {
+                    var countdownComp = plotObj.GetComponent<FeaturesFarming.CropGrowthCountdownUI>();
+                    if (countdownComp != null)
+                    {
+                        var onDestroyMethod = typeof(FeaturesFarming.CropGrowthCountdownUI).GetMethod("OnDestroy", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                        onDestroyMethod?.Invoke(countdownComp, null);
+                    }
+                    Object.DestroyImmediate(plotObj);
+                }
             }
         }
 
@@ -3062,6 +3077,358 @@ namespace FarmBeware.EditorTests
                 if (origPlayer != null) ServiceLocator.Register<IPlayerContext>(origPlayer);
                 else ServiceLocator.Unregister<IPlayerContext>();
             }
+        }
+
+        // Test 110: Explicit State Machines, Scoped Pause Lock Registry, RefillStationStateMachine, Sink Full-Inventory Protection, and Grapple Interrupt Hygiene
+        private static bool Test_ExplicitStateMachines_PauseLock_RefillFSM_And_ActionHygiene_Audit()
+        {
+            GameObject playerGo = null;
+            GameObject sinkGo = null;
+            GameObject bossGo = null;
+            var origTimeScale = Time.timeScale;
+            var origSinkInstance = KitchenSinkInteractable.Instance;
+
+            try
+            {
+                // 1. UIModalHelper Multi-Source Scoped Pause Lock Registry
+                UIModalHelper.ClearAllPauseLocks();
+                if (UIModalHelper.HasActivePauseLock || Mathf.Abs(Time.timeScale - 1f) > 0.001f)
+                {
+                    Debug.LogError("[Test 110] UIModalHelper.ClearAllPauseLocks failed to reset pause state and Time.timeScale = 1f!");
+                    return false;
+                }
+
+                UIModalHelper.AddPauseLock("PauseMenu");
+                UIModalHelper.AddPauseLock("SaveSystemUI");
+                if (!UIModalHelper.HasActivePauseLock || UIModalHelper.ActivePauseLockCount != 2 || Time.timeScale != 0f)
+                {
+                    Debug.LogError($"[Test 110] Expected 2 active pause locks and Time.timeScale == 0f, got count={UIModalHelper.ActivePauseLockCount}, timeScale={Time.timeScale}!");
+                    return false;
+                }
+
+                // Closing SaveSystemUI while PauseMenu is still open MUST keep Time.timeScale == 0f
+                UIModalHelper.RemovePauseLock("SaveSystemUI");
+                if (!UIModalHelper.HasActivePauseLock || !UIModalHelper.HasPauseLock("PauseMenu") || Time.timeScale != 0f)
+                {
+                    Debug.LogError("[Test 110] Pause Lock Leak! Removing 'SaveSystemUI' prematurely unpaused the game while 'PauseMenu' was still active!");
+                    return false;
+                }
+
+                // Closing PauseMenu restores Time.timeScale == 1f
+                UIModalHelper.RemovePauseLock("PauseMenu");
+                if (UIModalHelper.HasActivePauseLock || Mathf.Abs(Time.timeScale - 1f) > 0.001f)
+                {
+                    Debug.LogError("[Test 110] Removing last pause lock ('PauseMenu') failed to restore Time.timeScale == 1f!");
+                    return false;
+                }
+
+                // 2. Pure-Logic RefillStationStateMachine Lifecycle & Restore Normalization
+                var fsm = new RefillStationStateMachine();
+                if (fsm.State != RefillStationState.Empty || fsm.HasItem || fsm.IsRefilling || fsm.IsReadyToCollect)
+                {
+                    Debug.LogError("[Test 110] RefillStationStateMachine must start in Empty state!");
+                    return false;
+                }
+
+                if (!fsm.PlaceItem() || fsm.State != RefillStationState.Refilling || !fsm.HasItem || !fsm.IsRefilling)
+                {
+                    Debug.LogError("[Test 110] RefillStationStateMachine.PlaceItem() failed to transition to Refilling!");
+                    return false;
+                }
+
+                // Duplicate PlaceItem while occupied must return false
+                if (fsm.PlaceItem())
+                {
+                    Debug.LogError("[Test 110] RefillStationStateMachine.PlaceItem() must reject placement when already occupied!");
+                    return false;
+                }
+
+                bool completedHalf = fsm.Tick(5f, 10f);
+                if (completedHalf || fsm.State != RefillStationState.Refilling || Mathf.Abs(fsm.Progress01 - 0.5f) > 0.01f)
+                {
+                    Debug.LogError($"[Test 110] Expected Refilling at 50% progress after 5s/10s tick, got state={fsm.State}, progress={fsm.Progress01}!");
+                    return false;
+                }
+
+                bool completedFull = fsm.Tick(5f, 10f);
+                if (!completedFull || fsm.State != RefillStationState.ReadyToCollect || !fsm.IsReadyToCollect || fsm.IsRefilling)
+                {
+                    Debug.LogError($"[Test 110] Expected ReadyToCollect after full tick, got state={fsm.State}!");
+                    return false;
+                }
+
+                // Restore edge case: (hasItem=true, ready=false, progress=1.0f) must normalize to ReadyToCollect instead of dead-locking
+                fsm.Restore(true, false, 1.0f);
+                if (fsm.State != RefillStationState.ReadyToCollect || !fsm.IsReadyToCollect || fsm.IsRefilling)
+                {
+                    Debug.LogError($"[Test 110] RefillStationStateMachine.Restore(true, false, 1.0f) failed to normalize to ReadyToCollect! State={fsm.State}");
+                    return false;
+                }
+
+                fsm.ResetToEmpty();
+                if (fsm.State != RefillStationState.Empty || fsm.HasItem)
+                {
+                    Debug.LogError("[Test 110] RefillStationStateMachine.ResetToEmpty() failed!");
+                    return false;
+                }
+
+                // 3. KitchenSinkInteractable.CancelRefillingWater Full-Inventory Item Deletion Protection
+                var db = ItemDatabase.Instance ?? Resources.Load<ItemDatabase>("Database/ItemDatabase");
+                var bottleItem = db != null ? db.GetItem("food_bottle_water") : null;
+                var fillerItem = db != null ? db.GetItem("seed_taro") : null;
+
+                playerGo = new GameObject("Test_Player_FSM", typeof(Rigidbody), typeof(CapsuleCollider), typeof(InventoryComponent), typeof(PlayerControl));
+                var playerInv = playerGo.GetComponent<InventoryComponent>();
+                var playerCtrl = playerGo.GetComponent<PlayerControl>();
+                playerInv.ResetInventory(16);
+
+                sinkGo = new GameObject("Test_Sink_FSM", typeof(InventoryComponent), typeof(KitchenSinkInteractable));
+                var sink = sinkGo.GetComponent<KitchenSinkInteractable>();
+
+                if (bottleItem != null && fillerItem != null)
+                {
+                    playerInv.AddItem(bottleItem, 1);
+                    var waterBottle = playerGo.AddComponent<FeaturesKitchen.PlayerWaterBottle>();
+                    waterBottle.SetWater(50f);
+                    var sceneBottle = FeaturesKitchen.PlayerWaterBottle.Instance;
+                    float origBottleWater = sceneBottle != null ? sceneBottle.CurrentWater : 100f;
+                    if (sceneBottle != null) sceneBottle.SetWater(50f);
+
+                    try
+                    {
+                        bool started = sink.StartRefillingWater(playerInv);
+                        if (!started || !sink.HasBottleInSink || sink.CurrentRefillState != RefillStationState.Refilling)
+                        {
+                            Debug.LogError("[Test 110] KitchenSinkInteractable.StartRefillingWater failed to transition to Refilling!");
+                            return false;
+                        }
+
+                        // Fill all player inventory slots so there is no space for the bottle
+                        for (int i = 0; i < playerInv.slots.Count; i++)
+                        {
+                            playerInv.slots[i].item = fillerItem;
+                            playerInv.slots[i].quantity = fillerItem.maxStack;
+                        }
+
+                        // Attempt to cancel while inventory is completely full -> bottle MUST remain safely inside sink
+                        sink.CancelRefillingWater(playerInv);
+                        if (!sink.HasBottleInSink || sink.CurrentRefillState != RefillStationState.Refilling)
+                        {
+                            Debug.LogError("[Test 110] KitchenSinkInteractable.CancelRefillingWater deleted the bottle when player inventory was full!");
+                            return false;
+                        }
+
+                        // Free one slot and cancel again -> bottle returns to inventory and sink resets to Empty
+                        playerInv.slots[0].item = null;
+                        playerInv.slots[0].quantity = 0;
+                        sink.CancelRefillingWater(playerInv);
+                        if (sink.HasBottleInSink || sink.CurrentRefillState != RefillStationState.Empty || playerInv.CountItem(bottleItem) != 1)
+                        {
+                            Debug.LogError("[Test 110] KitchenSinkInteractable.CancelRefillingWater failed to return bottle once inventory space was freed!");
+                            return false;
+                        }
+                    }
+                    finally
+                    {
+                        if (sceneBottle != null) sceneBottle.SetWater(origBottleWater);
+                    }
+                }
+
+                // 4. PlayerControl Action State & CancelActiveCombatAction Hygiene
+                if (playerCtrl.CurrentActionState != PlayerControl.PlayerActionState.Locomotion)
+                {
+                    Debug.LogError($"[Test 110] Expected initial PlayerControl.CurrentActionState == Locomotion, got {playerCtrl.CurrentActionState}!");
+                    return false;
+                }
+
+                var skillLeapField = typeof(PlayerControl).GetField("isSkillLeaping", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                skillLeapField?.SetValue(playerCtrl, true);
+                if (!playerCtrl.IsSkillLeaping || playerCtrl.CurrentActionState != PlayerControl.PlayerActionState.SkillLeap)
+                {
+                    Debug.LogError($"[Test 110] Expected PlayerControl.CurrentActionState == SkillLeap when isSkillLeaping is true, got {playerCtrl.CurrentActionState}!");
+                    return false;
+                }
+
+                // Locking player input must automatically cancel active combat actions (including isSkillLeaping)
+                playerCtrl.AddInputLock("TestLock");
+                if (playerCtrl.IsSkillLeaping || playerCtrl.CurrentActionState != PlayerControl.PlayerActionState.InputLocked)
+                {
+                    Debug.LogError($"[Test 110] Adding input lock failed to clear IsSkillLeaping or transition to InputLocked! IsSkillLeaping={playerCtrl.IsSkillLeaping}, State={playerCtrl.CurrentActionState}");
+                    return false;
+                }
+                playerCtrl.RemoveInputLock("TestLock");
+
+                // 5. EnemyBase.OnActionInterrupted & ColossusGrappleAbility Lock Cleanup
+                bossGo = new GameObject("Test_Colossus_FSM", typeof(Rigidbody), typeof(BoxCollider), typeof(EnemyBase), typeof(ColossusGrappleAbility));
+                var bossEnemy = bossGo.GetComponent<EnemyBase>();
+                var grapple = bossGo.GetComponent<ColossusGrappleAbility>();
+                grapple.EnsureSubscribed();
+                bossEnemy.maxHealth = 500;
+                bossEnemy.currentHealth = 500;
+
+                // Simulate active grapple holding the player
+                bossEnemy.IsPerformingSkill = true;
+                playerCtrl.AddInputLock("ColossusGrapple");
+                typeof(ColossusGrappleAbility).GetField("isGrappling", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)?.SetValue(grapple, true);
+                typeof(ColossusGrappleAbility).GetField("lockedPlayerContext", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)?.SetValue(grapple, (IPlayerContext)playerCtrl);
+
+                if (bossEnemy.CurrentActionState != EnemyBase.EnemyActionState.ExecutingSkill || !grapple.IsGrappling || !playerCtrl.HasInputLock("ColossusGrapple"))
+                {
+                    Debug.LogError("[Test 110] Failed to set up active ColossusGrappleAbility test state!");
+                    return false;
+                }
+
+                // Trigger boss death -> OnActionInterrupted must immediately abort grapple and release 'ColossusGrapple' lock on PlayerControl
+                bossEnemy.TakeDamage(9999, bossGo.transform.position, Vector3.forward);
+                if (grapple.IsGrappling || playerCtrl.HasInputLock("ColossusGrapple") || bossEnemy.CurrentActionState != EnemyBase.EnemyActionState.Dead)
+                {
+                    Debug.LogError($"[Test 110] EnemyBase interruption failed to abort ColossusGrappleAbility or release 'ColossusGrapple' lock! IsGrappling={grapple.IsGrappling}, HasLock={playerCtrl.HasInputLock("ColossusGrapple")}, EnemyState={bossEnemy.CurrentActionState}");
+                    return false;
+                }
+
+                Debug.Log("✅ Test 110: Explicit State Machines, Scoped Pause Lock Registry, RefillStationStateMachine, Sink Full-Inventory Protection, and Grapple Interrupt Hygiene verified.");
+                return true;
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogError($"[Test 110] Exception: {ex.Message}\n{ex.StackTrace}");
+                return false;
+            }
+            finally
+            {
+                UIModalHelper.ClearAllPauseLocks();
+                Time.timeScale = origTimeScale;
+                if (sinkGo != null) Object.DestroyImmediate(sinkGo);
+                if (bossGo != null) Object.DestroyImmediate(bossGo);
+                if (playerGo != null) Object.DestroyImmediate(playerGo);
+                if (origSinkInstance != null)
+                {
+                    typeof(KitchenSinkInteractable).GetProperty("Instance", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static)?.SetValue(null, origSinkInstance);
+                }
+                var strayPickups = Object.FindObjectsByType<FeaturesCombat.WorldItemPickup>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+                foreach (var p in strayPickups)
+                {
+                    if (p != null) Object.DestroyImmediate(p.gameObject);
+                }
+            }
+        }
+
+        // Test 111: System Architecture Upgrade Verification (Asset Deduplication, Shared Procedural Cache, Catalog Unification, Solar Parity)
+        private static bool Test_SystemArchitecture_AssetDeduplication_SharedProceduralCache_And_CatalogUnification_Audit()
+        {
+            // 1. Deleted duplicate FBX assets must be absent while active scene-referenced assets remain intact
+            if (AssetDatabase.LoadMainAssetAtPath("Assets/Resources/bedroom/bed.fbx") != null ||
+                AssetDatabase.LoadMainAssetAtPath("Assets/Resources/Furniture/FBX Bedroom/bed.fbx") != null)
+            {
+                Debug.LogError("[Test 111] Expected deleted duplicate bed.fbx assets to be absent from Assets/Resources!");
+                return false;
+            }
+
+            if (AssetDatabase.LoadMainAssetAtPath("Assets/Resources/Furniture/FBX Bedroom/bedroom.fbx") == null ||
+                AssetDatabase.LoadMainAssetAtPath("Assets/Resources/bedroom/table.fbx") == null)
+            {
+                Debug.LogError("[Test 111] Active scene-referenced assets (Furniture/FBX Bedroom/bedroom.fbx or bedroom/table.fbx) are missing!");
+                return false;
+            }
+
+            // 2. SceneNames Contract
+            if (!SceneNames.IsGameplayScene(SceneNames.MainScene) ||
+                !SceneNames.IsGameplayScene(SceneNames.StagingScene) ||
+                SceneNames.IsGameplayScene(SceneNames.MainMenuScene))
+            {
+                Debug.LogError("[Test 111] SceneNames.IsGameplayScene contract failed!");
+                return false;
+            }
+
+            // 3. Shared Procedural UI Sprite Cache & Shader Fallback Resolver
+            var c1 = ProceduralUIAssetCache.GetCircleSprite();
+            var c2 = ProceduralUIAssetCache.GetCircleSprite();
+            var r1 = ProceduralUIAssetCache.GetRingSprite();
+            var r2 = ProceduralUIAssetCache.GetRingSprite();
+            var b1 = ProceduralUIAssetCache.GetRoundedBarSprite();
+            var b2 = ProceduralUIAssetCache.GetRoundedBarSprite();
+            var x1 = ProceduralUIAssetCache.GetBoxSprite();
+            var x2 = ProceduralUIAssetCache.GetBoxSprite();
+
+            if (c1 == null || !ReferenceEquals(c1, c2) ||
+                r1 == null || !ReferenceEquals(r1, r2) ||
+                b1 == null || !ReferenceEquals(b1, b2) ||
+                x1 == null || !ReferenceEquals(x1, x2))
+            {
+                Debug.LogError("[Test 111] ProceduralUIAssetCache failed to return non-null singleton cached sprites!");
+                return false;
+            }
+
+            if (ShaderFallbackResolver.ResolveLitShader() == null ||
+                ShaderFallbackResolver.ResolveUnlitShader() == null ||
+                ShaderFallbackResolver.ResolveSpritesDefaultShader() == null ||
+                ShaderFallbackResolver.ResolveParticleUnlitShader() == null)
+            {
+                Debug.LogError("[Test 111] ShaderFallbackResolver returned null for one or more shader fallbacks!");
+                return false;
+            }
+
+            // 4. Unified ItemDatabase / IItemCatalog Resolution
+            var resolvedCatalog = ItemDatabase.ResolveCatalog();
+            var locatorCatalog = ServiceLocator.Resolve<FarmBeware.Data.Runtime.IItemCatalog>();
+            if (resolvedCatalog == null || locatorCatalog == null)
+            {
+                Debug.LogError($"[Test 111] Item catalog unification check failed! ResolveCatalog={resolvedCatalog != null}, ServiceLocator={locatorCatalog != null}");
+                return false;
+            }
+
+            // 5. Shared Pure Solar Trajectory Math Parity
+            var solar = FeaturesRendering.Lighting.EnvironmentLightingTheme.EvaluateSolarTrajectory(
+                12f, 6f, 18f, 135f, 225f, 5f, 65f, 15f, 5500f, 3200f, 1.8f, 0.25f, 1.3f);
+            if (!Mathf.Approximately(solar.Azimuth, 180f) ||
+                !Mathf.Approximately(solar.Elevation, 65f) ||
+                !Mathf.Approximately(solar.Kelvin, 5500f) ||
+                !Mathf.Approximately(solar.Intensity, 1.3f))
+            {
+                Debug.LogError($"[Test 111] Solar trajectory parity mismatch! Azimuth={solar.Azimuth}, Elevation={solar.Elevation}, Kelvin={solar.Kelvin}, Intensity={solar.Intensity}");
+                return false;
+            }
+
+            // 6. Scene Hierarchy Hygiene (Zero Leaked Pickups, Countdown UIs, or Duplicate VFX Emitters)
+            var leakedPickups = Object.FindObjectsByType<FeaturesCombat.WorldItemPickup>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            if (leakedPickups != null && leakedPickups.Length > 0)
+            {
+                Debug.LogError($"[Test 111] Hierarchy hygiene failed: found {leakedPickups.Length} stray WorldItemPickup objects in scene!");
+                return false;
+            }
+
+            var countdownContainer = GameObject.Find("_UI/UI_Canvas/CropCountdownContainer");
+            if (countdownContainer != null)
+            {
+                for (int i = 0; i < countdownContainer.transform.childCount; i++)
+                {
+                    var child = countdownContainer.transform.GetChild(i);
+                    if (child != null && child.name.StartsWith("CropCountdown_Test_", System.StringComparison.Ordinal))
+                    {
+                        Debug.LogError($"[Test 111] Hierarchy hygiene failed: found leaked test countdown UI '{child.name}' under CropCountdownContainer!");
+                        return false;
+                    }
+                }
+            }
+
+            var vfxEngineObj = GameObject.Find("_SYSTEMS/CombatHitVfxEngine");
+            if (vfxEngineObj != null && vfxEngineObj.transform.childCount > 2)
+            {
+                Debug.LogError($"[Test 111] Hierarchy hygiene failed: _SYSTEMS/CombatHitVfxEngine has {vfxEngineObj.transform.childCount} children (expected <= 2)!");
+                return false;
+            }
+
+            // 7. Dead / Prohibited Script Cleanup Verification
+            if (AssetDatabase.LoadMainAssetAtPath("Assets/Scripts/Features/Farming/Adapters/PlayerFarmInteraction.cs") != null ||
+                AssetDatabase.LoadMainAssetAtPath("Assets/Scripts/Features/Farming/Adapters/FarmGridVisualizer.cs") != null ||
+                AssetDatabase.LoadMainAssetAtPath("Assets/Scripts/Editor/Rendering/ProbeInfrastructureSetupUtility.cs") != null)
+            {
+                Debug.LogError("[Test 111] Dead or prohibited unreferenced script was re-introduced!");
+                return false;
+            }
+
+            Debug.Log("✅ Test 111: System Architecture Asset Deduplication, Shared Procedural UI/Shader Cache, Catalog Unification, Solar Parity, Scene Hierarchy Hygiene, and Codebase Hygiene verified.");
+            return true;
         }
     }
 }

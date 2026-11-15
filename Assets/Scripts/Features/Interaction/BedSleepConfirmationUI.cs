@@ -105,6 +105,14 @@ namespace FeaturesInteraction
 
         private void OnDestroy()
         {
+            if (modalRoot != null)
+            {
+                if (Application.isPlaying)
+                    Destroy(modalRoot);
+                else
+                    DestroyImmediate(modalRoot);
+                modalRoot = null;
+            }
             if (ModalStackManager.HasInstance && ModalStackManager.Instance != null)
             {
                 ModalStackManager.Instance.PopSpecific(this);

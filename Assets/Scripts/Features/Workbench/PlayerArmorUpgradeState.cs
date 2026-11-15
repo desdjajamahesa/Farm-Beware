@@ -168,7 +168,6 @@ namespace FeaturesWorkbench
 
             if (!HasAnyArmorPiece(inv))
             {
-                Debug.LogWarning("[PlayerArmorUpgradeState] Cannot upgrade armor plating: Player does not possess any armor pieces!");
                 return false;
             }
 

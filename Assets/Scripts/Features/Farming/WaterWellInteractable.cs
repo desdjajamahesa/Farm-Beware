@@ -39,7 +39,8 @@ namespace FeaturesFarming
         [Header("Audio Feedback")]
         [SerializeField] private float sfxVolume = 0.5f;
 
-        // ── Station State Machine ──
+        // ── Station State Machine (Pure-Logic FSM + synchronized fields) ──
+        private RefillStationStateMachine _refillFSM;
         private bool hasWatererInWell;
         private bool isRefillingWater;
         private bool isWatererReadyToCollect;
@@ -47,6 +48,7 @@ namespace FeaturesFarming
         private float watererStartAmount;
         private float refillsUsedToday;
 
+        public RefillStationState CurrentRefillState => _refillFSM.State;
         public bool HasWatererInWell => hasWatererInWell;
         public bool IsRefillingWater => isRefillingWater;
         public bool IsWatererReadyToCollect => isWatererReadyToCollect;
@@ -55,6 +57,14 @@ namespace FeaturesFarming
         public float RefillsUsedToday => refillsUsedToday;
         public float MaxRefillsPerDay => maxRefillsPerDay;
         public float RefillDuration => refillDuration;
+
+        private void SyncRefillFieldsFromFSM()
+        {
+            hasWatererInWell = _refillFSM.HasItem;
+            isRefillingWater = _refillFSM.IsRefilling;
+            isWatererReadyToCollect = _refillFSM.IsReadyToCollect;
+            refillWaterProgress = _refillFSM.Progress01;
+        }
 
         // ── Components & Visuals ──
         private WorldLabel worldLabel;
@@ -163,7 +173,13 @@ namespace FeaturesFarming
 
             if (isRefillingWater)
             {
-                refillWaterProgress += (Time.deltaTime * timeMultiplier) / Mathf.Max(0.1f, refillDuration);
+                if (_refillFSM.State != RefillStationState.Refilling)
+                {
+                    _refillFSM.Restore(hasWatererInWell, isWatererReadyToCollect, refillWaterProgress);
+                }
+
+                bool completed = _refillFSM.Tick(Time.deltaTime * timeMultiplier, refillDuration);
+                SyncRefillFieldsFromFSM();
 
                 // Rotate crank handle for dynamic realism
                 if (crankTransform != null)
@@ -171,7 +187,7 @@ namespace FeaturesFarming
                     crankTransform.Rotate(Vector3.right, 120f * Time.deltaTime * timeMultiplier, Space.Self);
                 }
 
-                if (refillWaterProgress >= 1f)
+                if (completed)
                 {
                     CompleteWaterRefill();
                 }
@@ -191,9 +207,8 @@ namespace FeaturesFarming
 
         private void CompleteWaterRefill()
         {
-            isRefillingWater = false;
-            refillWaterProgress = 1f;
-            isWatererReadyToCollect = true;
+            _refillFSM.CompleteImmediate();
+            SyncRefillFieldsFromFSM();
 
             // Deduct proportional quota for the refilled amount
             float maxWater = PlantWaterer.Instance != null ? PlantWaterer.Instance.MaxWater : 100f;
@@ -272,10 +287,8 @@ namespace FeaturesFarming
             }
 
             watererStartAmount = watererInstance != null ? watererInstance.CurrentWater : 0f;
-            hasWatererInWell = true;
-            isRefillingWater = true;
-            isWatererReadyToCollect = false;
-            refillWaterProgress = 0f;
+            _refillFSM.PlaceItem();
+            SyncRefillFieldsFromFSM();
 
             UpdateVisuals();
             UpdatePromptLabel();
@@ -316,10 +329,8 @@ namespace FeaturesFarming
             float quotaUsed = maxWater > 0f ? (waterGained / maxWater) : 0f;
             refillsUsedToday = Mathf.Clamp(refillsUsedToday + quotaUsed, 0f, maxRefillsPerDay);
 
-            hasWatererInWell = false;
-            isRefillingWater = false;
-            isWatererReadyToCollect = false;
-            refillWaterProgress = 0f;
+            _refillFSM.ResetToEmpty();
+            SyncRefillFieldsFromFSM();
 
             StopAudio();
             UpdateVisuals();
@@ -355,10 +366,8 @@ namespace FeaturesFarming
                 PlantWaterer.Instance.RefillWater(100f);
             }
 
-            hasWatererInWell = false;
-            isWatererReadyToCollect = false;
-            isRefillingWater = false;
-            refillWaterProgress = 0f;
+            _refillFSM.ResetToEmpty();
+            SyncRefillFieldsFromFSM();
 
             PlayAudioOneShot(chimeClip, 0.7f);
             UpdateVisuals();
@@ -422,12 +431,10 @@ namespace FeaturesFarming
         /// </summary>
         public void RestoreWellState(bool hasWaterer, bool ready, float progress, float startAmount, float refillsUsed)
         {
-            hasWatererInWell = hasWaterer;
-            isWatererReadyToCollect = ready;
-            refillWaterProgress = Mathf.Clamp01(progress);
+            _refillFSM.Restore(hasWaterer, ready, progress);
+            SyncRefillFieldsFromFSM();
             watererStartAmount = startAmount;
             refillsUsedToday = Mathf.Max(0f, refillsUsed);
-            isRefillingWater = hasWaterer && !ready && progress < 1f;
 
             UpdateVisuals();
 

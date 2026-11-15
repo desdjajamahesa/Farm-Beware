@@ -43,6 +43,15 @@ namespace FeaturesStoryline.UI
     [DisallowMultipleComponent]
     public class StorylineUI : MonoBehaviour, IModalWindow
     {
+        public enum DialogueDisplayState
+        {
+            Hidden,
+            NonModalBanner,
+            ModalTyping,
+            ModalWaitingContinue,
+            ModalWaitingChoice
+        }
+
         private static StorylineUI _instance;
         public static bool HasInstance
         {
@@ -120,6 +129,26 @@ namespace FeaturesStoryline.UI
         private bool _hasPendingChoices = false;
         private DialogueChoice[] _currentChoices;
         private Action<int> _onChoiceSelected;
+
+        public DialogueDisplayState CurrentDisplayState
+        {
+            get
+            {
+                bool modalDialogueOpen = dialoguePanel != null && dialoguePanel.activeSelf;
+                bool modalOverlayOpen = overlayPanel != null && overlayPanel.activeSelf;
+                if (modalDialogueOpen || modalOverlayOpen)
+                {
+                    if (_isTypewriterActive) return DialogueDisplayState.ModalTyping;
+                    if (_hasPendingChoices) return DialogueDisplayState.ModalWaitingChoice;
+                    return DialogueDisplayState.ModalWaitingContinue;
+                }
+                if (bannerPanel != null && bannerPanel.activeSelf)
+                {
+                    return DialogueDisplayState.NonModalBanner;
+                }
+                return DialogueDisplayState.Hidden;
+            }
+        }
 
         [Header("Overlay Elements")]
         [SerializeField] private TextMeshProUGUI overlayTitleText;
