@@ -66,6 +66,11 @@ public class KitchenSinkInteractable : KitchenStation, IInteractable, IModalWind
     [Tooltip("Time required to refill the drinking water bottle in seconds (30s per MVP guideline).")]
     [SerializeField] private float refillWaterDuration = 30f;
 
+    [Header("Daily Bottle Refill Quota")]
+    [Tooltip("Maximum completed drinking water bottle refills allowed at the sink per day (TE-51 / TC-BTL-6).")]
+    [SerializeField] private int maxBottleRefillsPerDay = 2;
+    [SerializeField] private int bottleRefillsUsedToday = 0;
+
     // ── Water Refill State (Pure-Logic FSM + synchronized fields) ──
     private RefillStationStateMachine _refillFSM;
     private bool hasBottleInSink;
@@ -80,6 +85,27 @@ public class KitchenSinkInteractable : KitchenStation, IInteractable, IModalWind
     public bool IsBottleReadyToCollect => isBottleReadyToCollect;
     public float RefillWaterProgress => refillWaterProgress;
     public float RefillWaterDuration => refillWaterDuration;
+    public int MaxBottleRefillsPerDay => maxBottleRefillsPerDay;
+    public int BottleRefillsUsedToday => bottleRefillsUsedToday;
+    public int RemainingBottleRefillsToday => maxBottleRefillsPerDay > 0 ? Mathf.Max(0, maxBottleRefillsPerDay - bottleRefillsUsedToday) : 99;
+
+    protected override void OnEnable()
+    {
+        base.OnEnable();
+        TimeManager.OnAnyDayChanged += HandleDayChangedForBottleQuota;
+    }
+
+    protected override void OnDisable()
+    {
+        base.OnDisable();
+        TimeManager.OnAnyDayChanged -= HandleDayChangedForBottleQuota;
+    }
+
+    private void HandleDayChangedForBottleQuota(int newDay)
+    {
+        bottleRefillsUsedToday = 0;
+        SyncUIIfOpen();
+    }
 
     private void SyncRefillFieldsFromFSM()
     {
@@ -122,25 +148,18 @@ public class KitchenSinkInteractable : KitchenStation, IInteractable, IModalWind
 
     protected override KitchenRecipe FindRecipeFor(ItemData item, int slotIndex)
     {
-        if (item == null) return null;
+        if (item == null || !item.isDirty || item.cleanVariant == null) return null;
 
-        if (item is FoodItemData food && food.isDirty && food.cleanVariant != null)
+        if (virtualRecipe == null)
         {
-            virtualRecipe.output = food.cleanVariant;
-            virtualRecipe.outputCount = 1;
-            virtualRecipe.processTime = washDurationPerItem;
-            return virtualRecipe;
+            virtualRecipe = ScriptableObject.CreateInstance<KitchenRecipe>();
+            virtualRecipe.name = "VirtualWashRecipe";
         }
 
-        if (item is MaterialItemData mat && mat.isDirty && mat.cleanVariant != null)
-        {
-            virtualRecipe.output = mat.cleanVariant;
-            virtualRecipe.outputCount = 1;
-            virtualRecipe.processTime = washDurationPerItem;
-            return virtualRecipe;
-        }
-
-        return null;
+        virtualRecipe.output = item.cleanVariant;
+        virtualRecipe.outputCount = 1;
+        virtualRecipe.processTime = washDurationPerItem;
+        return virtualRecipe;
     }
 
     public void Interact(GameObject interactor)
@@ -347,6 +366,12 @@ public class KitchenSinkInteractable : KitchenStation, IInteractable, IModalWind
             return false;
         }
 
+        if (maxBottleRefillsPerDay > 0 && bottleRefillsUsedToday >= maxBottleRefillsPerDay)
+        {
+            SpawnFloatingAlert($"⚠️ Sink bottle refill limit reached for today ({bottleRefillsUsedToday}/{maxBottleRefillsPerDay})! Rest until tomorrow.");
+            return false;
+        }
+
         if (playerInv == null)
             playerInv = ServiceLocator.Resolve<IPlayerContext>()?.GetPlayerComponent<InventoryComponent>();
 
@@ -412,9 +437,72 @@ public class KitchenSinkInteractable : KitchenStation, IInteractable, IModalWind
     {
         _refillFSM.CompleteImmediate();
         SyncRefillFieldsFromFSM();
+        bottleRefillsUsedToday++;
 
         // Note: Item stays in the sink and does NOT immediately teleport to player's inventory!
-        SpawnFloatingAlert("💧 Water Bottle in Sink is full! Ready to take.");
+        SpawnFloatingAlert($"💧 Water Bottle in Sink is full! Ready to take ({RemainingBottleRefillsToday}/{maxBottleRefillsPerDay} refills left today).");
+        SyncUIIfOpen();
+    }
+
+    public void ResetSinkState()
+    {
+        if (inputSlot == null) inputSlot = new InventorySlot();
+        if (outputSlot == null) outputSlot = new InventorySlot();
+
+        inputSlot.item = null;
+        inputSlot.quantity = 0;
+        outputSlot.item = null;
+        outputSlot.quantity = 0;
+
+        isWashing = false;
+        washProgress = 0f;
+
+        _refillFSM.ResetToEmpty();
+        SyncRefillFieldsFromFSM();
+        bottleRefillsUsedToday = 0;
+
+        RaiseProcessCancelled(0);
+        SyncUIIfOpen();
+    }
+
+    public void RestoreSinkState(
+        ItemData inputItem,
+        int inputQuantity,
+        ItemData outputItem,
+        int outputQuantity,
+        bool savedWashing,
+        float savedWashProgress,
+        bool savedHasBottle,
+        bool savedBottleReady,
+        float savedBottleProgress,
+        int savedBottleRefillsUsedToday)
+    {
+        ResetSinkState();
+
+        if (inputItem != null && inputQuantity > 0)
+        {
+            inputSlot.item = inputItem;
+            inputSlot.quantity = inputQuantity;
+        }
+
+        if (outputItem != null && outputQuantity > 0)
+        {
+            outputSlot.item = outputItem;
+            outputSlot.quantity = outputQuantity;
+        }
+
+        bottleRefillsUsedToday = Mathf.Max(0, savedBottleRefillsUsedToday);
+
+        if (savedWashing && !inputSlot.IsEmpty && GetCleanVariant(inputSlot.item) != null)
+        {
+            isWashing = true;
+            washProgress = Mathf.Clamp01(savedWashProgress);
+            RaiseProcessStarted(0, washDurationPerItem);
+        }
+
+        _refillFSM.Restore(savedHasBottle, savedBottleReady, savedBottleProgress);
+        SyncRefillFieldsFromFSM();
+
         SyncUIIfOpen();
     }
 
@@ -498,12 +586,12 @@ public class KitchenSinkInteractable : KitchenStation, IInteractable, IModalWind
             sinkMgr.SyncToProcessor();
     }
 
+    public ItemData ResolveCleanVariant(ItemData item) => GetCleanVariant(item);
+
     private ItemData GetCleanVariant(ItemData item)
     {
-        if (item is FoodItemData food && food.isDirty && food.cleanVariant != null)
-            return food.cleanVariant;
-        if (item is MaterialItemData mat && mat.isDirty && mat.cleanVariant != null)
-            return mat.cleanVariant;
+        if (item != null && item.isDirty && item.cleanVariant != null)
+            return item.cleanVariant;
         return null;
     }
 

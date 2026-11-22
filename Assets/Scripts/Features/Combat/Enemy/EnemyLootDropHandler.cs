@@ -9,69 +9,148 @@ namespace FeaturesCombat
     /// </summary>
     public static class EnemyLootDropHandler
     {
+        /// <summary>
+        /// Determines mutually exclusive material vs gold drop outcome for non-boss enemies.
+        /// True = drop Monster Material; False = drop Gold.
+        /// </summary>
+        public static bool RollMaterialInsteadOfGold(float materialChance, float randomRoll)
+        {
+            return randomRoll < Mathf.Clamp01(materialChance);
+        }
+
+        private static bool IsSeedDrop(ItemData item)
+        {
+            if (item == null) return false;
+            if (item is SeedItemData || item.category == ItemCategory.Seed) return true;
+            return !string.IsNullOrEmpty(item.itemId) && item.itemId.StartsWith("seed_", System.StringComparison.OrdinalIgnoreCase);
+        }
+
         public static void ProcessDeathDrops(EnemyBase enemy)
         {
             if (enemy == null) return;
 
             bool isOverdrive = NightBrawlManager.Instance != null && NightBrawlManager.Instance.IsOverdriveNightActive;
-
-            // 1. Drop Gold
-            if (Random.value <= enemy.goldChance)
-            {
-                int baseGold = Random.Range(enemy.minGold, enemy.maxGold + 1);
-                int goldAmount = Core.PureLogic.NightOverdriveEvaluator.CalculateOverdriveGold(baseGold, isOverdrive);
-                var wallet = ServiceLocator.Resolve<IWalletService>();
-                if (wallet != null)
-                {
-                    wallet.AddGold(goldAmount);
-                    ServiceLocator.Resolve<IDailyEconomyService>()?.RecordCombatGold(goldAmount);
-
-                    if (FloatingCombatTextManager.Instance != null)
-                    {
-                        FloatingCombatTextManager.Instance.SpawnText(
-                            enemy.transform.position + Vector3.up * 1.5f,
-                            $"+{goldAmount} Gold",
-                            new Color(1f, 0.85f, 0.2f));
-                    }
-                }
-            }
-
-            // 2. Drop Monster Materials
             Vector3 tossDir = CalculateTossDirection(enemy);
 
-            if (enemy.EnemyData != null && enemy.EnemyData.lootDrops != null && enemy.EnemyData.lootDrops.Count > 0)
+            if (enemy.isBoss)
             {
-                // Modular ScriptableObject loot table
-                for (int i = 0; i < enemy.EnemyData.lootDrops.Count; i++)
+                if (Random.value <= enemy.goldChance)
                 {
-                    var entry = enemy.EnemyData.lootDrops[i];
-                    float effectiveChance = Core.PureLogic.NightOverdriveEvaluator.CalculateOverdriveDropChance(entry.dropChance, isOverdrive);
-                    if (entry.item != null && Random.value <= effectiveChance)
+                    AwardCombatGold(enemy, enemy.minGold, enemy.maxGold, isOverdrive);
+                }
+
+                if (enemy.EnemyData != null && enemy.EnemyData.lootDrops != null && enemy.EnemyData.lootDrops.Count > 0)
+                {
+                    for (int i = 0; i < enemy.EnemyData.lootDrops.Count; i++)
                     {
-                        int dropCount = Mathf.Clamp(entry.RollQuantity(), 1, 20); // Strict maxStack = 20 invariant
-                        for (int d = 0; d < dropCount; d++)
+                        var entry = enemy.EnemyData.lootDrops[i];
+                        if (entry.item == null || IsSeedDrop(entry.item)) continue;
+
+                        float effectiveChance = Core.PureLogic.NightOverdriveEvaluator.CalculateOverdriveDropChance(entry.dropChance, isOverdrive);
+                        if (Random.value <= effectiveChance)
                         {
-                            float angle = Random.Range(-35f, 35f);
-                            Vector3 spreadDir = Quaternion.Euler(0f, angle, 0f) * tossDir;
-                            WorldItemPickup.Spawn(enemy.transform.position, entry.item, 1, spreadDir);
+                            SpawnSpreadDrops(enemy.transform.position, entry.item, Mathf.Clamp(entry.RollQuantity(), 1, 20), tossDir);
                         }
                     }
                 }
-            }
-            else if (enemy.dropMaterial != null && Random.value <= Core.PureLogic.NightOverdriveEvaluator.CalculateOverdriveDropChance(enemy.dropChance, isOverdrive))
-            {
-                // Fallback legacy drop path
-                int dropCount = Mathf.Clamp(Random.Range(enemy.minDropCount, enemy.maxDropCount + 1), 1, 20);
-                for (int i = 0; i < dropCount; i++)
+                else if (enemy.dropMaterial != null && Random.value <= Core.PureLogic.NightOverdriveEvaluator.CalculateOverdriveDropChance(enemy.dropChance, isOverdrive))
                 {
-                    float angle = Random.Range(-35f, 35f);
-                    Vector3 spreadDir = Quaternion.Euler(0f, angle, 0f) * tossDir;
-                    WorldItemPickup.Spawn(enemy.transform.position, enemy.dropMaterial, 1, spreadDir);
+                    int dropCount = Mathf.Clamp(Random.Range(enemy.minDropCount, enemy.maxDropCount + 1), 1, 20);
+                    SpawnSpreadDrops(enemy.transform.position, enemy.dropMaterial, dropCount, tossDir);
+                }
+            }
+            else
+            {
+                // Regular enemies: mutually exclusive 50% Monster Material OR 50% Gold (prevents BUG 021 double-drop & BUG 022 zero-drop)
+                ItemData matItem = null;
+                int matMin = enemy.minDropCount > 0 ? enemy.minDropCount : 1;
+                int matMax = enemy.maxDropCount >= matMin ? enemy.maxDropCount : 3;
+                float baseMatChance = enemy.dropChance > 0f ? enemy.dropChance : 0.5f;
+
+                if (enemy.EnemyData != null && enemy.EnemyData.lootDrops != null)
+                {
+                    for (int i = 0; i < enemy.EnemyData.lootDrops.Count; i++)
+                    {
+                        var entry = enemy.EnemyData.lootDrops[i];
+                        if (entry.item != null && !IsSeedDrop(entry.item))
+                        {
+                            matItem = entry.item;
+                            matMin = entry.minQuantity > 0 ? entry.minQuantity : 1;
+                            matMax = entry.maxQuantity >= matMin ? entry.maxQuantity : matMin;
+                            baseMatChance = entry.dropChance > 0f ? entry.dropChance : 0.5f;
+                            break;
+                        }
+                    }
+                }
+
+                if (matItem == null)
+                {
+                    matItem = enemy.dropMaterial ?? ResolveFallbackMaterial(enemy.enemyType);
+                }
+
+                float effectiveMatChance = Core.PureLogic.NightOverdriveEvaluator.CalculateOverdriveDropChance(baseMatChance, isOverdrive);
+                if (matItem != null && RollMaterialInsteadOfGold(effectiveMatChance, Random.value))
+                {
+                    int dropCount = Mathf.Clamp(Random.Range(matMin, matMax + 1), 1, 20);
+                    SpawnSpreadDrops(enemy.transform.position, matItem, dropCount, tossDir);
+                }
+                else
+                {
+                    int minG = enemy.minGold > 0 ? enemy.minGold : 200;
+                    int maxG = enemy.maxGold >= minG ? enemy.maxGold : 500;
+                    AwardCombatGold(enemy, minG, maxG, isOverdrive);
                 }
             }
 
-            // 3. Drop Seeds (MVP Guideline V0.1 Gap 1)
+            // Drop Seeds independently according to MVP specification (ProcessSeedDrops handles seed quantities cleanly)
             ProcessSeedDrops(enemy, tossDir);
+        }
+
+        private static ItemData ResolveFallbackMaterial(EnemyType type)
+        {
+            var db = ItemDatabase.Instance ?? Resources.Load<ItemDatabase>("Database/ItemDatabase");
+            if (db == null) return null;
+
+            return type switch
+            {
+                EnemyType.TuberMaw => db.GetItem("mat_mutated_root"),
+                EnemyType.TaroBrute => db.GetItem("mat_hardened_root"),
+                EnemyType.CornMusketeer => db.GetItem("mat_kernel_shrapnel"),
+                EnemyType.CyclopsTuberMaw => db.GetItem("mat_cyclops_eye"),
+                EnemyType.TaroColossus => db.GetItem("mat_colossus_core"),
+                EnemyType.TheRanger => db.GetItem("mat_cob_core"),
+                _ => null
+            };
+        }
+
+        private static void AwardCombatGold(EnemyBase enemy, int minGold, int maxGold, bool isOverdrive)
+        {
+            int baseGold = Random.Range(minGold, maxGold + 1);
+            int goldAmount = Core.PureLogic.NightOverdriveEvaluator.CalculateOverdriveGold(baseGold, isOverdrive);
+            var wallet = ServiceLocator.Resolve<IWalletService>();
+            if (wallet != null && goldAmount > 0)
+            {
+                wallet.AddGold(goldAmount);
+                ServiceLocator.Resolve<IDailyEconomyService>()?.RecordCombatGold(goldAmount);
+
+                if (FloatingCombatTextManager.Instance != null)
+                {
+                    FloatingCombatTextManager.Instance.SpawnText(
+                        enemy.transform.position + Vector3.up * 1.5f,
+                        $"+{goldAmount} Gold",
+                        new Color(1f, 0.85f, 0.2f));
+                }
+            }
+        }
+
+        private static void SpawnSpreadDrops(Vector3 origin, ItemData item, int count, Vector3 tossDir)
+        {
+            for (int d = 0; d < count; d++)
+            {
+                float angle = Random.Range(-35f, 35f);
+                Vector3 spreadDir = Quaternion.Euler(0f, angle, 0f) * tossDir;
+                WorldItemPickup.Spawn(origin, item, 1, spreadDir);
+            }
         }
 
         private static void ProcessSeedDrops(EnemyBase enemy, Vector3 tossDir)

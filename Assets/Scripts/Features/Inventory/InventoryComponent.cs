@@ -114,14 +114,24 @@ public class InventoryComponent : MonoBehaviour
         if (allowedFoodCategories != null && allowedFoodCategories.Count > 0)
         {
             bool allowed = false;
+            bool allowsVegetable = false;
             for (int i = 0; i < allowedFoodCategories.Count; i++)
             {
+                if (allowedFoodCategories[i] == ItemData.FoodCategory.Vegetable)
+                    allowsVegetable = true;
+
                 if (item is FoodItemData food && allowedFoodCategories[i] == food.foodCategory)
                 {
                     allowed = true;
                     break;
                 }
             }
+
+            if (!allowed && (item.isDirty || (allowsVegetable && item.category == ItemCategory.Crop)))
+            {
+                allowed = true;
+            }
+
             if (!allowed)
                 return false;
         }

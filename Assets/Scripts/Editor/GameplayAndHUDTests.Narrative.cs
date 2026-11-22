@@ -3743,5 +3743,438 @@ namespace FarmBeware.EditorTests
                 CanvasHelper.ClearCache();
             }
         }
+
+        // Test 114: Comprehensive QA & Testing HUB Regression Audit (BUG-009..BUG-024, TE-51, TE-141, TC-76, TC-80, Door, Dawn, Well)
+        private static bool Test_QAHub_ComprehensiveBugFixes_Audit()
+        {
+            var cleanup = new List<Object>();
+            var origTimeSvc = ServiceLocator.Resolve<ITimeService>();
+            var origFactBoard = ServiceLocator.Resolve<INarrativeFactBoard>();
+            var origStorySvc = ServiceLocator.Resolve<IStorylineService>();
+            var origEconField = typeof(DailyEconomyManager).GetField("_instance", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            var prevEcon = origEconField?.GetValue(null);
+            var origSink = KitchenSinkInteractable.Instance;
+            var origStoveField = typeof(KitchenStove).GetField("_instance", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            var prevStove = origStoveField?.GetValue(null);
+            var origBrawlField = typeof(NightBrawlManager).GetField("_instance", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            var prevBrawl = origBrawlField?.GetValue(null);
+            var origTimeMgrField = typeof(TimeManager).GetField("_instance", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            var prevTimeMgr = origTimeMgrField?.GetValue(null);
+            var origDntField = typeof(DayNightTimeManager).GetField("_instance", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            var prevDnt = origDntField?.GetValue(null);
+            var origWell = WaterWellInteractable.Instance;
+            var origWatererField = typeof(PlantWaterer).GetField("_instance", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            var prevWaterer = origWatererField?.GetValue(null);
+            var origStoryMgr = FeaturesStoryline.StorylineManager.Instance;
+            var origStoryUiField = typeof(FeaturesStoryline.UI.StorylineUI).GetField("_instance", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            var prevStoryUi = origStoryUiField?.GetValue(null);
+            var origDayTransField = typeof(DayTransitionUI).GetField("_instance", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            var prevDayTrans = origDayTransField?.GetValue(null);
+
+            try
+            {
+                // 1. BUG 024: Dirty Corn must be recognized by SinkManager, KitchenSinkInteractable & InventoryComponent
+                var dirtyCorn = AssetDatabase.LoadAssetAtPath<ItemData>("Assets/Data/Items/Crops/Crop_Corn_Dirty.asset");
+                var cleanCorn = AssetDatabase.LoadAssetAtPath<ItemData>("Assets/Data/Items/Crops/Crop_Corn.asset");
+                if (dirtyCorn == null || cleanCorn == null)
+                {
+                    Debug.LogError("[Test 114] Failed to load Crop_Corn / Crop_Corn_Dirty assets!");
+                    return false;
+                }
+
+                var sinkGo = new GameObject("Test114_Sink", typeof(InventoryComponent), typeof(KitchenSinkInteractable));
+                cleanup.Add(sinkGo);
+                var sink = sinkGo.GetComponent<KitchenSinkInteractable>();
+                var sinkMgrGo = new GameObject("Test114_SinkMgr", typeof(SinkManager));
+                cleanup.Add(sinkMgrGo);
+                var sinkMgr = sinkMgrGo.GetComponent<SinkManager>();
+
+                if (!sinkMgr.IsDirty(dirtyCorn) || sink.ResolveCleanVariant(dirtyCorn) != cleanCorn)
+                {
+                    Debug.LogError("[Test 114] BUG 024 regression: Dirty Corn not accepted/resolved by Kitchen Sink!");
+                    return false;
+                }
+
+                var vegInvGo = new GameObject("Test114_VegInv", typeof(InventoryComponent));
+                cleanup.Add(vegInvGo);
+                var vegInv = vegInvGo.GetComponent<InventoryComponent>();
+                vegInv.SetAllowedFoodCategories(new[] { ItemData.FoodCategory.Vegetable });
+                if (!vegInv.CanAcceptItem(dirtyCorn))
+                {
+                    Debug.LogError("[Test 114] BUG 024 regression: Vegetable container rejected dirty base ItemData corn!");
+                    return false;
+                }
+
+                // 2. BUG 010: Seeds must sell for seed.sellPrice, NOT full harvested crop prices
+                var econGo = new GameObject("Test114_Econ", typeof(DailyEconomyManager));
+                cleanup.Add(econGo);
+                var econ = econGo.GetComponent<DailyEconomyManager>();
+                var seedSp = AssetDatabase.LoadAssetAtPath<SeedItemData>("Assets/Data/Items/Seeds/Seed_SweetPotato.asset");
+                var seedTaro = AssetDatabase.LoadAssetAtPath<SeedItemData>("Assets/Data/Items/Seeds/Seed_Taro.asset");
+                var seedCorn = AssetDatabase.LoadAssetAtPath<SeedItemData>("Assets/Data/Items/Seeds/Seed_Corn.asset");
+                if (econ.GetCropSellPrice(seedSp) != seedSp.sellPrice ||
+                    econ.GetCropSellPrice(seedTaro) != seedTaro.sellPrice ||
+                    econ.GetCropSellPrice(seedCorn) != seedCorn.sellPrice)
+                {
+                    Debug.LogError("[Test 114] BUG 010 regression: Seed sell price used high crop market value!");
+                    return false;
+                }
+
+                // 3. BUG 013: Key tools, weapons & water bottle cannot be sold at Merchant
+                var toolHoe = AssetDatabase.LoadAssetAtPath<ItemData>("Assets/Data/Items/Equipment/Tool_Hoe.asset");
+                var toolWaterer = AssetDatabase.LoadAssetAtPath<ItemData>("Assets/Data/Items/Equipment/Tool_PlantWaterer.asset");
+                var toolCleaver = AssetDatabase.LoadAssetAtPath<ItemData>("Assets/Data/Items/Equipment/Tool_RootCleaver.asset");
+                var toolRepeater = AssetDatabase.LoadAssetAtPath<ItemData>("Assets/Data/Items/Equipment/Tool_CornRepeater.asset");
+                var waterBottle = AssetDatabase.LoadAssetAtPath<ItemData>("Assets/Data/Items/Food/Food_BottleOfWater.asset");
+                var cropSp = AssetDatabase.LoadAssetAtPath<ItemData>("Assets/Data/Items/Crops/Crop_SweetPotato.asset");
+                if (!MerchantShopUI.IsUnsellableKeyItem(toolHoe) ||
+                    !MerchantShopUI.IsUnsellableKeyItem(toolWaterer) ||
+                    !MerchantShopUI.IsUnsellableKeyItem(toolCleaver) ||
+                    !MerchantShopUI.IsUnsellableKeyItem(toolRepeater) ||
+                    !MerchantShopUI.IsUnsellableKeyItem(waterBottle) ||
+                    MerchantShopUI.IsUnsellableKeyItem(cropSp) ||
+                    MerchantShopUI.IsUnsellableKeyItem(seedSp))
+                {
+                    Debug.LogError("[Test 114] BUG 013 regression: Unsellable key item classification failed!");
+                    return false;
+                }
+
+                // 4. BUG 014: Buff isolation on Save/Load
+                var buffPlayerGo = new GameObject("Test114_BuffPlayer", typeof(PlayerBuffManager));
+                cleanup.Add(buffPlayerGo);
+                var buffMgr = buffPlayerGo.GetComponent<PlayerBuffManager>();
+                buffMgr.ApplyBuff(new BuffEffectData(BuffType.AttackDamagePercent, 0.12f, 60f, "Test Buff", ""));
+                buffMgr.RestoreActiveBuffs(new List<FeaturesSaveSystem.SavedActiveBuff>());
+                if (buffMgr.ActiveBuffs.Count != 0)
+                {
+                    Debug.LogError("[Test 114] BUG 014 regression: Loading save without buffs did not clear active buffs!");
+                    return false;
+                }
+
+                buffMgr.RestoreActiveBuffs(new List<FeaturesSaveSystem.SavedActiveBuff>
+                {
+                    new FeaturesSaveSystem.SavedActiveBuff
+                    {
+                        buffName = "SavedBuff",
+                        buffType = (int)BuffType.MoveSpeedPercent,
+                        value = 0.1f,
+                        duration = 60f,
+                        remainingDuration = 42f
+                    }
+                });
+                if (buffMgr.ActiveBuffs.Count != 1 || !Mathf.Approximately(buffMgr.ActiveBuffs[0].remainingDuration, 42f))
+                {
+                    Debug.LogError("[Test 114] BUG 014 regression: Failed to restore saved buff duration cleanly!");
+                    return false;
+                }
+
+                // 5. BUG 016, BUG 017, BUG 018, TE-51: Sink state restore & 2x/day bottle refill quota
+                var playerBottleGo = new GameObject("Test114_PlayerInvBottle", typeof(InventoryComponent), typeof(PlayerWaterBottle));
+                cleanup.Add(playerBottleGo);
+                var playerInv = playerBottleGo.GetComponent<InventoryComponent>();
+                playerInv.ResetInventory(16);
+                playerInv.AddItemAmount(waterBottle, 1);
+                var bottleComp = playerBottleGo.GetComponent<PlayerWaterBottle>();
+                bottleComp.SetWater(25f);
+
+                sink.RestoreSinkState(null, 0, null, 0, false, 0f, false, false, 0f, 2);
+                if (sink.IsWashing || sink.HasBottleInSink || sink.StartRefillingWater(playerInv))
+                {
+                    Debug.LogError("[Test 114] BUG 016/018/TE-51 regression: Sink allowed >2 bottle refills/day or retained stale washing!");
+                    return false;
+                }
+
+                // 6. BUG 020 & BUG 021-cooking: Stove reset/restore isolates cooking burners
+                var stoveGo = new GameObject("Test114_Stove", typeof(KitchenStove));
+                cleanup.Add(stoveGo);
+                var stove = stoveGo.GetComponent<KitchenStove>();
+                stove.RestoreStoveState(new List<FeaturesSaveSystem.SavedStoveBurnerSlot>
+                {
+                    new FeaturesSaveSystem.SavedStoveBurnerSlot
+                    {
+                        slotIndex = 0,
+                        state = (int)CookingState.Completed,
+                        outputItemId = "crop_corn",
+                        outputQuantity = 1
+                    }
+                }, id => id == "crop_corn" ? cleanCorn : null);
+                if (!stove.HasCookedOutput || stove.GetSlot(0)?.outputSlot?.item != cleanCorn)
+                {
+                    Debug.LogError("[Test 114] BUG 020/021 regression: Stove failed to restore burner slot cleanly!");
+                    return false;
+                }
+                stove.ResetStoveState();
+                if (stove.HasCookedOutput || stove.ActiveCookingCount != 0)
+                {
+                    Debug.LogError("[Test 114] BUG 020/021 regression: Stove ResetStoveState did not clear cooking output!");
+                    return false;
+                }
+
+                // 7. BUG 021-drop, BUG 022 & TE-141: Mutually exclusive drop & CornMusketeer 15 DMG & TaroBrute data
+                if (!EnemyLootDropHandler.RollMaterialInsteadOfGold(0.5f, 0.25f) ||
+                    EnemyLootDropHandler.RollMaterialInsteadOfGold(0.5f, 0.75f))
+                {
+                    Debug.LogError("[Test 114] BUG 021/022 regression: Mutually exclusive loot roll helper failed!");
+                    return false;
+                }
+
+                var taroBruteData = AssetDatabase.LoadAssetAtPath<FeaturesCombat.Data.EnemyData>("Assets/Data/Enemies/EnemyData_TaroBrute.asset");
+                if (taroBruteData == null || taroBruteData.minGold != 200 || taroBruteData.maxGold != 500 || !Mathf.Approximately(taroBruteData.goldChance, 0.5f))
+                {
+                    Debug.LogError("[Test 114] EnemyData_TaroBrute.asset gold values misaligned!");
+                    return false;
+                }
+
+                var musketeerGo = new GameObject("Test114_CornMusketeer", typeof(Rigidbody), typeof(CapsuleCollider), typeof(EnemyBase));
+                cleanup.Add(musketeerGo);
+                var musketeer = musketeerGo.GetComponent<EnemyBase>();
+                musketeer.enemyType = EnemyType.CornMusketeer;
+                musketeer.InitializeStatsByType();
+                if (musketeer.contactDamage != 15)
+                {
+                    Debug.LogError($"[Test 114] TE-141 regression: CornMusketeer contactDamage={musketeer.contactDamage} (expected 15)!");
+                    return false;
+                }
+
+                // 8. BUG 023 & BUG-009: NightBrawl intermission 30s & staggered wave recovery
+                var brawlGo = new GameObject("Test114_NightBrawl", typeof(NightBrawlManager));
+                cleanup.Add(brawlGo);
+                var brawl = brawlGo.GetComponent<NightBrawlManager>();
+                var intermissionField = typeof(NightBrawlManager).GetField("waveIntermissionDelay", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                intermissionField?.SetValue(brawl, 5f);
+                var validateMethod = typeof(NightBrawlManager).GetMethod("ValidateSpawnIntervals", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                validateMethod?.Invoke(brawl, null);
+                if (brawl.WaveIntermissionDelay < 30f)
+                {
+                    Debug.LogError($"[Test 114] BUG 023 regression: WaveIntermissionDelay={brawl.WaveIntermissionDelay} (< 30s)!");
+                    return false;
+                }
+
+                // 9. BUG 011: Morning Day increment sync before events
+                var tmGo = new GameObject("Test114_TM", typeof(TimeManager));
+                cleanup.Add(tmGo);
+                var tm = tmGo.GetComponent<TimeManager>();
+                origTimeMgrField?.SetValue(null, tm);
+                tm.SetTimeState(1, TimeManager.DayPhase.Night, true);
+                var dntGo = new GameObject("Test114_DNT", typeof(DayNightTimeManager));
+                cleanup.Add(dntGo);
+                var dnt = dntGo.GetComponent<DayNightTimeManager>();
+                origDntField?.SetValue(null, dnt);
+                dnt.SetDayAndTime(1, 20f);
+                int seenDntDayInsideEvent = -1;
+                void CaptureDayOnPhase(TimeManager.DayPhase p)
+                {
+                    if (p == TimeManager.DayPhase.Day) seenDntDayInsideEvent = dnt.CurrentDay;
+                }
+                tm.OnPhaseChanged += CaptureDayOnPhase;
+                dnt.AdvanceToNextDay();
+                tm.OnPhaseChanged -= CaptureDayOnPhase;
+                if (dnt.CurrentDay != 2 || tm.currentDay != 2 || seenDntDayInsideEvent != 2)
+                {
+                    Debug.LogError($"[Test 114] BUG 011 regression: DNT={dnt.CurrentDay}, TM={tm.currentDay}, DuringEvent={seenDntDayInsideEvent}!");
+                    return false;
+                }
+
+                // 10. BUG 012: Cannot attack across house interior boundary
+                if (!NonAllocPhysics.IsLineOfSightBlocked(new Vector3(20f, 1f, 15f), new Vector3(40f, 1f, 15f), null, null, 0))
+                {
+                    Debug.LogError("[Test 114] BUG 012 regression: Attack across house boundary was NOT blocked!");
+                    return false;
+                }
+                if (NonAllocPhysics.IsLineOfSightBlocked(new Vector3(0f, 1f, 0f), new Vector3(2f, 1f, 0f), null, null, 0))
+                {
+                    Debug.LogError("[Test 114] BUG 012 regression: Clear outside line of sight was falsely blocked!");
+                    return false;
+                }
+
+                // 11. BUG 015, TC-76, TC-80: Food buff values & durations
+                var spRoasted = AssetDatabase.LoadAssetAtPath<FoodItemData>("Assets/Data/Items/Food/Food_RoastedSweetPotato.asset");
+                var spPorridge = AssetDatabase.LoadAssetAtPath<FoodItemData>("Assets/Data/Items/Food/Food_SweetPotatoPorridge.asset");
+                var cornPorridge = AssetDatabase.LoadAssetAtPath<FoodItemData>("Assets/Data/Items/Food/Food_CornPorridge.asset");
+                var taroChip = AssetDatabase.LoadAssetAtPath<FoodItemData>("Assets/Data/Items/Food/Food_TaroChip.asset");
+                var taroDumpling = AssetDatabase.LoadAssetAtPath<FoodItemData>("Assets/Data/Items/Food/Food_TaroDumpling.asset");
+                var purpleCake = AssetDatabase.LoadAssetAtPath<FoodItemData>("Assets/Data/Items/Food/Food_PurpleYamCake.asset");
+                var taroStew = AssetDatabase.LoadAssetAtPath<FoodItemData>("Assets/Data/Items/Food/Food_TaroCoconutStew.asset");
+                var cornStew = AssetDatabase.LoadAssetAtPath<FoodItemData>("Assets/Data/Items/Food/Food_TaroCornStew.asset");
+                var spFeast = AssetDatabase.LoadAssetAtPath<FoodItemData>("Assets/Data/Items/Food/Food_SweetPotatoFeast.asset");
+                if (spRoasted.healAmount != 0 || spPorridge.healAmount != 0 || cornPorridge.healAmount != 0 ||
+                    !Mathf.Approximately(taroChip.buffEffects[0].duration, 30f) ||
+                    !Mathf.Approximately(taroDumpling.buffEffects[0].duration, 10f) ||
+                    !Mathf.Approximately(purpleCake.buffEffects[0].duration, 60f) ||
+                    !Mathf.Approximately(taroStew.buffEffects[0].value, 0.12f) ||
+                    !Mathf.Approximately(taroStew.buffEffects[0].duration, 120f) ||
+                    !Mathf.Approximately(cornStew.buffEffects[0].value, 0.08f) ||
+                    !Mathf.Approximately(cornStew.buffEffects[0].duration, 120f) ||
+                    !Mathf.Approximately(spFeast.buffEffects[2].value, 0.1f) ||
+                    !Mathf.Approximately(spFeast.buffEffects[2].duration, 120f))
+                {
+                    Debug.LogError("[Test 114] BUG 015/TC-76/TC-80 regression: Food asset healAmount/buff calibration failed!");
+                    return false;
+                }
+
+                // 12. DoorInteractable Bedroom Side-Corner Outside vs Inside Detection
+                var zoneGo = new GameObject("Test114_BedroomZone", typeof(BoxCollider), typeof(InteractionZone));
+                cleanup.Add(zoneGo);
+                var zoneBox = zoneGo.GetComponent<BoxCollider>();
+                zoneBox.isTrigger = true;
+                zoneBox.center = new Vector3(27.52f, 2.00f, 22.26f);
+                zoneBox.size = new Vector3(9.80f, 4.00f, 7.20f);
+                var spawnInGo = new GameObject("Test114_DoorIn");
+                cleanup.Add(spawnInGo);
+                spawnInGo.transform.position = new Vector3(23.15f, 0.01f, 20.20f);
+                var spawnOutGo = new GameObject("Test114_DoorOut");
+                cleanup.Add(spawnOutGo);
+                spawnOutGo.transform.position = new Vector3(23.15f, 0.01f, 17.20f);
+                var doorGo = new GameObject("Test114_BedroomDoor", typeof(DoorInteractable));
+                cleanup.Add(doorGo);
+                var doorComp = doorGo.GetComponent<DoorInteractable>();
+                typeof(DoorInteractable).GetField("spawnPointInside", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)?.SetValue(doorComp, spawnInGo.transform);
+                typeof(DoorInteractable).GetField("spawnPointOutside", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)?.SetValue(doorComp, spawnOutGo.transform);
+                Physics.SyncTransforms();
+
+                if (doorComp.IsPlayerInside(new Vector3(21.8f, 0.1f, 19.5f)))
+                {
+                    Debug.LogError("[Test 114] DoorInteractable falsely treated player at outside side-wall corner as inside bedroom!");
+                    return false;
+                }
+                if (!doorComp.IsPlayerInside(new Vector3(23.5f, 0.1f, 20.2f)))
+                {
+                    Debug.LogError("[Test 114] DoorInteractable failed to detect player actually inside BedroomZone!");
+                    return false;
+                }
+
+                // 13. StorylineManager Day 1 Morning transition flush & Night Dawn-dialogue suppression
+                var storyTime = new MockTimeService { CurrentDay = 1, CurrentPhase = DayPhase.Day, CurrentHour = 6.0f };
+                ServiceLocator.Register<ITimeService>(storyTime);
+                var storyFacts = new NarrativeFactBoard();
+                storyFacts.SetFact(NarrativeFactKey.CurrentDay, 1);
+                storyFacts.SetFact(NarrativeFactKey.IntroCutsceneCompleted, 1);
+                storyFacts.SetFact(NarrativeFactKey.Night1CutsceneCompleted, 0);
+                ServiceLocator.Register<INarrativeFactBoard>(storyFacts);
+
+                var dayTransGo = new GameObject("Test114_DayTransitionUI", typeof(DayTransitionUI));
+                cleanup.Add(dayTransGo);
+                var dayTrans = dayTransGo.GetComponent<DayTransitionUI>();
+                origDayTransField?.SetValue(null, dayTrans);
+
+                var storyUiGo = new GameObject("Test114_StorylineUI", typeof(FeaturesStoryline.UI.StorylineUI));
+                cleanup.Add(storyUiGo);
+                var storyUi = storyUiGo.GetComponent<FeaturesStoryline.UI.StorylineUI>();
+                origStoryUiField?.SetValue(null, storyUi);
+
+                var storyMgrGo = new GameObject("Test114_StorylineManager", typeof(FeaturesStoryline.StorylineManager));
+                cleanup.Add(storyMgrGo);
+                var storyMgr = storyMgrGo.GetComponent<FeaturesStoryline.StorylineManager>();
+                FeaturesStoryline.StorylineManager.Instance = storyMgr;
+                storyMgr.Initialize();
+
+                dayTrans.PlayDayTransition(1);
+                dayTrans.CancelTransition();
+
+                var morningBeat = StoryBeatData.CreateRuntimeInstance(
+                    "D1_MANIFEST_FOUND", 1, StoryTriggerType.Dawn, StoryDeliveryType.DialogueBox,
+                    "New Plot", "Morning already. Grab hoe.", day: 1, speaker: "Ucup");
+                storyMgr.Engine.EnqueuePendingModalBeat(morningBeat);
+                var dayDoneMethod = typeof(FeaturesStoryline.StorylineManager).GetMethod("HandleDayTransitionCompleted", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                dayDoneMethod?.Invoke(storyMgr, null);
+                if (storyMgr.Engine.HasPendingModalBeats)
+                {
+                    Debug.LogError("[Test 114] StorylineManager blocked Day 1 Morning modal beat until Night!");
+                    return false;
+                }
+                storyUi.DismissDialogue();
+
+                storyTime.CurrentPhase = DayPhase.Night;
+                storyTime.CurrentHour = 18.0f;
+                var nightDawnBeat = StoryBeatData.CreateRuntimeInstance(
+                    "TEST_DAWN_AT_NIGHT", 1, StoryTriggerType.Dawn, StoryDeliveryType.DialogueBox,
+                    "Dawn", "Morning already", day: 1, speaker: "Ucup");
+                var deliverMethod = typeof(FeaturesStoryline.StorylineManager).GetMethod("DeliverStoryBeat", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                deliverMethod?.Invoke(storyMgr, new object[] { nightDawnBeat });
+                if (storyMgr.HasTriggered("TEST_DAWN_AT_NIGHT"))
+                {
+                    Debug.LogError("[Test 114] StorylineManager triggered Dawn dialogue during Night phase!");
+                    return false;
+                }
+
+                // 14. WaterWellInteractable strictly 2 refills per day (not 20 partial waterings)
+                var wellTime = new MockTimeService { CurrentDay = 1, CurrentPhase = DayPhase.Day };
+                ServiceLocator.Register<ITimeService>(wellTime);
+                var watererTool = AssetDatabase.LoadAssetAtPath<ItemData>("Assets/Data/Items/Equipment/Tool_PlantWaterer.asset");
+                var wellPlayerGo = new GameObject("Test114_WellPlayer", typeof(InventoryComponent), typeof(PlantWaterer));
+                cleanup.Add(wellPlayerGo);
+                var wellInv = wellPlayerGo.GetComponent<InventoryComponent>();
+                wellInv.ResetInventory(16);
+                wellInv.AddItemAmount(watererTool, 1);
+                var wellWaterer = wellPlayerGo.GetComponent<PlantWaterer>();
+                origWatererField?.SetValue(null, wellWaterer);
+
+                var wellGo = new GameObject("Test114_WaterWell", typeof(Highlightable), typeof(WaterWellInteractable));
+                cleanup.Add(wellGo);
+                var wellComp = wellGo.GetComponent<WaterWellInteractable>();
+                typeof(WaterWellInteractable).GetProperty("Instance", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static)?.SetValue(null, wellComp);
+
+                var completeRefillMethod = typeof(WaterWellInteractable).GetMethod("CompleteWaterRefill", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+                // Refill #1 after 1 watering (10L used -> 90/100L)
+                wellWaterer.SetWater(90f);
+                if (!wellComp.StartRefillingWaterer(wellPlayerGo))
+                {
+                    Debug.LogError("[Test 114] Garden Well failed to start 1st refill!");
+                    return false;
+                }
+                completeRefillMethod?.Invoke(wellComp, null);
+                wellComp.CollectFilledWaterer(wellPlayerGo);
+
+                // Refill #2 after 1 watering (10L used -> 90/100L)
+                wellWaterer.SetWater(90f);
+                if (!wellComp.StartRefillingWaterer(wellPlayerGo))
+                {
+                    Debug.LogError("[Test 114] Garden Well failed to start 2nd refill!");
+                    return false;
+                }
+                completeRefillMethod?.Invoke(wellComp, null);
+                wellComp.CollectFilledWaterer(wellPlayerGo);
+
+                // 3rd refill on same day must be rejected
+                wellWaterer.SetWater(90f);
+                if (wellComp.StartRefillingWaterer(wellPlayerGo) || !Mathf.Approximately(wellComp.RefillsUsedToday, 2f))
+                {
+                    Debug.LogError($"[Test 114] Garden Well allowed >2 refills per day! RefillsUsedToday={wellComp.RefillsUsedToday}");
+                    return false;
+                }
+
+                Debug.Log("✅ Test 114: All QA & Testing HUB bug fixes + Door/Dawn-at-Night/Well-2x fixes verified cleanly!");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[Test 114] Exception: {ex.Message}\n{ex.StackTrace}");
+                return false;
+            }
+            finally
+            {
+                if (origTimeSvc != null) ServiceLocator.Register<ITimeService>(origTimeSvc);
+                if (origFactBoard != null) ServiceLocator.Register<INarrativeFactBoard>(origFactBoard);
+                if (origStorySvc != null) ServiceLocator.Register<IStorylineService>(origStorySvc);
+                origEconField?.SetValue(null, prevEcon);
+                typeof(KitchenSinkInteractable).GetProperty("Instance", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static)?.SetValue(null, origSink);
+                origStoveField?.SetValue(null, prevStove);
+                origBrawlField?.SetValue(null, prevBrawl);
+                origTimeMgrField?.SetValue(null, prevTimeMgr);
+                origDntField?.SetValue(null, prevDnt);
+                typeof(WaterWellInteractable).GetProperty("Instance", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static)?.SetValue(null, origWell);
+                origWatererField?.SetValue(null, prevWaterer);
+                FeaturesStoryline.StorylineManager.Instance = origStoryMgr;
+                origStoryUiField?.SetValue(null, prevStoryUi);
+                origDayTransField?.SetValue(null, prevDayTrans);
+                if (ModalStackManager.HasInstance && ModalStackManager.Instance != null) ModalStackManager.Instance.Clear();
+
+                for (int i = cleanup.Count - 1; i >= 0; i--)
+                {
+                    if (cleanup[i] != null) Object.DestroyImmediate(cleanup[i]);
+                }
+            }
+        }
     }
 }

@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Recipe_PurpleYamCake
   m_EditorClassIdentifier: Assembly-CSharp::KitchenRecipe
   input: {fileID: 0}
-  recipeName: Purple Yam Cake
+  recipeName: Purple Taro Cake
   ingredients:
   - item: {fileID: 11400000, guid: 0b3f64f5cc4e73e4d8acc8ee24d96fda, type: 2}
     quantity: 1
@@ -22,7 +22,7 @@ MonoBehaviour:
   - item: {fileID: 11400000, guid: e23ce534d2dfa1c42961166921b2abc6, type: 2}
     quantity: 1
   recipeIcon: {fileID: 21300000, guid: f7ce4113809c56d4aa9e78b508643b63, type: 3}
-  description: 'Traditional purple yam cake. Vitality Boost: +10% Max HP for 1 minute.
+  description: 'Traditional purple taro cake. Vitality Boost: +10% Max HP for 1 minute.
     (+15 Hunger)'
   output: {fileID: 11400000, guid: 3860ab8e7c3bda0458d18f5108ad6745, type: 2}
   outputCount: 1

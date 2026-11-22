@@ -157,8 +157,10 @@ namespace FeaturesCombat
 
         public float SpawnIntervalMin => spawnIntervalMin;
         public float SpawnIntervalMax => spawnIntervalMax;
+        public float WaveIntermissionDelay => waveIntermissionDelay;
 
         private readonly List<EnemyBase> activeEnemies = new List<EnemyBase>();
+        private readonly List<EnemyType> _pendingWaveSpawns = new List<EnemyType>();
         private readonly Wave.WaveProgressionEngine waveEngine = new Wave.WaveProgressionEngine();
         private bool isWaveInProgress = false;
         private bool isSpawningWave = false;
@@ -274,6 +276,10 @@ namespace FeaturesCombat
 
         private void ValidateSpawnIntervals()
         {
+            if (waveIntermissionDelay < 30f)
+            {
+                waveIntermissionDelay = 30f;
+            }
             // Auto-migrate legacy 15s-20s serialized scene values to the 6-10s specification
             if (spawnIntervalMin > 4.0f || spawnIntervalMin < 1.0f)
             {
@@ -292,6 +298,7 @@ namespace FeaturesCombat
         public event System.Action<EnemyBase> OnEnemySpawned;
         public event System.Action<EnemyBase> OnEnemyDied;
         public IReadOnlyList<EnemyBase> ActiveEnemies => activeEnemies;
+        public IReadOnlyList<EnemyType> PendingWaveSpawns => _pendingWaveSpawns;
         public int ActiveEnemiesCount => activeEnemies.Count;
         public bool IsNightBrawlActive => isWaveInProgress;
         public bool IsSpawningWave => isSpawningWave;
@@ -307,6 +314,7 @@ namespace FeaturesCombat
                 spawnCoroutine = null;
             }
             isSpawningWave = false;
+            _pendingWaveSpawns.Clear();
         }
 
         private void Awake()
@@ -622,11 +630,14 @@ namespace FeaturesCombat
             currentWave = waveEngine.CurrentWaveIndex;
 
             StopSpawnCoroutine();
+            _pendingWaveSpawns.Clear();
+            if (toSpawn != null)
+                _pendingWaveSpawns.AddRange(toSpawn);
 
             spawnCoroutine = StartCoroutine(RoutineSpawnWaveStaggered(toSpawn));
         }
 
-        private IEnumerator RoutineSpawnWaveStaggered(List<EnemyType> toSpawn)
+        private IEnumerator RoutineSpawnWaveStaggered(List<EnemyType> toSpawn, bool hasLeadingDelay = false)
         {
             if (toSpawn == null || toSpawn.Count == 0)
             {
@@ -636,6 +647,12 @@ namespace FeaturesCombat
             }
 
             isSpawningWave = true;
+            if (hasLeadingDelay)
+            {
+                float initialWait = UnityEngine.Random.Range(spawnIntervalMin, spawnIntervalMax);
+                yield return new WaitForSeconds(initialWait);
+            }
+
             int totalCount = toSpawn.Count;
             for (int i = 0; i < totalCount; i++)
             {
@@ -647,6 +664,7 @@ namespace FeaturesCombat
                 }
 
                 EnemyType type = toSpawn[i];
+                _pendingWaveSpawns.Remove(type);
                 Vector3 spawnPos = CalculateRandomSpawnPoint();
                 EnemyBase enemy = EnemyObjectPool.Instance != null
                     ? EnemyObjectPool.Instance.Spawn(type, spawnPos)
@@ -827,7 +845,7 @@ namespace FeaturesCombat
         /// </summary>
         public static bool IsInsideHouse(Vector3 pos)
         {
-            return pos.x >= 9.5f && pos.x <= 31.5f && pos.z >= 4.5f && pos.z <= 26.5f;
+            return FarmBeware.Core.Runtime.NonAllocPhysics.IsInsideHouseBounds(pos);
         }
 
         /// <summary>
@@ -957,7 +975,7 @@ namespace FeaturesCombat
         /// <summary>
         /// Restores complete night brawl state from save data.
         /// </summary>
-        public void RestoreNightBrawlState(int day, int wave, int total, bool isCleared, bool isBrawlActive, List<FeaturesSaveSystem.SavedEnemyData> savedEnemies)
+        public void RestoreNightBrawlState(int day, int wave, int total, bool isCleared, bool isBrawlActive, List<FeaturesSaveSystem.SavedEnemyData> savedEnemies, List<int> pendingEnemyTypes = null)
         {
             if (intermissionCoroutine != null)
             {
@@ -1062,7 +1080,26 @@ namespace FeaturesCombat
                 isWaveInProgress = true;
                 currentWave = Mathf.Max(1, wave);
 
-                waveEngine.RestoreNightState(currentDay, currentWave, savedEnemies.Count);
+                var remainingToSpawn = new List<EnemyType>();
+                if (pendingEnemyTypes != null && pendingEnemyTypes.Count > 0)
+                {
+                    for (int i = 0; i < pendingEnemyTypes.Count; i++)
+                    {
+                        remainingToSpawn.Add((EnemyType)pendingEnemyTypes[i]);
+                    }
+                }
+                else if (pendingEnemyTypes == null && savedEnemies.Count == 1 && !Wave.WaveProgressionEngine.IsBossType((EnemyType)savedEnemies[0].enemyType))
+                {
+                    var fullSchedule = Wave.WaveProgressionEngine.GetEnemiesScheduleForDayAndWave(currentDay, currentWave);
+                    if (fullSchedule != null && fullSchedule.Count > 1)
+                    {
+                        fullSchedule.Remove((EnemyType)savedEnemies[0].enemyType);
+                        remainingToSpawn.AddRange(fullSchedule);
+                    }
+                }
+
+                int totalRemainingInWave = savedEnemies.Count + remainingToSpawn.Count;
+                waveEngine.RestoreNightState(currentDay, currentWave, totalRemainingInWave);
 
                 foreach (var se in savedEnemies)
                 {
@@ -1079,10 +1116,17 @@ namespace FeaturesCombat
                     }
                 }
 
+                _pendingWaveSpawns.Clear();
+                if (remainingToSpawn.Count > 0)
+                {
+                    _pendingWaveSpawns.AddRange(remainingToSpawn);
+                    spawnCoroutine = StartCoroutine(RoutineSpawnWaveStaggered(remainingToSpawn, hasLeadingDelay: true));
+                }
+
                 if (CombatPhaseTrackerUI.Instance != null)
                 {
                     CombatPhaseTrackerUI.Instance.SetWaveInfo(currentWave, totalWaves);
-                    CombatPhaseTrackerUI.Instance.SetEnemiesRemaining(activeEnemies.Count);
+                    CombatPhaseTrackerUI.Instance.SetEnemiesRemaining(totalRemainingInWave);
                 }
             }
             else if (isBrawlActive && currentWave > 0 && currentWave < totalWaves)

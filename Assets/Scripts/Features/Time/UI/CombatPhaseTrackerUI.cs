@@ -98,11 +98,17 @@ namespace FeaturesTime.UI
             EnsureUIReferences();
         }
 
+        private int GetResolvedCurrentDay()
+        {
+            int d1 = DayNightTimeManager.Instance != null ? DayNightTimeManager.Instance.CurrentDay : -1;
+            int d2 = TimeManager.Instance != null ? TimeManager.Instance.currentDay : -1;
+            int resolved = Mathf.Max(d1, d2);
+            return resolved >= 0 ? resolved : 1;
+        }
+
         private void Start()
         {
-            int day = DayNightTimeManager.Instance != null 
-                ? DayNightTimeManager.Instance.CurrentDay 
-                : (TimeManager.Instance != null ? TimeManager.Instance.currentDay : 1);
+            int day = GetResolvedCurrentDay();
 
             if (day == 0)
             {
@@ -146,16 +152,22 @@ namespace FeaturesTime.UI
                 DayNightTimeManager.Instance.OnHourChanged += HandleHourChanged;
             }
 
-            if (TimeManager.Instance != null)
-            {
-                TimeManager.Instance.OnDayChanged += HandleDayChanged;
-                TimeManager.Instance.OnPhaseChanged += HandlePhaseChanged;
-            }
+            TimeManager.OnAnyDayChanged += HandleDayChanged;
+            TimeManager.OnAnyPhaseChanged += HandlePhaseChanged;
 
             if (DayActivityTimelineManager.Instance != null && !isActivitySubscribed)
             {
                 DayActivityTimelineManager.Instance.OnActivityChanged += HandleActivityChanged;
                 isActivitySubscribed = true;
+            }
+
+            if (DayNightTimeManager.Instance != null || TimeManager.Instance != null)
+            {
+                UpdateDayText(GetResolvedCurrentDay());
+                if (TimeManager.Instance != null)
+                {
+                    UpdatePhaseDisplay(TimeManager.Instance.currentPhase);
+                }
             }
         }
 
@@ -168,11 +180,8 @@ namespace FeaturesTime.UI
                 DayNightTimeManager.Instance.OnHourChanged -= HandleHourChanged;
             }
 
-            if (TimeManager.Instance != null)
-            {
-                TimeManager.Instance.OnDayChanged -= HandleDayChanged;
-                TimeManager.Instance.OnPhaseChanged -= HandlePhaseChanged;
-            }
+            TimeManager.OnAnyDayChanged -= HandleDayChanged;
+            TimeManager.OnAnyPhaseChanged -= HandlePhaseChanged;
 
             if (DayActivityTimelineManager.Instance != null && isActivitySubscribed)
             {
@@ -411,9 +420,7 @@ namespace FeaturesTime.UI
             if (dayText != null)
             {
                 dayText.gameObject.SetActive(true);
-                int day = DayNightTimeManager.Instance != null 
-                    ? DayNightTimeManager.Instance.CurrentDay 
-                    : (TimeManager.Instance != null ? TimeManager.Instance.currentDay : 1);
+                int day = GetResolvedCurrentDay();
                 dayText.text = $"DAY {day}";
                 dayText.color = isNight ? new Color(1f, 0.55f, 0.55f) : new Color(1f, 0.84f, 0.25f);
             }

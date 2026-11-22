@@ -331,18 +331,28 @@ public class SinkManager : MonoBehaviour
         }
 
         // 3. Normal idle state (botol di inventori player)
-        if (btnImg != null) btnImg.color = new Color(0.12f, 0.42f, 0.65f, 1f); // Deep Ocean Blue
         int curCharges = bottle != null ? Mathf.FloorToInt(bottle.CurrentWater) : 4;
         int maxCharges = bottle != null ? Mathf.FloorToInt(bottle.MaxWater) : 4;
+        int remainingQuota = processor != null ? processor.RemainingBottleRefillsToday : 2;
+        int maxQuota = processor != null ? processor.MaxBottleRefillsPerDay : 2;
 
-        if (bottle != null && bottle.CurrentWater >= bottle.MaxWater)
+        if (processor != null && remainingQuota <= 0)
         {
-            refillWaterButtonText.text = $"💧 Bottle Full ({curCharges}/{maxCharges} Charges)";
+            if (btnImg != null) btnImg.color = new Color(0.35f, 0.35f, 0.40f, 1f);
+            refillWaterButtonText.text = $"💧 Daily Refill Limit Reached (0/{maxQuota})";
+            if (refillWaterButton != null) refillWaterButton.interactable = false;
+            UpdateStatus($"💧 Daily water bottle refill quota used ({maxQuota}/{maxQuota}). Rest until tomorrow.");
+        }
+        else if (bottle != null && bottle.CurrentWater >= bottle.MaxWater)
+        {
+            if (btnImg != null) btnImg.color = new Color(0.12f, 0.42f, 0.65f, 1f);
+            refillWaterButtonText.text = $"💧 Bottle Full ({curCharges}/{maxCharges} Charges | {remainingQuota}/{maxQuota} Left)";
             if (refillWaterButton != null) refillWaterButton.interactable = true;
         }
         else
         {
-            refillWaterButtonText.text = $"💧 Place Bottle in Sink (30s) ({curCharges}/{maxCharges} Charges)";
+            if (btnImg != null) btnImg.color = new Color(0.12f, 0.42f, 0.65f, 1f);
+            refillWaterButtonText.text = $"💧 Place Bottle in Sink (30s) ({curCharges}/{maxCharges} | {remainingQuota}/{maxQuota} Left)";
             if (refillWaterButton != null) refillWaterButton.interactable = true;
         }
     }
@@ -601,11 +611,9 @@ public class SinkManager : MonoBehaviour
         spawnedSlots.Add(slotGO);
     }
 
-    private bool IsDirty(ItemData item)
+    public bool IsDirty(ItemData item)
     {
-        if (item is FoodItemData food) return food.isDirty;
-        if (item is MaterialItemData mat) return mat.isDirty;
-        return false;
+        return item != null && item.isDirty;
     }
 
     private Sprite GetItemSprite(ItemData item)

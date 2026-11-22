@@ -73,45 +73,71 @@ namespace FarmBeware.Core.Runtime
             return _defaultObstacleMask;
         }
 
+        public static bool IsInsideHouseBounds(Vector3 pos)
+        {
+            return pos.x >= 9.5f && pos.x <= 31.5f && pos.z >= 4.5f && pos.z <= 26.5f;
+        }
+
         /// <summary>
         /// Evaluates whether the line-of-sight between an attack origin and a target point is obstructed by a solid obstacle.
+        /// Also blocks attacks crossing the interior/exterior house safe-zone boundary.
         /// Performs a zero-GC Linecast query ignoring triggers, self-hits, and target colliders.
         /// Draws visual debug lines (Green = clear, Red = blocked).
         /// </summary>
         public static bool IsLineOfSightBlocked(Vector3 origin, Vector3 targetPoint, Collider targetCollider, GameObject attacker, int obstacleLayerMask)
         {
+            Vector3 checkTargetPos = targetCollider != null ? targetCollider.bounds.center : targetPoint;
+            if (IsInsideHouseBounds(origin) != IsInsideHouseBounds(checkTargetPos))
+            {
+                Debug.DrawLine(origin, checkTargetPos, Color.red, 0.5f);
+                return true;
+            }
+
             Vector3 toTarget = targetPoint - origin;
-            float dist = toTarget.magnitude;
-            if (dist < 0.05f) return false;
+            if (toTarget.magnitude < 0.05f) return false;
 
             if (obstacleLayerMask == 0)
             {
                 obstacleLayerMask = GetDefaultObstacleLayerMask();
             }
 
-            if (UnityEngine.Physics.Linecast(origin, targetPoint, out RaycastHit hit, obstacleLayerMask, QueryTriggerInteraction.Ignore))
+            if (IsSegmentBlocked(origin, targetPoint, targetCollider, attacker, obstacleLayerMask))
             {
-                // Verify the hit is not the target itself or a child of the target
-                if (targetCollider != null && (hit.collider == targetCollider || hit.collider.transform.IsChildOf(targetCollider.transform)))
-                {
-                    Debug.DrawLine(origin, targetPoint, Color.green, 0.4f);
-                    return false;
-                }
-
-                // Verify the hit is not the attacker itself
-                if (attacker != null && (hit.collider.gameObject == attacker || hit.collider.transform.IsChildOf(attacker.transform)))
-                {
-                    Debug.DrawLine(origin, targetPoint, Color.green, 0.4f);
-                    return false;
-                }
-
-                // Blocked by an obstacle!
-                Debug.DrawLine(origin, hit.point, Color.red, 0.5f);
-                Debug.DrawLine(hit.point, targetPoint, new Color(1f, 0.2f, 0.2f, 0.5f), 0.5f);
                 return true;
             }
 
+            if (targetCollider != null)
+            {
+                Vector3 planarCenter = new Vector3(targetCollider.bounds.center.x, origin.y, targetCollider.bounds.center.z);
+                if (IsSegmentBlocked(origin, planarCenter, targetCollider, attacker, obstacleLayerMask))
+                {
+                    return true;
+                }
+            }
+
             Debug.DrawLine(origin, targetPoint, Color.green, 0.4f);
+            return false;
+        }
+
+        private static bool IsSegmentBlocked(Vector3 origin, Vector3 endPoint, Collider targetCollider, GameObject attacker, int obstacleLayerMask)
+        {
+            if (UnityEngine.Physics.Linecast(origin, endPoint, out RaycastHit hit, obstacleLayerMask, QueryTriggerInteraction.Ignore))
+            {
+                if (targetCollider != null && (hit.collider == targetCollider || hit.collider.transform.IsChildOf(targetCollider.transform)))
+                {
+                    return false;
+                }
+
+                if (attacker != null && (hit.collider.gameObject == attacker || hit.collider.transform.IsChildOf(attacker.transform)))
+                {
+                    return false;
+                }
+
+                Debug.DrawLine(origin, hit.point, Color.red, 0.5f);
+                Debug.DrawLine(hit.point, endPoint, new Color(1f, 0.2f, 0.2f, 0.5f), 0.5f);
+                return true;
+            }
+
             return false;
         }
     }

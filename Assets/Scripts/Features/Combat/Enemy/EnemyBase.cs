@@ -432,7 +432,7 @@ namespace FeaturesCombat
                     maxHealth = 85;
                     armor = 0;
                     moveSpeed = 2.8f;
-                    contactDamage = 0; // Tidak ada melee contact damage; menyerang dengan proyektil murni!
+                    contactDamage = 15; // MVP projectile shot damage (15 DMG)
                     attackRate = 0.5f; // 1 tembakan tiap 2 detik
                     attackRange = 12f; // Jarak tembak ranged
                     aggroRange = 16f;

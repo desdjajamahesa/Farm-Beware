@@ -500,13 +500,13 @@ public class KitchenStove : MonoBehaviour, IInteractable
         OnCookingStarted?.Invoke(recipe, duration);
         OnCookingStateChanged?.Invoke(CurrentState);
 
-        slot.coroutine = StartCoroutine(SlotCookingTimerRoutine(slot, recipe, inventory, duration));
+        slot.coroutine = StartCoroutine(SlotCookingTimerRoutine(slot, recipe, inventory, duration, 0f));
         return true;
     }
 
-    private IEnumerator SlotCookingTimerRoutine(CookingSlot slot, KitchenRecipe recipe, InventoryComponent inventory, float duration)
+    private IEnumerator SlotCookingTimerRoutine(CookingSlot slot, KitchenRecipe recipe, InventoryComponent inventory, float duration, float initialElapsed = 0f)
     {
-        float elapsed = 0f;
+        float elapsed = Mathf.Clamp(initialElapsed, 0f, duration);
 
         while (elapsed < duration)
         {
@@ -793,6 +793,168 @@ public class KitchenStove : MonoBehaviour, IInteractable
     public void SetRecipes(KitchenRecipe[] newRecipes)
     {
         recipes = newRecipes;
+    }
+
+    /// <summary>
+    /// Stops all active cooking coroutines and clears stove burner slots without refunding escrow ingredients.
+    /// Prevents cooking processes and food duplication from leaking across save/load or new game sessions.
+    /// </summary>
+    public void ResetStoveState()
+    {
+        InitCookingSlots();
+
+        for (int i = 0; i < MaxCookingSlots; i++)
+        {
+            var slot = cookingSlots[i];
+            if (slot == null) continue;
+
+            if (slot.coroutine != null)
+            {
+                StopCoroutine(slot.coroutine);
+                slot.coroutine = null;
+            }
+
+            if (slot.transactionScope != null)
+            {
+                slot.transactionScope.Commit();
+                slot.transactionScope.Dispose();
+                slot.transactionScope = null;
+            }
+
+            slot.escrowContainer?.Clear();
+            slot.state = CookingState.Idle;
+            slot.activeRecipe = null;
+            slot.activeInventory = null;
+            slot.remainingTime = 0f;
+            slot.totalDuration = 0f;
+
+            if (slot.outputSlot == null) slot.outputSlot = new InventorySlot();
+            slot.outputSlot.item = null;
+            slot.outputSlot.quantity = 0;
+
+            OnSlotOutputChanged?.Invoke(i, null, 0);
+        }
+
+        if (cookedOutputSlot == null) cookedOutputSlot = new InventorySlot();
+        cookedOutputSlot.item = null;
+        cookedOutputSlot.quantity = 0;
+
+        _pendingOutputItem = null;
+        _pendingOutputCount = 0;
+
+        StopCookingFeedback();
+        OnCookedOutputChanged?.Invoke(null, 0);
+        OnPendingOutputChanged?.Invoke(null, 0);
+        OnCookingStateChanged?.Invoke(CurrentState);
+
+        if (stoveUI != null)
+        {
+            stoveUI.UpdateAllBurnerCards();
+            stoveUI.UpdateCookedSlotUI();
+        }
+    }
+
+    /// <summary>
+    /// Replaces active burner and cooked output state from a loaded save file.
+    /// </summary>
+    public void RestoreStoveState(List<FeaturesSaveSystem.SavedStoveBurnerSlot> savedBurners, Func<string, ItemData> itemResolver = null)
+    {
+        ResetStoveState();
+
+        if (savedBurners != null)
+        {
+            for (int i = 0; i < savedBurners.Count; i++)
+            {
+                var sb = savedBurners[i];
+                if (sb == null || sb.slotIndex < 0 || sb.slotIndex >= MaxCookingSlots) continue;
+
+                var slot = cookingSlots[sb.slotIndex];
+                if (slot == null) continue;
+
+                KitchenRecipe matchedRecipe = ResolveRecipe(sb.recipeName, sb.outputItemId);
+                ItemData outItem = !string.IsNullOrEmpty(sb.outputItemId)
+                    ? (itemResolver != null ? itemResolver(sb.outputItemId) : matchedRecipe?.output)
+                    : matchedRecipe?.output;
+
+                if (sb.state == (int)CookingState.Completed && outItem != null && sb.outputQuantity > 0)
+                {
+                    slot.state = CookingState.Completed;
+                    slot.activeRecipe = matchedRecipe;
+                    slot.outputSlot.item = outItem;
+                    slot.outputSlot.quantity = sb.outputQuantity;
+
+                    if (cookedOutputSlot.IsEmpty)
+                    {
+                        cookedOutputSlot.item = outItem;
+                        cookedOutputSlot.quantity = sb.outputQuantity;
+                    }
+
+                    OnSlotOutputChanged?.Invoke(slot.slotIndex, outItem, sb.outputQuantity);
+                    OnCookedOutputChanged?.Invoke(cookedOutputSlot.item, cookedOutputSlot.quantity);
+                }
+                else if (sb.state == (int)CookingState.Cooking && matchedRecipe != null)
+                {
+                    float duration = sb.totalDuration > 0f ? sb.totalDuration : Mathf.Max(1f, matchedRecipe.processTime);
+                    float remaining = Mathf.Clamp(sb.remainingTime, 0.1f, duration);
+                    float initialElapsed = Mathf.Max(0f, duration - remaining);
+
+                    slot.state = CookingState.Cooking;
+                    slot.activeRecipe = matchedRecipe;
+                    slot.totalDuration = duration;
+                    slot.remainingTime = remaining;
+
+                    OnSlotCookingStarted?.Invoke(slot.slotIndex, matchedRecipe, duration);
+                    slot.coroutine = StartCoroutine(SlotCookingTimerRoutine(slot, matchedRecipe, null, duration, initialElapsed));
+                }
+            }
+        }
+
+        if (ActiveCookingCount > 0)
+        {
+            PlayCookingFeedback();
+        }
+
+        OnCookingStateChanged?.Invoke(CurrentState);
+
+        if (stoveUI != null)
+        {
+            stoveUI.UpdateAllBurnerCards();
+            stoveUI.UpdateCookedSlotUI();
+        }
+    }
+
+    private KitchenRecipe ResolveRecipe(string recipeName, string outputItemId)
+    {
+        if (recipes == null) return null;
+
+        for (int i = 0; i < recipes.Length; i++)
+        {
+            var r = recipes[i];
+            if (r == null) continue;
+
+            if (!string.IsNullOrEmpty(recipeName) &&
+                (string.Equals(r.recipeName, recipeName, StringComparison.OrdinalIgnoreCase) ||
+                 string.Equals(r.name, recipeName, StringComparison.OrdinalIgnoreCase)))
+            {
+                return r;
+            }
+        }
+
+        if (!string.IsNullOrEmpty(outputItemId))
+        {
+            for (int i = 0; i < recipes.Length; i++)
+            {
+                var r = recipes[i];
+                if (r != null && r.output != null &&
+                    (string.Equals(r.output.itemId, outputItemId, StringComparison.OrdinalIgnoreCase) ||
+                     string.Equals(r.output.name, outputItemId, StringComparison.OrdinalIgnoreCase)))
+                {
+                    return r;
+                }
+            }
+        }
+
+        return null;
     }
 
     #endregion

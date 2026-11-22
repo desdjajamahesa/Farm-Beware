@@ -13,11 +13,11 @@ MonoBehaviour:
   m_Name: Food_PurpleYamCake
   m_EditorClassIdentifier: Assembly-CSharp::FoodItemData
   itemId: food_purple_yam_cake
-  itemName: Purple Yam Cake (Medium)
+  itemName: Purple Taro Cake (Medium)
   category: 2
   rarity: 0
   itemIcon: {fileID: 21300000, guid: f7ce4113809c56d4aa9e78b508643b63, type: 3}
-  description: 'Traditional purple yam cake. Vitality Boost: +10% Max HP for 1 minute.
+  description: 'Traditional purple taro cake. Vitality Boost: +10% Max HP for 1 minute.
     (+15 Hunger)'
   maxStack: 20
   type: 1
@@ -33,6 +33,6 @@ MonoBehaviour:
   buffEffects:
   - buffType: 0
     value: 0.1
-    duration: 240
+    duration: 60
     buffName: Vitality Boost
     description: +10% Max HP

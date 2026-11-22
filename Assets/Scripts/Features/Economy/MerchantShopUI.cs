@@ -671,6 +671,22 @@ namespace FeaturesEconomy
             });
         }
 
+        public static bool IsUnsellableKeyItem(ItemData item)
+        {
+            if (item == null) return true;
+            if (item is ToolItemData) return true;
+            if (item.category == ItemCategory.Tool || item.category == ItemCategory.Weapon || item.category == ItemCategory.Trophy) return true;
+            if (item.type == ItemData.ItemType.Tool || item.type == ItemData.ItemType.Trophy) return true;
+
+            string id = item.itemId != null ? item.itemId.ToLowerInvariant() : "";
+            return id == "tool_hoe" ||
+                   id == "tool_plant_waterer" ||
+                   id == "tool_weapon_root_cleaver" ||
+                   id == "tool_weapon_corn_repeater" ||
+                   id == "food_bottle_water" ||
+                   id == "dummysword";
+        }
+
         /// <summary>
         /// Refreshes the Sell tab listing sellable crops and produce from the player's backpack.
         /// </summary>
@@ -687,11 +703,11 @@ namespace FeaturesEconomy
                 return;
             }
 
-            // Group sellable items from backpack (any item with sellPrice > 0)
+            // Group sellable items from backpack (any non-key item with sellPrice > 0)
             Dictionary<ItemData, int> sellableItems = new Dictionary<ItemData, int>();
             foreach (var slot in playerInventory.slots)
             {
-                if (slot != null && !slot.IsEmpty && slot.item != null && slot.item.sellPrice > 0)
+                if (slot != null && !slot.IsEmpty && slot.item != null && slot.item.sellPrice > 0 && !IsUnsellableKeyItem(slot.item))
                 {
                     if (sellableItems.ContainsKey(slot.item))
                         sellableItems[slot.item] += slot.quantity;
@@ -933,7 +949,7 @@ namespace FeaturesEconomy
         /// </summary>
         private void TrySellItem(ItemData item, int count)
         {
-            if (item == null || count <= 0) return;
+            if (item == null || count <= 0 || IsUnsellableKeyItem(item)) return;
             if (PlayerWallet.Instance == null) return;
 
             playerInventory = GetPlayerInventory();

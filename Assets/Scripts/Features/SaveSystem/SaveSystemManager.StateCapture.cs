@@ -71,6 +71,26 @@ namespace FeaturesSaveSystem
                         }
                     }
                 }
+
+                var buffService = ServiceLocator.Resolve<IBuffStateService>() ?? ServiceLocator.Resolve<IPlayerContext>()?.GetPlayerComponent<IBuffStateService>();
+                if (buffService != null)
+                {
+                    var snapshots = new List<BuffSnapshotData>();
+                    buffService.ExportBuffSnapshots(snapshots);
+                    for (int i = 0; i < snapshots.Count; i++)
+                    {
+                        var sb = snapshots[i];
+                        data.activeBuffs.Add(new SavedActiveBuff
+                        {
+                            buffName = sb.BuffName,
+                            buffType = sb.BuffType,
+                            value = sb.Value,
+                            duration = sb.Duration,
+                            remainingDuration = sb.RemainingDuration,
+                            description = sb.Description
+                        });
+                    }
+                }
             }
 
             // 2. Gold
@@ -226,6 +246,75 @@ namespace FeaturesSaveSystem
                         }
                     }
                 }
+
+                var pendingSpawns = FeaturesCombat.NightBrawlManager.Instance.PendingWaveSpawns;
+                if (pendingSpawns != null)
+                {
+                    for (int i = 0; i < pendingSpawns.Count; i++)
+                    {
+                        data.nightBrawlPendingWaveEnemies.Add((int)pendingSpawns[i]);
+                    }
+                }
+            }
+
+            // 9b. Kitchen Sink Washing & Bottle Refill State
+            var kitchenSink = KitchenSinkInteractable.Instance ?? FindFirstObjectByType<KitchenSinkInteractable>(FindObjectsInactive.Include);
+            if (kitchenSink != null)
+            {
+                var inSlot = kitchenSink.InputSlot;
+                if (inSlot != null && !inSlot.IsEmpty && inSlot.item != null)
+                {
+                    data.sinkInputItemId = !string.IsNullOrEmpty(inSlot.item.itemId) ? inSlot.item.itemId : inSlot.item.name;
+                    data.sinkInputQuantity = inSlot.quantity;
+                }
+
+                var outSlot = kitchenSink.OutputSlot;
+                if (outSlot != null && !outSlot.IsEmpty && outSlot.item != null)
+                {
+                    data.sinkOutputItemId = !string.IsNullOrEmpty(outSlot.item.itemId) ? outSlot.item.itemId : outSlot.item.name;
+                    data.sinkOutputQuantity = outSlot.quantity;
+                }
+
+                data.sinkIsWashing = kitchenSink.IsWashing;
+                data.sinkWashProgress = kitchenSink.WashProgress;
+                data.sinkHasBottle = kitchenSink.HasBottleInSink;
+                data.sinkIsRefillingBottle = kitchenSink.IsRefillingWater;
+                data.sinkBottleReady = kitchenSink.IsBottleReadyToCollect;
+                data.sinkBottleProgress = kitchenSink.RefillWaterProgress;
+                data.sinkBottleRefillsUsedToday = kitchenSink.BottleRefillsUsedToday;
+            }
+
+            // 9c. Kitchen Stove Active Burners & Output State
+            var kitchenStove = KitchenStove.Instance ?? FindFirstObjectByType<KitchenStove>(FindObjectsInactive.Include);
+            if (kitchenStove != null && kitchenStove.CookingSlots != null)
+            {
+                for (int i = 0; i < kitchenStove.CookingSlots.Length; i++)
+                {
+                    var slot = kitchenStove.CookingSlots[i];
+                    if (slot == null || (!slot.IsCooking && !slot.HasOutput)) continue;
+
+                    string recName = slot.activeRecipe != null
+                        ? (!string.IsNullOrEmpty(slot.activeRecipe.recipeName) ? slot.activeRecipe.recipeName : slot.activeRecipe.name)
+                        : "";
+                    ItemData outItem = slot.HasOutput ? slot.outputSlot.item : slot.activeRecipe?.output;
+                    string outId = outItem != null
+                        ? (!string.IsNullOrEmpty(outItem.itemId) ? outItem.itemId : outItem.name)
+                        : "";
+                    int outQty = slot.HasOutput
+                        ? slot.outputSlot.quantity
+                        : (slot.activeRecipe != null ? slot.activeRecipe.outputCount : 1);
+
+                    data.stoveBurnerSlots.Add(new SavedStoveBurnerSlot
+                    {
+                        slotIndex = slot.slotIndex,
+                        state = (int)slot.state,
+                        recipeName = recName,
+                        remainingTime = slot.remainingTime,
+                        totalDuration = slot.totalDuration,
+                        outputItemId = outId,
+                        outputQuantity = outQty
+                    });
+                }
             }
 
             // 10. Storyline Progression
@@ -344,6 +433,27 @@ namespace FeaturesSaveSystem
                         playerCtx.UpdateEquipmentVisual(inv.selectedHotbarIndex);
                     }
                 }
+
+                // 3b. Active Food Buffs (always clear prior buffs if save has none)
+                var buffService = ServiceLocator.Resolve<IBuffStateService>() ?? playerCtx?.GetPlayerComponent<IBuffStateService>();
+                if (buffService != null)
+                {
+                    if (data.activeBuffs == null || data.activeBuffs.Count == 0)
+                    {
+                        buffService.RestoreFromBuffSnapshots(null);
+                    }
+                    else
+                    {
+                        var snapshots = new List<BuffSnapshotData>(data.activeBuffs.Count);
+                        for (int i = 0; i < data.activeBuffs.Count; i++)
+                        {
+                            var sb = data.activeBuffs[i];
+                            if (sb == null || sb.remainingDuration <= 0f) continue;
+                            snapshots.Add(new BuffSnapshotData(sb.buffName, sb.buffType, sb.value, sb.duration, sb.remainingDuration, sb.description));
+                        }
+                        buffService.RestoreFromBuffSnapshots(snapshots);
+                    }
+                }
             }
 
             // 4. Gold
@@ -410,6 +520,31 @@ namespace FeaturesSaveSystem
 
             // 7. Container Inventories (Storage, Refrigerator, Trophy Cabinet)
             RestoreContainerInventories(data);
+
+            // 7b. Kitchen Sink Washing & Bottle Refill State
+            var kitchenSink = KitchenSinkInteractable.Instance ?? FindFirstObjectByType<KitchenSinkInteractable>(FindObjectsInactive.Include);
+            if (kitchenSink != null)
+            {
+                kitchenSink.RestoreSinkState(
+                    ResolveItem(data.sinkInputItemId),
+                    data.sinkInputQuantity,
+                    ResolveItem(data.sinkOutputItemId),
+                    data.sinkOutputQuantity,
+                    data.sinkIsWashing,
+                    data.sinkWashProgress,
+                    data.sinkHasBottle,
+                    data.sinkBottleReady,
+                    data.sinkBottleProgress,
+                    data.sinkBottleRefillsUsedToday
+                );
+            }
+
+            // 7c. Kitchen Stove Active Burners & Output State
+            var kitchenStove = KitchenStove.Instance ?? FindFirstObjectByType<KitchenStove>(FindObjectsInactive.Include);
+            if (kitchenStove != null)
+            {
+                kitchenStove.RestoreStoveState(data.stoveBurnerSlots, ResolveItem);
+            }
 
             // 8. Snap Camera to Player immediately
             if (FeaturesCamera.IsometricCameraController.Instance != null)
@@ -479,7 +614,8 @@ namespace FeaturesSaveSystem
                     data.nightTotalWaves,
                     data.isNightEncounterCleared,
                     data.isNightBrawlActive,
-                    data.activeEnemies
+                    data.activeEnemies,
+                    data.nightBrawlPendingWaveEnemies
                 );
             }
             else

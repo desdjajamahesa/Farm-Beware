@@ -128,6 +128,7 @@ public partial class DayTransitionUI : MonoBehaviour
     public TextMeshProUGUI TitleTextRef => titleText;
     public TextMeshProUGUI SubtitleTextRef => subtitleText;
     public bool IsPlayingTransition => transitionCoroutine != null;
+    public TimeManager.DayPhase LastPlayedPhase => lastPlayedPhase;
     public Image VignetteOverlayRef => vignetteOverlay;
 
     /// <summary>
@@ -235,7 +236,9 @@ public partial class DayTransitionUI : MonoBehaviour
         }
         else if (phase == TimeManager.DayPhase.Day)
         {
-            int currentDay = DayNightTimeManager.Instance != null ? DayNightTimeManager.Instance.CurrentDay : (TimeManager.Instance != null ? TimeManager.Instance.currentDay : 0);
+            int d1 = DayNightTimeManager.Instance != null ? DayNightTimeManager.Instance.CurrentDay : 0;
+            int d2 = TimeManager.Instance != null ? TimeManager.Instance.currentDay : 0;
+            int currentDay = Mathf.Max(d1, d2);
             if (currentDay > 0)
             {
                 PlayDayTransition(currentDay);
@@ -251,7 +254,9 @@ public partial class DayTransitionUI : MonoBehaviour
         }
         else if (phase == EnvironmentPhase.Day || phase == EnvironmentPhase.Dawn)
         {
-            int currentDay = DayNightTimeManager.Instance != null ? DayNightTimeManager.Instance.CurrentDay : (TimeManager.Instance != null ? TimeManager.Instance.currentDay : 0);
+            int d1 = DayNightTimeManager.Instance != null ? DayNightTimeManager.Instance.CurrentDay : 0;
+            int d2 = TimeManager.Instance != null ? TimeManager.Instance.currentDay : 0;
+            int currentDay = Mathf.Max(d1, d2);
             if (currentDay > 0)
             {
                 PlayDayTransition(currentDay);
@@ -285,6 +290,8 @@ public partial class DayTransitionUI : MonoBehaviour
         {
             OnTransitionCompleted?.Invoke();
         }
+
+        lastPlayedPhase = (TimeManager.DayPhase)(-1);
     }
 
     private void ResetVisualElementsToRest()

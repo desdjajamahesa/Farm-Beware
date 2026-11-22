@@ -4,7 +4,7 @@ using UnityEngine;
 using FarmBeware.Core.Runtime;
 using FeaturesTime;
 
-public class PlayerBuffManager : MonoBehaviour
+public class PlayerBuffManager : MonoBehaviour, IBuffStateService
 {
     [Serializable]
     public class ActiveBuff
@@ -35,6 +35,7 @@ public class PlayerBuffManager : MonoBehaviour
     {
         if (playerStats == null)
             playerStats = GetComponent<PlayerStats>();
+        ServiceLocator.Register<IBuffStateService>(this);
     }
 
     private void Start()
@@ -106,6 +107,99 @@ public class PlayerBuffManager : MonoBehaviour
         ApplyBuffModifiersToPlayer();
         OnBuffsChanged?.Invoke();
         Debug.Log("[PlayerBuffManager] ☀️ All food buffs have been cleared upon sleeping. Player wakes up fresh!");
+    }
+
+    /// <summary>
+    /// Exports active buffs into decoupled snapshot structs for persistence.
+    /// </summary>
+    public void ExportBuffSnapshots(List<BuffSnapshotData> output)
+    {
+        if (output == null) return;
+        output.Clear();
+        if (activeBuffs == null) return;
+
+        for (int i = 0; i < activeBuffs.Count; i++)
+        {
+            var ab = activeBuffs[i];
+            if (ab == null || ab.data == null || ab.remainingDuration <= 0f) continue;
+
+            output.Add(new BuffSnapshotData(
+                ab.data.buffName ?? "",
+                (int)ab.data.buffType,
+                ab.data.value,
+                ab.data.duration,
+                ab.remainingDuration,
+                ab.data.description ?? ""
+            ));
+        }
+    }
+
+    /// <summary>
+    /// Replaces active runtime buffs strictly with decoupled snapshots restored from save data.
+    /// Clears any residual buffs from prior sessions or other save slots first.
+    /// </summary>
+    public void RestoreFromBuffSnapshots(IReadOnlyList<BuffSnapshotData> snapshots)
+    {
+        if (activeBuffs == null)
+            activeBuffs = new List<ActiveBuff>();
+        else
+            activeBuffs.Clear();
+
+        if (snapshots != null)
+        {
+            for (int i = 0; i < snapshots.Count; i++)
+            {
+                var sb = snapshots[i];
+                if (sb.RemainingDuration <= 0f) continue;
+
+                var buffData = new BuffEffectData(
+                    (BuffType)sb.BuffType,
+                    sb.Value,
+                    sb.Duration > 0f ? sb.Duration : sb.RemainingDuration,
+                    sb.BuffName ?? "",
+                    sb.Description ?? ""
+                );
+
+                activeBuffs.Add(new ActiveBuff(buffData)
+                {
+                    remainingDuration = sb.RemainingDuration
+                });
+            }
+        }
+
+        ApplyBuffModifiersToPlayer();
+        OnBuffsChanged?.Invoke();
+    }
+
+    /// <summary>
+    /// Replaces active runtime buffs strictly with the state restored from a loaded save slot.
+    /// Clears any residual buffs from prior sessions or other save slots first.
+    /// </summary>
+    public void RestoreActiveBuffs(List<FeaturesSaveSystem.SavedActiveBuff> savedBuffs)
+    {
+        if (savedBuffs == null || savedBuffs.Count == 0)
+        {
+            RestoreFromBuffSnapshots(null);
+            return;
+        }
+
+        var snapshots = new List<BuffSnapshotData>(savedBuffs.Count);
+        for (int i = 0; i < savedBuffs.Count; i++)
+        {
+            var sb = savedBuffs[i];
+            if (sb == null || sb.remainingDuration <= 0f) continue;
+
+            snapshots.Add(new BuffSnapshotData(
+                sb.buffName ?? "",
+                sb.buffType,
+                sb.value,
+                sb.duration,
+                sb.remainingDuration,
+                sb.description ?? ""
+            ));
+        }
+
+        RestoreFromBuffSnapshots(snapshots);
     }
 
     [Header("Fast-Forward Time Integration")]

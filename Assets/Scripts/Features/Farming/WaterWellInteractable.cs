@@ -133,6 +133,8 @@ namespace FeaturesFarming
 
         private void OnEnable()
         {
+            TimeManager.OnAnyDayChanged -= HandleDayChanged;
+            TimeManager.OnAnyDayChanged += HandleDayChanged;
             if (TimeManager.Instance != null)
             {
                 TimeManager.Instance.OnDayChanged -= HandleDayChanged;
@@ -144,6 +146,7 @@ namespace FeaturesFarming
 
         private void OnDisable()
         {
+            TimeManager.OnAnyDayChanged -= HandleDayChanged;
             if (TimeManager.Instance != null)
                 TimeManager.Instance.OnDayChanged -= HandleDayChanged;
 
@@ -152,6 +155,7 @@ namespace FeaturesFarming
 
         private void OnDestroy()
         {
+            TimeManager.OnAnyDayChanged -= HandleDayChanged;
             if (TimeManager.Instance != null)
                 TimeManager.Instance.OnDayChanged -= HandleDayChanged;
 
@@ -210,16 +214,14 @@ namespace FeaturesFarming
             _refillFSM.CompleteImmediate();
             SyncRefillFieldsFromFSM();
 
-            // Deduct proportional quota for the refilled amount
-            float maxWater = PlantWaterer.Instance != null ? PlantWaterer.Instance.MaxWater : 100f;
-            float waterDelta = Mathf.Max(0f, maxWater - watererStartAmount);
-            float quotaUsed = maxWater > 0f ? (waterDelta / maxWater) : 1f;
-            refillsUsedToday = Mathf.Clamp(refillsUsedToday + quotaUsed, 0f, maxRefillsPerDay);
+            // Each completed well refill strictly consumes 1 of the daily refills (2/2 -> 1/2 -> 0/2)
+            refillsUsedToday = Mathf.Clamp(Mathf.Floor(refillsUsedToday) + 1f, 0f, maxRefillsPerDay);
 
             StopAudio();
             PlayAudioOneShot(chimeClip, 0.7f);
 
-            SpawnFloatingAlert("💧 Plant Waterer in Well is full! Ready to take [E].");
+            int remainingRefills = Mathf.Max(0, Mathf.RoundToInt(maxRefillsPerDay - refillsUsedToday));
+            SpawnFloatingAlert($"💧 Plant Waterer in Well is full! Ready to take [E] ({remainingRefills}/{maxRefillsPerDay:F0} refills left today).");
             UpdatePromptLabel();
             UpdateVisuals();
         }
@@ -258,8 +260,8 @@ namespace FeaturesFarming
         {
             if (hasWatererInWell) return false;
 
-            float remainingQuota = Mathf.Max(0f, maxRefillsPerDay - refillsUsedToday);
-            if (remainingQuota <= 0.02f)
+            int remainingRefills = Mathf.Max(0, Mathf.RoundToInt(maxRefillsPerDay - refillsUsedToday));
+            if (remainingRefills <= 0)
             {
                 SpawnFloatingAlert($"⚠️ Garden Well depleted for today! (0/{maxRefillsPerDay:F0} refills left)");
                 return false;
@@ -314,20 +316,11 @@ namespace FeaturesFarming
                 return false;
             }
 
-            // Calculate water gained proportionally
-            float maxWater = PlantWaterer.Instance != null ? PlantWaterer.Instance.MaxWater : 100f;
-            float potentialGain = Mathf.Max(0f, maxWater - watererStartAmount);
-            float waterGained = potentialGain * Mathf.Clamp01(refillWaterProgress);
-            float newWaterAmount = Mathf.Clamp(watererStartAmount + waterGained, 0f, maxWater);
-
+            // Restore starting water volume without consuming a refill quota on early cancel
             if (PlantWaterer.Instance != null)
             {
-                PlantWaterer.Instance.SetWater(newWaterAmount);
+                PlantWaterer.Instance.SetWater(watererStartAmount);
             }
-
-            // Deduct proportional quota
-            float quotaUsed = maxWater > 0f ? (waterGained / maxWater) : 0f;
-            refillsUsedToday = Mathf.Clamp(refillsUsedToday + quotaUsed, 0f, maxRefillsPerDay);
 
             _refillFSM.ResetToEmpty();
             SyncRefillFieldsFromFSM();
@@ -336,13 +329,8 @@ namespace FeaturesFarming
             UpdateVisuals();
             UpdatePromptLabel();
 
-            if (waterGained > 0f)
-            {
-                OnWaterWellRefilled?.Invoke(Mathf.RoundToInt(waterGained));
-            }
-
-            float remainingQuota = Mathf.Max(0f, maxRefillsPerDay - refillsUsedToday);
-            SpawnFloatingAlert($"💧 Waterer retrieved early! ({Mathf.FloorToInt(newWaterAmount)}/100L | {remainingQuota:F1}/{maxRefillsPerDay:F0} refills left)");
+            int remainingRefills = Mathf.Max(0, Mathf.RoundToInt(maxRefillsPerDay - refillsUsedToday));
+            SpawnFloatingAlert($"💧 Refill cancelled. Plant Waterer retrieved ({Mathf.FloorToInt(watererStartAmount)}/100L | {remainingRefills}/{maxRefillsPerDay:F0} refills left)");
             return true;
         }
 
@@ -375,8 +363,8 @@ namespace FeaturesFarming
 
             OnWaterWellRefilled?.Invoke(100);
 
-            float remainingQuota = Mathf.Max(0f, maxRefillsPerDay - refillsUsedToday);
-            SpawnFloatingAlert($"💧 Taken Full Plant Waterer (100/100 L)! ({remainingQuota:F1}/{maxRefillsPerDay:F0} refills left today)");
+            int remainingRefills = Mathf.Max(0, Mathf.RoundToInt(maxRefillsPerDay - refillsUsedToday));
+            SpawnFloatingAlert($"💧 Taken Full Plant Waterer (100/100 L)! ({remainingRefills}/{maxRefillsPerDay:F0} refills left today)");
             return true;
         }
 
@@ -393,7 +381,7 @@ namespace FeaturesFarming
                 return;
             }
 
-            float remainingQuota = Mathf.Max(0f, maxRefillsPerDay - refillsUsedToday);
+            int remainingRefills = Mathf.Max(0, Mathf.RoundToInt(maxRefillsPerDay - refillsUsedToday));
 
             if (isWatererReadyToCollect)
             {
@@ -408,13 +396,13 @@ namespace FeaturesFarming
             {
                 worldLabel.displayName = "Garden Well [E: Retrieve Plant Waterer]";
             }
-            else if (remainingQuota <= 0.02f)
+            else if (remainingRefills <= 0)
             {
                 worldLabel.displayName = $"{promptLabel} (Depleted: 0/{maxRefillsPerDay:F0})";
             }
             else
             {
-                worldLabel.displayName = $"{promptLabel} ({remainingQuota:F1}/{maxRefillsPerDay:F0} Left) [E: Refill]";
+                worldLabel.displayName = $"{promptLabel} ({remainingRefills}/{maxRefillsPerDay:F0} Left) [E: Refill]";
             }
         }
 

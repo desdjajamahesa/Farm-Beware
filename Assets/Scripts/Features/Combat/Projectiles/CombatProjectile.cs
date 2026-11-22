@@ -258,9 +258,19 @@ namespace FeaturesCombat.Projectiles
             }
 
             var damageable = other.GetComponent<IDamageable>() ?? other.GetComponentInParent<IDamageable>();
-            if (damageable != null && _hitTargetsThisFlight.Contains(damageable))
+            if (damageable != null)
             {
-                return false;
+                if (_hitTargetsThisFlight.Contains(damageable))
+                {
+                    return false;
+                }
+
+                if (shooterOwner != null &&
+                    FarmBeware.Core.Runtime.NonAllocPhysics.IsInsideHouseBounds(shooterOwner.transform.position) !=
+                    FarmBeware.Core.Runtime.NonAllocPhysics.IsInsideHouseBounds(other.bounds.center))
+                {
+                    return false;
+                }
             }
 
             return true;

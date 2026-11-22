@@ -33,11 +33,11 @@ MonoBehaviour:
   buffEffects:
   - buffType: 1
     value: 0.05
-    duration: 240
+    duration: 30
     buffName: Quick Energy
     description: +5% Max Stamina
   - buffType: 2
     value: 2
-    duration: 240
+    duration: 30
     buffName: Quick Regen
     description: +2 HP regen per second

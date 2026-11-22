@@ -119,11 +119,20 @@ namespace FeaturesEconomy
                 ModalStackManager.Instance.Push(this);
             }
 
-            int monsters = DailyEconomyManager.Instance != null ? DailyEconomyManager.Instance.dailyMonstersSlain : 0;
-            int combatGold = DailyEconomyManager.Instance != null ? DailyEconomyManager.Instance.dailyGoldEarnedCombat : 0;
-            int harvested = DailyEconomyManager.Instance != null ? DailyEconomyManager.Instance.dailyCropsHarvested : 0;
-            int sold = DailyEconomyManager.Instance != null ? DailyEconomyManager.Instance.dailyCropsSold : 0;
-            int tradeGold = DailyEconomyManager.Instance != null ? DailyEconomyManager.Instance.dailyGoldEarnedTrading : 0;
+            var econ = DailyEconomyManager.Instance;
+            bool useLastDaySnapshot = econ != null &&
+                                      econ.dailyMonstersSlain == 0 && econ.dailyGoldEarnedCombat == 0 &&
+                                      econ.dailyCropsHarvested == 0 && econ.dailyCropsSold == 0 &&
+                                      econ.dailyGoldEarnedTrading == 0 &&
+                                      (econ.lastDayMonstersSlain > 0 || econ.lastDayGoldEarnedCombat > 0 ||
+                                       econ.lastDayCropsHarvested > 0 || econ.lastDayCropsSold > 0 ||
+                                       econ.lastDayGoldEarnedTrading > 0);
+
+            int monsters = econ != null ? (useLastDaySnapshot ? econ.lastDayMonstersSlain : econ.dailyMonstersSlain) : 0;
+            int combatGold = econ != null ? (useLastDaySnapshot ? econ.lastDayGoldEarnedCombat : econ.dailyGoldEarnedCombat) : 0;
+            int harvested = econ != null ? (useLastDaySnapshot ? econ.lastDayCropsHarvested : econ.dailyCropsHarvested) : 0;
+            int sold = econ != null ? (useLastDaySnapshot ? econ.lastDayCropsSold : econ.dailyCropsSold) : 0;
+            int tradeGold = econ != null ? (useLastDaySnapshot ? econ.lastDayGoldEarnedTrading : econ.dailyGoldEarnedTrading) : 0;
             int totalWallet = PlayerWallet.Instance != null ? PlayerWallet.Instance.CurrentGold : 0;
 
             if (headerText != null)

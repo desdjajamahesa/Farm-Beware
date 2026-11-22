@@ -114,6 +114,26 @@ namespace FeaturesSaveSystem
         public int nightTotalWaves;
         public bool isNightBrawlActive;
         public List<SavedEnemyData> activeEnemies = new List<SavedEnemyData>();
+        public List<int> nightBrawlPendingWaveEnemies = new List<int>();
+
+        // Active Food Buffs (BUG 014)
+        public List<SavedActiveBuff> activeBuffs = new List<SavedActiveBuff>();
+
+        // Kitchen Sink Washing & Bottle Refill State (BUG 016, BUG 017, BUG 018, TE-51)
+        public string sinkInputItemId;
+        public int sinkInputQuantity;
+        public string sinkOutputItemId;
+        public int sinkOutputQuantity;
+        public bool sinkIsWashing;
+        public float sinkWashProgress;
+        public bool sinkHasBottle;
+        public bool sinkIsRefillingBottle;
+        public bool sinkBottleReady;
+        public float sinkBottleProgress;
+        public int sinkBottleRefillsUsedToday;
+
+        // Kitchen Stove Active Burner State (BUG 020, BUG 021)
+        public List<SavedStoveBurnerSlot> stoveBurnerSlots = new List<SavedStoveBurnerSlot>();
 
         // Storyline Progression
         public int storyChapter = 1;
@@ -172,5 +192,28 @@ namespace FeaturesSaveSystem
         public float growthProgress;
         public float currentTimer;
         public float growthDuration;
+    }
+
+    [Serializable]
+    public class SavedActiveBuff
+    {
+        public string buffName;
+        public int buffType;
+        public float value;
+        public float duration;
+        public float remainingDuration;
+        public string description;
+    }
+
+    [Serializable]
+    public class SavedStoveBurnerSlot
+    {
+        public int slotIndex;
+        public int state;
+        public string recipeName;
+        public float remainingTime;
+        public float totalDuration;
+        public string outputItemId;
+        public int outputQuantity;
     }
 }

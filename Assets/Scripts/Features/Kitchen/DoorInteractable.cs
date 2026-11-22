@@ -39,6 +39,9 @@ public class DoorInteractable : MonoBehaviour, IInteractable, IDynamicLabelProvi
 
     private WorldLabel worldLabel;
     private IPlayerContext cachedPlayer;
+    private InteractionZone insideRoomZone;
+    private Collider insideRoomZoneCollider;
+    private bool insideZoneResolved;
 
     private void Awake()
     {
@@ -76,11 +79,75 @@ public class DoorInteractable : MonoBehaviour, IInteractable, IDynamicLabelProvi
 
         if (worldLabel == null || spawnPointInside == null || spawnPointOutside == null || cachedPlayer == null) return;
 
-        float distToInside = Vector3.Distance(cachedPlayer.Transform.position, spawnPointInside.position);
-        float distToOutside = Vector3.Distance(cachedPlayer.Transform.position, spawnPointOutside.position);
-        bool isInside = distToInside < distToOutside;
-
+        bool isInside = IsPlayerInside(cachedPlayer.Transform.position);
         worldLabel.displayName = isInside ? exitLabel : enterLabel;
+    }
+
+    public bool IsPlayerInside(Vector3 playerPos)
+    {
+        if (spawnPointInside == null || spawnPointOutside == null) return false;
+
+        float distToInside = Vector3.Distance(playerPos, spawnPointInside.position);
+        float distToOutside = Vector3.Distance(playerPos, spawnPointOutside.position);
+
+        bool spawnInHouse = NonAllocPhysics.IsInsideHouseBounds(spawnPointInside.position);
+        bool spawnOutHouse = NonAllocPhysics.IsInsideHouseBounds(spawnPointOutside.position);
+        if (spawnInHouse != spawnOutHouse)
+        {
+            return (NonAllocPhysics.IsInsideHouseBounds(playerPos) == spawnInHouse) && (distToInside < distToOutside);
+        }
+
+        var zone = ResolveInsideRoomZone();
+        if (zone != null && insideRoomZoneCollider != null)
+        {
+            Bounds b = insideRoomZoneCollider.bounds;
+            const float wallMargin = 0.12f;
+            bool inZoneXZ = playerPos.x >= b.min.x + wallMargin && playerPos.x <= b.max.x - wallMargin &&
+                            playerPos.z >= b.min.z + wallMargin && playerPos.z <= b.max.z - wallMargin;
+            if (!inZoneXZ)
+            {
+                return false;
+            }
+        }
+
+        return distToInside < distToOutside;
+    }
+
+    private InteractionZone ResolveInsideRoomZone()
+    {
+        if (insideZoneResolved) return insideRoomZone;
+        insideZoneResolved = true;
+
+        if (spawnPointInside == null || spawnPointOutside == null) return null;
+
+        var zones = FindObjectsByType<InteractionZone>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        float smallestArea = float.MaxValue;
+        for (int i = 0; i < zones.Length; i++)
+        {
+            var z = zones[i];
+            if (z == null) continue;
+            var col = z.GetComponent<Collider>();
+            if (col == null) continue;
+
+            Bounds b = col.bounds;
+            if (ContainsXZ(b, spawnPointInside.position) && !ContainsXZ(b, spawnPointOutside.position))
+            {
+                float area = b.size.x * b.size.z;
+                if (area < smallestArea)
+                {
+                    smallestArea = area;
+                    insideRoomZone = z;
+                    insideRoomZoneCollider = col;
+                }
+            }
+        }
+
+        return insideRoomZone;
+    }
+
+    private static bool ContainsXZ(Bounds b, Vector3 pos)
+    {
+        return pos.x >= b.min.x && pos.x <= b.max.x && pos.z >= b.min.z && pos.z <= b.max.z;
     }
 
     public void Interact(GameObject interactor)
@@ -99,12 +166,7 @@ public class DoorInteractable : MonoBehaviour, IInteractable, IDynamicLabelProvi
         // Kunci gerakan pemain selama proses teleport
         player.AddInputLock("DoorTeleport");
 
-        // Deteksi posisi player: bandingkan jarak ke spawnPointInside vs spawnPointOutside
-        // Jika lebih dekat ke luar -> target adalah ke dalam (spawnPointInside)
-        // Jika lebih dekat ke dalam -> target adalah ke luar (spawnPointOutside)
-        float distToInside = Vector3.Distance(player.Transform.position, spawnPointInside.position);
-        float distToOutside = Vector3.Distance(player.Transform.position, spawnPointOutside.position);
-        bool isInside = distToInside < distToOutside;
+        bool isInside = IsPlayerInside(player.Transform.position);
 
         Transform targetSpawn = isInside ? spawnPointOutside : spawnPointInside;
 

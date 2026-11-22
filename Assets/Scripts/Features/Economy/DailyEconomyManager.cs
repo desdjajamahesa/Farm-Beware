@@ -218,8 +218,23 @@ namespace FeaturesEconomy
         {
             if (item == null) return 0;
 
-            string id = item.itemId != null ? item.itemId.ToLower() : "";
-            string name = item.itemName != null ? item.itemName.ToLower() : "";
+            string id = item.itemId != null ? item.itemId.ToLowerInvariant() : "";
+            string name = item.itemName != null ? item.itemName.ToLowerInvariant() : "";
+
+            bool isSeed = item is SeedItemData ||
+                          item.category == ItemCategory.Seed ||
+                          id.StartsWith("seed_") ||
+                          name.Contains("seed");
+            bool isDish = item is FoodItemData foodItem && foodItem.foodCategory == ItemData.FoodCategory.Dish;
+            bool isToolOrWeapon = item is ToolItemData ||
+                                  item.category == ItemCategory.Tool ||
+                                  item.category == ItemCategory.Weapon ||
+                                  item.type == ItemData.ItemType.Tool;
+
+            if (isSeed || isDish || isToolOrWeapon)
+            {
+                return item.sellPrice > 0 ? item.sellPrice : 50;
+            }
 
             bool isDirty = item.isDirty || id.Contains("dirty") || name.Contains("dirty");
 

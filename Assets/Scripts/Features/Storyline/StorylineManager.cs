@@ -277,8 +277,9 @@ namespace FeaturesStoryline
                 {
                     EvaluateTrigger(StoryTriggerType.GameStart, 0);
                 }
-                else
+                else if (!IsNightPhase())
                 {
+                    _facts?.SetFact(NarrativeFactKey.IntroCutsceneCompleted, 1);
                     EvaluateTrigger(StoryTriggerType.Dawn, currentDay);
                 }
             }
@@ -899,6 +900,12 @@ namespace FeaturesStoryline
         {
             if (beat == null) return;
 
+            if (beat.triggerType == StoryTriggerType.Dawn && IsNightPhase())
+            {
+                Debug.Log($"[StorylineManager] Suppressed Dawn story beat '{beat.beatId}' during Night phase.");
+                return;
+            }
+
             _engine.RecordBeatTriggered(beat.beatId);
             if (beat.unlocksJournalEntry && beat.journalEntry != null)
             {
@@ -1048,9 +1055,9 @@ namespace FeaturesStoryline
                 }
             }
 
-            // 2. Evaluate Dawn beat ONLY on Day 1+ when narrative facts indicate cutscene completed
+            // 2. Evaluate Dawn beat ONLY on Day 1+ during daytime when narrative facts indicate cutscene completed
             int currentDay = GetCurrentGameDay();
-            if (currentDay >= 1 && !HasTriggered("D1_MANIFEST_FOUND") && _facts != null && _facts.GetFact(NarrativeFactKey.IntroCutsceneCompleted) == 1)
+            if (currentDay >= 1 && !IsNightPhase() && !HasTriggered("D1_MANIFEST_FOUND") && _facts != null && _facts.GetFact(NarrativeFactKey.IntroCutsceneCompleted) == 1)
             {
                 EvaluateTrigger(StoryTriggerType.Dawn, currentDay);
             }
@@ -1086,6 +1093,11 @@ namespace FeaturesStoryline
                 var beat = _engine.DequeuePendingModalBeat();
                 if (beat != null)
                 {
+                    if (beat.triggerType == StoryTriggerType.Dawn && IsNightPhase())
+                    {
+                        Debug.Log($"[StorylineManager] Discarded stale Dawn beat '{beat.beatId}' because it is now Night.");
+                        continue;
+                    }
                     DispatchToUI(beat);
                     break; // Deliver one modal window at a time to prevent modal stacking collisions
                 }
@@ -1095,7 +1107,8 @@ namespace FeaturesStoryline
         private void HandleDayTransitionCompleted()
         {
             int currentDay = GetCurrentGameDay();
-            bool isNight1Pending = currentDay == 1 && (_facts == null || _facts.GetFact(NarrativeFactKey.Night1CutsceneCompleted) == 0);
+            bool isNightTransition = IsNightPhase() || (DayTransitionUI.Instance != null && DayTransitionUI.Instance.LastPlayedPhase == TimeManager.DayPhase.Night);
+            bool isNight1Pending = isNightTransition && currentDay == 1 && (_facts == null || _facts.GetFact(NarrativeFactKey.Night1CutsceneCompleted) == 0);
 
             // 1. Flush non-modal beats deferred during environmental transition (if no cutscene running or pending)
             if (!IsCutsceneActive() && !isNight1Pending)
@@ -1236,6 +1249,27 @@ namespace FeaturesStoryline
             {
                 RestoreAtmosphere();
             }
+        }
+
+        private bool IsNightPhase()
+        {
+            if (ServiceLocator.TryResolve<ITimeService>(out var timeService) && timeService != null)
+            {
+                return timeService.IsNight || timeService.CurrentPhase == DayPhase.Night;
+            }
+            if (DayNightTimeManager.Instance != null)
+            {
+                return DayNightTimeManager.Instance.IsNight;
+            }
+            if (TimeManager.Instance != null)
+            {
+                return TimeManager.Instance.currentPhase == TimeManager.DayPhase.Night;
+            }
+            if (_facts != null)
+            {
+                return _facts.GetFact(NarrativeFactKey.CurrentDayPhase) == (int)EnvironmentPhase.Night;
+            }
+            return false;
         }
 
         private int GetCurrentGameDay()

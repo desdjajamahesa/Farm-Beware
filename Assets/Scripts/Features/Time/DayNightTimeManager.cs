@@ -315,20 +315,16 @@ namespace FeaturesTime
 
         private void OnEnable()
         {
-            if (TimeManager.Instance != null)
-            {
-                TimeManager.Instance.OnPhaseChanged += HandleTimeManagerPhaseChanged;
-                TimeManager.Instance.OnDayChanged += HandleTimeManagerDayChanged;
-            }
+            TimeManager.OnAnyPhaseChanged -= HandleTimeManagerPhaseChanged;
+            TimeManager.OnAnyPhaseChanged += HandleTimeManagerPhaseChanged;
+            TimeManager.OnAnyDayChanged -= HandleTimeManagerDayChanged;
+            TimeManager.OnAnyDayChanged += HandleTimeManagerDayChanged;
         }
 
         private void OnDisable()
         {
-            if (TimeManager.Instance != null)
-            {
-                TimeManager.Instance.OnPhaseChanged -= HandleTimeManagerPhaseChanged;
-                TimeManager.Instance.OnDayChanged -= HandleTimeManagerDayChanged;
-            }
+            TimeManager.OnAnyPhaseChanged -= HandleTimeManagerPhaseChanged;
+            TimeManager.OnAnyDayChanged -= HandleTimeManagerDayChanged;
         }
 
         private void HandleTimeManagerPhaseChanged(TimeManager.DayPhase phase)
@@ -776,6 +772,7 @@ namespace FeaturesTime
             currentHour = dayStartHour;
             if (TimeManager.Instance != null)
             {
+                currentDay = TimeManager.Instance.currentDay + 1;
                 TimeManager.Instance.AdvanceToNextDay();
                 currentDay = TimeManager.Instance.currentDay;
             }

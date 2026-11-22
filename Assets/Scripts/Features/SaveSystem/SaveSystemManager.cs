@@ -140,6 +140,8 @@ namespace FeaturesSaveSystem
                 resettableQuests.ResetQuests();
             }
 
+            ResetWorldStationsAndBuffs();
+
             // 2. Play Opening Cutscene or Fallback Position
             var cutscene = ServiceLocator.Resolve<ICutsceneService>();
             if (cutscene == null)
@@ -786,6 +788,8 @@ namespace FeaturesSaveSystem
                 DailyEconomyManager.Instance.ResetEconomyState();
             }
 
+            ResetWorldStationsAndBuffs();
+
             // Close any open modals
             if (ModalStackManager.HasInstance && ModalStackManager.Instance != null)
             {
@@ -821,6 +825,18 @@ namespace FeaturesSaveSystem
             {
                 UnityEngine.SceneManagement.SceneManager.LoadScene(SceneNames.MainScene);
             }
+        }
+
+        private void ResetWorldStationsAndBuffs()
+        {
+            var buffService = ServiceLocator.Resolve<IBuffStateService>() ?? ServiceLocator.Resolve<IPlayerContext>()?.GetPlayerComponent<IBuffStateService>();
+            buffService?.ClearAllBuffs();
+
+            var kitchenSink = KitchenSinkInteractable.Instance ?? FindFirstObjectByType<KitchenSinkInteractable>(FindObjectsInactive.Include);
+            kitchenSink?.ResetSinkState();
+
+            var kitchenStove = KitchenStove.Instance ?? FindFirstObjectByType<KitchenStove>(FindObjectsInactive.Include);
+            kitchenStove?.ResetStoveState();
         }
 
         #endregion

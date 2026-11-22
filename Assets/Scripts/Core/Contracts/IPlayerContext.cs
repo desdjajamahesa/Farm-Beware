@@ -1,7 +1,40 @@
+using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace FarmBeware.Core.Runtime
 {
+    [Serializable]
+    public readonly struct BuffSnapshotData
+    {
+        public readonly string BuffName;
+        public readonly int BuffType;
+        public readonly float Value;
+        public readonly float Duration;
+        public readonly float RemainingDuration;
+        public readonly string Description;
+
+        public BuffSnapshotData(string buffName, int buffType, float value, float duration, float remainingDuration, string description)
+        {
+            BuffName = buffName;
+            BuffType = buffType;
+            Value = value;
+            Duration = duration;
+            RemainingDuration = remainingDuration;
+            Description = description;
+        }
+    }
+
+    /// <summary>
+    /// Decoupled contract for querying, clearing, and restoring runtime player food buffs across save/load boundaries.
+    /// </summary>
+    public interface IBuffStateService
+    {
+        void ClearAllBuffs();
+        void ExportBuffSnapshots(List<BuffSnapshotData> output);
+        void RestoreFromBuffSnapshots(IReadOnlyList<BuffSnapshotData> snapshots);
+    }
+
     /// <summary>
     /// Centralized contract exposing player capabilities and state without coupling to concrete PlayerControl.
     /// </summary>

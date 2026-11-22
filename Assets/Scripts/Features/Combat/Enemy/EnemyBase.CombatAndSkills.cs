@@ -268,11 +268,12 @@ namespace FeaturesCombat
             }
 
             // 2. Firing: Tembakkan proyektil fisik tepat dari ketinggian dada Corn ke dada pemain
+            int shotDamage = contactDamage > 0 ? contactDamage : 15;
             FeaturesCombat.Projectiles.CombatProjectile.Spawn(
                 gameObject,
                 muzzlePos,
                 aimDir,
-                damageAmount: 22,
+                damageAmount: shotDamage,
                 projSpeed: 13.5f,
                 projectileColor: new Color(1f, 0.85f, 0.15f));
 
@@ -797,11 +798,12 @@ namespace FeaturesCombat
                     Vector3 toTarget = targetPos - muzzlePos;
                     Vector3 aimDir = toTarget.sqrMagnitude > 0.001f ? toTarget.normalized : transform.forward;
 
+                    int burstDamage = contactDamage > 0 ? contactDamage : 15;
                     FeaturesCombat.Projectiles.CombatProjectile.Spawn(
                         gameObject,
                         muzzlePos,
                         aimDir,
-                        damageAmount: 18,
+                        damageAmount: burstDamage,
                         projSpeed: 14.5f,
                         projectileColor: new Color(1f, 0.65f, 0.1f));
 
