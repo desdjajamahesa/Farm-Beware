@@ -1,0 +1,136 @@
+﻿Severity,What happened? When? Why?,Tag,Test Execution,Bug Slayer(s),Reproductibility Steps,Reproductibilty Rate / 10,Status,Files & media,Date Found,Created by,How do I fixed?,Found in CL,Fixed in CL
+Critical,BUG-001 — Game crashes after entering Main Menu,Performance,TE-1 - Attempt 1 - Game Launch (Test%20Execution/TE-1%20-%20Attempt%201%20-%20Game%20Launch%203df97560e11a80dc848ed87b87fb208f.md),"Rafi Saputra, bhaskoro prayoga","  1. Install Game
+  2. Open the game
+  3. Observe the launching",1,Closed,Bugs%20%E1%B4%B0%E1%B4%AE/Bugs/BUG-001%20%E2%80%94%20Game%20crashes%20after%20entering%20Main%20Menu/image.png,,Fakhri Fawwaz Aydin,,,
+Medium,BUG-002 — Enemy navigation distance increases when player moves toward the indicated enemy,"Navigation, UI",TE-10 - Attack until you defeat one normal enemy (Test%20Execution/TE-10%20-%20Attack%20until%20you%20defeat%20one%20normal%20enemy%203f297560e11a8092802cf42256947f1c.md),"Rafi Saputra, bhaskoro prayoga","  1. Enter gameplay
+  2. Go to bed
+  3. Enter night phase
+  4. Combat with enemy
+  5. Observe the navigation distance",10,Closed,https://drive.google.com/file/d/115MwVZrUJax5YKjdZWUYn95Nf-AGLqwI/view?usp=drive_link,,Fakhri Fawwaz Aydin,,,
+Medium,BUG-003 — Player HP remains alive when HP reachces 0,"Combat, Health / Damage, UI",TE-10 - Attack until you defeat one normal enemy (Test%20Execution/TE-10%20-%20Attack%20until%20you%20defeat%20one%20normal%20enemy%203f297560e11a8092802cf42256947f1c.md),"bhaskoro prayoga, Rafi Saputra","  1. Enter Gameplay
+  2. Go to bed
+  3. Enter Night Phase
+  4. Combat with enemy
+  5. Observe the healtbar of player",10,Closed,https://drive.google.com/file/d/115MwVZrUJax5YKjdZWUYn95Nf-AGLqwI/view?usp=drive_link,,Fakhri Fawwaz Aydin,,,
+Medium,BUG-004 — Mouse cursor disappears after closing merchant interface,"Cursor/Mouse, Input/Control, UI",TE-7 - Selling & buying (Test%20Execution/TE-7%20-%20Selling%20&%20buying%203f297560e11a80aa9f2ee86d7ef42ddb.md),"bhaskoro prayoga, Rafi Saputra","  1. Enter gameplay
+  2. Interact with a merchant
+  3. verify the merchant interface opens and the mouse cursor is visible
+  4. Close the merchant interface
+  5. observe the mouse cursor",10,Closed,https://drive.google.com/file/d/1qhEinKaXgoPKhJAMkqE9iJXJ00z4rtZa/view?usp=drive_link,,Fakhri Fawwaz Aydin,,,
+Medium,BUG-005 — Mouse cursor disappear after closing cooking stove interface,"Cursor/Mouse, Input/Control, UI",TE-8 - Completing Recipe (Test%20Execution/TE-8%20-%20Completing%20Recipe%203f297560e11a80a5a51df63c4e4d2839.md),"Rafi Saputra, bhaskoro prayoga","  1. Enter gameplay
+  2. Interact with a cooking stove
+  3. Verify the cooking stove interface mouse cursor is visible
+  4. Close the cooking stove interface
+  5. Observe the mouse cursor",10,Closed,https://drive.google.com/file/d/1Y65NSq5cZPZ1QZVpyQYvVTtJG0OCf19f/view?usp=drive_link,,Fakhri Fawwaz Aydin,,,
+Low,BUG-006 — Changing clothes without consent save,"Input/Control, Interaction, Inventory, UI",TE-14 - Changing a Clothes (Test%20Execution/TE-14%20-%20Changing%20a%20Clothes%203f397560e11a8017bd5cd9fdf0e0f185.md),"bhaskoro prayoga, Rafi Saputra","  1. Enter Gameplay
+  2. Interact with peti kamar
+  3. Check the clothes you’re wearing
+  4. change into the clothes provided / take off your hat
+  5. Click the ‘Cancel’ button
+  6. Take a look at the clothes you’re wearing",10,Closed,https://drive.google.com/file/d/1obCHIvJb_X3tVFzUBe3OkdXtOxGu4sQS/view?usp=sharing,,Fakhri Fawwaz Aydin,,,
+Medium,BUG-007 — A bottle that suddenly appeared whilst I was watering the plants,"Gameplay, Input/Control, Inventory, UI",TE-5 - Plating to Harvesting (Test%20Execution/TE-5%20-%20Plating%20to%20Harvesting%203f297560e11a80968feafdc2a4144618.md),"bhaskoro prayoga, Rafi Saputra","  1. Enter Gameplay
+  2. Take the seeds out of the storage box in front of bed room without take a bottle of water
+  3. Go to the garden
+  4. Hoed the soil
+  5. Plant any seeds
+  6. Water the plants
+  7. Open the inventory
+  8. And there is a bottle of water in the inventory",10,Closed,https://drive.google.com/file/d/1w0AR7jImqmp8K3GiUwrm41Dr5uph-x1a/view?usp=sharing,,Fakhri Fawwaz Aydin,,,
+Low,BUG-008 — Ran into a wall can drain your stamina,"Collision, Input/Control, Interaction, Physics",TE-4 - Moving Character (Test%20Execution/TE-4%20-%20Moving%20Character%203f297560e11a80d1bf84f0e6c1ba28ab.md),"bhaskoro prayoga, Rafi Saputra","  1. Enter Gameplay
+  2. Try running towards the wall",10,Closed,https://drive.google.com/file/d/1dt9fg-J-gM1vObka8Bj4PEzxAgRKBHBK/view?usp=drive_link,,Fakhri Fawwaz Aydin,,,
+Critical,"BUG-009 — Save at night, and loading sets the number of enemies to 1","Gameplay, Save/Load",,"Rafi Saputra, bhaskoro prayoga","  1.  Enter Night
+  2. Save game
+  3. Load previous save
+  4. Set the enemy indicator to 1
+  5. and look out, to fight 1 enemy",10,Open,,30 Oktober 2026,Fakhri Fawwaz Aydin,,,
+Medium,BUG 010 — The price of seeds for sale at retailers is very high,"Economy/Merchant, Gameplay",,"Rafi Saputra, bhaskoro prayoga","  1. Go to Merchant
+  2. Buy seed potato for 500 Gold / seed
+  3. Sell seed Potato for 1000 Gold / seed",10,Open,,30 Oktober 2026,Fakhri Fawwaz Aydin,,,
+Low,BUG 011 — Initial display showing the day as day 1,UI,,"Rafi Saputra, bhaskoro prayoga","  1. In Day n
+  2. After completing the wave, go sleep
+  3. When you wake up in the morning, check which day is shown",,Open,,30 Oktober 2026,Fakhri Fawwaz Aydin,,,
+High,BUG 012 — You can still attack monsters whilst inside the room,"Collision, Combat, Gameplay, Input/Control",,"bhaskoro prayoga, Rafi Saputra","  1. Enter Night Phase
+  2. Wait until the monster gets close to the wall of the room
+  3. attack the monster from the bedroom, attack the monster from the bedroom",10,Open,,30 Oktober 2026,Fakhri Fawwaz Aydin,,,
+Critical,BUG 013 — Can sell key items such as hoes and watering cans,"Economy/Merchant, Gameplay",,"bhaskoro prayoga, Rafi Saputra","  1. Enter the merchant
+  2. find hoe or watering cans
+  3. sell both of them or one of them
+  4. and go farming",10,Open,,,Fakhri Fawwaz Aydin,,,
+High,BUG 014 — Buff always on in every slot save game,"Buff, Gameplay, Save/Load",,"bhaskoro prayoga, Rafi Saputra","  1. Enter game
+  2. Eat anything food
+  3. Go to save table
+  4. try whatever save slot
+  5. observe the buff",10,Open,,,Fakhri Fawwaz Aydin,,,
+Medium,BUG 015 — Incorect Reciepe for All food,"Cooking, Gameplay, Interaction",,"bhaskoro prayoga, Rafi Saputra","  1. Enter Kitchen
+  2. Open Kitchen Stove
+  3. See All Recipe",10,Open,,,Fakhri Fawwaz Aydin,,,
+High,BUG 016 — Duplicating water bottles,"Cooking, Gameplay, Inventory, Save/Load",,"bhaskoro prayoga, Rafi Saputra","  1. use a bottle to drink from
+  2. go to kitchen
+  3. open kitchen sink
+  4. refill the bottle
+  5. close kitchen sink
+  6. go to bedroom
+  7. open save table
+  8. load another slot save
+  9. back to kitchen sink
+  10. and see what happens",10,Open,,,Fakhri Fawwaz Aydin,,,
+Critical,BUG 017 — Duplicating Vegetabe;s,"Cooking, Gameplay, Inventory, Save/Load",,"bhaskoro prayoga, Rafi Saputra","  1. Go to Kitchen
+  2. Open kitchen sink
+  3. Wash the vegetables you have
+  4. close kitchen sink
+  5. Go to bedroom
+  6. open save table
+  7. load the same of save data
+  8. go to kitchen
+  9. vegetables still cleaning and your dirty vegetables still in inventory",10,Open,,,Fakhri Fawwaz Aydin,,,
+Critical,BUG 018 — The cleaning process continues with every save game load,"Cooking, Gameplay, Inventory, Save/Load",,"Rafi Saputra, bhaskoro prayoga","  1. Go to Kitchen
+  2. Open kitchen sink
+  3. Wash the vegetables you have
+  4. close kitchen sink
+  5. Go to bedroom
+  6. open save table
+  7. load the same of save data
+  8. go to kitchen
+  9. vegetables still cleaning and your dirty vegetables still in inventory",10,Open,,,Fakhri Fawwaz Aydin,,,
+Critical,BUG 021 — Cooking process continues with every save game load,"Cooking, Gameplay, Inventory, Save/Load",,"bhaskoro prayoga, Rafi Saputra","  1. Go to Kitchen
+  2. Open kitchen stove
+  3. Cook
+  4. close kitchen stove
+  5. Go to bedroom
+  6. open save table
+  7. load the same of save data
+  8. go to kitchen
+  9. food still cook and your ingridient still in inventory",10,Open,,,Fakhri Fawwaz Aydin,,,
+Critical,BUG 020 — Duplicating Food,"Cooking, Gameplay, Inventory, Save/Load",,"Rafi Saputra, bhaskoro prayoga","  1. Go to Kitchen
+  2. Open kitchen stove
+  3. Cook
+  4. close kitchen stove
+  5. Go to bedroom
+  6. open save table
+  7. load the same of save data
+  8. go to kitchen
+  9. food still cook and your ingridient still in inventory
+  10. ",10,Open,,,Fakhri Fawwaz Aydin,,,
+High,"BUG 021 — Enemy Tuber maw drop has got both of gold and mutated root ","Combat, Drop Item, Economy/Merchant",,"bhaskoro prayoga, Rafi Saputra","  1. Sleep for night phase
+  2. brawl with tuber maw
+  3.  obeserve the drop of enemy",10,Open,,,Fakhri Fawwaz Aydin,,,
+Critical,"BUG 022 — Enemy Tuber maw didn’t drop anything, mutated or gold, except for the seeds","Drop Item, Economy/Merchant, Gameplay",,"bhaskoro prayoga, Rafi Saputra","  1. Sleep for night phase
+  2. brawl with tuber maw
+  3.  obeserve the drop of enemy",10,Open,,,Fakhri Fawwaz Aydin,,,
+Critical,BUG 023 — Break The interval between waves is only 5 seconds,"Gameplay, Time",,"bhaskoro prayoga, Rafi Saputra","  1. Sleep for night phase
+  2. in wave 1, brawl with enemy until they’ve all been killed
+  3. observe break time between wave",10,Open,,,Fakhri Fawwaz Aydin,,,
+Critical,BUG 024 - Corn cannot be washed in the sink,"Gameplay, Input/Control, Interaction",,"Rafi Saputra, bhaskoro prayoga","  1. You must have a dirty corn
+  2. go to kitchen
+  3. open kitchen sink
+  4. drag and drop the drity corn
+  5. obesrve the sink",10,Open,,,Fakhri Fawwaz Aydin,,,
+,BUG 025 -,,,,"- 1st step : 
+- 2nd step :
+- … ",,Not started,,,Fakhri Fawwaz Aydin,,,
+,BUG 026 -,,,,"- 1st step : 
+- 2nd step :
+- … ",,Not started,,,Fakhri Fawwaz Aydin,,,
+,"BUG 027 - ",,,,"- 1st step : 
+- 2nd step :
+- … ",,Not started,,,Fakhri Fawwaz Aydin,,,

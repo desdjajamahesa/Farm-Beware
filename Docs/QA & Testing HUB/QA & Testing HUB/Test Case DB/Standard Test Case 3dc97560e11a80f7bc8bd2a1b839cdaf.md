@@ -1,0 +1,31 @@
+# Standard Test Case
+
+# Preconditions
+
+Conditions that must be met prior to testing.
+
+- 
+
+# Test Data
+
+Data used in the testing.
+
+- 
+
+# Test Steps
+
+The steps carried out by the tester.
+
+1. 
+
+# Expected Result
+
+The expected outcome if the feature operates in accordance with the specifications.
+
+- 
+
+# Notes
+
+Additional notes regarding test cases.
+
+-

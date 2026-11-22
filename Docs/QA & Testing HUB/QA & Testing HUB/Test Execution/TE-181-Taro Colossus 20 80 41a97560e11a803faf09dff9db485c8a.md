@@ -1,0 +1,31 @@
+# TE-181-Taro Colossus 20:80
+
+ID Test Case: TC-ED-1 (../Test%20Case%20DB/TC-ED-1%2041597560e11a8089aefcfc270b152cba.md)
+Test Run: TR-3 - Functional Test (../Test%20Run/TR-3%20-%20Functional%20Test%2040297560e11a80019e42df8a82e34ac3.md)
+Tester: Fakhri Fawwaz Aydin
+Execution Date: 11 November 2026
+Result: BLOCKED
+Actual Result: In the document, enemy drops only provide materials or gold, but in the game they also provide seeds, with a range of 1–4. Therefore, this cannot yet be confirmed with certainty.
+Build: https://app.notion.com/3ee97560e11a80eda7ededf51f3e9cec
+Case: Enemy drops materials or gold on a 50/50 basis
+Environment: Development
+
+# Execution Summary
+
+> Brief notes on the conduct of the test.
+> 
+
+# Actual Result
+
+> The actual results obtained when the test was run.
+> 
+
+# Evidence
+
+> Evidence of test results, such as screenshots, videos, logs or supporting files.
+> 
+
+# Notes
+
+> Additional notes from the tester.
+>

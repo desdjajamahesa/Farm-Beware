@@ -1,0 +1,4 @@
+﻿Test Run,Build,Environment,Run Type,Start Date,End Date,Status
+TR-1,MV 0.1.0 (Build%20DB/MV%200%201%200%203dd97560e11a80e384e0ce895129f817.md),Development,Smoke,3 Oktober 2026,5 Oktober 2026,Completed
+TR-2 - Bug Fix Verification,MV 0.2.1 (Build%20DB/MV%200%202%201%203ee97560e11a80eda7ededf51f3e9cec.md),Development,Retest,22 Oktober 2026,23 Oktober 2026,Completed
+TR-3 - Functional Test,MV 0.2.1 (Build%20DB/MV%200%202%201%203ee97560e11a80eda7ededf51f3e9cec.md),Development,Functional,23 Oktober 2026,,In Progress

@@ -1,0 +1,34 @@
+﻿Scenario,Category,Mechanic,Priority,Scenario ID,Status,System
+Game Launch Successfully,Technical,,Critical,TS-1,In Testing,
+Player can start gameplay,Gameplay,,High,TS-2,Not Tested,
+Player Movement,Gameplay,,Critical,TS-3,In Testing,
+Verify basic farming activities are functional,Gameplay,,High,TS-4,Not Tested,
+Verify player can complete a basic trade,Gameplay,,Medium,TS-5,Passed,
+Verify player can cook a basic recipe,Gameplay,,Medium,TS-6,Passed,
+"Verify player can Consumption Food ",Gameplay,,Medium,TS-7,Passed,
+Verify player can perform basic combat,Gameplay,,High,TS-8,Passed,
+Verify player can collect dropped loot,Gameplay,,Medium,TS-9,Passed,
+"Verify player can Upgrade a Weapon ",Gameplay,,Medium,TS-10,Passed,
+Verify day and night cycle progresses,Gameplay,,High,TS-11,Passed,
+Verify player can changing a clothe,Gameplay,,Low,TS-12,Passed,
+Verify player can use stove sink,Gameplay,,Medium,TS-13,Passed,
+Starter Gear,Gameplay,,Critical,TS-14,In Testing,Resource and Economy System (https://app.notion.com/p/Resource-and-Economy-System-39897560e11a80f6bdd3f5ced37fef5f?pvs=21)
+Equipment Effect,Gameplay,,High,TS-15,In Testing,
+Crops Growth,Gameplay,,High,TS-16,In Testing,Farming System (https://app.notion.com/p/Farming-System-daf97560e11a83f19fb081b6985faa22?pvs=21)
+Harvest,Gameplay,,High,TS-17,In Testing,Farming System (https://app.notion.com/p/Farming-System-daf97560e11a83f19fb081b6985faa22?pvs=21)
+Seed Drops From Crops,Gameplay,,High,TS-18,In Testing,Resource and Economy System (https://app.notion.com/p/Resource-and-Economy-System-39897560e11a80f6bdd3f5ced37fef5f?pvs=21)
+Bottle a Water and Water,Gameplay,,High,TS-19,In Testing,Resource and Economy System (https://app.notion.com/p/Resource-and-Economy-System-39897560e11a80f6bdd3f5ced37fef5f?pvs=21)
+Day and Night Cycle,Gameplay,,Critical,TS-20,In Testing,Progression System (https://app.notion.com/p/Progression-System-39897560e11a80e2a0a0c598f04e1db1?pvs=21)
+Enemy Behavior,Gameplay,,High,TS-21,In Testing,Enemy and Mutation System (https://app.notion.com/p/Enemy-and-Mutation-System-39897560e11a80069067c64955082a60?pvs=21)
+Enemy Unique Skill,Gameplay,,Medium,TS-22,In Testing,Enemy and Mutation System (https://app.notion.com/p/Enemy-and-Mutation-System-39897560e11a80069067c64955082a60?pvs=21)
+Wave System and Daily Progress,Gameplay,,High,TS-23,In Testing,Progression System (https://app.notion.com/p/Progression-System-39897560e11a80e2a0a0c598f04e1db1?pvs=21)
+,,,,TS-24,,
+,,,,TS-25,,
+,,,,TS-26,,
+Material and Gold Drop Monster,Gameplay,,High,TS-27,In Testing,Resource and Economy System (https://app.notion.com/p/Resource-and-Economy-System-39897560e11a80f6bdd3f5ced37fef5f?pvs=21)
+Basic upgrades (weapons and armour),Gameplay,,High,TS-28,In Testing,Resource and Economy System (https://app.notion.com/p/Resource-and-Economy-System-39897560e11a80f6bdd3f5ced37fef5f?pvs=21)
+Seed specialisation upgrade (5 nodes),Gameplay,,Medium,TS-29,In Testing,Progression System (https://app.notion.com/p/Progression-System-39897560e11a80e2a0a0c598f04e1db1?pvs=21)
+Cooking Process,Gameplay,,High,TS-30,In Testing,Resource and Economy System (https://app.notion.com/p/Resource-and-Economy-System-39897560e11a80f6bdd3f5ced37fef5f?pvs=21)
+Food Buff Effect,Gameplay,,Medium,TS-31,In Testing,Resource and Economy System (https://app.notion.com/p/Resource-and-Economy-System-39897560e11a80f6bdd3f5ced37fef5f?pvs=21)
+Save and Load Game,Save/Load,,Critical,TS-32,In Testing,Progression System (https://app.notion.com/p/Progression-System-39897560e11a80e2a0a0c598f04e1db1?pvs=21)
+Weapon Behavior,Gameplay,,High,TS-33,In Testing,Progression System (https://app.notion.com/p/Progression-System-39897560e11a80e2a0a0c598f04e1db1?pvs=21)
