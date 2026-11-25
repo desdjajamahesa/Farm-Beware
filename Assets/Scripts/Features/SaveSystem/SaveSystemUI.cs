@@ -255,15 +255,15 @@ namespace FeaturesSaveSystem
                         sRT.anchorMax = new Vector2(0.5f, 0.5f);
                         sRT.pivot = new Vector2(0.5f, 0.5f);
                         sRT.anchoredPosition = Vector2.zero;
-                        sRT.sizeDelta = new Vector2(260, 52);
+                        sRT.sizeDelta = new Vector2(220, 52);
                     }
                     else
                     {
-                        sRT.anchorMin = new Vector2(1, 0.5f);
-                        sRT.anchorMax = new Vector2(1, 0.5f);
-                        sRT.pivot = new Vector2(1, 0.5f);
-                        sRT.sizeDelta = new Vector2(185, 52);
-                        sRT.anchoredPosition = new Vector2(-16, 0);
+                        sRT.anchorMin = new Vector2(0.06f, 0.16f);
+                        sRT.anchorMax = new Vector2(0.94f, 0.36f);
+                        sRT.pivot = new Vector2(0.5f, 0.5f);
+                        sRT.offsetMin = Vector2.zero;
+                        sRT.offsetMax = Vector2.zero;
                     }
                 }
             }
@@ -427,10 +427,10 @@ namespace FeaturesSaveSystem
             le.flexibleWidth = 1;
 
             var img = cardGO.GetComponent<Image>();
-            img.color = new Color(0.14f, 0.17f, 0.25f, 0.95f);
+            img.color = WoodenBoardStyle.DarkOakSubtle;
 
             var outline = cardGO.AddComponent<Outline>();
-            outline.effectColor = new Color(0.35f, 0.42f, 0.58f, 0.4f);
+            outline.effectColor = WoodenBoardStyle.GoldTrim;
             outline.effectDistance = new Vector2(1, -1);
 
             // Left Info Container
@@ -761,54 +761,37 @@ namespace FeaturesSaveSystem
             backdropCloseButton = backdropGO.GetComponent<Button>();
             backdropCloseButton.onClick.AddListener(Close);
 
-            // 2. Central Modal Card
+            // 2. Central Modal Board (16:9 Two-Column Rustic Wood Board)
             var cardGO = new GameObject("SaveModalCard", typeof(RectTransform), typeof(Image));
             cardGO.transform.SetParent(modalPanel.transform, false);
             cardRect = cardGO.GetComponent<RectTransform>();
-            cardRect.sizeDelta = new Vector2(1180, 800);
+            cardRect.sizeDelta = new Vector2(1240, 692);
             cardRect.anchoredPosition = Vector2.zero;
             var cardImg = cardGO.GetComponent<Image>();
-            cardImg.color = new Color(0.10f, 0.12f, 0.18f, 0.98f);
+            WoodenBoardStyle.ApplyBoardBackground(cardImg);
 
-            var outline = cardGO.AddComponent<Outline>();
-            outline.effectColor = new Color(0.75f, 0.58f, 0.28f, 0.85f); // Antique Gold
-            outline.effectDistance = new Vector2(3, -3);
-
-            // 3. Header Bar
-            var headerGO = new GameObject("HeaderBar", typeof(RectTransform), typeof(Image));
-            headerGO.transform.SetParent(cardGO.transform, false);
-            var hRT = headerGO.GetComponent<RectTransform>();
-            hRT.anchorMin = new Vector2(0, 1);
-            hRT.anchorMax = new Vector2(1, 1);
-            hRT.pivot = new Vector2(0.5f, 1);
-            hRT.sizeDelta = new Vector2(0, 68);
-            hRT.anchoredPosition = Vector2.zero;
-            var hImg = headerGO.GetComponent<Image>();
-            hImg.color = new Color(0.15f, 0.18f, 0.28f, 1f);
-
-            var titleGO = new GameObject("TitleText", typeof(RectTransform), typeof(TextMeshProUGUI));
-            titleGO.transform.SetParent(headerGO.transform, false);
-            var tRT = titleGO.GetComponent<RectTransform>();
-            tRT.anchorMin = Vector2.zero;
-            tRT.anchorMax = Vector2.one;
-            tRT.sizeDelta = Vector2.zero;
-            tRT.offsetMin = new Vector2(24, 0);
-            var headerTmp = titleGO.GetComponent<TextMeshProUGUI>();
-            headerTmp.text = "<b>SAVING & LOADING SYSTEM</b>";
-            headerTmp.fontSize = 26;
-            headerTmp.color = new Color(0.96f, 0.88f, 0.72f);
-            headerTmp.alignment = TextAlignmentOptions.MidlineLeft;
+            // 3. Plaque Title & Corner Close Button
+            var plaqueTmp = WoodenBoardStyle.EnsurePlaqueTitle<TextMeshProUGUI>(cardGO.transform);
+            if (plaqueTmp != null)
+            {
+                plaqueTmp.text = "SAVE & LOAD SYSTEM";
+                plaqueTmp.fontSize = 21f;
+                plaqueTmp.fontStyle = FontStyles.Bold;
+                plaqueTmp.alignment = TextAlignmentOptions.Center;
+            }
 
             var closeGO = new GameObject("Btn_XClose", typeof(RectTransform), typeof(Image), typeof(Button));
-            closeGO.transform.SetParent(headerGO.transform, false);
+            closeGO.transform.SetParent(cardGO.transform, false);
             var cRT = closeGO.GetComponent<RectTransform>();
-            cRT.anchorMin = new Vector2(1, 0.5f);
-            cRT.anchorMax = new Vector2(1, 0.5f);
-            cRT.pivot = new Vector2(1, 0.5f);
-            cRT.sizeDelta = new Vector2(44, 44);
-            cRT.anchoredPosition = new Vector2(-16, 0);
+            cRT.anchorMin = WoodenBoardStyle.CloseButtonAnchor;
+            cRT.anchorMax = WoodenBoardStyle.CloseButtonAnchor;
+            cRT.pivot = new Vector2(0.5f, 0.5f);
+            cRT.sizeDelta = new Vector2(38, 38);
+            cRT.anchoredPosition = Vector2.zero;
             var cImg = closeGO.GetComponent<Image>();
-            cImg.color = new Color(0.75f, 0.22f, 0.22f, 0.9f);
+            cImg.sprite = ProceduralUIAssetCache.GetRoundedBarSprite();
+            cImg.type = Image.Type.Sliced;
+            cImg.color = WoodenBoardStyle.BtnDanger;
             closeButton = closeGO.GetComponent<Button>();
             closeButton.onClick.AddListener(Close);
 
@@ -820,34 +803,47 @@ namespace FeaturesSaveSystem
             xRT.sizeDelta = Vector2.zero;
             var xTmp = xTextGO.GetComponent<TextMeshProUGUI>();
             xTmp.text = "<b>X</b>";
-            xTmp.fontSize = 20;
+            xTmp.fontSize = 18;
             xTmp.color = Color.white;
             xTmp.alignment = TextAlignmentOptions.Center;
             xTmp.raycastTarget = false;
 
-            // 4. New Save Section (Input Field + Save Button)
+            // 4. Left Column: New Save Form + Feedback Banner
             var newSaveSection = new GameObject("NewSaveSection", typeof(RectTransform), typeof(Image));
             newSaveSection.transform.SetParent(cardGO.transform, false);
             var nsRT = newSaveSection.GetComponent<RectTransform>();
-            nsRT.anchorMin = new Vector2(0, 1);
-            nsRT.anchorMax = new Vector2(1, 1);
-            nsRT.pivot = new Vector2(0.5f, 1);
-            nsRT.sizeDelta = new Vector2(-48, 72);
-            nsRT.anchoredPosition = new Vector2(0, -84);
+            WoodenBoardStyle.SetAnchorRegion(nsRT,
+                new Vector2(WoodenBoardStyle.LeftPaneMin.x, 0.250f),
+                new Vector2(WoodenBoardStyle.LeftPaneMax.x, WoodenBoardStyle.LeftPaneMax.y),
+                8f, 4f, 8f, 8f);
             var nsImg = newSaveSection.GetComponent<Image>();
-            nsImg.color = new Color(0.08f, 0.10f, 0.15f, 0.95f);
+            nsImg.sprite = ProceduralUIAssetCache.GetRoundedBarSprite();
+            nsImg.type = Image.Type.Sliced;
+            nsImg.color = WoodenBoardStyle.DarkOakOverlay;
 
-            // Input Field
+            var nsHeaderGO = new GameObject("NewSaveHeader", typeof(RectTransform), typeof(TextMeshProUGUI));
+            nsHeaderGO.transform.SetParent(newSaveSection.transform, false);
+            var nshRT = nsHeaderGO.GetComponent<RectTransform>();
+            nshRT.anchorMin = new Vector2(0.06f, 0.80f);
+            nshRT.anchorMax = new Vector2(0.94f, 0.94f);
+            nshRT.offsetMin = Vector2.zero;
+            nshRT.offsetMax = Vector2.zero;
+            var nshTmp = nsHeaderGO.GetComponent<TextMeshProUGUI>();
+            nshTmp.text = "<b>CREATE NEW SAVE</b>";
+            nshTmp.fontSize = 15;
+            nshTmp.color = WoodenBoardStyle.TextGoldAccent;
+            nshTmp.alignment = TextAlignmentOptions.Center;
+
+            // Input Field inside Left Column
             var inputGO = new GameObject("InputField_SaveName", typeof(RectTransform), typeof(Image), typeof(TMP_InputField));
             inputGO.transform.SetParent(newSaveSection.transform, false);
             var inRT = inputGO.GetComponent<RectTransform>();
-            inRT.anchorMin = new Vector2(0, 0.5f);
-            inRT.anchorMax = new Vector2(1, 0.5f);
-            inRT.pivot = new Vector2(0.5f, 0.5f);
-            inRT.offsetMin = new Vector2(18, -26);
-            inRT.offsetMax = new Vector2(-220, 26);
+            inRT.anchorMin = new Vector2(0.06f, 0.56f);
+            inRT.anchorMax = new Vector2(0.94f, 0.74f);
+            inRT.offsetMin = Vector2.zero;
+            inRT.offsetMax = Vector2.zero;
             var inImg = inputGO.GetComponent<Image>();
-            inImg.color = new Color(0.14f, 0.16f, 0.22f, 1f);
+            inImg.color = WoodenBoardStyle.DarkOakInput;
 
             saveNameInputField = inputGO.GetComponent<TMP_InputField>();
             saveNameInputField.characterLimit = 25;
@@ -858,10 +854,10 @@ namespace FeaturesSaveSystem
             var tcRT = textCompGO.GetComponent<RectTransform>();
             tcRT.anchorMin = Vector2.zero;
             tcRT.anchorMax = Vector2.one;
-            tcRT.sizeDelta = new Vector2(-24, 0);
+            tcRT.sizeDelta = new Vector2(-16, 0);
             var tcTmp = textCompGO.GetComponent<TextMeshProUGUI>();
-            tcTmp.fontSize = 18;
-            tcTmp.color = Color.white;
+            tcTmp.fontSize = 15;
+            tcTmp.color = WoodenBoardStyle.TextCream;
             tcTmp.alignment = TextAlignmentOptions.MidlineLeft;
 
             // Placeholder Component
@@ -870,11 +866,11 @@ namespace FeaturesSaveSystem
             var phRT = phGO.GetComponent<RectTransform>();
             phRT.anchorMin = Vector2.zero;
             phRT.anchorMax = Vector2.one;
-            phRT.sizeDelta = new Vector2(-24, 0);
+            phRT.sizeDelta = new Vector2(-16, 0);
             var phTmp = phGO.GetComponent<TextMeshProUGUI>();
-            phTmp.text = "Type save name (e.g. Chapter 1 - Hutan)...";
-            phTmp.fontSize = 17;
-            phTmp.color = new Color(0.55f, 0.60f, 0.70f, 0.65f);
+            phTmp.text = "Save name...";
+            phTmp.fontSize = 14;
+            phTmp.color = WoodenBoardStyle.TextMutedWarm;
             phTmp.fontStyle = FontStyles.Italic;
             phTmp.alignment = TextAlignmentOptions.MidlineLeft;
 
@@ -886,14 +882,13 @@ namespace FeaturesSaveSystem
             var countGO = new GameObject("CharCount", typeof(RectTransform), typeof(TextMeshProUGUI));
             countGO.transform.SetParent(newSaveSection.transform, false);
             var cCountRT = countGO.GetComponent<RectTransform>();
-            cCountRT.anchorMin = new Vector2(1, 0.5f);
-            cCountRT.anchorMax = new Vector2(1, 0.5f);
-            cCountRT.pivot = new Vector2(1, 0.5f);
-            cCountRT.sizeDelta = new Vector2(60, 32);
-            cCountRT.anchoredPosition = new Vector2(-215, 0);
+            cCountRT.anchorMin = new Vector2(0.06f, 0.44f);
+            cCountRT.anchorMax = new Vector2(0.94f, 0.54f);
+            cCountRT.offsetMin = Vector2.zero;
+            cCountRT.offsetMax = Vector2.zero;
             charCountText = countGO.GetComponent<TextMeshProUGUI>();
-            charCountText.fontSize = 14;
-            charCountText.color = new Color(0.6f, 0.65f, 0.75f);
+            charCountText.fontSize = 13;
+            charCountText.color = WoodenBoardStyle.TextMutedWarm;
             charCountText.alignment = TextAlignmentOptions.MidlineRight;
             charCountText.text = "0/25";
 
@@ -901,14 +896,15 @@ namespace FeaturesSaveSystem
             var saveBtnGO = new GameObject("Btn_SaveNew", typeof(RectTransform), typeof(Image), typeof(Button));
             saveBtnGO.transform.SetParent(newSaveSection.transform, false);
             var sRT = saveBtnGO.GetComponent<RectTransform>();
-            sRT.anchorMin = new Vector2(1, 0.5f);
-            sRT.anchorMax = new Vector2(1, 0.5f);
-            sRT.pivot = new Vector2(1, 0.5f);
-            sRT.sizeDelta = new Vector2(185, 52);
-            sRT.anchoredPosition = new Vector2(-16, 0);
+            sRT.anchorMin = new Vector2(0.06f, 0.16f);
+            sRT.anchorMax = new Vector2(0.94f, 0.36f);
+            sRT.offsetMin = Vector2.zero;
+            sRT.offsetMax = Vector2.zero;
 
             var sImg = saveBtnGO.GetComponent<Image>();
-            sImg.color = new Color(0.16f, 0.58f, 0.32f, 1f);
+            sImg.sprite = ProceduralUIAssetCache.GetRoundedBarSprite();
+            sImg.type = Image.Type.Sliced;
+            sImg.color = WoodenBoardStyle.BtnPrimary;
 
             saveNewButton = saveBtnGO.GetComponent<Button>();
             saveNewButton.onClick.AddListener(OnSaveNewClicked);
@@ -921,36 +917,35 @@ namespace FeaturesSaveSystem
             stRT.sizeDelta = Vector2.zero;
             var sTmp = sTxtGO.GetComponent<TextMeshProUGUI>();
             sTmp.text = "<b>Save New</b>";
-            sTmp.fontSize = 18;
+            sTmp.fontSize = 17;
             sTmp.color = Color.white;
             sTmp.alignment = TextAlignmentOptions.Center;
             sTmp.raycastTarget = false;
 
-            // 5. Status Feedback Banner
+            // 5. Status Feedback Banner (Lower Left Column)
             var fbGO = new GameObject("FeedbackText", typeof(RectTransform), typeof(TextMeshProUGUI));
             fbGO.transform.SetParent(cardGO.transform, false);
             var fbRT = fbGO.GetComponent<RectTransform>();
-            fbRT.anchorMin = new Vector2(0, 1);
-            fbRT.anchorMax = new Vector2(1, 1);
-            fbRT.pivot = new Vector2(0.5f, 1);
-            fbRT.sizeDelta = new Vector2(-48, 28);
-            fbRT.anchoredPosition = new Vector2(0, -168);
+            WoodenBoardStyle.SetAnchorRegion(fbRT,
+                new Vector2(WoodenBoardStyle.LeftPaneMin.x, WoodenBoardStyle.LeftPaneMin.y),
+                new Vector2(WoodenBoardStyle.LeftPaneMax.x, 0.240f),
+                12f, 8f, 12f, 4f);
             statusFeedbackText = fbGO.GetComponent<TextMeshProUGUI>();
-            statusFeedbackText.fontSize = 15;
+            statusFeedbackText.fontSize = 14;
             statusFeedbackText.alignment = TextAlignmentOptions.Center;
+            statusFeedbackText.textWrappingMode = TextWrappingModes.Normal;
             statusFeedbackText.text = "";
 
-            // 6. Scrollable List of Slots
+            // 6. Scrollable List of Slots (Right Wide Plank Column)
             var scrollGO = new GameObject("ScrollSlots", typeof(RectTransform), typeof(ScrollRect), typeof(Image));
             scrollGO.transform.SetParent(cardGO.transform, false);
             var scRT = scrollGO.GetComponent<RectTransform>();
-            scRT.anchorMin = new Vector2(0, 0);
-            scRT.anchorMax = new Vector2(1, 1);
-            scRT.offsetMin = new Vector2(24, 24);
-            scRT.offsetMax = new Vector2(-24, -204);
+            WoodenBoardStyle.SetAnchorRegion(scRT, WoodenBoardStyle.RightPaneMin, WoodenBoardStyle.RightPaneMax, 10f, 8f, 10f, 8f);
 
             var scImg = scrollGO.GetComponent<Image>();
-            scImg.color = new Color(0.06f, 0.08f, 0.12f, 0.6f);
+            scImg.sprite = ProceduralUIAssetCache.GetRoundedBarSprite();
+            scImg.type = Image.Type.Sliced;
+            scImg.color = WoodenBoardStyle.DarkOakOverlay;
 
             var scrollRect = scrollGO.GetComponent<ScrollRect>();
             scrollRect.horizontal = false;

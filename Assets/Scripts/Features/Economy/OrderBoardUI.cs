@@ -237,8 +237,8 @@ namespace FeaturesEconomy
             rowImg.sprite = ProceduralUIAssetCache.GetRoundedBarSprite();
             rowImg.type = Image.Type.Sliced;
             rowImg.color = canDeliver
-                ? new Color(0.11f, 0.18f, 0.15f, 0.95f)
-                : new Color(0.12f, 0.15f, 0.21f, 0.92f);
+                ? new Color(0.14f, 0.24f, 0.14f, 0.85f)
+                : WoodenBoardStyle.DarkOakSubtle;
             rowImg.raycastTarget = false;
 
             var rowLayout = rowGO.AddComponent<HorizontalLayoutGroup>();
@@ -553,52 +553,73 @@ namespace FeaturesEconomy
             backdropButton = backdropGO.GetComponent<Button>();
             backdropButton.transition = Selectable.Transition.None;
 
-            // Modal card
+            // Modal card (16:9 Wooden Two-Column Board)
             GameObject cardGO = new GameObject("OrderBoardModalCard", typeof(RectTransform), typeof(Image));
             cardGO.transform.SetParent(boardPanel.transform, false);
             var cardRT = cardGO.GetComponent<RectTransform>();
             cardRT.anchorMin = new Vector2(0.5f, 0.5f);
             cardRT.anchorMax = new Vector2(0.5f, 0.5f);
-            cardRT.sizeDelta = new Vector2(820f, 590f);
+            cardRT.sizeDelta = new Vector2(1180f, 659f);
             var cardImg = cardGO.GetComponent<Image>();
-            cardImg.sprite = ProceduralUIAssetCache.GetRoundedBarSprite();
-            cardImg.type = Image.Type.Sliced;
-            cardImg.color = new Color(0.08f, 0.11f, 0.16f, 0.98f);
+            WoodenBoardStyle.ApplyBoardBackground(cardImg);
+            cardImg.raycastTarget = true;
 
-            // Header bar
-            GameObject headerGO = CreateAnchoredBar(cardGO.transform, "HeaderBar", new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -12f), new Vector2(-40f, 58f));
-            CreateTMP(headerGO.transform, "TitleText", "FARM ORDER BOARD", 24f, FontStyles.Bold, new Color(1f, 0.82f, 0.25f, 1f), TextAlignmentOptions.MidlineLeft, new Vector2(0f, 0.45f), new Vector2(0.85f, 1f));
-            CreateTMP(headerGO.transform, "SubtitleText", "Complete washed clean harvest requests outside the fence for 1.2x (+20%) bonus Gold!", 13f, FontStyles.Normal, new Color(0.66f, 0.74f, 0.84f, 1f), TextAlignmentOptions.MidlineLeft, new Vector2(0f, 0f), new Vector2(0.85f, 0.45f));
+            // Plaque Title
+            var plaqueTmp = WoodenBoardStyle.EnsurePlaqueTitle<TextMeshProUGUI>(cardGO.transform);
+            if (plaqueTmp != null)
+            {
+                plaqueTmp.text = "FARM ORDER BOARD";
+                plaqueTmp.fontSize = 21f;
+                plaqueTmp.fontStyle = FontStyles.Bold;
+                plaqueTmp.alignment = TextAlignmentOptions.Center;
+            }
+
+            // Transparent HeaderBar wrapper preserving HeaderBar/Btn_XClose path
+            GameObject headerGO = CreateAnchoredBar(cardGO.transform, "HeaderBar", Vector2.zero, Vector2.one, new Vector2(0.5f, 0.5f), Vector2.zero, Vector2.zero);
+            var subTitle = CreateTMP(headerGO.transform, "SubtitleText", "Deliver washed crops for +20% Gold!", 12.5f, FontStyles.Normal, WoodenBoardStyle.TextMutedWarm, TextAlignmentOptions.Center,
+                new Vector2(WoodenBoardStyle.LeftPaneMin.x, 0.790f),
+                new Vector2(WoodenBoardStyle.LeftPaneMax.x, WoodenBoardStyle.LeftPaneMax.y),
+                new Vector2(-16f, 0f));
+            subTitle.textWrappingMode = TextWrappingModes.Normal;
 
             // Close X button
             GameObject xGO = new GameObject("Btn_XClose", typeof(RectTransform), typeof(Image), typeof(Button));
             xGO.transform.SetParent(headerGO.transform, false);
             var xRT = xGO.GetComponent<RectTransform>();
-            xRT.anchorMin = new Vector2(1f, 0.5f);
-            xRT.anchorMax = new Vector2(1f, 0.5f);
-            xRT.pivot = new Vector2(1f, 0.5f);
+            xRT.anchorMin = WoodenBoardStyle.CloseButtonAnchor;
+            xRT.anchorMax = WoodenBoardStyle.CloseButtonAnchor;
+            xRT.pivot = new Vector2(0.5f, 0.5f);
+            xRT.anchoredPosition = Vector2.zero;
             xRT.sizeDelta = new Vector2(36f, 36f);
-            xGO.GetComponent<Image>().color = new Color(0.26f, 0.14f, 0.18f, 1f);
+            xGO.GetComponent<Image>().sprite = ProceduralUIAssetCache.GetRoundedBarSprite();
+            xGO.GetComponent<Image>().type = Image.Type.Sliced;
+            xGO.GetComponent<Image>().color = WoodenBoardStyle.BtnDanger;
             closeButton = xGO.GetComponent<Button>();
-            CreateTMP(xGO.transform, "Text", "X", 17f, FontStyles.Bold, new Color(1f, 0.45f, 0.45f, 1f), TextAlignmentOptions.Center, Vector2.zero, Vector2.one);
+            CreateTMP(xGO.transform, "Text", "X", 17f, FontStyles.Bold, Color.white, TextAlignmentOptions.Center, Vector2.zero, Vector2.one);
 
-            // Gold pill
-            GameObject goldPill = CreateAnchoredBar(cardGO.transform, "GoldPill", new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -76f), new Vector2(-40f, 32f), new Color(0.14f, 0.18f, 0.26f, 0.9f));
-            goldBalanceText = CreateTMP(goldPill.transform, "GoldText", "Gold: <color=#FFD700>0 G</color>", 15f, FontStyles.Bold, Color.white, TextAlignmentOptions.MidlineLeft, Vector2.zero, Vector2.one, new Vector2(-20f, 0f));
+            // Left Column: Gold pill + Market Rate summary strip
+            GameObject goldPill = CreateAnchoredBar(cardGO.transform, "GoldPill",
+                new Vector2(WoodenBoardStyle.LeftPaneMin.x, 0.690f),
+                new Vector2(WoodenBoardStyle.LeftPaneMax.x, 0.782f),
+                new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(-16f, -4f), WoodenBoardStyle.DarkOakHeader);
+            goldBalanceText = CreateTMP(goldPill.transform, "GoldText", "Gold: <color=#FFD700>0 G</color>", 16f, FontStyles.Bold, WoodenBoardStyle.TextCream, TextAlignmentOptions.Center, Vector2.zero, Vector2.one, new Vector2(-12f, 0f));
 
-            // Market summary strip
-            GameObject ratePill = CreateAnchoredBar(cardGO.transform, "MarketRatePill", new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -114f), new Vector2(-40f, 28f), new Color(0.10f, 0.14f, 0.20f, 0.9f));
-            marketSummaryText = CreateTMP(ratePill.transform, "RateSummary", "", 12f, FontStyles.Normal, new Color(0.84f, 0.90f, 0.96f, 1f), TextAlignmentOptions.Center, Vector2.zero, Vector2.one, new Vector2(-16f, 0f));
+            GameObject ratePill = CreateAnchoredBar(cardGO.transform, "MarketRatePill",
+                new Vector2(WoodenBoardStyle.LeftPaneMin.x, 0.250f),
+                new Vector2(WoodenBoardStyle.LeftPaneMax.x, 0.675f),
+                new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(-16f, -4f), WoodenBoardStyle.DarkOakOverlay);
+            marketSummaryText = CreateTMP(ratePill.transform, "RateSummary", "", 13f, FontStyles.Normal, WoodenBoardStyle.TextCream, TextAlignmentOptions.Center, Vector2.zero, Vector2.one, new Vector2(-18f, -16f));
+            marketSummaryText.textWrappingMode = TextWrappingModes.Normal;
 
-            // Scroll view
+            // Right Column: Scroll view (OrderBoardModalCard/OrderScrollView/Viewport/OrdersContent)
             GameObject scrollGO = new GameObject("OrderScrollView", typeof(RectTransform), typeof(Image), typeof(ScrollRect));
             scrollGO.transform.SetParent(cardGO.transform, false);
             var srt = scrollGO.GetComponent<RectTransform>();
-            srt.anchorMin = Vector2.zero;
-            srt.anchorMax = Vector2.one;
-            srt.offsetMin = new Vector2(20f, 82f);
-            srt.offsetMax = new Vector2(-20f, -150f);
-            scrollGO.GetComponent<Image>().color = new Color(0.05f, 0.07f, 0.11f, 0.85f);
+            WoodenBoardStyle.SetAnchorRegion(srt, WoodenBoardStyle.RightPaneMin, WoodenBoardStyle.RightPaneMax, 10f, 8f, 10f, 8f);
+            var sBg = scrollGO.GetComponent<Image>();
+            sBg.sprite = ProceduralUIAssetCache.GetRoundedBarSprite();
+            sBg.type = Image.Type.Sliced;
+            sBg.color = WoodenBoardStyle.DarkOakOverlay;
 
             var scroll = scrollGO.GetComponent<ScrollRect>();
             scroll.horizontal = false;
@@ -633,33 +654,38 @@ namespace FeaturesEconomy
             ordersContainer = contentGO.transform;
             scroll.content = contentRT;
 
-            // Toast text
+            // Toast text (Left Column above close button)
             GameObject toastGO = new GameObject("ToastBannerText", typeof(RectTransform), typeof(TextMeshProUGUI));
             toastGO.transform.SetParent(cardGO.transform, false);
             var tRT = toastGO.GetComponent<RectTransform>();
-            tRT.anchorMin = new Vector2(0f, 0f);
-            tRT.anchorMax = new Vector2(1f, 0f);
-            tRT.pivot = new Vector2(0.5f, 0f);
-            tRT.anchoredPosition = new Vector2(0f, 52f);
-            tRT.sizeDelta = new Vector2(-40f, 24f);
+            WoodenBoardStyle.SetAnchorRegion(tRT,
+                new Vector2(WoodenBoardStyle.LeftPaneMin.x, 0.148f),
+                new Vector2(WoodenBoardStyle.LeftPaneMax.x, 0.240f),
+                10f, 2f, 10f, 2f);
             toastBannerText = toastGO.GetComponent<TextMeshProUGUI>();
-            toastBannerText.fontSize = 14f;
+            toastBannerText.fontSize = 13f;
             toastBannerText.fontStyle = FontStyles.Bold;
             toastBannerText.alignment = TextAlignmentOptions.Center;
+            toastBannerText.textWrappingMode = TextWrappingModes.Normal;
             toastBannerText.raycastTarget = false;
             toastBannerText.text = string.Empty;
 
-            // Bottom close bar
-            GameObject bottomGO = CreateAnchoredBar(cardGO.transform, "BottomBar", new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 12f), new Vector2(-40f, 36f));
+            // Bottom close bar (Bottom of Left Column)
+            GameObject bottomGO = CreateAnchoredBar(cardGO.transform, "BottomBar",
+                new Vector2(WoodenBoardStyle.LeftPaneMin.x, WoodenBoardStyle.LeftPaneMin.y),
+                new Vector2(WoodenBoardStyle.LeftPaneMax.x, 0.140f),
+                new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(-16f, -4f));
             GameObject closeBtnGO = new GameObject("Btn_CloseBoard", typeof(RectTransform), typeof(Image), typeof(Button));
             closeBtnGO.transform.SetParent(bottomGO.transform, false);
             var cbRT = closeBtnGO.GetComponent<RectTransform>();
-            cbRT.anchorMin = new Vector2(0.35f, 0f);
-            cbRT.anchorMax = new Vector2(0.65f, 1f);
+            cbRT.anchorMin = Vector2.zero;
+            cbRT.anchorMax = Vector2.one;
             cbRT.sizeDelta = Vector2.zero;
-            closeBtnGO.GetComponent<Image>().color = new Color(0.2f, 0.25f, 0.35f, 1f);
+            closeBtnGO.GetComponent<Image>().sprite = ProceduralUIAssetCache.GetRoundedBarSprite();
+            closeBtnGO.GetComponent<Image>().type = Image.Type.Sliced;
+            closeBtnGO.GetComponent<Image>().color = WoodenBoardStyle.BtnSecondary;
             bottomCloseButton = closeBtnGO.GetComponent<Button>();
-            CreateTMP(closeBtnGO.transform, "Text", "CLOSE BOARD (ESC)", 14f, FontStyles.Bold, Color.white, TextAlignmentOptions.Center, Vector2.zero, Vector2.one);
+            CreateTMP(closeBtnGO.transform, "Text", "CLOSE BOARD (ESC)", 13.5f, FontStyles.Bold, WoodenBoardStyle.TextCream, TextAlignmentOptions.Center, Vector2.zero, Vector2.one);
 
             BindButtons();
             boardPanel.SetActive(false);

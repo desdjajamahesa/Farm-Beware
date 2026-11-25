@@ -4,7 +4,6 @@
   <Project Path="FarmBeware.Features.Kitchen.csproj" />
   <Project Path="FarmBeware.Features.Combat.csproj" />
   <Project Path="FarmBeware.Features.Wardrobe.csproj" />
-  <Project Path="Assembly-CSharp-Editor.csproj" />
   <Project Path="Assembly-CSharp.csproj" />
   <Project Path="FarmBeware.Features.Camera.csproj" />
   <Project Path="FarmBeware.Rendering.Runtime.csproj" />
@@ -18,5 +17,6 @@
   <Project Path="FarmBeware.Features.Quest.csproj" />
   <Project Path="FarmBeware.Features.SaveSystem.csproj" />
   <Project Path="FarmBeware.Data.Runtime.csproj" />
+  <Project Path="Assembly-CSharp-Editor.csproj" />
   <Project Path="FarmBeware.Features.Trophy.csproj" />
 </Solution>

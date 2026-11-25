@@ -367,54 +367,38 @@ namespace FarmBeware.Features.Quest.UI
             backdropButton = backdropGO.GetComponent<UnityEngine.UI.Button>();
             backdropButton.transition = UnityEngine.UI.Selectable.Transition.None;
 
-            // Modal card container
+            // Modal card container (16:9 wooden two-column board)
             var cardGO = new GameObject("QuestLogModalCard", typeof(RectTransform), typeof(UnityEngine.UI.Image));
             cardGO.transform.SetParent(questLogRoot.transform, false);
             var cardRt = cardGO.GetComponent<RectTransform>();
             cardRt.anchorMin = new Vector2(0.5f, 0.5f);
             cardRt.anchorMax = new Vector2(0.5f, 0.5f);
             cardRt.pivot = new Vector2(0.5f, 0.5f);
-            cardRt.sizeDelta = new Vector2(840f, 610f);
+            cardRt.sizeDelta = new Vector2(1180f, 659f);
             var cardImg = cardGO.GetComponent<UnityEngine.UI.Image>();
-            cardImg.sprite = ProceduralUIAssetCache.GetRoundedBarSprite();
-            cardImg.type = UnityEngine.UI.Image.Type.Sliced;
-            cardImg.color = new Color(0.07f, 0.10f, 0.15f, 0.98f);
+            WoodenBoardStyle.ApplyBoardBackground(cardImg);
             cardImg.raycastTarget = true;
 
-            // Header bar
+            // Plaque Title
+            var plaqueTmp = WoodenBoardStyle.EnsurePlaqueTitle<TextMeshProUGUI>(cardGO.transform);
+            if (plaqueTmp != null)
+            {
+                plaqueTmp.text = "QUEST BOARD [Q]";
+                plaqueTmp.fontSize = 22f;
+                plaqueTmp.fontStyle = FontStyles.Bold;
+                plaqueTmp.alignment = TextAlignmentOptions.Center;
+            }
+
+            // Header bar (transparent full-rect overlay preserving HeaderBar/Btn_XClose path)
             GameObject headerBar = CreateAnchoredBar(
                 cardGO.transform,
                 "HeaderBar",
-                new Vector2(0f, 1f),
-                new Vector2(1f, 1f),
-                new Vector2(0.5f, 1f),
-                new Vector2(0f, -14f),
-                new Vector2(-40f, 56f),
+                Vector2.zero,
+                Vector2.one,
+                new Vector2(0.5f, 0.5f),
+                Vector2.zero,
+                Vector2.zero,
                 new Color(0f, 0f, 0f, 0f));
-
-            CreateLabel(
-                headerBar.transform,
-                "TitleText",
-                "QUEST LOG",
-                24f,
-                FontStyles.Bold,
-                new Color(0.98f, 0.82f, 0.28f, 1f),
-                TextAlignmentOptions.MidlineLeft,
-                new Vector2(0f, 0.44f),
-                new Vector2(0.86f, 1f),
-                Vector2.zero);
-
-            CreateLabel(
-                headerBar.transform,
-                "SubtitleText",
-                "Track all accepted quests, step progress, and Finish / Unfinish state  |  [Q] or [ESC] to close",
-                12.5f,
-                FontStyles.Normal,
-                new Color(0.68f, 0.76f, 0.86f, 1f),
-                TextAlignmentOptions.MidlineLeft,
-                new Vector2(0f, 0f),
-                new Vector2(0.86f, 0.44f),
-                Vector2.zero);
 
             closeXButton = CreateButton(
                 headerBar.transform,
@@ -422,73 +406,69 @@ namespace FarmBeware.Features.Quest.UI
                 "X",
                 36f,
                 36f,
-                new Color(0.32f, 0.14f, 0.17f, 1f),
-                new Color(1f, 0.52f, 0.52f, 1f),
+                WoodenBoardStyle.BtnDanger,
+                Color.white,
                 17f);
             var xRt = closeXButton.GetComponent<RectTransform>();
-            xRt.anchorMin = new Vector2(1f, 0.5f);
-            xRt.anchorMax = new Vector2(1f, 0.5f);
-            xRt.pivot = new Vector2(1f, 0.5f);
+            xRt.anchorMin = WoodenBoardStyle.CloseButtonAnchor;
+            xRt.anchorMax = WoodenBoardStyle.CloseButtonAnchor;
+            xRt.pivot = new Vector2(0.5f, 0.5f);
             xRt.anchoredPosition = Vector2.zero;
 
-            // Summary & filter bar
+            // Left Column: Summary & Filter Sidebar (preserving FilterSummaryBar/SummaryText & FilterTabs paths)
             GameObject filterBar = CreateAnchoredBar(
                 cardGO.transform,
                 "FilterSummaryBar",
-                new Vector2(0f, 1f),
-                new Vector2(1f, 1f),
-                new Vector2(0.5f, 1f),
-                new Vector2(0f, -76f),
-                new Vector2(-40f, 44f),
-                new Color(0.11f, 0.15f, 0.22f, 0.92f));
+                new Vector2(WoodenBoardStyle.LeftPaneMin.x, 0.225f),
+                new Vector2(WoodenBoardStyle.LeftPaneMax.x, WoodenBoardStyle.LeftPaneMax.y),
+                new Vector2(0.5f, 0.5f),
+                Vector2.zero,
+                new Vector2(-12f, -12f),
+                WoodenBoardStyle.DarkOakOverlay);
 
             summaryText = CreateLabel(
                 filterBar.transform,
                 "SummaryText",
-                "Accepted: 0   |   Unfinished: 0   |   Finished: 0",
-                13.5f,
+                "Accepted: 0\nUnfinished: 0\nFinished: 0",
+                14f,
                 FontStyles.Bold,
-                new Color(0.90f, 0.94f, 0.98f, 1f),
-                TextAlignmentOptions.MidlineLeft,
-                new Vector2(0f, 0f),
-                new Vector2(0.48f, 1f),
-                new Vector2(-24f, 0f),
-                new Vector2(14f, 0f));
+                WoodenBoardStyle.TextCream,
+                TextAlignmentOptions.Center,
+                new Vector2(0.06f, 0.66f),
+                new Vector2(0.94f, 0.96f),
+                Vector2.zero);
 
             GameObject tabsRow = CreateAnchoredBar(
                 filterBar.transform,
                 "FilterTabs",
-                new Vector2(0.48f, 0f),
-                new Vector2(1f, 1f),
-                new Vector2(1f, 0.5f),
+                new Vector2(0.06f, 0.04f),
+                new Vector2(0.94f, 0.62f),
+                new Vector2(0.5f, 0.5f),
                 Vector2.zero,
                 Vector2.zero,
                 new Color(0f, 0f, 0f, 0f));
-            var tabsHlg = tabsRow.AddComponent<UnityEngine.UI.HorizontalLayoutGroup>();
-            tabsHlg.padding = new RectOffset(6, 10, 6, 6);
-            tabsHlg.spacing = 8f;
-            tabsHlg.childAlignment = TextAnchor.MiddleRight;
-            tabsHlg.childControlWidth = false;
-            tabsHlg.childControlHeight = true;
-            tabsHlg.childForceExpandWidth = false;
-            tabsHlg.childForceExpandHeight = true;
+            var tabsVlg = tabsRow.AddComponent<UnityEngine.UI.VerticalLayoutGroup>();
+            tabsVlg.padding = new RectOffset(6, 6, 8, 8);
+            tabsVlg.spacing = 10f;
+            tabsVlg.childAlignment = TextAnchor.UpperCenter;
+            tabsVlg.childControlWidth = true;
+            tabsVlg.childControlHeight = false;
+            tabsVlg.childForceExpandWidth = true;
+            tabsVlg.childForceExpandHeight = false;
 
-            filterAllButton = CreateFilterTabButton(tabsRow.transform, "Btn_Filter_All", "All (0)", 112f, out filterAllLabel);
-            filterUnfinishedButton = CreateFilterTabButton(tabsRow.transform, "Btn_Filter_Unfinished", "Unfinished (0)", 140f, out filterUnfinishedLabel);
-            filterFinishedButton = CreateFilterTabButton(tabsRow.transform, "Btn_Filter_Finished", "Finished (0)", 126f, out filterFinishedLabel);
+            filterAllButton = CreateFilterTabButton(tabsRow.transform, "Btn_Filter_All", "All (0)", 220f, out filterAllLabel);
+            filterUnfinishedButton = CreateFilterTabButton(tabsRow.transform, "Btn_Filter_Unfinished", "Unfinished (0)", 220f, out filterUnfinishedLabel);
+            filterFinishedButton = CreateFilterTabButton(tabsRow.transform, "Btn_Filter_Finished", "Finished (0)", 220f, out filterFinishedLabel);
 
-            // ScrollView (ScrollRect + RectMask2D Viewport + VLG & CSF Content)
+            // Right Column: ScrollView (QuestLogModalCard/QuestScrollView/Viewport/QuestsContent)
             var scrollGO = new GameObject("QuestScrollView", typeof(RectTransform), typeof(UnityEngine.UI.Image), typeof(UnityEngine.UI.ScrollRect));
             scrollGO.transform.SetParent(cardGO.transform, false);
             var sRt = scrollGO.GetComponent<RectTransform>();
-            sRt.anchorMin = Vector2.zero;
-            sRt.anchorMax = Vector2.one;
-            sRt.offsetMin = new Vector2(20f, 70f);
-            sRt.offsetMax = new Vector2(-20f, -128f);
+            WoodenBoardStyle.SetAnchorRegion(sRt, WoodenBoardStyle.RightPaneMin, WoodenBoardStyle.RightPaneMax, 10f, 8f, 10f, 8f);
             var sBg = scrollGO.GetComponent<UnityEngine.UI.Image>();
             sBg.sprite = ProceduralUIAssetCache.GetRoundedBarSprite();
             sBg.type = UnityEngine.UI.Image.Type.Sliced;
-            sBg.color = new Color(0.05f, 0.07f, 0.11f, 0.88f);
+            sBg.color = WoodenBoardStyle.DarkOakOverlay;
             sBg.raycastTarget = true;
 
             scrollRect = scrollGO.GetComponent<UnityEngine.UI.ScrollRect>();
@@ -531,43 +511,43 @@ namespace FarmBeware.Features.Quest.UI
             scrollRect.content = contentRt;
             questsContent = contentGO.transform;
 
-            // Footer bar
+            // Footer bar (bottom of Left Column, preserving FooterBar/Btn_CloseFooter path)
             GameObject footerBar = CreateAnchoredBar(
                 cardGO.transform,
                 "FooterBar",
-                new Vector2(0f, 0f),
-                new Vector2(1f, 0f),
-                new Vector2(0.5f, 0f),
-                new Vector2(0f, 16f),
-                new Vector2(-40f, 42f),
+                new Vector2(WoodenBoardStyle.LeftPaneMin.x, WoodenBoardStyle.LeftPaneMin.y),
+                new Vector2(WoodenBoardStyle.LeftPaneMax.x, 0.215f),
+                new Vector2(0.5f, 0.5f),
+                Vector2.zero,
+                new Vector2(-12f, -4f),
                 new Color(0f, 0f, 0f, 0f));
 
             CreateLabel(
                 footerBar.transform,
                 "FooterHint",
-                "Unfinished quests are listed first | Side quests advance automatically as you farm & cook",
-                12f,
+                "Active quests appear first.\nAdvance by farming & cooking.",
+                11.5f,
                 FontStyles.Normal,
-                new Color(0.60f, 0.68f, 0.78f, 0.9f),
-                TextAlignmentOptions.MidlineLeft,
-                new Vector2(0f, 0f),
-                new Vector2(0.75f, 1f),
+                WoodenBoardStyle.TextMutedWarm,
+                TextAlignmentOptions.Top,
+                new Vector2(0.04f, 0.45f),
+                new Vector2(0.96f, 0.96f),
                 Vector2.zero);
 
             closeFooterButton = CreateButton(
                 footerBar.transform,
                 "Btn_CloseFooter",
                 "Close [Q]",
-                132f,
-                38f,
-                new Color(0.22f, 0.28f, 0.38f, 1f),
-                Color.white,
+                200f,
+                36f,
+                WoodenBoardStyle.BtnSecondary,
+                WoodenBoardStyle.TextCream,
                 14f);
             var fCloseRt = closeFooterButton.GetComponent<RectTransform>();
-            fCloseRt.anchorMin = new Vector2(1f, 0.5f);
-            fCloseRt.anchorMax = new Vector2(1f, 0.5f);
-            fCloseRt.pivot = new Vector2(1f, 0.5f);
-            fCloseRt.anchoredPosition = Vector2.zero;
+            fCloseRt.anchorMin = new Vector2(0.06f, 0.04f);
+            fCloseRt.anchorMax = new Vector2(0.94f, 0.42f);
+            fCloseRt.offsetMin = Vector2.zero;
+            fCloseRt.offsetMax = Vector2.zero;
 
             BindButtons();
             questLogRoot.SetActive(false);
@@ -668,9 +648,9 @@ namespace FarmBeware.Features.Quest.UI
             if (summaryText != null)
             {
                 summaryText.text =
-                    $"Accepted: <b>{_summary.TotalCount}</b>   |   " +
-                    $"<color=#FF9F43>Unfinished: {_summary.UnfinishedCount}</color>   |   " +
-                    $"<color=#52E58A>Finished: {_summary.FinishedCount}</color>";
+                    $"Accepted: <b>{_summary.TotalCount}</b>\n" +
+                    $"<color=#FFB74D>Unfinished: {_summary.UnfinishedCount}</color>\n" +
+                    $"<color=#81C784>Finished: {_summary.FinishedCount}</color>";
             }
 
             UpdateFilterTabStyle(filterAllButton, filterAllLabel, _currentFilter == QuestStateFilter.All, $"All ({_summary.TotalCount})");
@@ -683,11 +663,11 @@ namespace FarmBeware.Features.Quest.UI
             if (label != null)
             {
                 label.text = text;
-                label.color = active ? new Color(0.06f, 0.08f, 0.12f, 1f) : new Color(0.84f, 0.89f, 0.95f, 1f);
+                label.color = active ? new Color(0.14f, 0.08f, 0.03f, 1f) : WoodenBoardStyle.TextCream;
             }
             if (btn != null && btn.TryGetComponent<UnityEngine.UI.Image>(out var img))
             {
-                img.color = active ? new Color(0.98f, 0.80f, 0.26f, 1f) : new Color(0.18f, 0.23f, 0.32f, 0.95f);
+                img.color = active ? WoodenBoardStyle.TextGoldAccent : WoodenBoardStyle.TabInactive;
             }
         }
 
@@ -751,8 +731,8 @@ namespace FarmBeware.Features.Quest.UI
 
             bool isFinished = entry.IsFinished;
             Color cardBgColor = isFinished
-                ? new Color(0.09f, 0.16f, 0.13f, 0.95f)
-                : new Color(0.11f, 0.15f, 0.22f, 0.96f);
+                ? new Color(0.14f, 0.22f, 0.14f, 0.78f)
+                : WoodenBoardStyle.DarkOakSubtle;
             Color stateAccentColor = isFinished
                 ? new Color(0.32f, 0.90f, 0.54f, 1f)
                 : new Color(1.00f, 0.62f, 0.26f, 1f);

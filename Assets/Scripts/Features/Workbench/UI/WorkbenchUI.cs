@@ -31,26 +31,26 @@ namespace FeaturesWorkbench.UI
             Overdrive = 3
         }
 
-        // --- TasteSkill Tactical Color Palette (Dark Anodized Slate, Warm Amber Forge, Crisp Telemetry) ---
-        private static readonly Color ColBackdrop       = new Color(0.02f, 0.03f, 0.05f, 0.86f);
-        private static readonly Color ColWindowBg       = new Color(0.06f, 0.07f, 0.09f, 0.98f);
-        private static readonly Color ColWindowBorder   = new Color(0.22f, 0.25f, 0.30f, 1.00f);
-        private static readonly Color ColHeaderBg       = new Color(0.08f, 0.10f, 0.13f, 1.00f);
-        private static readonly Color ColCardBg         = new Color(0.09f, 0.11f, 0.14f, 1.00f);
-        private static readonly Color ColCardSubtle     = new Color(0.11f, 0.13f, 0.17f, 1.00f);
-        private static readonly Color ColCardBorder     = new Color(0.18f, 0.21f, 0.27f, 1.00f);
-        private static readonly Color ColTabInactive    = new Color(0.10f, 0.12f, 0.16f, 1.00f);
-        private static readonly Color ColTabActive      = new Color(0.16f, 0.22f, 0.30f, 1.00f);
+        // --- Warm Homestead Timber & Brass Palette (matched to WoodenBoard_TwoColumn) ---
+        private static readonly Color ColBackdrop       = WoodenBoardStyle.DimBackdrop;
+        private static readonly Color ColWindowBg       = new Color(0.28f, 0.18f, 0.09f, 0.98f);
+        private static readonly Color ColWindowBorder   = new Color(0f, 0f, 0f, 0f);
+        private static readonly Color ColHeaderBg       = WoodenBoardStyle.DarkOakHeader;
+        private static readonly Color ColCardBg         = WoodenBoardStyle.DarkOakOverlay;
+        private static readonly Color ColCardSubtle     = WoodenBoardStyle.DarkOakSubtle;
+        private static readonly Color ColCardBorder     = WoodenBoardStyle.GoldTrim;
+        private static readonly Color ColTabInactive    = WoodenBoardStyle.TabInactive;
+        private static readonly Color ColTabActive      = WoodenBoardStyle.TabActive;
         private static readonly Color ColAccentAmber    = new Color(0.96f, 0.68f, 0.18f, 1.00f);
         private static readonly Color ColAccentCyan     = new Color(0.24f, 0.76f, 0.92f, 1.00f);
         private static readonly Color ColAccentEmerald  = new Color(0.22f, 0.78f, 0.45f, 1.00f);
-        private static readonly Color ColAccentCrimson  = new Color(0.86f, 0.26f, 0.26f, 1.00f);
+        private static readonly Color ColAccentCrimson  = WoodenBoardStyle.BtnDanger;
         private static readonly Color ColAccentViolet   = new Color(0.68f, 0.48f, 0.96f, 1.00f);
-        private static readonly Color ColBtnPrimary     = new Color(0.16f, 0.44f, 0.30f, 1.00f);
-        private static readonly Color ColBtnSecondary   = new Color(0.16f, 0.22f, 0.30f, 1.00f);
-        private static readonly Color ColBtnDisabled    = new Color(0.13f, 0.15f, 0.18f, 0.85f);
-        private static readonly Color ColTextPrimary    = new Color(0.95f, 0.96f, 0.98f, 1.00f);
-        private static readonly Color ColTextMuted      = new Color(0.58f, 0.63f, 0.70f, 1.00f);
+        private static readonly Color ColBtnPrimary     = WoodenBoardStyle.BtnPrimary;
+        private static readonly Color ColBtnSecondary   = WoodenBoardStyle.BtnSecondary;
+        private static readonly Color ColBtnDisabled    = WoodenBoardStyle.BtnDisabled;
+        private static readonly Color ColTextPrimary    = WoodenBoardStyle.TextCream;
+        private static readonly Color ColTextMuted      = WoodenBoardStyle.TextMutedWarm;
 
         [Header("State")]
         private bool isOpen = false;
@@ -1280,96 +1280,112 @@ namespace FeaturesWorkbench.UI
             backdrop.GetComponent<Image>().color = ColBackdrop;
             backdrop.GetComponent<Button>().onClick.AddListener(Close);
 
-            // 2. Outer Border Frame (1244x764) & Main Dialog Window (1240x760)
+            // 2. Two-Column Rustic Wooden Board Container (16:9 ratio matching 1024x572)
             var borderFrame = CreatePanel("DialogBorder", panelRoot.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), ColWindowBorder);
-            borderFrame.GetComponent<RectTransform>().sizeDelta = new Vector2(1244f, 764f);
+            borderFrame.GetComponent<RectTransform>().sizeDelta = new Vector2(1280f, 715f);
 
-            var dialog = CreatePanel("Dialog", borderFrame.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), ColWindowBg);
-            dialog.GetComponent<RectTransform>().sizeDelta = new Vector2(1240f, 760f);
+            var dialog = CreatePanel("Dialog", borderFrame.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Color.white);
+            dialog.GetComponent<RectTransform>().sizeDelta = new Vector2(1280f, 715f);
+            var dialogImg = dialog.GetComponent<Image>();
+            WoodenBoardStyle.ApplyBoardBackground(dialogImg);
+            dialogImg.raycastTarget = true;
 
-            // 3. Top Command Header Bar (0.90 to 1.00)
-            var headerBar = CreatePanel("HeaderBar", dialog.transform, new Vector2(0f, 0.905f), new Vector2(1f, 1f), ColHeaderBg);
-            CreatePanel("HeaderAccentLine", headerBar.transform, new Vector2(0f, 0f), new Vector2(1f, 0.03f), ColAccentAmber);
+            // 3. Plaque Title + Close Button on Top Rim
+            var plaqueTmp = WoodenBoardStyle.EnsurePlaqueTitle<TextMeshProUGUI>(dialog.transform);
+            if (plaqueTmp != null)
+            {
+                plaqueTmp.text = "HOMESTEAD WORKBENCH";
+                plaqueTmp.fontSize = 20f;
+                plaqueTmp.fontStyle = FontStyles.Bold;
+                plaqueTmp.alignment = TextAlignmentOptions.Center;
+            }
 
-            var titleTmp = CreateLabel("Title", headerBar.transform, new Vector2(0.025f, 0.12f), new Vector2(0.36f, 0.90f),
-                "<size=20><b>HOMESTEAD TACTICAL FORGE</b></size>\n<size=11><color=#8A94A6>GARAGE WORKBENCH // CALIBRATION & DOCTRINE SYSTEM</color></size>",
-                14f, TextAlignmentOptions.MidlineLeft);
-            titleTmp.richText = true;
-
-            materialLedgerText = CreateLabel("MaterialLedger", headerBar.transform, new Vector2(0.37f, 0.12f), new Vector2(0.74f, 0.90f),
-                "", 12.5f, TextAlignmentOptions.Center);
-
-            goldText = CreateLabel("GoldText", headerBar.transform, new Vector2(0.75f, 0.12f), new Vector2(0.92f, 0.90f),
-                "GOLD: 0", 14f, TextAlignmentOptions.MidlineRight);
-
-            var closeBtnObj = CreateButton(headerBar.transform, new Vector2(0.935f, 0.20f), new Vector2(0.985f, 0.82f), "<b>ESC ✕</b>", Close, ColAccentCrimson, 13f);
+            var closeBtnObj = CreateButton(dialog.transform, WoodenBoardStyle.CloseButtonAnchor, WoodenBoardStyle.CloseButtonAnchor, "<b>✕</b>", Close, ColAccentCrimson, 16f);
             closeBtnObj.name = "CloseX";
+            var closeRt = closeBtnObj.GetComponent<RectTransform>();
+            closeRt.pivot = new Vector2(0.5f, 0.5f);
+            closeRt.sizeDelta = new Vector2(38f, 38f);
 
-            // 4. Primary Navigation Strip (4 Tactical Module Tabs: 0.825 to 0.895)
-            tabWeaponButton = CreateNavTab(dialog.transform, new Vector2(0.020f, 0.825f), new Vector2(0.255f, 0.892f),
-                "<b>01 // WEAPONRY</b>\n<size=11>Forging & 6-Node Mastery</size>",
+            // 3b. Left Column Top Telemetry Card (Gold & Materials inside Left Pane top)
+            var telemetryCard = CreateCard("TelemetryHeaderCard", dialog.transform,
+                new Vector2(WoodenBoardStyle.LeftPaneMin.x + 0.004f, 0.765f),
+                new Vector2(WoodenBoardStyle.LeftPaneMax.x - 0.004f, WoodenBoardStyle.LeftPaneMax.y - 0.005f));
+            goldText = CreateLabel("GoldText", telemetryCard.transform, new Vector2(0.05f, 0.56f), new Vector2(0.95f, 0.96f),
+                "GOLD: 0", 14f, TextAlignmentOptions.MidlineLeft);
+            materialLedgerText = CreateLabel("MaterialLedger", telemetryCard.transform, new Vector2(0.05f, 0.05f), new Vector2(0.95f, 0.54f),
+                "", 10.5f, TextAlignmentOptions.MidlineLeft);
+
+            // 4. Primary Navigation Strip (4 Tactical Module Tabs at top of Right Column)
+            tabWeaponButton = CreateNavTab(dialog.transform, new Vector2(0.378f, 0.785f), new Vector2(0.510f, 0.858f),
+                "<b>01 // WEAPONRY</b>\n<size=10>Forging & Mastery</size>",
                 () => SetTab(WorkbenchTab.Weapon), out tabWeaponButtonText, out tabWeaponIndicator);
 
-            tabArmorButton = CreateNavTab(dialog.transform, new Vector2(0.265f, 0.825f), new Vector2(0.495f, 0.892f),
-                "<b>02 // ARMOR SETS</b>\n<size=11>Plating & 5-Piece Combat Set</size>",
+            tabArmorButton = CreateNavTab(dialog.transform, new Vector2(0.516f, 0.785f), new Vector2(0.648f, 0.858f),
+                "<b>02 // ARMOR SETS</b>\n<size=10>Plating & 5-Pc Set</size>",
                 () => SetTab(WorkbenchTab.Armor), out tabArmorButtonText, out tabArmorIndicator);
 
-            tabFarmlandButton = CreateNavTab(dialog.transform, new Vector2(0.505f, 0.825f), new Vector2(0.735f, 0.892f),
-                "<b>03 // LAND DEEDS</b>\n<size=11>Arable Plots Expansion (6 ➔ 16)</size>",
+            tabFarmlandButton = CreateNavTab(dialog.transform, new Vector2(0.654f, 0.785f), new Vector2(0.786f, 0.858f),
+                "<b>03 // LAND DEEDS</b>\n<size=10>Plot Expansion</size>",
                 () => SetTab(WorkbenchTab.Farmland), out tabFarmlandButtonText, out tabFarmlandIndicator);
 
-            tabOverdriveButton = CreateNavTab(dialog.transform, new Vector2(0.745f, 0.825f), new Vector2(0.980f, 0.892f),
-                "<b>04 // BIO-REACTOR</b>\n<size=11>Nocturnal Growth Overdrive</size>",
+            tabOverdriveButton = CreateNavTab(dialog.transform, new Vector2(0.792f, 0.785f), new Vector2(0.924f, 0.858f),
+                "<b>04 // BIO-REACTOR</b>\n<size=10>Night Overdrive</size>",
                 () => SetTab(WorkbenchTab.Overdrive), out tabOverdriveButtonText, out tabOverdriveIndicator);
 
             // =================================================================
-            // TAB 01 CONTENT: WEAPONRY & DOCTRINE TREE (Left 38% / Right 59%)
+            // TAB 01 CONTENT: WEAPONRY & DOCTRINE TREE (Left Pane / Right Pane)
             // =================================================================
-            weaponTabContent = CreateContainer("WeaponTabContent", dialog.transform, new Vector2(0.025f, 0.03f), new Vector2(0.975f, 0.805f));
+            weaponTabContent = CreateContainer("WeaponTabContent", dialog.transform, Vector2.zero, Vector2.one);
 
             // Left Column: Weapon Calibration Card (Top) + Arsenal Loadout Foundry (Bottom)
-            var wpLeftTop = CreateCard("WeaponCalibrationCard", weaponTabContent.transform, new Vector2(0f, 0.45f), new Vector2(0.385f, 1f));
+            var wpLeftTop = CreateCard("WeaponCalibrationCard", weaponTabContent.transform,
+                new Vector2(WoodenBoardStyle.LeftPaneMin.x + 0.004f, 0.415f),
+                new Vector2(WoodenBoardStyle.LeftPaneMax.x - 0.004f, 0.752f));
             CreateLabel("SectionTag", wpLeftTop.transform, new Vector2(0.05f, 0.87f), new Vector2(0.95f, 0.96f),
-                "<color=#F5AE2E><b>PRIMARY WEAPON CALIBRATION</b></color>", 12f, TextAlignmentOptions.MidlineLeft);
+                "<color=#F5AE2E><b>WEAPON CALIBRATION</b></color>", 11.5f, TextAlignmentOptions.MidlineLeft);
 
-            var iconFrame = CreatePanel("WeaponIconFrame", wpLeftTop.transform, new Vector2(0.05f, 0.50f), new Vector2(0.27f, 0.84f), new Color(0.05f, 0.06f, 0.08f, 1f));
+            var iconFrame = CreatePanel("WeaponIconFrame", wpLeftTop.transform, new Vector2(0.05f, 0.50f), new Vector2(0.28f, 0.84f), WoodenBoardStyle.DarkOakInput);
             var iconInner = new GameObject("WeaponIcon", typeof(RectTransform), typeof(Image));
             iconInner.transform.SetParent(iconFrame.transform, false);
             SetAnchors(iconInner.GetComponent<RectTransform>(), new Vector2(0.1f, 0.1f), new Vector2(0.9f, 0.9f));
             weaponIconImage = iconInner.GetComponent<Image>();
             weaponIconImage.preserveAspect = true;
 
-            weaponPipBarText = CreateLabel("WeaponPipBar", wpLeftTop.transform, new Vector2(0.30f, 0.74f), new Vector2(0.96f, 0.85f),
-                "", 12.5f, TextAlignmentOptions.MidlineLeft);
+            weaponPipBarText = CreateLabel("WeaponPipBar", wpLeftTop.transform, new Vector2(0.31f, 0.74f), new Vector2(0.96f, 0.85f),
+                "", 11.5f, TextAlignmentOptions.MidlineLeft);
 
-            weaponStatsText = CreateLabel("WeaponStats", wpLeftTop.transform, new Vector2(0.30f, 0.34f), new Vector2(0.96f, 0.73f),
-                "", 13f, TextAlignmentOptions.TopLeft);
+            weaponStatsText = CreateLabel("WeaponStats", wpLeftTop.transform, new Vector2(0.31f, 0.34f), new Vector2(0.96f, 0.73f),
+                "", 11.5f, TextAlignmentOptions.TopLeft);
 
-            var upgBtnObj = CreateButton(wpLeftTop.transform, new Vector2(0.05f, 0.07f), new Vector2(0.95f, 0.26f),
-                "FORGE WEAPON UPGRADE", OnClickUpgradeBase, ColBtnPrimary, 13f);
+            var upgBtnObj = CreateButton(wpLeftTop.transform, new Vector2(0.05f, 0.06f), new Vector2(0.95f, 0.25f),
+                "FORGE WEAPON UPGRADE", OnClickUpgradeBase, ColBtnPrimary, 11.5f);
             upgradeBaseButton = upgBtnObj.GetComponent<Button>();
             upgradeBaseButtonText = upgBtnObj.GetComponentInChildren<TextMeshProUGUI>();
 
             // Left Column Bottom: Arsenal Loadout & Corn Cob Repeater Foundry
-            var wpLeftBot = CreateCard("ArsenalFoundryCard", weaponTabContent.transform, new Vector2(0f, 0f), new Vector2(0.385f, 0.42f));
-            CreateLabel("ArsenalHeader", wpLeftBot.transform, new Vector2(0.05f, 0.82f), new Vector2(0.95f, 0.95f),
-                "<color=#4FC3F7><b>ARSENAL LOADOUT & RANGED FOUNDRY</b></color>", 12f, TextAlignmentOptions.MidlineLeft);
+            var wpLeftBot = CreateCard("ArsenalFoundryCard", weaponTabContent.transform,
+                new Vector2(WoodenBoardStyle.LeftPaneMin.x + 0.004f, WoodenBoardStyle.LeftPaneMin.y + 0.004f),
+                new Vector2(WoodenBoardStyle.LeftPaneMax.x - 0.004f, 0.402f));
+            CreateLabel("ArsenalHeader", wpLeftBot.transform, new Vector2(0.05f, 0.83f), new Vector2(0.95f, 0.96f),
+                "<color=#FFD56B><b>ARSENAL & RANGED FOUNDRY</b></color>", 11f, TextAlignmentOptions.MidlineLeft);
 
-            arsenalStatusText = CreateLabel("ArsenalStatus", wpLeftBot.transform, new Vector2(0.05f, 0.38f), new Vector2(0.95f, 0.80f),
-                "", 12f, TextAlignmentOptions.TopLeft);
+            arsenalStatusText = CreateLabel("ArsenalStatus", wpLeftBot.transform, new Vector2(0.05f, 0.36f), new Vector2(0.95f, 0.81f),
+                "", 10.5f, TextAlignmentOptions.TopLeft);
 
-            var eqCleaverObj = CreateButton(wpLeftBot.transform, new Vector2(0.05f, 0.08f), new Vector2(0.48f, 0.32f),
-                "EQUIP ROOT CLEAVER", OnClickEquipRootCleaver, ColBtnSecondary, 11.5f);
+            var eqCleaverObj = CreateButton(wpLeftBot.transform, new Vector2(0.05f, 0.07f), new Vector2(0.48f, 0.31f),
+                "EQUIP CLEAVER", OnClickEquipRootCleaver, ColBtnSecondary, 10.5f);
             equipCleaverButton = eqCleaverObj.GetComponent<Button>();
             equipCleaverButtonText = eqCleaverObj.GetComponentInChildren<TextMeshProUGUI>();
 
-            var repBtnObj = CreateButton(wpLeftBot.transform, new Vector2(0.51f, 0.08f), new Vector2(0.95f, 0.32f),
-                "FORGE CORN COB REPEATER", OnClickCraftOrEquipRepeater, ColAccentAmber, 11.5f);
+            var repBtnObj = CreateButton(wpLeftBot.transform, new Vector2(0.51f, 0.07f), new Vector2(0.95f, 0.31f),
+                "FORGE REPEATER", OnClickCraftOrEquipRepeater, ColAccentAmber, 10.5f);
             craftOrEquipRepeaterButton = repBtnObj.GetComponent<Button>();
             craftOrEquipRepeaterButtonText = repBtnObj.GetComponentInChildren<TextMeshProUGUI>();
 
             // Right Column: 6-Node Seed Doctrine Specialization Tree Inspector
-            var wpRight = CreateCard("SpecializationMatrixCard", weaponTabContent.transform, new Vector2(0.405f, 0f), new Vector2(1f, 1f));
+            var wpRight = CreateCard("SpecializationMatrixCard", weaponTabContent.transform,
+                new Vector2(WoodenBoardStyle.RightPaneMin.x + 0.004f, WoodenBoardStyle.RightPaneMin.y + 0.004f),
+                new Vector2(WoodenBoardStyle.RightPaneMax.x - 0.004f, 0.772f));
 
             specializationHeader = CreateLabel("SpecHeader", wpRight.transform, new Vector2(0.03f, 0.92f), new Vector2(0.97f, 0.98f),
                 "<b>SEED DOCTRINE SPECIALIZATION MATRIX</b>", 14f, TextAlignmentOptions.MidlineLeft);
@@ -1427,37 +1443,43 @@ namespace FeaturesWorkbench.UI
             advanceSpecButton.gameObject.SetActive(false);
 
             // =================================================================
-            // TAB 02 CONTENT: ARMOR & COMBAT SETS (Left 38% / Right 59%)
+            // TAB 02 CONTENT: ARMOR & COMBAT SETS (Left Pane / Right Pane)
             // =================================================================
-            armorTabContent = CreateContainer("ArmorTabContent", dialog.transform, new Vector2(0.025f, 0.03f), new Vector2(0.975f, 0.805f));
+            armorTabContent = CreateContainer("ArmorTabContent", dialog.transform, Vector2.zero, Vector2.one);
 
-            var arLeftTop = CreateCard("ArmorCalibrationCard", armorTabContent.transform, new Vector2(0f, 0.48f), new Vector2(0.385f, 1f));
+            var arLeftTop = CreateCard("ArmorCalibrationCard", armorTabContent.transform,
+                new Vector2(WoodenBoardStyle.LeftPaneMin.x + 0.004f, 0.425f),
+                new Vector2(WoodenBoardStyle.LeftPaneMax.x - 0.004f, 0.752f));
             CreateLabel("ArmorTag", arLeftTop.transform, new Vector2(0.05f, 0.85f), new Vector2(0.95f, 0.95f),
-                "<color=#3DD5F3><b>REINFORCED HOMESTEAD ARMOR</b></color>", 12f, TextAlignmentOptions.MidlineLeft);
+                "<color=#FFD56B><b>HOMESTEAD ARMOR</b></color>", 11.5f, TextAlignmentOptions.MidlineLeft);
 
             armorPipBarText = CreateLabel("ArmorPipBar", arLeftTop.transform, new Vector2(0.05f, 0.71f), new Vector2(0.95f, 0.83f),
-                "", 12.5f, TextAlignmentOptions.MidlineLeft);
+                "", 11.5f, TextAlignmentOptions.MidlineLeft);
 
             armorStatsText = CreateLabel("ArmorStats", arLeftTop.transform, new Vector2(0.05f, 0.34f), new Vector2(0.95f, 0.70f),
-                "", 13f, TextAlignmentOptions.TopLeft);
+                "", 11.5f, TextAlignmentOptions.TopLeft);
 
-            var upgArmObj = CreateButton(arLeftTop.transform, new Vector2(0.05f, 0.08f), new Vector2(0.95f, 0.28f),
-                "UPGRADE ARMOR PLATING", OnClickUpgradeArmor, ColBtnPrimary, 13f);
+            var upgArmObj = CreateButton(arLeftTop.transform, new Vector2(0.05f, 0.07f), new Vector2(0.95f, 0.27f),
+                "UPGRADE ARMOR PLATING", OnClickUpgradeArmor, ColBtnPrimary, 11.5f);
             upgradeArmorButton = upgArmObj.GetComponent<Button>();
             upgradeArmorButtonText = upgArmObj.GetComponentInChildren<TextMeshProUGUI>();
 
-            var arLeftBot = CreateCard("SetSynergyCard", armorTabContent.transform, new Vector2(0f, 0f), new Vector2(0.385f, 0.45f));
-            setSynergyMatrixText = CreateLabel("SetSynergyText", arLeftBot.transform, new Vector2(0.05f, 0.08f), new Vector2(0.95f, 0.92f),
-                "", 12f, TextAlignmentOptions.TopLeft);
+            var arLeftBot = CreateCard("SetSynergyCard", armorTabContent.transform,
+                new Vector2(WoodenBoardStyle.LeftPaneMin.x + 0.004f, WoodenBoardStyle.LeftPaneMin.y + 0.004f),
+                new Vector2(WoodenBoardStyle.LeftPaneMax.x - 0.004f, 0.412f));
+            setSynergyMatrixText = CreateLabel("SetSynergyText", arLeftBot.transform, new Vector2(0.05f, 0.06f), new Vector2(0.95f, 0.94f),
+                "", 11f, TextAlignmentOptions.TopLeft);
 
             // Right Column: 5-Piece Sweet Potato Combat Set Blueprint Matrix
-            var arRight = CreateCard("SetBlueprintMatrixCard", armorTabContent.transform, new Vector2(0.405f, 0f), new Vector2(1f, 1f));
+            var arRight = CreateCard("SetBlueprintMatrixCard", armorTabContent.transform,
+                new Vector2(WoodenBoardStyle.RightPaneMin.x + 0.004f, WoodenBoardStyle.RightPaneMin.y + 0.004f),
+                new Vector2(WoodenBoardStyle.RightPaneMax.x - 0.004f, 0.772f));
             setCraftingContainer = arRight.transform;
 
             CreateLabel("BlueprintHeader", arRight.transform, new Vector2(0.03f, 0.91f), new Vector2(0.97f, 0.98f),
                 "<b>SWEET POTATO COMBAT SET // FORGE BLUEPRINTS (5 PIECES)</b>", 14f, TextAlignmentOptions.MidlineLeft);
             CreateLabel("BlueprintSubHeader", arRight.transform, new Vector2(0.03f, 0.855f), new Vector2(0.97f, 0.905f),
-                "<color=#B0B8C4>Craft set pieces using Mutated Roots dropped by Tuber Maws. Crafted pieces can be equipped in 1 click or via Tab Character Sheet.</color>",
+                "<color=#E6D7BA>Craft set pieces using Mutated Roots dropped by Tuber Maws. Crafted pieces can be equipped in 1 click or via Tab Character Sheet.</color>",
                 11.5f, TextAlignmentOptions.MidlineLeft);
 
             InitBlueprintData();
@@ -1489,18 +1511,23 @@ namespace FeaturesWorkbench.UI
             // =================================================================
             // TAB 03 CONTENT: FARMLAND EXPANSION & LAND DEEDS
             // =================================================================
-            farmlandTabContent = CreateContainer("FarmlandTabContent", dialog.transform, new Vector2(0.025f, 0.03f), new Vector2(0.975f, 0.805f));
+            farmlandTabContent = CreateContainer("FarmlandTabContent", dialog.transform, Vector2.zero, Vector2.one);
 
-            var flBanner = CreatePanel("FarmlandBanner", farmlandTabContent.transform, new Vector2(0f, 0.78f), new Vector2(1f, 1f), ColCardBg);
-            CreatePanel("FlAccent", flBanner.transform, new Vector2(0f, 0f), new Vector2(0.008f, 1f), ColAccentEmerald);
-            farmlandStatusBannerText = CreateLabel("FlBannerText", flBanner.transform, new Vector2(0.03f, 0.10f), new Vector2(0.97f, 0.90f),
-                "", 14f, TextAlignmentOptions.MidlineLeft);
+            var flBanner = CreateCard("FarmlandBanner", farmlandTabContent.transform,
+                new Vector2(WoodenBoardStyle.LeftPaneMin.x + 0.004f, WoodenBoardStyle.LeftPaneMin.y + 0.004f),
+                new Vector2(WoodenBoardStyle.LeftPaneMax.x - 0.004f, 0.752f));
+            farmlandStatusBannerText = CreateLabel("FlBannerText", flBanner.transform, new Vector2(0.06f, 0.08f), new Vector2(0.94f, 0.92f),
+                "", 13f, TextAlignmentOptions.TopLeft);
 
-            var flBodyCard = CreateCard("FarmlandTelemetryCard", farmlandTabContent.transform, new Vector2(0f, 0.18f), new Vector2(1f, 0.75f));
+            var flBodyCard = CreateCard("FarmlandTelemetryCard", farmlandTabContent.transform,
+                new Vector2(WoodenBoardStyle.RightPaneMin.x + 0.004f, 0.225f),
+                new Vector2(WoodenBoardStyle.RightPaneMax.x - 0.004f, 0.772f));
             farmlandTelemetryText = CreateLabel("FlTelemetryText", flBodyCard.transform, new Vector2(0.04f, 0.08f), new Vector2(0.96f, 0.92f),
                 "", 14f, TextAlignmentOptions.MidlineLeft);
 
-            var expandBtnObj = CreateButton(farmlandTabContent.transform, new Vector2(0f, 0.01f), new Vector2(1f, 0.14f),
+            var expandBtnObj = CreateButton(farmlandTabContent.transform,
+                new Vector2(WoodenBoardStyle.RightPaneMin.x + 0.004f, WoodenBoardStyle.RightPaneMin.y + 0.004f),
+                new Vector2(WoodenBoardStyle.RightPaneMax.x - 0.004f, 0.205f),
                 "PURCHASE LAND DEED (+2 PLOTS)", OnClickExpandFarmland, ColBtnPrimary, 15f);
             expandFarmlandButton = expandBtnObj.GetComponent<Button>();
             expandFarmlandButtonText = expandBtnObj.GetComponentInChildren<TextMeshProUGUI>();
@@ -1510,20 +1537,25 @@ namespace FeaturesWorkbench.UI
             // =================================================================
             // TAB 04 CONTENT: BIO-CATALYST NIGHT OVERDRIVE REACTOR
             // =================================================================
-            overdriveTabContent = CreateContainer("OverdriveTabContent", dialog.transform, new Vector2(0.025f, 0.03f), new Vector2(0.975f, 0.805f));
+            overdriveTabContent = CreateContainer("OverdriveTabContent", dialog.transform, Vector2.zero, Vector2.one);
 
-            var odBanner = CreatePanel("OverdriveBanner", overdriveTabContent.transform, new Vector2(0f, 0.78f), new Vector2(1f, 1f), ColCardBg);
+            var odBanner = CreateCard("OverdriveBanner", overdriveTabContent.transform,
+                new Vector2(WoodenBoardStyle.LeftPaneMin.x + 0.004f, WoodenBoardStyle.LeftPaneMin.y + 0.004f),
+                new Vector2(WoodenBoardStyle.LeftPaneMax.x - 0.004f, 0.752f));
             overdriveStatusBannerBg = odBanner.GetComponent<Image>();
-            CreatePanel("OdAccent", odBanner.transform, new Vector2(0f, 0f), new Vector2(0.008f, 1f), ColAccentEmerald);
-            overdriveStatusBannerText = CreateLabel("OdBannerText", odBanner.transform, new Vector2(0.03f, 0.10f), new Vector2(0.97f, 0.90f),
-                "", 14f, TextAlignmentOptions.MidlineLeft);
+            overdriveStatusBannerText = CreateLabel("OdBannerText", odBanner.transform, new Vector2(0.06f, 0.08f), new Vector2(0.94f, 0.92f),
+                "", 13f, TextAlignmentOptions.TopLeft);
 
-            var odBodyCard = CreateCard("OverdriveTelemetryCard", overdriveTabContent.transform, new Vector2(0f, 0.18f), new Vector2(1f, 0.75f));
+            var odBodyCard = CreateCard("OverdriveTelemetryCard", overdriveTabContent.transform,
+                new Vector2(WoodenBoardStyle.RightPaneMin.x + 0.004f, 0.225f),
+                new Vector2(WoodenBoardStyle.RightPaneMax.x - 0.004f, 0.772f));
             overdriveTelemetryText = CreateLabel("OdTelemetryText", odBodyCard.transform, new Vector2(0.04f, 0.08f), new Vector2(0.96f, 0.92f),
                 "", 14f, TextAlignmentOptions.MidlineLeft);
 
-            var odArmBtnObj = CreateButton(overdriveTabContent.transform, new Vector2(0f, 0.01f), new Vector2(1f, 0.14f),
-                "INJECT 2x MONSTER BIO-MATERIALS & ARM NIGHT OVERDRIVE", OnClickArmNightOverdrive, new Color(0.85f, 0.38f, 0.12f, 1f), 15f);
+            var odArmBtnObj = CreateButton(overdriveTabContent.transform,
+                new Vector2(WoodenBoardStyle.RightPaneMin.x + 0.004f, WoodenBoardStyle.RightPaneMin.y + 0.004f),
+                new Vector2(WoodenBoardStyle.RightPaneMax.x - 0.004f, 0.205f),
+                "INJECT 2x MONSTER BIO-MATERIALS & ARM NIGHT OVERDRIVE", OnClickArmNightOverdrive, new Color(0.76f, 0.34f, 0.10f, 1f), 14.5f);
             armOverdriveButton = odArmBtnObj.GetComponent<Button>();
             armOverdriveButtonText = odArmBtnObj.GetComponentInChildren<TextMeshProUGUI>();
 

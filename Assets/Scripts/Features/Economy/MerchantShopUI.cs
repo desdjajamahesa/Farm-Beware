@@ -67,8 +67,8 @@ namespace FeaturesEconomy
 
         private InventoryComponent playerInventory;
 
-        private readonly Color activeTabColor = new Color(0.12f, 0.35f, 0.65f, 1f); // Vibrant Blue
-        private readonly Color inactiveTabColor = new Color(0.12f, 0.16f, 0.22f, 1f); // Muted Dark
+        private readonly Color activeTabColor = WoodenBoardStyle.TabActive;
+        private readonly Color inactiveTabColor = WoodenBoardStyle.TabInactive;
 
         // Cached Buy Rows for zero-allocation in-place updates
         private class BuyRowView
@@ -371,8 +371,8 @@ namespace FeaturesEconomy
 
         private void UpdateFilterButtonVisuals()
         {
-            var activeCol = new Color(0.18f, 0.45f, 0.72f, 1f);
-            var inactiveCol = new Color(0.12f, 0.15f, 0.20f, 0.9f);
+            var activeCol = WoodenBoardStyle.TabActive;
+            var inactiveCol = WoodenBoardStyle.TabInactive;
 
             for (int i = 0; i < filterButtons.Count; i++)
             {
@@ -383,7 +383,7 @@ namespace FeaturesEconomy
                 }
                 if (filterButtonTexts.Count > i && filterButtonTexts[i] != null)
                 {
-                    filterButtonTexts[i].color = isSelected ? Color.white : new Color(0.65f, 0.72f, 0.82f, 0.85f);
+                    filterButtonTexts[i].color = isSelected ? WoodenBoardStyle.TextGoldAccent : WoodenBoardStyle.TextMutedWarm;
                     filterButtonTexts[i].fontStyle = isSelected ? FontStyles.Bold : FontStyles.Normal;
                 }
             }
@@ -468,7 +468,9 @@ namespace FeaturesEconomy
             rowGO.transform.SetParent(parent, false);
 
             var rowImg = rowGO.GetComponent<Image>();
-            rowImg.color = new Color(0.11f, 0.14f, 0.2f, 0.9f);
+            rowImg.sprite = ProceduralUIAssetCache.GetRoundedBarSprite();
+            rowImg.type = Image.Type.Sliced;
+            rowImg.color = WoodenBoardStyle.DarkOakSubtle;
             rowImg.raycastTarget = false;
 
             var rowLayout = rowGO.AddComponent<HorizontalLayoutGroup>();
@@ -763,7 +765,9 @@ namespace FeaturesEconomy
             rowGO.transform.SetParent(parent, false);
 
             var rowImg = rowGO.GetComponent<Image>();
-            rowImg.color = new Color(0.11f, 0.14f, 0.2f, 0.9f);
+            rowImg.sprite = ProceduralUIAssetCache.GetRoundedBarSprite();
+            rowImg.type = Image.Type.Sliced;
+            rowImg.color = WoodenBoardStyle.DarkOakSubtle;
             rowImg.raycastTarget = false;
 
             var rowLayout = rowGO.AddComponent<HorizontalLayoutGroup>();
@@ -1254,30 +1258,28 @@ namespace FeaturesEconomy
                 var srt = scrollRect.GetComponent<RectTransform>();
                 if (srt != null)
                 {
-                    srt.offsetMin = new Vector2(20, 60);
-                    srt.offsetMax = new Vector2(-20, -194);
+                    WoodenBoardStyle.SetAnchorRegion(srt, WoodenBoardStyle.RightPaneMin, WoodenBoardStyle.RightPaneMax, 10f, 8f, 10f, 8f);
                 }
             }
 
-            // 8. Category Filter Bar (All, Weapons & Armor, Seeds, Supplies)
+            // 8. Category Filter Bar (Vertical stack in Left Column: All, Weapons & Armor, Seeds, Supplies)
             categoryFilterBar = cardTr.Find("CategoryFilterBar");
             if (categoryFilterBar == null)
             {
-                GameObject filterBarGO = new GameObject("CategoryFilterBar", typeof(RectTransform), typeof(HorizontalLayoutGroup));
+                GameObject filterBarGO = new GameObject("CategoryFilterBar", typeof(RectTransform), typeof(VerticalLayoutGroup));
                 filterBarGO.transform.SetParent(cardTr, false);
                 categoryFilterBar = filterBarGO.transform;
 
                 var fbRect = filterBarGO.GetComponent<RectTransform>();
-                fbRect.anchorMin = new Vector2(0, 1);
-                fbRect.anchorMax = new Vector2(1, 1);
-                fbRect.pivot = new Vector2(0.5f, 1);
-                fbRect.anchoredPosition = new Vector2(0, -156);
-                fbRect.sizeDelta = new Vector2(-40, 28);
+                WoodenBoardStyle.SetAnchorRegion(fbRect,
+                    new Vector2(WoodenBoardStyle.LeftPaneMin.x, 0.240f),
+                    new Vector2(WoodenBoardStyle.LeftPaneMax.x, 0.615f),
+                    10f, 4f, 10f, 4f);
 
-                var fLayout = filterBarGO.GetComponent<HorizontalLayoutGroup>();
+                var fLayout = filterBarGO.GetComponent<VerticalLayoutGroup>();
                 fLayout.padding = new RectOffset(0, 0, 0, 0);
                 fLayout.spacing = 8;
-                fLayout.childAlignment = TextAnchor.MiddleCenter;
+                fLayout.childAlignment = TextAnchor.UpperCenter;
                 fLayout.childControlWidth = true;
                 fLayout.childControlHeight = true;
                 fLayout.childForceExpandWidth = true;
@@ -1303,7 +1305,9 @@ namespace FeaturesEconomy
                     fBtnGO.transform.SetParent(categoryFilterBar, false);
 
                     var fImg = fBtnGO.GetComponent<Image>();
-                    fImg.color = (idx == (int)currentFilter) ? new Color(0.18f, 0.45f, 0.72f, 1f) : new Color(0.12f, 0.15f, 0.20f, 0.9f);
+                    fImg.sprite = ProceduralUIAssetCache.GetRoundedBarSprite();
+                    fImg.type = Image.Type.Sliced;
+                    fImg.color = (idx == (int)currentFilter) ? WoodenBoardStyle.TabActive : WoodenBoardStyle.TabInactive;
 
                     var fBtn = fBtnGO.GetComponent<Button>();
                     fBtn.onClick.AddListener(() => SetCategoryFilter(fEnum));
@@ -1317,10 +1321,10 @@ namespace FeaturesEconomy
 
                     var fTmp = fTxtGO.GetComponent<TextMeshProUGUI>();
                     fTmp.text = labels[i];
-                    fTmp.fontSize = 12f;
+                    fTmp.fontSize = 12.5f;
                     fTmp.fontStyle = (idx == (int)currentFilter) ? FontStyles.Bold : FontStyles.Normal;
                     fTmp.alignment = TextAlignmentOptions.Center;
-                    fTmp.color = (idx == (int)currentFilter) ? Color.white : new Color(0.65f, 0.72f, 0.82f, 0.85f);
+                    fTmp.color = (idx == (int)currentFilter) ? WoodenBoardStyle.TextGoldAccent : WoodenBoardStyle.TextMutedWarm;
                     fTmp.raycastTarget = false;
 
                     filterButtons.Add(fBtn);
@@ -1361,7 +1365,7 @@ namespace FeaturesEconomy
             if (buyTabTxt != null) buyTabTxt.text = "BUY ITEMS";
 
             var subTxt = cardTr.Find("HeaderBar/SubtitleText")?.GetComponent<TextMeshProUGUI>();
-            if (subTxt != null) subTxt.text = "Purchase seeds, weapons, armor, or trade harvested crops for gold";
+            if (subTxt != null) subTxt.text = "Purchase seeds, gear, or sell crops";
 
             EnsureAudioSource();
 
@@ -1375,16 +1379,16 @@ namespace FeaturesEconomy
                 GameObject toastGO = new GameObject("ToastBannerText", typeof(RectTransform), typeof(TextMeshProUGUI));
                 toastGO.transform.SetParent(cardTr, false);
                 var tRect = toastGO.GetComponent<RectTransform>();
-                tRect.anchorMin = new Vector2(0f, 0f);
-                tRect.anchorMax = new Vector2(1f, 0f);
-                tRect.pivot = new Vector2(0.5f, 0f);
-                tRect.anchoredPosition = new Vector2(0f, 16f);
-                tRect.sizeDelta = new Vector2(-40f, 26f);
+                WoodenBoardStyle.SetAnchorRegion(tRect,
+                    new Vector2(WoodenBoardStyle.LeftPaneMin.x, 0.145f),
+                    new Vector2(WoodenBoardStyle.LeftPaneMax.x, 0.230f),
+                    10f, 2f, 10f, 2f);
 
                 toastBannerText = toastGO.GetComponent<TextMeshProUGUI>();
-                toastBannerText.fontSize = 15;
+                toastBannerText.fontSize = 13;
                 toastBannerText.fontStyle = FontStyles.Bold;
                 toastBannerText.alignment = TextAlignmentOptions.Center;
+                toastBannerText.textWrappingMode = TextWrappingModes.Normal;
                 toastBannerText.raycastTarget = false;
                 toastBannerText.text = "";
             }
@@ -1463,66 +1467,67 @@ namespace FeaturesEconomy
             backdropButton = backdropGO.GetComponent<Button>();
             backdropButton.transition = Selectable.Transition.None;
 
-            // 3. Centered Modal Dialog Card (Sibling 1 - IN FRONT of backdrop)
+            // 3. Centered Two-Column Wooden Modal Board (16:9 matching 1024x572)
             GameObject cardGO = new GameObject("ShopModalCard", typeof(RectTransform), typeof(Image));
             cardGO.transform.SetParent(shopPanel.transform, false);
             var cardRect = cardGO.GetComponent<RectTransform>();
             cardRect.anchorMin = new Vector2(0.5f, 0.5f);
             cardRect.anchorMax = new Vector2(0.5f, 0.5f);
             cardRect.pivot = new Vector2(0.5f, 0.5f);
-            cardRect.sizeDelta = new Vector2(740, 580);
+            cardRect.sizeDelta = new Vector2(1180, 659);
             cardRect.anchoredPosition = Vector2.zero;
 
             var cardImg = cardGO.GetComponent<Image>();
-            cardImg.color = new Color(0.08f, 0.11f, 0.16f, 0.98f);
+            WoodenBoardStyle.ApplyBoardBackground(cardImg);
             cardImg.raycastTarget = true;
 
-            // 4. Header Bar
+            // Plaque Title
+            var plaqueTmp = WoodenBoardStyle.EnsurePlaqueTitle<TextMeshProUGUI>(cardGO.transform);
+            if (plaqueTmp != null)
+            {
+                plaqueTmp.text = "MERCHANT SHOP";
+                plaqueTmp.fontSize = 22f;
+                plaqueTmp.fontStyle = FontStyles.Bold;
+                plaqueTmp.alignment = TextAlignmentOptions.Center;
+            }
+
+            // 4. Transparent HeaderBar wrapper preserving HeaderBar/Btn_XClose path
             GameObject headerGO = new GameObject("HeaderBar", typeof(RectTransform));
             headerGO.transform.SetParent(cardGO.transform, false);
             var headerRect = headerGO.GetComponent<RectTransform>();
-            headerRect.anchorMin = new Vector2(0, 1);
-            headerRect.anchorMax = new Vector2(1, 1);
-            headerRect.pivot = new Vector2(0.5f, 1);
-            headerRect.anchoredPosition = new Vector2(0, -12);
-            headerRect.sizeDelta = new Vector2(-40, 60);
+            headerRect.anchorMin = Vector2.zero;
+            headerRect.anchorMax = Vector2.one;
+            headerRect.offsetMin = Vector2.zero;
+            headerRect.offsetMax = Vector2.zero;
 
-            // Title
-            GameObject titleGO = new GameObject("TitleText", typeof(RectTransform), typeof(TextMeshProUGUI));
-            titleGO.transform.SetParent(headerGO.transform, false);
-            var titleRect = titleGO.GetComponent<RectTransform>();
-            titleRect.anchorMin = new Vector2(0, 0.45f);
-            titleRect.anchorMax = new Vector2(0.8f, 1f);
-            titleRect.sizeDelta = Vector2.zero;
-            var titleTmp = titleGO.GetComponent<TextMeshProUGUI>();
-            titleTmp.text = "MERCHANT SHOP";
-            titleTmp.fontSize = 24;
-            titleTmp.fontStyle = FontStyles.Bold;
-            titleTmp.color = new Color(1f, 0.82f, 0.25f, 1f);
-            titleTmp.raycastTarget = false;
-
-            // Subtitle
+            // Subtitle placed compactly inside top of Left Column
             GameObject subGO = new GameObject("SubtitleText", typeof(RectTransform), typeof(TextMeshProUGUI));
             subGO.transform.SetParent(headerGO.transform, false);
             var subRect = subGO.GetComponent<RectTransform>();
-            subRect.anchorMin = new Vector2(0, 0f);
-            subRect.anchorMax = new Vector2(0.8f, 0.45f);
-            subRect.sizeDelta = Vector2.zero;
+            WoodenBoardStyle.SetAnchorRegion(subRect,
+                new Vector2(WoodenBoardStyle.LeftPaneMin.x, 0.800f),
+                new Vector2(WoodenBoardStyle.LeftPaneMax.x, WoodenBoardStyle.LeftPaneMax.y),
+                10f, 2f, 10f, 4f);
             var subTmp = subGO.GetComponent<TextMeshProUGUI>();
-            subTmp.text = "Purchase seeds, weapons, armor, or trade harvested crops for gold";
-            subTmp.fontSize = 13;
-            subTmp.color = new Color(0.6f, 0.68f, 0.78f, 1f);
+            subTmp.text = "Purchase seeds, gear, or sell crops";
+            subTmp.fontSize = 12;
+            subTmp.color = WoodenBoardStyle.TextMutedWarm;
+            subTmp.alignment = TextAlignmentOptions.Center;
+            subTmp.textWrappingMode = TextWrappingModes.Normal;
             subTmp.raycastTarget = false;
 
-            // Close [X] Button
+            // Close [X] Button on Top-Right Wooden Rim
             GameObject xBtnGO = new GameObject("Btn_XClose", typeof(RectTransform), typeof(Image), typeof(Button));
             xBtnGO.transform.SetParent(headerGO.transform, false);
             var xRect = xBtnGO.GetComponent<RectTransform>();
-            xRect.anchorMin = new Vector2(1, 0.5f);
-            xRect.anchorMax = new Vector2(1, 0.5f);
-            xRect.pivot = new Vector2(1, 0.5f);
+            xRect.anchorMin = WoodenBoardStyle.CloseButtonAnchor;
+            xRect.anchorMax = WoodenBoardStyle.CloseButtonAnchor;
+            xRect.pivot = new Vector2(0.5f, 0.5f);
+            xRect.anchoredPosition = Vector2.zero;
             xRect.sizeDelta = new Vector2(36, 36);
-            xBtnGO.GetComponent<Image>().color = new Color(0.24f, 0.15f, 0.18f, 1f);
+            xBtnGO.GetComponent<Image>().sprite = ProceduralUIAssetCache.GetRoundedBarSprite();
+            xBtnGO.GetComponent<Image>().type = Image.Type.Sliced;
+            xBtnGO.GetComponent<Image>().color = WoodenBoardStyle.BtnDanger;
             closeButton = xBtnGO.GetComponent<Button>();
 
             GameObject xTextGO = new GameObject("Text", typeof(RectTransform), typeof(TextMeshProUGUI));
@@ -1536,52 +1541,55 @@ namespace FeaturesEconomy
             xtTmp.fontSize = 18;
             xtTmp.fontStyle = FontStyles.Bold;
             xtTmp.alignment = TextAlignmentOptions.Center;
-            xtTmp.color = new Color(1f, 0.45f, 0.45f);
+            xtTmp.color = Color.white;
             xtTmp.raycastTarget = false;
 
-            // 5. Gold Pill Bar
+            // 5. Gold Pill Bar (Upper Left Column)
             GameObject goldPillGO = new GameObject("GoldPill", typeof(RectTransform), typeof(Image));
             goldPillGO.transform.SetParent(cardGO.transform, false);
             var gpRect = goldPillGO.GetComponent<RectTransform>();
-            gpRect.anchorMin = new Vector2(0, 1);
-            gpRect.anchorMax = new Vector2(1, 1);
-            gpRect.pivot = new Vector2(0.5f, 1);
-            gpRect.anchoredPosition = new Vector2(0, -78);
-            gpRect.sizeDelta = new Vector2(-40, 32);
-            goldPillGO.GetComponent<Image>().color = new Color(0.14f, 0.18f, 0.26f, 0.85f);
+            WoodenBoardStyle.SetAnchorRegion(gpRect,
+                new Vector2(WoodenBoardStyle.LeftPaneMin.x, 0.720f),
+                new Vector2(WoodenBoardStyle.LeftPaneMax.x, 0.792f),
+                10f, 2f, 10f, 2f);
+            var gpImg = goldPillGO.GetComponent<Image>();
+            gpImg.sprite = ProceduralUIAssetCache.GetRoundedBarSprite();
+            gpImg.type = Image.Type.Sliced;
+            gpImg.color = WoodenBoardStyle.DarkOakHeader;
 
             GameObject goldTextGO = new GameObject("GoldText", typeof(RectTransform), typeof(TextMeshProUGUI));
             goldTextGO.transform.SetParent(goldPillGO.transform, false);
             var gtRect = goldTextGO.GetComponent<RectTransform>();
             gtRect.anchorMin = Vector2.zero;
             gtRect.anchorMax = Vector2.one;
-            gtRect.sizeDelta = new Vector2(-20, 0);
+            gtRect.sizeDelta = new Vector2(-16, 0);
             goldBalanceText = goldTextGO.GetComponent<TextMeshProUGUI>();
             goldBalanceText.text = "Gold: <color=#FFD700>0 G</color>";
             goldBalanceText.fontSize = 16;
             goldBalanceText.fontStyle = FontStyles.Bold;
-            goldBalanceText.alignment = TextAlignmentOptions.MidlineLeft;
-            goldBalanceText.color = Color.white;
+            goldBalanceText.alignment = TextAlignmentOptions.Center;
+            goldBalanceText.color = WoodenBoardStyle.TextCream;
             goldBalanceText.raycastTarget = false;
 
-            // 6. Tabs Bar
+            // 6. Tabs Bar (Left Column: Buy / Sell)
             GameObject tabsGO = new GameObject("TabsBar", typeof(RectTransform));
             tabsGO.transform.SetParent(cardGO.transform, false);
             var tabsRect = tabsGO.GetComponent<RectTransform>();
-            tabsRect.anchorMin = new Vector2(0, 1);
-            tabsRect.anchorMax = new Vector2(1, 1);
-            tabsRect.pivot = new Vector2(0.5f, 1);
-            tabsRect.anchoredPosition = new Vector2(0, -116);
-            tabsRect.sizeDelta = new Vector2(-40, 36);
+            WoodenBoardStyle.SetAnchorRegion(tabsRect,
+                new Vector2(WoodenBoardStyle.LeftPaneMin.x, 0.625f),
+                new Vector2(WoodenBoardStyle.LeftPaneMax.x, 0.708f),
+                10f, 2f, 10f, 2f);
 
             // Buy Tab Button
             GameObject buyTabGO = new GameObject("Tab_Buy", typeof(RectTransform), typeof(Image), typeof(Button));
             buyTabGO.transform.SetParent(tabsGO.transform, false);
             var btr = buyTabGO.GetComponent<RectTransform>();
             btr.anchorMin = new Vector2(0, 0);
-            btr.anchorMax = new Vector2(0.49f, 1);
+            btr.anchorMax = new Vector2(0.485f, 1);
             btr.sizeDelta = Vector2.zero;
             buyTabImage = buyTabGO.GetComponent<Image>();
+            buyTabImage.sprite = ProceduralUIAssetCache.GetRoundedBarSprite();
+            buyTabImage.type = Image.Type.Sliced;
             buyTabImage.color = activeTabColor;
             buyTabButton = buyTabGO.GetComponent<Button>();
 
@@ -1593,7 +1601,7 @@ namespace FeaturesEconomy
             bttRect.sizeDelta = Vector2.zero;
             var bttTmp = bttGO.GetComponent<TextMeshProUGUI>();
             bttTmp.text = "BUY ITEMS";
-            bttTmp.fontSize = 15;
+            bttTmp.fontSize = 13;
             bttTmp.fontStyle = FontStyles.Bold;
             bttTmp.alignment = TextAlignmentOptions.Center;
             bttTmp.color = Color.white;
@@ -1603,10 +1611,12 @@ namespace FeaturesEconomy
             GameObject sellTabGO = new GameObject("Tab_Sell", typeof(RectTransform), typeof(Image), typeof(Button));
             sellTabGO.transform.SetParent(tabsGO.transform, false);
             var str = sellTabGO.GetComponent<RectTransform>();
-            str.anchorMin = new Vector2(0.51f, 0);
+            str.anchorMin = new Vector2(0.515f, 0);
             str.anchorMax = new Vector2(1f, 1);
             str.sizeDelta = Vector2.zero;
             sellTabImage = sellTabGO.GetComponent<Image>();
+            sellTabImage.sprite = ProceduralUIAssetCache.GetRoundedBarSprite();
+            sellTabImage.type = Image.Type.Sliced;
             sellTabImage.color = inactiveTabColor;
             sellTabButton = sellTabGO.GetComponent<Button>();
 
@@ -1617,23 +1627,22 @@ namespace FeaturesEconomy
             sttRect.anchorMax = Vector2.one;
             sttRect.sizeDelta = Vector2.zero;
             var sttTmp = sttGO.GetComponent<TextMeshProUGUI>();
-            sttTmp.text = "SELL HARVEST";
-            sttTmp.fontSize = 15;
+            sttTmp.text = "SELL CROPS";
+            sttTmp.fontSize = 13;
             sttTmp.fontStyle = FontStyles.Bold;
             sttTmp.alignment = TextAlignmentOptions.Center;
             sttTmp.color = Color.white;
             sttTmp.raycastTarget = false;
 
-            // 7. Scroll View Area for Items
+            // 7. Scroll View Area for Items (Right Wide Plank Column)
             GameObject scrollGO = new GameObject("ItemScrollView", typeof(RectTransform), typeof(Image), typeof(ScrollRect));
             scrollGO.transform.SetParent(cardGO.transform, false);
             var srt = scrollGO.GetComponent<RectTransform>();
-            srt.anchorMin = new Vector2(0, 0);
-            srt.anchorMax = new Vector2(1, 1);
-            srt.pivot = new Vector2(0.5f, 0.5f);
-            srt.offsetMin = new Vector2(20, 60);
-            srt.offsetMax = new Vector2(-20, -194);
-            scrollGO.GetComponent<Image>().color = new Color(0.04f, 0.06f, 0.09f, 0.85f);
+            WoodenBoardStyle.SetAnchorRegion(srt, WoodenBoardStyle.RightPaneMin, WoodenBoardStyle.RightPaneMax, 10f, 8f, 10f, 8f);
+            var sBg = scrollGO.GetComponent<Image>();
+            sBg.sprite = ProceduralUIAssetCache.GetRoundedBarSprite();
+            sBg.type = Image.Type.Sliced;
+            sBg.color = WoodenBoardStyle.DarkOakOverlay;
 
             scrollRect = scrollGO.GetComponent<ScrollRect>();
             scrollRect.horizontal = false;
@@ -1693,24 +1702,25 @@ namespace FeaturesEconomy
             sellContentContainer = sellContentGO.transform;
             sellContentGO.SetActive(false);
 
-            // 8. Bottom Return Bar
+            // 8. Bottom Return Bar (at Bottom of Left Column)
             GameObject bottomBarGO = new GameObject("BottomBar", typeof(RectTransform));
             bottomBarGO.transform.SetParent(cardGO.transform, false);
             var bbRect = bottomBarGO.GetComponent<RectTransform>();
-            bbRect.anchorMin = new Vector2(0, 0);
-            bbRect.anchorMax = new Vector2(1, 0);
-            bbRect.pivot = new Vector2(0.5f, 0);
-            bbRect.anchoredPosition = new Vector2(0, 12);
-            bbRect.sizeDelta = new Vector2(-40, 36);
+            WoodenBoardStyle.SetAnchorRegion(bbRect,
+                new Vector2(WoodenBoardStyle.LeftPaneMin.x, WoodenBoardStyle.LeftPaneMin.y),
+                new Vector2(WoodenBoardStyle.LeftPaneMax.x, 0.138f),
+                10f, 4f, 10f, 2f);
 
             // Close Shop Button
             GameObject closeBtnGO = new GameObject("Btn_CloseShop", typeof(RectTransform), typeof(Image), typeof(Button));
             closeBtnGO.transform.SetParent(bottomBarGO.transform, false);
             var cbr = closeBtnGO.GetComponent<RectTransform>();
-            cbr.anchorMin = new Vector2(0.35f, 0);
-            cbr.anchorMax = new Vector2(0.65f, 1);
+            cbr.anchorMin = Vector2.zero;
+            cbr.anchorMax = Vector2.one;
             cbr.sizeDelta = Vector2.zero;
-            closeBtnGO.GetComponent<Image>().color = new Color(0.2f, 0.25f, 0.35f, 1f);
+            closeBtnGO.GetComponent<Image>().sprite = ProceduralUIAssetCache.GetRoundedBarSprite();
+            closeBtnGO.GetComponent<Image>().type = Image.Type.Sliced;
+            closeBtnGO.GetComponent<Image>().color = WoodenBoardStyle.BtnSecondary;
             bottomCloseButton = closeBtnGO.GetComponent<Button>();
 
             GameObject cbTextGO = new GameObject("Text", typeof(RectTransform), typeof(TextMeshProUGUI));
