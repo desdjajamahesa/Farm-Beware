@@ -12,14 +12,14 @@ public interface IFoodBuffApplier
 
 public enum BuffType
 {
-    MaxHealthPercent,       // Penambahan persentase Max HP (+0.10 = +10%)
-    MaxStaminaPercent,      // Penambahan persentase Max Stamina (+0.10 = +10%)
-    HealthRegenTick,        // Penambahan flat HP per detik / tick (+4 = +4 HP/tick)
-    HealthRegenPercent,     // Penambahan persentase regen HP
-    StaminaRegenPercent,    // Penambahan persentase kecepatan regenerasi stamina (+0.10 = +10%)
-    MoveSpeedPercent,       // Penambahan persentase kecepatan jalan & lari (+0.10 = +10%)
-    AttackDamagePercent,    // Penambahan persentase damage serangan (+0.12 = +12%)
-    AttackSpeedPercent      // Penambahan persentase kecepatan serangan (+0.12 = +12%)
+    MaxHealthPercent,       // Max HP percentage bonus (+0.10 = +10%)
+    MaxStaminaPercent,      // Max Stamina percentage bonus (+0.10 = +10%)
+    HealthRegenTick,        // Flat HP regeneration per second / tick (+4 = +4 HP/tick)
+    HealthRegenPercent,     // HP regeneration percentage bonus
+    StaminaRegenPercent,    // Stamina regeneration rate percentage bonus (+0.10 = +10%)
+    MoveSpeedPercent,       // Walk & sprint speed percentage bonus (+0.10 = +10%)
+    AttackDamagePercent,    // Attack damage percentage bonus (+0.12 = +12%)
+    AttackSpeedPercent      // Attack speed percentage bonus (+0.12 = +12%)
 }
 
 [Serializable]

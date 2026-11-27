@@ -51,7 +51,7 @@ namespace FeaturesInteraction
             Debug.Log($"[GenericFurnitureInteractable] {message}");
         }
 
-        // Helper untuk setup cepat via Inspector
+        // Helper for quick setup via Inspector
         public void SetFurnitureType(string type)
         {
             furnitureType = type;

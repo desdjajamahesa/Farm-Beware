@@ -7,8 +7,8 @@ using FarmBeware.Core.Runtime;
 namespace FeaturesCombat
 {
     /// <summary>
-    /// Base controller untuk semua jenis musuh di Farm-Beware.
-    /// Mengelola HP, armor, pergerakan navigasi, AI state machine, serangan kontak, skill unik, dan drop loot.
+    /// Base controller for all enemy types in Farm-Beware.
+    /// Manages HP, armor, navigation movement, AI state machine, contact attacks, unique skills, and loot drops.
     /// </summary>
     [RequireComponent(typeof(Rigidbody))]
     [RequireComponent(typeof(Collider))]
@@ -53,7 +53,7 @@ namespace FeaturesCombat
         public int armor = 20;
         public float moveSpeed = 3f;
         public int contactDamage = 15;
-        public float attackRate = 0.4f; // Serangan per detik
+        public float attackRate = 0.4f; // Attacks per second
         public float attackRange = 1.5f;
         public float aggroRange = 6f;
         [Range(0f, 1f)] public float knockbackResistance = 0.2f;
@@ -67,7 +67,7 @@ namespace FeaturesCombat
         public int maxGold = 500;
         [Range(0f, 1f)] public float goldChance = 0.5f;
 
-        // Status internal
+        // Internal state
         public bool IsDead => currentHealth <= 0;
         public bool IsPerformingSkill { get => isPerformingSkill; set => isPerformingSkill = value; }
         public bool IsBurrowed => isBurrowed;
@@ -433,8 +433,8 @@ namespace FeaturesCombat
                     armor = 0;
                     moveSpeed = 2.8f;
                     contactDamage = 15; // MVP projectile shot damage (15 DMG)
-                    attackRate = 0.5f; // 1 tembakan tiap 2 detik
-                    attackRange = 12f; // Jarak tembak ranged
+                    attackRate = 0.5f; // 1 shot every 2 seconds
+                    attackRange = 12f; // Ranged attack range
                     aggroRange = 16f;
                     knockbackResistance = 0.15f;
                     isBoss = false;
@@ -481,7 +481,7 @@ namespace FeaturesCombat
 
             if (isPerformingSkill) return;
 
-            // 1. Batas Anti-Penetrasi Safe Zone: Cegah monster masuk/terselip ke dalam interior rumah modular
+            // 1. Safe Zone Anti-Penetration Bounds: Prevent monsters from entering or clipping inside the modular house interior
             if (NightBrawlManager.IsInsideHouse(transform.position))
             {
                 Vector3 safeOutdoor = NightBrawlManager.GetNearestOutdoorPosition(transform.position, 1.5f);
@@ -515,7 +515,7 @@ namespace FeaturesCombat
                 ? NightBrawlManager.GetNearestOutdoorPosition(playerTarget.position, 2.5f) 
                 : playerTarget.position;
 
-            // Hitung jarak planar / horizontal (Delta XZ) agar musuh raksasa berskala besar tidak terdistorsi perbedaan tinggi pivot (Delta Y)
+            // Compute planar horizontal distance (Delta XZ) so large-scale bosses aren't skewed by pivot height differences (Delta Y)
             Vector3 diffTarget = effectiveTargetPos - transform.position;
             diffTarget.y = 0f;
             float distToTarget = diffTarget.magnitude;
@@ -524,16 +524,16 @@ namespace FeaturesCombat
             diffPlayer.y = 0f;
             float distToPlayer = diffPlayer.magnitude;
 
-            // Pada mode malam (Night Brawl), monster selalu agresif langsung mengejar dan memburu pemain tanpa batas jarak aggro
+            // During Night Brawl, monsters are always aggroed and actively pursue the player regardless of aggro range
             bool isNightActive = (TimeManager.Instance != null && TimeManager.Instance.currentPhase == TimeManager.DayPhase.Night) ||
                                  (NightBrawlManager.Instance != null && NightBrawlManager.Instance.IsNightBrawlActive);
 
             bool isAggroed = isNightActive || (distToPlayer <= aggroRange && !isPlayerInsideHouse);
 
-            // Cek AI behaviour
+            // Evaluate AI behavior
             if (isAggroed)
             {
-                // Cek behaviour kabur sejenak & heal saat HP sekarat untuk TuberMaw
+                // Check low-HP retreat and heal behavior for TuberMaw
                 if (enemyType == EnemyType.TuberMaw && currentHealth <= Mathf.RoundToInt(maxHealth * 0.25f) && !isRetreatingAndHealing && Time.time >= lastRetreatHealTime + retreatHealCooldown)
                 {
                     currentTacticalState = FeaturesCombat.Core.PureLogic.MonsterTacticalState.RetreatHeal;
@@ -547,7 +547,7 @@ namespace FeaturesCombat
                     LookAtTarget(effectiveTargetPos);
                 }
 
-                // Cek eksekusi skill khusus jika cooldown siap (hanya jika pemain tidak berada aman di dalam rumah)
+                // Check special skill execution when cooldown is ready (only if player is not safely indoors)
                 bool canExecuteSkill = false;
                 switch (enemyType)
                 {
@@ -694,7 +694,7 @@ namespace FeaturesCombat
 
             Vector3 desiredDir;
 
-            // 1. Hitung jalur NavMesh cerdas secara periodik (repath interval)
+            // 1. Periodically compute smart NavMesh path (repath interval)
             if (Time.time >= nextRepathTime)
             {
                 nextRepathTime = Time.time + repathInterval;
@@ -713,10 +713,10 @@ namespace FeaturesCombat
 
                 hasValidNavPath = NavMesh.CalculatePath(sampleStart, sampleTarget, NavMesh.AllAreas, navMeshPath);
                 _pathCornerCount = (hasValidNavPath && navMeshPath != null) ? navMeshPath.GetCornersNonAlloc(_pathCornersBuffer) : 0;
-                currentPathIndex = 1; // Indeks 0 adalah posisi awal monster saat ini
+                currentPathIndex = 1; // Index 0 is the monster's current start position
             }
 
-            // 2. Telusuri waypoint sudut (corners) jika jalur valid (Zero-GC non-alloc buffer)
+            // 2. Traverse path corner waypoints if valid (Zero-GC non-alloc buffer)
             if (hasValidNavPath && navMeshPath != null && _pathCornerCount > 1 && navMeshPath.status != NavMeshPathStatus.PathInvalid)
             {
                 while (currentPathIndex < _pathCornerCount - 1)
@@ -748,13 +748,13 @@ namespace FeaturesCombat
             }
             else
             {
-                // Fallback: arah langsung jika NavMesh belum terpasang atau sedang recalculate
+                // Fallback: direct direction if NavMesh is unavailable or recalculating
                 desiredDir = (targetPos - transform.position).normalized;
             }
 
             desiredDir.y = 0f;
 
-            // 3. Terapkan Dynamic Obstacle Avoidance (Whisker Sensors) agar monster tidak menabrak rintangan atau kawanan lain
+            // 3. Apply Dynamic Obstacle Avoidance (Whisker Sensors) to steer around obstacles and other monsters
             Vector3 finalMoveDir = ApplyObstacleAvoidance(desiredDir);
 
             // 4. Anti-Stuck & Physical Collider Obstacle Auto-Recovery
@@ -793,7 +793,7 @@ namespace FeaturesCombat
 
             SetLinearVelocity(new Vector3(finalMoveDir.x * effectiveSpeed, GetLinearVelocityY(), finalMoveDir.z * effectiveSpeed));
 
-            // Putar hadap monster mengikuti arah gerak navigasi secara halus
+            // Smoothly rotate monster to face its navigation movement direction
             if (finalMoveDir.sqrMagnitude > 0.01f)
             {
                 transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(finalMoveDir), Time.deltaTime * 10f);
@@ -801,9 +801,9 @@ namespace FeaturesCombat
         }
 
         /// <summary>
-        /// Sensor penghindar rintangan dinamis (Whisker Raycast Avoidance).
-        /// Mendeteksi rintangan solid atau sesama monster di depan dan membelokkan arah gerak
-        /// sehingga pergerakan kawanan monster terasa organik dan tidak macet di sudut-sudut sempit.
+        /// Dynamic obstacle avoidance sensor (Whisker Raycast Avoidance).
+        /// Detects solid obstacles or nearby monsters ahead and steers movement direction
+        /// so pack movement feels organic and avoids getting stuck in tight corners.
         /// </summary>
         private Vector3 ApplyObstacleAvoidance(Vector3 forwardMoveDir)
         {
@@ -812,7 +812,7 @@ namespace FeaturesCombat
             Vector3 origin = transform.position + Vector3.up * 0.5f;
             float checkDist = obstacleAvoidanceDistance;
 
-            // Cek apakah ada rintangan solid tepat di depan (abaikan karakter pemain target)
+            // Check if a solid obstacle is directly ahead (ignore the target player character)
             bool blockedForward = false;
             if (Physics.SphereCast(origin, 0.35f, forwardMoveDir, out RaycastHit forwardHit, checkDist, ~LayerMask.GetMask("Ignore Raycast"), QueryTriggerInteraction.Ignore))
             {
@@ -828,7 +828,7 @@ namespace FeaturesCombat
                 return forwardMoveDir;
             }
 
-            // Sensor Whisker kiri & kanan
+            // Left & right whisker sensors
             Vector3 leftWhisker = Quaternion.Euler(0f, -whiskerAngle, 0f) * forwardMoveDir;
             Vector3 rightWhisker = Quaternion.Euler(0f, whiskerAngle, 0f) * forwardMoveDir;
 
@@ -850,7 +850,7 @@ namespace FeaturesCombat
             }
             else
             {
-                // Kedua sensor terhalang: belok lebih tajam (70 derajat)
+                // Both sensors blocked: turn more sharply (70 degrees)
                 steerDir = Quaternion.Euler(0f, 70f, 0f) * forwardMoveDir;
             }
 
@@ -886,17 +886,17 @@ namespace FeaturesCombat
                 return;
             }
 
-            // Reduksi damage berdasarkan armor
+            // Armor-based damage reduction
             int effectiveDmg = Mathf.Max(1, damage - Mathf.RoundToInt(armor * 0.25f));
             currentHealth -= effectiveDmg;
             OnHealthChanged?.Invoke(currentHealth, maxHealth);
 
-            // Flash visual (Zero-GC via MaterialPropertyBlock)
+            // Visual hit flash (Zero-GC via MaterialPropertyBlock)
             if (hitFeedback != null) hitFeedback.TriggerFlash();
 
             Vector3 pushDir = hitDirection.sqrMagnitude > 0.001f ? hitDirection.normalized : -transform.forward;
 
-            // Terapkan knockback & stagger berjenjang (diabaikan jika un-staggerable)
+            // Apply tiered knockback & stagger (ignored if un-staggerable)
             if (poiseTracker != null)
             {
                 float poiseDmg = Mathf.Max(10f, damage * 0.75f);
@@ -1033,7 +1033,7 @@ namespace FeaturesCombat
         }
 
         /// <summary>
-        /// Mengembalikan status monster ke kondisi siap bertarung saat dipanggil dari Object Pool.
+        /// Resets monster state to combat-ready when retrieved from the Object Pool.
         /// </summary>
         public void ResetEnemyState()
         {
@@ -1100,8 +1100,8 @@ namespace FeaturesCombat
         }
 
         /// <summary>
-        /// Mengubah warna renderer menggunakan MaterialPropertyBlock (tanpa duplikasi material).
-        /// Menjaga kompatibilitas SRP Batcher dan mencegah pink/magenta rendering.
+        /// Updates renderer color using MaterialPropertyBlock (without material duplication).
+        /// Preserves SRP Batcher compatibility and prevents pink/magenta rendering.
         /// </summary>
         private void SetRendererColor(Color color)
         {

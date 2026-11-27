@@ -3,9 +3,9 @@ using UnityEngine;
 namespace FeaturesInteraction
 {
     /// <summary>
-    /// Label nama untuk objek interaktif di dunia.
-    /// Murni data (displayName); kosong = fallback ke nama GameObject.
-    /// Dibaca oleh HoverLabelController untuk menampilkan tooltip ala hotbar.
+    /// Name label for interactive objects in the world.
+    /// Pure data (displayName); empty = fallback to GameObject name.
+    /// Read by HoverLabelController to display a hotbar-style tooltip.
     /// </summary>
     public class WorldLabel : MonoBehaviour
     {

@@ -9,11 +9,11 @@ namespace FeaturesWardrobe
         [Header("Setup")]
         [SerializeField] private Camera mirrorCamera;
         [SerializeField] private RenderTexture mirrorTexture;
-        [SerializeField] private Renderer surfaceRenderer; // MeshRenderer cermin (tampilkan RT live)
+        [SerializeField] private Renderer surfaceRenderer; // Mirror MeshRenderer (displays live RT)
         [SerializeField] private int textureSize = 1024;
         
         [Header("Target")]
-        [SerializeField] private Transform playerTarget; // Player head/body untuk face
+        [SerializeField] private Transform playerTarget; // Player head/body to face
         
         [Header("Positioning")]
         [Tooltip("Transform permukaan cermin (static) - kamera diposisikan relatif ke ini")]
@@ -46,7 +46,7 @@ namespace FeaturesWardrobe
             if (mirrorCamera != null)
                 _mirrorAudioListener = mirrorCamera.GetComponent<AudioListener>();
 
-            // Ambil kamera dari child (MirrorCamera) jika di Inspector kosong (termasuk inactive)
+            // Fetch camera from child (MirrorCamera) if unassigned in Inspector (including inactive)
             if (mirrorCamera == null)
             {
                 mirrorCamera = GetComponentInChildren<Camera>(true);
@@ -54,13 +54,13 @@ namespace FeaturesWardrobe
                     _mirrorAudioListener = mirrorCamera.GetComponent<AudioListener>();
             }
 
-            // Pastikan mirrorSurface memiliki nilai agar kamera bisa dikalkulasi posisinya
+            // Ensure mirrorSurface is assigned so camera positioning can be calculated
             if (mirrorSurface == null)
             {
                 mirrorSurface = this.transform;
             }
 
-            // Matikan komponen kamera di objek Induk (jika tersisa dari bug sebelumnya)
+            // Disable Camera component on the parent object (if leftover from a previous bug)
             Camera parentCam = GetComponent<Camera>();
             if (parentCam != null && parentCam != mirrorCamera)
             {
@@ -94,7 +94,7 @@ namespace FeaturesWardrobe
                     }
                 }
 
-                // Default state: MATI untuk performa sampai player interact dengan wardrobe
+                // Default state: DISABLED for performance until player interacts with wardrobe
                 mirrorCamera.enabled = false;
                 mirrorCamera.gameObject.SetActive(false);
             }
@@ -106,8 +106,8 @@ namespace FeaturesWardrobe
 
         private void InitializeRenderTexture()
         {
-            // FIX layar putih: JANGAN Release()/re-create RT bila sudah terisi (asset).
-            // Identity RT harus stabil agar RawImage & kameranya selalu memakai objek yang sama.
+            // White screen FIX: DO NOT Release()/re-create RT if already assigned (asset).
+            // RT identity must remain stable so RawImage & its camera always reference the same object.
             if (mirrorTexture == null)
             {
                 mirrorTexture = new RenderTexture(textureSize, textureSize, 24, RenderTextureFormat.ARGB32);
@@ -137,7 +137,7 @@ namespace FeaturesWardrobe
             mirrorCamera.aspect = 0.5f;
         }
 
-        /// <summary>Pastikan RenderTexture + targetTexture siap (idempoten). Dipanggil dari WardrobeManager saat Enter.</summary>
+        /// <summary>Ensures RenderTexture + targetTexture are ready (idempotent). Called from WardrobeManager on Enter.</summary>
         public void EnsureInitialized()
         {
             InitializeRenderTexture();
@@ -148,7 +148,7 @@ namespace FeaturesWardrobe
             BindSurfaceTexture();
         }
 
-        /// <summary>Tempel RenderTexture ke permukaan cermin (refleksi dunia live).</summary>
+        /// <summary>Binds RenderTexture to the mirror surface (live world reflection).</summary>
         private void BindSurfaceTexture()
         {
             if (surfaceRenderer == null || mirrorTexture == null) return;
@@ -162,7 +162,7 @@ namespace FeaturesWardrobe
 
         private void LateUpdate()
         {
-            // Jika kamera mirror sedang tidak aktif/mati, lewati seluruh kalkulasi LateUpdate
+            // If mirror camera is inactive/disabled, skip all LateUpdate calculations
             if (mirrorCamera == null || !mirrorCamera.enabled || !mirrorCamera.gameObject.activeInHierarchy)
                 return;
             // SAFETY: If camera is enabled but has no targetTexture, disable it IMMEDIATELY

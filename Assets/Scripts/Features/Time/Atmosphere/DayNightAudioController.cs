@@ -4,9 +4,9 @@ using UnityEngine;
 namespace FeaturesTime.Atmosphere
 {
     /// <summary>
-    /// Mengelola audio suasana lingkungan antara Siang dan Malam.
-    /// Mendukung crossfade halus antar audio source.
-    /// Menyediakan fallback audio prosedural (ambient breeze & horror drone) bila belum ada audio clip.
+    /// Manages ambient environmental audio between Day and Night.
+    /// Supports smooth crossfading between audio sources.
+    /// Provides procedural audio fallbacks (ambient breeze and horror drone) when no audio clip is assigned.
     /// </summary>
     public class DayNightAudioController : MonoBehaviour
     {
@@ -178,14 +178,14 @@ namespace FeaturesTime.Atmosphere
             crossfadeCoroutine = null;
         }
 
-        // --- AUDIO PROCEDURAL FALLBACKS ---
+        // --- PROCEDURAL AUDIO FALLBACKS ---
         private static AudioClip CreateProceduralDayClip()
         {
             int sampleRate = 44100;
-            int length = sampleRate * 3; // 3 detik loop
+            int length = sampleRate * 3; // 3-second loop
             float[] data = new float[length];
 
-            // Menghasilkan desiran angin lembut (pinkish noise)
+            // Generate gentle wind breeze (pinkish noise)
             float b0 = 0f, b1 = 0f, b2 = 0f;
             for (int i = 0; i < length; i++)
             {
@@ -205,10 +205,10 @@ namespace FeaturesTime.Atmosphere
         private static AudioClip CreateProceduralNightClip()
         {
             int sampleRate = 44100;
-            int length = sampleRate * 4; // 4 detik loop
+            int length = sampleRate * 4; // 4-second loop
             float[] data = new float[length];
 
-            // Menghasilkan low-frequency horror drone (55Hz sub + modulation)
+            // Generate low-frequency horror drone (55Hz sub + modulation)
             for (int i = 0; i < length; i++)
             {
                 float t = (float)i / sampleRate;

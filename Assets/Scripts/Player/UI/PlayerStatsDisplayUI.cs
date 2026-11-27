@@ -8,8 +8,8 @@ using FeaturesWorkbench;
 namespace PlayerUI
 {
     /// <summary>
-    /// Menampilkan informasi status/atribut hidup dari Player secara real-time
-    /// pada kolom kiri ("PLAYER") di jendela Character Sheet (Tab).
+    /// Displays real-time player status and attribute information
+    /// in the left column ("PLAYER") of the Character Sheet (Tab) window.
     /// </summary>
     public class PlayerStatsDisplayUI : MonoBehaviour, IStatsDisplayRefreshable
     {

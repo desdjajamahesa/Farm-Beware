@@ -48,9 +48,9 @@ namespace FeaturesCombat
         }
 
         /// <summary>
-        /// Serangan melee bertelegraf.
-        /// Monster berhenti sejenak, memunculkan indikator lingkaran merah di tanah (wind-up 0.35s).
-        /// Jika pemain menghindar keluar dari lingkaran, serangan akan luput ("Miss!").
+        /// Telegraphed melee attack.
+        /// The monster pauses briefly and displays a red ground telegraph ring (0.35s wind-up).
+        /// If the player dodges outside the ring, the attack misses ("Miss!").
         /// </summary>
         private IEnumerator RoutineMeleeTelegraphedAttack()
         {
@@ -58,7 +58,7 @@ namespace FeaturesCombat
             currentTacticalState = FeaturesCombat.Core.PureLogic.MonsterTacticalState.TelegraphAttack;
             EnsureTelegraphElements();
 
-            // 1. Wind-up Phase (0.35s): Berhenti sejenak, aktifkan indikator telegraf tanah, kedip oranye
+            // 1. Wind-up Phase (0.35s): Pause briefly, enable ground telegraph indicator, flash orange
             if (rb != null)
             {
                 SetLinearVelocity(Vector3.zero);
@@ -108,7 +108,7 @@ namespace FeaturesCombat
                 combatTelegraph.Hide();
             }
 
-            // 2. Active Strike Phase: Cek apakah pemain masih berada di dalam area serang (planar horizontal XZ)
+            // 2. Active Strike Phase: Check if player is still inside the attack area (horizontal XZ plane)
             if (playerTarget != null && !NightBrawlManager.IsInsideHouse(playerTarget.position))
             {
                 Vector3 toPlayer = playerTarget.position - transform.position;
@@ -119,7 +119,7 @@ namespace FeaturesCombat
                 forwardFlat.Normalize();
                 float dot = (currentDist > 0.01f) ? Vector3.Dot(forwardFlat, toPlayer.normalized) : 1f;
 
-                // Pemain terkena serangan jika berada di dalam jangkauan melee dan berada di depan atau menempel sangat dekat dengan monster
+                // Hit player if within melee range and in front of or closely adjacent to the monster
                 if (currentDist <= telegraphHitRange && (dot >= 0.10f || currentDist <= 1.2f))
                 {
                     Vector3 enemyChest = transform.position + Vector3.up * 1f;
@@ -131,7 +131,7 @@ namespace FeaturesCombat
 
                     if (isBlockedByWall)
                     {
-                        // Serangan terhalang oleh dinding/tembok solid! Mencegah damage dari balik tembok
+                        // Attack blocked by a solid wall! Prevents damage through walls
                         if (FloatingCombatTextManager.Instance != null)
                         {
                             FloatingCombatTextManager.Instance.SpawnText(
@@ -151,7 +151,7 @@ namespace FeaturesCombat
                 }
                 else
                 {
-                    // Pemain berhasil menghindar tepat waktu!
+                    // Player dodged in time!
                     if (FloatingCombatTextManager.Instance != null)
                     {
                         FloatingCombatTextManager.Instance.SpawnText(
@@ -171,9 +171,9 @@ namespace FeaturesCombat
         }
 
         /// <summary>
-        /// Serangan tembakan terarah Corn Musketeer.
-        /// Membidik pemain dengan laser sight selama 0.55 detik (0.40s tracking dinamis, 0.15s Aim Lock).
-        /// Elevasi tembakan diselaraskan datar (Delta Y = 0) agar kecepatan proyektil di layar simetris 100%.
+        /// Aimed ranged shot for Corn Musketeer.
+        /// Aims at the player with a laser sight for 0.55s (0.40s dynamic tracking, 0.15s Aim Lock).
+        /// Shot elevation is leveled flat (Delta Y = 0) so on-screen projectile velocity stays 100% symmetric.
         /// </summary>
         private IEnumerator RoutineCornMusketeerAttack()
         {
@@ -199,11 +199,11 @@ namespace FeaturesCombat
                 }
             }
 
-            // Ambil referensi collider untuk mengukur tinggi dasar kaki di atas tanah (terlepas dari posisi pivot 3D mesh)
+            // Reference collider to measure ground foot height (independent of 3D mesh pivot)
             Collider myCol = GetComponent<Collider>();
             float feetY = myCol != null ? myCol.bounds.min.y : (transform.position.y - 1.4f);
             Vector3 muzzlePos = transform.position + transform.forward * 0.6f;
-            muzzlePos.y = feetY + 1.0f; // Tepat setinggi dada (1.0m di atas tanah)
+            muzzlePos.y = feetY + 1.0f; // Exact chest height (1.0m above ground)
 
             Vector3 aimDir = transform.forward;
             aimDir.y = 0f;
@@ -215,7 +215,7 @@ namespace FeaturesCombat
             {
                 aimTimer += Time.deltaTime;
 
-                // Tracking Phase (0 s.d. 0.40s): Membidik dan mengikuti posisi pemain
+                // Tracking Phase (0 to 0.40s): Track and follow the player's position
                 if (aimTimer <= 0.40f)
                 {
                     if (playerTarget != null)
@@ -242,7 +242,7 @@ namespace FeaturesCombat
                         }
                     }
                 }
-                // Aim Freeze Phase (0.40s s.d. 0.55s): Arah tembakan terkunci! Berikan sinyal merah peringatan
+                // Aim Freeze Phase (0.40s to 0.55s): Aim direction locked! Show red warning signal
                 else
                 {
                     if (laserSightLine != null)
@@ -267,7 +267,7 @@ namespace FeaturesCombat
                 laserSightLine.enabled = false;
             }
 
-            // 2. Firing: Tembakkan proyektil fisik tepat dari ketinggian dada Corn ke dada pemain
+            // 2. Firing: Launch physical projectile from Corn chest height toward player chest
             int shotDamage = contactDamage > 0 ? contactDamage : 15;
             FeaturesCombat.Projectiles.CombatProjectile.Spawn(
                 gameObject,
@@ -277,7 +277,7 @@ namespace FeaturesCombat
                 projSpeed: 13.5f,
                 projectileColor: new Color(1f, 0.85f, 0.15f));
 
-            // Recoil kick mundur sejenak
+            // Brief backward recoil kick
             if (rb != null && !rb.isKinematic)
             {
                 rb.AddForce(-aimDir * 2.5f, ForceMode.Impulse);
@@ -292,8 +292,8 @@ namespace FeaturesCombat
         }
 
         /// <summary>
-        /// Serangan proyektil artileri berat The Ranger (Boss Stationary Turret).
-        /// Membidik pemain dengan laser merah peringatan (0.45s telegraph) lalu menembakkan proyektil artileri mortar berdaya hancur tinggi.
+        /// Heavy artillery projectile attack for The Ranger (Boss Stationary Turret).
+        /// Aims at the player with a red warning laser (0.45s telegraph), then fires a high-damage mortar shell.
         /// </summary>
         private IEnumerator RoutineTheRangerAttack()
         {
@@ -355,7 +355,7 @@ namespace FeaturesCombat
                 laserSightLine.enabled = false;
             }
 
-            // 2. Firing: Tembakkan artileri mortar jagung berkecepatan tinggi
+            // 2. Firing: Launch high-velocity corn mortar shell
             FeaturesCombat.Projectiles.CombatProjectile.Spawn(
                 gameObject,
                 muzzlePos,
@@ -449,7 +449,7 @@ namespace FeaturesCombat
 
             float retreatTimer = 0f;
 
-            // 1. Sedikit menjauh dari pemain (lari mundur teratur sampai jarak aman ~7m atau maksimal 1.8s)
+            // 1. Retreat orderly from player (up to ~7m safe distance or 1.8s max)
             while (retreatTimer < maxRetreatDuration && !IsDead)
             {
                 retreatTimer += Time.deltaTime;
@@ -465,7 +465,7 @@ namespace FeaturesCombat
                     awayFromPlayer.y = 0f;
                     float dist = awayFromPlayer.magnitude;
 
-                    // Jika sudah sedikit menjauh dan berada di jarak aman, hentikan lari mundur dan mulai proses pemulihan
+                    // Once at a safe distance, stop retreating and begin recovery
                     if (dist >= retreatSafeDistance)
                     {
                         break;
@@ -477,10 +477,10 @@ namespace FeaturesCombat
                         fleeDir = -transform.forward;
                     }
 
-                    // Terapkan Dynamic Obstacle Avoidance agar tidak menabrak rintangan atau terjebak di sudut
+                    // Apply Dynamic Obstacle Avoidance to avoid hitting obstacles or getting cornered
                     Vector3 moveDir = ApplyObstacleAvoidance(fleeDir);
 
-                    // Cegah mundur menembus ke dalam rumah modular
+                    // Prevent retreating into the modular house interior
                     if (NightBrawlManager.IsInsideHouse(transform.position + moveDir * 0.5f))
                     {
                         Vector3 safeOutdoor = NightBrawlManager.GetNearestOutdoorPosition(transform.position, 1.5f);
@@ -508,13 +508,13 @@ namespace FeaturesCombat
                 yield break;
             }
 
-            // Hentikan gerak mundur
+            // Halt retreat movement
             if (rb != null)
             {
                 SetLinearVelocity(new Vector3(0f, GetLinearVelocityY(), 0f));
             }
 
-            // 2. Heal diri sendiri sampai 50 current health
+            // 2. Heal self up to 50 current health
             if (FloatingCombatTextManager.Instance != null)
             {
                 int healRecovered = Mathf.Max(0, retreatHealTargetHealth - currentHealth);
@@ -525,7 +525,7 @@ namespace FeaturesCombat
                 );
             }
 
-            // Visual flash warna hijau pemulihan
+            // Green recovery visual flash
             if (meshRenderer != null)
             {
                 SetRendererColor(new Color(0.25f, 1f, 0.45f));
@@ -546,7 +546,7 @@ namespace FeaturesCombat
 
             yield return new WaitForSeconds(0.2f);
 
-            // 3. Selesai heal, langsung kembali agresif mengejar dan menyerang player lagi
+            // 3. Healing complete; immediately resume aggressive pursuit and attacks
             isRetreatingAndHealing = false;
             isPerformingSkill = false;
             lastAttackTime = Time.time + 0.5f;
@@ -560,11 +560,11 @@ namespace FeaturesCombat
             isBurrowed = true;
             EnsureTelegraphElements();
 
-            // Sembunyi / masuk tanah
+            // Submerge underground
             Vector3 startScale = transform.localScale;
             transform.localScale = new Vector3(startScale.x, 0.1f, startScale.z);
 
-            // Phase 1: Track posisi pemain di bawah tanah hingga mendekat (maksimal 1.2 detik)
+            // Phase 1: Track player position underground until close (1.2s max)
             float timer = 0f;
             while (timer < 1.2f)
             {
@@ -588,7 +588,7 @@ namespace FeaturesCombat
                 yield return null;
             }
 
-            // Phase 2: Hentikan gerak dan aktifkan telegraf bahaya (0.55s wind-up)
+            // Phase 2: Halt movement and activate danger telegraph (0.55s wind-up)
             if (rb != null)
             {
                 rb.position = transform.position;
@@ -617,7 +617,7 @@ namespace FeaturesCombat
                 yield return null;
             }
 
-            // Phase 3: Erupsi muncul dan berikan damage area
+            // Phase 3: Erupt from underground and deal area damage
             transform.localScale = startScale;
             isBurrowed = false;
 
@@ -655,7 +655,7 @@ namespace FeaturesCombat
         {
             isPerformingSkill = true;
 
-            // Charge beam selama 1 detik
+            // Charge beam for 1 second
             float charge = 0f;
             while (charge < 1.0f)
             {
@@ -664,7 +664,7 @@ namespace FeaturesCombat
                 yield return null;
             }
 
-            // Tembakkan laser membidik ke arah dada/tengah tubuh pemain
+            // Fire laser aimed at player's chest/center of mass
             Vector3 eyeOrigin = transform.position + Vector3.up * 0.5f;
             Vector3 targetChest = (playerTarget != null) ? playerTarget.position + Vector3.up * 1.0f : (eyeOrigin + transform.forward * 10f);
             Vector3 shootDir = (targetChest - eyeOrigin).normalized;
@@ -725,13 +725,13 @@ namespace FeaturesCombat
         {
             isPerformingSkill = true;
 
-            // Loncat tinggi ke udara
+            // Leap high into the air
             Vector3 groundPos = transform.position;
             transform.position = groundPos + Vector3.up * 12f;
 
             yield return new WaitForSeconds(1.5f);
 
-            // Turun menghantam tanah di dekat pemain (atau di batas luar jika pemain di dalam rumah)
+            // Slam down near the player (or at the outdoor perimeter if player is indoors)
             Vector3 slamTarget = playerTarget != null ? playerTarget.position : groundPos;
             if (NightBrawlManager.IsInsideHouse(slamTarget))
             {
@@ -776,12 +776,12 @@ namespace FeaturesCombat
                     new Color(1f, 0.8f, 0.2f));
             }
 
-            // Charge sejenak (0.4s)
+            // Brief charge (0.4s)
             yield return new WaitForSeconds(0.4f);
 
             Collider myCol = GetComponent<Collider>();
 
-            // Tembakkan 3 butir proyektil jagung beruntun tepat setinggi dada
+            // Fire 3 consecutive corn projectiles at chest height
             for (int i = 0; i < 3; i++)
             {
                 if (playerTarget != null && !NightBrawlManager.IsInsideHouse(playerTarget.position))
@@ -835,7 +835,7 @@ namespace FeaturesCombat
 
             yield return new WaitForSeconds(1.2f);
 
-            // Jika pemain berada di dalam rumah, atap melindungi sepenuhnya (0 damage)
+            // If the player is inside the house, the roof provides full protection (0 damage)
             if (playerTarget != null && !NightBrawlManager.IsInsideHouse(playerTarget.position))
             {
                 var target = playerTarget.GetComponent<IDamageable>();

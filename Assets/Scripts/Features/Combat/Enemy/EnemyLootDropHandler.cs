@@ -4,8 +4,8 @@ using FarmBeware.Core.Runtime;
 namespace FeaturesCombat
 {
     /// <summary>
-    /// Handler statis modular untuk memproses drop ekonomi & item saat musuh tereliminasi (Task 4.1 Refactor).
-    /// Mengurangi beban tanggung jawab God Class dari EnemyBase tanpa merusak kompatibilitas data.
+    /// Modular static handler for processing economy &amp; item drops upon enemy elimination (Task 4.1 Refactor).
+    /// Offloads God Class responsibilities from EnemyBase while preserving data compatibility.
     /// </summary>
     public static class EnemyLootDropHandler
     {

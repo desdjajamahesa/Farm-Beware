@@ -4,9 +4,9 @@ using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// Listener visual modern untuk bar stamina pemain.
-/// Mendukung label angka TextMeshPro, warna emas/amber hangat,
-/// serta umpan balik kelelahan (exhaustion dimming + shake saat stamina habis).
+/// Visual listener for the player's stamina bar.
+/// Supports TextMeshPro numeric label, warm amber/gold styling,
+/// and exhaustion feedback (dimming + shake when stamina is depleted).
 /// </summary>
 public class PlayerStaminaUI : MonoBehaviour
 {

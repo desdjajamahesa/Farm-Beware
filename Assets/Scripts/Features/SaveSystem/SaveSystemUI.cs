@@ -44,7 +44,7 @@ namespace FeaturesSaveSystem
         private static SaveSystemUI instance;
 
         /// <summary>
-        /// Event yang dipancarkan saat SaveSystemUI ditutup.
+        /// Event raised when SaveSystemUI is closed.
         /// </summary>
         public event Action OnSaveUIClosed;
 

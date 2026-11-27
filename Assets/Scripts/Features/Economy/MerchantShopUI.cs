@@ -153,7 +153,7 @@ namespace FeaturesEconomy
                 return false;
             }
 
-            // Muat dari ItemDatabase agar benih baru, bahan masak, dan pedang otomatis masuk katalog pedagang
+            // Load from ItemDatabase so new seeds, cooking ingredients, and swords automatically enter the merchant catalog
             var db = Resources.Load<ItemDatabase>("Database/ItemDatabase");
             if (db != null && db.GetAllItems() != null)
             {
@@ -227,7 +227,7 @@ namespace FeaturesEconomy
         private Coroutine scrollSnapCoroutine;
 
         /// <summary>
-        /// Mengembalikan posisi ScrollRect ke paling atas (1f) secara instan dan aman dari layout update.
+        /// Resets ScrollRect position to the very top (1f) immediately and safely across layout updates.
         /// </summary>
         public void ResetScrollPosition()
         {

@@ -4,10 +4,10 @@ using UnityEngine;
 namespace FeaturesTime.Atmosphere
 {
     /// <summary>
-    /// Mengontrol transisi visual pencahayaan (Directional Light, Ambient Light, Kabut Linear,
-    /// dan Camera Background) secara dinamis antara fase Siang (Day) dan Malam (Night).
-    /// Dikalibrasi untuk kamera Orthographic (jarak ~50m ke tanah) agar fog linear
-    /// tidak menyelimuti area gameplay; kabut hanya tampil di perimeter layar.
+    /// Dynamically controls lighting visual transitions (Directional Light, Ambient Light, Linear Fog,
+    /// and Camera Background) between Day and Night phases.
+    /// Calibrated for an Orthographic camera (~50m distance to ground) so linear fog
+    /// does not obscure the gameplay area; fog only appears around the screen perimeter.
     /// </summary>
     public class DayNightLightingController : MonoBehaviour
     {
@@ -40,10 +40,10 @@ namespace FeaturesTime.Atmosphere
         [SerializeField] private Color nightAmbientEquator = new Color(0.26f, 0.30f, 0.42f); // Midtone Equator Fill
         [SerializeField] private Color nightAmbientGround = new Color(0.22f, 0.24f, 0.28f); // Stylized Ground Floor (Prevents Black Crush)
         [SerializeField] private bool nightFogEnabled = true;
-        [SerializeField] private Color nightFogColor = new Color(0.18f, 0.24f, 0.34f);     // Kabut malam atmosferik
-        [SerializeField] private float nightFogStart = 52f;  // Fog di luar area gameplay
-        [SerializeField] private float nightFogEnd = 115f;   // Gradasi perimeter
-        [SerializeField] private Color nightCameraBackground = new Color(0.14f, 0.18f, 0.26f); // Background malam jelas
+        [SerializeField] private Color nightFogColor = new Color(0.18f, 0.24f, 0.34f);     // Atmospheric night fog
+        [SerializeField] private float nightFogStart = 52f;  // Fog outside gameplay area
+        [SerializeField] private float nightFogEnd = 115f;   // Perimeter gradient
+        [SerializeField] private Color nightCameraBackground = new Color(0.14f, 0.18f, 0.26f); // Clear night background
 
         [Header("Camera Projection Settings")]
         [Tooltip("Jika true, mengontrol orthographic size kamera utama saat transisi fase.")]

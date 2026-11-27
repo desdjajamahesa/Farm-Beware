@@ -3,11 +3,11 @@ using UnityEngine;
 using FarmBeware.Core.Runtime;
 
 /// <summary>
-/// Presenter feedback interaksi dunia:
-/// 1) Label nama objek (di atas hotbar) via ItemDisplayUI.ShowWorldHover.
-/// 2) Prompt aksi "E — Nama" via ItemDisplayUI.ShowInteractPrompt.
-/// 3) Highlight objek (Highlightable) pada target yang sedang di-hover.
-/// Membaca PlayerInteractor.CurrentTarget tiap frame. Murni listener UI — data-driven.
+/// World interaction feedback presenter:
+/// 1) Object name label (above hotbar) via ItemDisplayUI.ShowWorldHover.
+/// 2) Action prompt "E — Name" via ItemDisplayUI.ShowInteractPrompt.
+/// 3) Object highlight (Highlightable) on the currently hovered target.
+/// Reads PlayerInteractor.CurrentTarget every frame. Pure UI listener — data-driven.
 /// </summary>
 public class HoverLabelController : MonoBehaviour
 {
@@ -49,7 +49,7 @@ public class HoverLabelController : MonoBehaviour
             return;
         }
 
-        // Sembunyikan saat mode non-gameplay (Trophy Mode, Wardrobe Mode)
+        // Hide during non-gameplay modes (Trophy Mode, Wardrobe Mode)
         var camService = ServiceLocator.Resolve<ICameraService>();
         if (camService != null && (camService.CurrentMode == CameraMode.TrophyMode || camService.CurrentMode == CameraMode.WardrobeMode))
         {
@@ -57,7 +57,7 @@ public class HoverLabelController : MonoBehaviour
             return;
         }
 
-        // Sembunyikan saat player input terkunci (UI modal sedang terbuka: toko, masak, inventori, dll.)
+        // Hide when player input is locked (UI modal is open: shop, cooking, inventory, etc.)
         var pc = GetComponent<IPlayerContext>() ?? GetComponentInParent<IPlayerContext>();
         if (pc != null && pc.IsInputLocked)
         {
@@ -72,7 +72,7 @@ public class HoverLabelController : MonoBehaviour
             return;
         }
 
-        // Ganti highlight bila target berubah.
+        // Switch highlight when target changes.
         if (target != lastTarget)
         {
             ClearHighlight();
@@ -102,7 +102,7 @@ public class HoverLabelController : MonoBehaviour
 
     private void Show(string name)
     {
-        // Hindari SetActive ulang setiap frame (anti flicker).
+        // Avoid calling SetActive repeatedly every frame (prevents flicker).
         if (isShowing && lastShownName == name)
             return;
 

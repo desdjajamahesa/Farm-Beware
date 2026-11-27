@@ -56,7 +56,7 @@ namespace FeaturesCamera
         {
             if (Instance != null && Instance != this)
             {
-                // Jaga instance utama
+                // Preserve primary instance
                 return;
             }
             Instance = this;
@@ -69,7 +69,7 @@ namespace FeaturesCamera
         }
 
         /// <summary>
-        /// Menggetarkan kamera secara halus saat pemain terkena hit (subtle impact shudder).
+        /// Applies a subtle camera shake when the player takes a hit (subtle impact shudder).
         /// </summary>
         public void TriggerShake(float duration = 0.14f, float intensity = 0.22f)
         {

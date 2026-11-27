@@ -6,17 +6,17 @@ using UnityEngine.Rendering.Universal;
 namespace FeaturesRendering.Testing
 {
     /// <summary>
-    /// Skrip pengujian beban (stress test) 5.000 mesh kubus untuk memvalidasi
-    /// pipeline GPU Resident Drawer dan BatchRendererGroup (BRG) di Unity 6 URP.
+    /// 5,000-cube stress test script for validating the Unity 6 URP
+    /// GPU Resident Drawer and BatchRendererGroup (BRG) pipeline.
     ///
-    /// PANDUAN PENGUJIAN FRAME DEBUGGER:
-    /// 1. Masuk ke Play Mode atau klik tombol 'Spawn 5,000 Cubes' di Inspector.
-    /// 2. Buka menu Unity Editor: 'Window > Analysis > Frame Debugger'.
-    /// 3. Klik tombol 'Enable' pada Frame Debugger.
-    /// 4. Pada panel hirarki render pass di sisi kiri, telusuri pass:
-    ///    'UniversalRenderer' -> 'DrawOpaqueObjects' (atau 'GPUResidentDrawer.Draw').
-    /// 5. Verifikasi bahwa 5.000 kubus dirender hanya dalam 1 atau 2 indirect draw call
-    ///    (menggunakan BatchRendererGroup / GPU Resident Drawer), bukan ribuan draw calls terpisah!
+    /// FRAME DEBUGGER VERIFICATION GUIDE:
+    /// 1. Enter Play Mode or click 'Spawn 5,000 Cubes' in the Inspector.
+    /// 2. Open Unity Editor menu: 'Window > Analysis > Frame Debugger'.
+    /// 3. Click 'Enable' in the Frame Debugger.
+    /// 4. In the left render pass hierarchy, inspect:
+    ///    'UniversalRenderer' -> 'DrawOpaqueObjects' (or 'GPUResidentDrawer.Draw').
+    /// 5. Verify all 5,000 cubes render in only 1 or 2 indirect draw calls
+    ///    (via BatchRendererGroup / GPU Resident Drawer), rather than thousands of separate draw calls.
     /// </summary>
     [ExecuteAlways]
     public class GPUResidentDrawerStressTest : MonoBehaviour
@@ -91,10 +91,10 @@ namespace FeaturesRendering.Testing
 
             Material mat = EnsureMaterial();
 
-            // Gunakan primitive cube mesh standar
+            // Use standard primitive cube mesh
             Mesh cubeMesh = GetPrimitiveCubeMesh();
 
-            // Hitung grid dimensi (misal 50 baris x 100 kolom = 5.000)
+            // Compute grid dimensions (e.g., 50 rows x 100 columns = 5,000)
             int columns = Mathf.CeilToInt(Mathf.Sqrt(totalCubes));
             int rows = Mathf.CeilToInt((float)totalCubes / columns);
 
@@ -147,7 +147,7 @@ namespace FeaturesRendering.Testing
                 cubeRoot = null;
             }
 
-            // Bersihkan objek anak jika ada yang tersisa
+            // Clean up any leftover child objects
             var children = new List<Transform>();
             foreach (Transform child in transform)
             {
@@ -179,7 +179,7 @@ namespace FeaturesRendering.Testing
             testMaterial = new Material(urpLit);
             testMaterial.name = "Mat_GPUResident_TestCube";
             testMaterial.color = new Color(0.25f, 0.65f, 0.95f);
-            testMaterial.enableInstancing = true; // Wajib untuk GPU Resident Drawer / BRG
+            testMaterial.enableInstancing = true; // Required for GPU Resident Drawer / BRG
 
             return testMaterial;
         }

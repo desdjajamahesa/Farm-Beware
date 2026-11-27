@@ -5,9 +5,9 @@ using UnityEngine;
 namespace PlayerUI
 {
     /// <summary>
-    /// Elemen angka/teks pertarungan melayang (Floating Combat Text) dengan animasi punch-scale,
-    /// pelacakan dinamis posisi 3D di dunia ke layar kamera, outline kontras tinggi, dan fade-out halus.
-    /// Mendukung kustomisasi ukuran skala dan warna outline untuk membedakan jenis hit.
+    /// Floating combat text element featuring punch-scale animation,
+    /// dynamic 3D world-to-screen camera tracking, high-contrast outline, and smooth fade-out.
+    /// Supports custom scale and outline color per hit type.
     /// </summary>
     public class FloatingTextItem : MonoBehaviour
     {
@@ -43,7 +43,7 @@ namespace PlayerUI
         }
 
         /// <summary>
-        /// Memutar animasi floating text dengan pelacakan posisi 3D dunia dinamis ke koordinat layar.
+        /// Plays floating text animation with dynamic 3D world-to-screen position tracking.
         /// </summary>
         public void PlayWorldTracked(string text, Color color, Vector3 worldStartPos, Camera cam, System.Action onComplete = null)
         {
@@ -51,7 +51,7 @@ namespace PlayerUI
         }
 
         /// <summary>
-        /// Overload lengkap dengan dukungan scaleMultiplier dan kustomisasi outline.
+        /// Full overload supporting scaleMultiplier and custom outline color.
         /// </summary>
         public void PlayWorldTracked(
             string text,
@@ -87,7 +87,7 @@ namespace PlayerUI
         }
 
         /// <summary>
-        /// Fallback legacy untuk pemanggilan berbasis Vector2 layar langsung.
+        /// Legacy fallback for direct screen-space Vector2 calls.
         /// </summary>
         public void Play(string text, Color color, Vector2 startScreenPos, System.Action onComplete = null)
         {
@@ -136,7 +136,7 @@ namespace PlayerUI
                     transform.localScale = Vector3.one * endScale;
                 }
 
-                // Posisi dunia naik perlahan
+                // Rise smoothly in world space
                 Vector3 currentWorldPos = worldStartPos + Vector3.up * (worldRiseDistance * Mathf.Sin(progress * Mathf.PI * 0.5f));
 
                 if (cam != null)
@@ -153,7 +153,7 @@ namespace PlayerUI
                     }
                 }
 
-                // Fade out di 35% durasi terakhir
+                // Fade out over the final 35% of duration
                 if (textMesh != null)
                 {
                     float alpha = 1f;

@@ -2,11 +2,11 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// Visual Listener untuk Inventory 2 (Trophy Rack).
-/// Murni pendengar event: subscribe ke rackInventory.OnInventoryChanged lalu
-/// MERENDER/MENGHAPUS model 3D placeablePrefab di atas titik-titik SnapPoint.
-/// Tidak menyimpan state gameplay dan tidak pernah memodifikasi data inventory —
-/// seluruh mutasi dilakukan backend (TrophySystemManager / InventoryComponent).
+/// Visual listener for Inventory 2 (Trophy Rack).
+/// Purely event-driven: subscribes to rackInventory.OnInventoryChanged and
+/// RENDERS/REMOVES 3D placeablePrefab models above SnapPoint anchors.
+/// Holds no gameplay state and never modifies inventory data —
+/// all mutations are handled by the backend (TrophySystemManager / InventoryComponent).
 /// </summary>
 public class TrophyRackVisuals : MonoBehaviour
 {
@@ -18,14 +18,14 @@ public class TrophyRackVisuals : MonoBehaviour
     [Tooltip("Titik SnapPoint 3D (panjangnya harus sama dengan jumlah slot rack).")]
     [SerializeField] private Transform[] snapPoints;
 
-    // index slot rak -> model 3D yang sedang tampil (jika ada).
+    // rack slot index -> currently displayed 3D model (if any).
     private readonly Dictionary<int, GameObject> _spawnedModels = new Dictionary<int, GameObject>();
 
-    // index slot rak -> ItemData model sedang dirender (untuk deteksi pergantian item/swap).
+    // rack slot index -> ItemData of the currently rendered model (for swap detection).
     private readonly Dictionary<int, ItemData> _spawnedItemAt = new Dictionary<int, ItemData>();
 
-    // Guard re-entrancy: OnInventoryChanged bisa terpanggil bertingkat saat operasi
-    // transfer berantai (AddItem -> RemoveItem -> transfer). Jaga eksekusi sinkron.
+    // Re-entrancy guard: OnInventoryChanged can fire nestedly during chained
+    // transfer operations (AddItem -> RemoveItem -> transfer). Keep execution synchronous.
     private bool _refreshing;
 
     #endregion
@@ -57,7 +57,7 @@ public class TrophyRackVisuals : MonoBehaviour
     #region Sync (Data-Driven Listener)
 
     /// <summary>
-    /// Sinkronisasi seluruh slot rak ke model 3D. Idempoten & aman dipanggil berulang.
+    /// Synchronizes all rack slots to 3D models. Idempotent & safe to call repeatedly.
     /// </summary>
     private void Refresh()
     {
@@ -80,7 +80,7 @@ public class TrophyRackVisuals : MonoBehaviour
     }
 
     /// <summary>
-    /// Render/hapus model 3D pada satu indeks slot agar selalu sesuai data rak.
+    /// Renders or removes the 3D model at a single slot index to match rack data.
     /// </summary>
     private void SyncSlot(int index)
     {
@@ -89,14 +89,14 @@ public class TrophyRackVisuals : MonoBehaviour
 
         bool hasModel = _spawnedModels.TryGetValue(index, out GameObject model) && model != null;
 
-        // Slot terisi item yang bisa ditempatkan di dunia -> pastikan model tampil.
+        // Slot occupied by a world-placeable item -> ensure model is visible.
         if (item != null && item is TrophyItemData trophy)
         {
-            // Model sudah ada untuk item yang SAMA -> tidak perlu apa-apa.
+            // Model already exists for the SAME item -> nothing to do.
             if (hasModel && _spawnedItemAt.TryGetValue(index, out ItemData renderedItem) && renderedItem == item)
                 return;
 
-            // Item berbeda (swap) atau model belum ada -> hapus lama & render ulang.
+            // Different item (swap) or model missing -> destroy old & re-render.
             if (hasModel)
                 DestroyModel(index);
 
@@ -108,7 +108,7 @@ public class TrophyRackVisuals : MonoBehaviour
             _spawnedItemAt[index] = item;
             SetPlaceholder(index, false);
         }
-        // Slot kosong atau item tanpa model placeable -> hapus model (jika ada).
+        // Empty slot or non-placeable item -> destroy model (if any).
         else if (hasModel)
         {
             DestroyModel(index);
@@ -116,7 +116,7 @@ public class TrophyRackVisuals : MonoBehaviour
     }
 
     /// <summary>
-    /// Instantiate prefab sebagai child dari titik tempat, mempertahankan skala asli prefab.
+    /// Instantiates prefab as a child of the anchor point, preserving the prefab's original scale.
     /// </summary>
     private GameObject CreateModel(GameObject prefab, Transform anchor)
     {

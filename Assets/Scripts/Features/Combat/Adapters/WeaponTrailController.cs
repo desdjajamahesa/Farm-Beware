@@ -193,7 +193,7 @@ namespace FeaturesCombat.Adapters
         /// <param name="isHeavy">True if performing heavy charge release strike.</param>
         public void BeginTrail(int comboIndex, bool isFinisher = false, bool isHeavy = false)
         {
-            // Attack trail dibuat hanya ada di malam hari saja sesuai permintaan desain
+            // Attack trail is enabled only at night per design specification
             if (!IsNightTime())
             {
                 return;

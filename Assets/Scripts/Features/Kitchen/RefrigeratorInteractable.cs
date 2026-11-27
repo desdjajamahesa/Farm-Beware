@@ -3,9 +3,9 @@ using UnityEngine;
 using FeaturesInteraction;
 
 /// <summary>
-/// Refrigerator (Kulkas): menyimpan/mengawetkan sayuran & buah.
-/// Membuka UI storage generik dengan inventory kulkas di kanan.
-/// Inventory kulkas diprogram membatasi FoodCategory (default: Vegetable & Fruit).
+/// Refrigerator: stores/preserves vegetables & fruits.
+/// Opens generic storage UI with the refrigerator inventory on the right.
+/// Refrigerator inventory programmatically restricts FoodCategory (default: Vegetable & Fruit).
 /// </summary>
 [RequireComponent(typeof(InventoryComponent))]
 public class RefrigeratorInteractable : MonoBehaviour, IInteractable
@@ -77,7 +77,7 @@ public class RefrigeratorInteractable : MonoBehaviour, IInteractable
 
     private void ApplyRestriction(InventoryComponent inventory)
     {
-        // Backend: pastikan InventoryComponent milik kulkas membatasi kategori untuk menyimpan semua tanaman & makanan.
+        // Backend: ensure the refrigerator's InventoryComponent restricts categories to store all crops & food.
         inventory?.SetAllowedFoodCategories(allowedCategories);
         inventory?.SetAllowAllCropsAndFood(true);
     }
@@ -88,7 +88,7 @@ public class RefrigeratorInteractable : MonoBehaviour, IInteractable
         if (inventory == null)
             return;
 
-        // Pastikan pembatasan kategori selalu aktif (backend, bukan UI).
+        // Ensure category restriction is always active (backend, not UI).
         ApplyRestriction(inventory);
 
         OnRefrigeratorOpened?.Invoke();

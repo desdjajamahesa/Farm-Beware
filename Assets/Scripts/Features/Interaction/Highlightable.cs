@@ -4,11 +4,11 @@ using FarmBeware.Core.Runtime;
 namespace FeaturesInteraction
 {
     /// <summary>
-    /// Penanda objek interaktif yang bisa di-highlight saat di-hover.
-    /// Murni visual: menyimpan material asli renderer dan menukar dengan material
-    /// highlight (emissive) pada SetHighlight(true/false). Tidak menyentuh logika gameplay.
-    /// Jika highlightMaterial belum di-set, otomatis mencari "Mat_Highlight" dari Resources
-    /// atau scene agar tidak ada objek interaktif yang gagal berpendar.
+    /// Marks an interactive object as highlightable on hover.
+    /// Purely visual: caches original renderer materials and swaps in an emissive
+    /// highlight material on SetHighlight(true/false). Does not touch gameplay logic.
+    /// If highlightMaterial is not assigned, automatically locates "Mat_Highlight" from Resources
+    /// or the scene so no interactive object fails to glow.
     /// </summary>
     public class Highlightable : MonoBehaviour
     {
@@ -18,7 +18,7 @@ namespace FeaturesInteraction
         private Renderer[] cachedRenderers;
         private Material[][] originalMaterials;
 
-        // Shared fallback material agar tidak dimuat berulang kali per instance
+        // Shared fallback material to avoid loading repeatedly per instance
         private static Material sharedFallbackMaterial;
 
         public void SetHighlightMaterial(Material mat)
@@ -38,8 +38,8 @@ namespace FeaturesInteraction
 
             CacheRenderers();
 
-            // Jika objek ini sedang mengalami oklusi kamera (transparan agar pemain terlihat),
-            // jangan menimpa dengan highlight solid yang akan menutupi pemain lagi.
+            // If this object is currently camera-occluded (transparent so the player stays visible),
+            // do not overwrite with a solid highlight that would hide the player again.
             var selfOcc = GetComponent<IOccluder>() ?? GetComponentInParent<IOccluder>();
             if (on && selfOcc != null && selfOcc.IsOccluding)
             {
@@ -69,7 +69,7 @@ namespace FeaturesInteraction
                 {
                     if (rOcc != null && rOcc.IsOccluding)
                     {
-                        // Jangan kembalikan ke material opaque jika dinding/pintu sedang transparan karena oklusi
+                        // Do not restore to opaque material if the wall/door is transparent due to occlusion
                         continue;
                     }
 
@@ -85,9 +85,9 @@ namespace FeaturesInteraction
         }
 
         /// <summary>
-        /// Memperbarui cache material asli untuk renderer tertentu.
-        /// Digunakan saat material dasar objek diubah secara dinamis (misal: tanah dicangkul/disiram/tanaman tumbuh)
-        /// agar saat un-highlight (SetHighlight false), renderer mengembalikan material baru, bukan material lama.
+        /// Updates the cached original material for a specific renderer.
+        /// Used when an object's base material changes dynamically (e.g., soil tilled/watered/crop grown)
+        /// so that un-highlighting (SetHighlight false) restores the new material instead of the old one.
         /// </summary>
         public void UpdateOriginalMaterial(Renderer targetRenderer, Material newMaterial)
         {
@@ -107,7 +107,7 @@ namespace FeaturesInteraction
                         }
                     }
 
-                    // Jika saat ini TIDAK sedang di-highlight, langsung terapkan material baru
+                    // If NOT currently highlighted, apply the new material immediately
                     if (!isHighlighted)
                     {
                         targetRenderer.sharedMaterial = newMaterial;
@@ -118,21 +118,21 @@ namespace FeaturesInteraction
         }
 
         /// <summary>
-        /// Jika highlightMaterial belum di-assign, coba cari fallback material dari scene atau buat sendiri.
+        /// If highlightMaterial is unassigned, attempts to find a fallback material in the scene or create one.
         /// </summary>
         private void EnsureHighlightMaterial()
         {
             if (highlightMaterial != null)
                 return;
 
-            // Coba gunakan shared fallback
+            // Try using the shared fallback
             if (sharedFallbackMaterial != null)
             {
                 highlightMaterial = sharedFallbackMaterial;
                 return;
             }
 
-            // Cari dari Highlightable lain di scene yang sudah punya material
+            // Search other Highlightable instances in the scene that already have a material
             var allHighlightables = FindObjectsByType<Highlightable>(FindObjectsInactive.Include, FindObjectsSortMode.None);
             foreach (var h in allHighlightables)
             {
@@ -145,7 +145,7 @@ namespace FeaturesInteraction
             }
 
 #if UNITY_EDITOR
-            // Editor fallback: muat langsung dari path aset
+            // Editor fallback: load directly from asset path
             var mat = UnityEditor.AssetDatabase.LoadAssetAtPath<Material>("Assets/Art/Materials/Kitchen/Mat_Highlight.mat")
                    ?? UnityEditor.AssetDatabase.LoadAssetAtPath<Material>("Assets/Materials/Kitchen/Mat_Highlight.mat");
             if (mat != null)
@@ -156,7 +156,7 @@ namespace FeaturesInteraction
             }
 #endif
 
-            // Runtime fallback terakhir: buat material emissive sederhana
+            // Final runtime fallback: create a simple emissive material
             var shader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
             if (shader != null)
             {
@@ -181,7 +181,7 @@ namespace FeaturesInteraction
             var list = new System.Collections.Generic.List<Renderer>();
             for (int i = 0; i < allRends.Length; i++)
             {
-                // Jangan highlight permukaan cermin atau kamera cermin
+                // Do not highlight mirror surfaces or mirror cameras
                 if (allRends[i].name.ToLower().Contains("mirror") || allRends[i].GetComponent("MirrorCamera") != null)
                     continue;
                 list.Add(allRends[i]);

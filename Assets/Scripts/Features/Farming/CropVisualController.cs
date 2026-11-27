@@ -4,9 +4,9 @@ using FeaturesFarming;
 namespace FeaturesFarming
 {
     /// <summary>
-    /// Mengelola representasi visual 3D dari petak tanah dan tanaman:
-    /// 1. Tampilan tanah (Untilled, Tilled Dry, Tilled Wet).
-    /// 2. Tahap pertumbuhan visual tanaman (Sprout, Growing, Mature Sweet Potato, Mature Taro).
+    /// Manages 3D visual representation of farmland tiles and crops:
+    /// 1. Soil appearance (Untilled, Tilled Dry, Tilled Wet).
+    /// 2. Visual crop growth stages (Sprout, Growing, Mature Sweet Potato, Mature Taro).
     /// </summary>
     [ExecuteAlways]
     public class CropVisualController : MonoBehaviour
@@ -46,7 +46,7 @@ namespace FeaturesFarming
         {
             if (isReadyToHarvest && cropContainer != null && Application.isPlaying)
             {
-                // Efek subtle bobbing/pantul lembut ketika tanaman sudah siap panen
+                // Subtle bobbing effect when crop is ready to harvest
                 float yOffset = Mathf.Sin(Time.time * bounceSpeed) * bounceHeight;
                 cropContainer.localPosition = initialCropPos + new Vector3(0f, yOffset, 0f);
             }
@@ -57,10 +57,10 @@ namespace FeaturesFarming
             EnsureDefaultVisuals();
             isReadyToHarvest = (state == TileState.ReadyToHarvest);
 
-            // 1. Update Material Tanah
+            // 1. Update Soil Material
             UpdateSoilMaterial(state);
 
-            // 2. Update Visual Tanaman
+            // 2. Update Crop Visuals
             if (state == TileState.Untilled || state == TileState.Tilled || seed == null)
             {
                 HideAllCrops();
@@ -69,7 +69,7 @@ namespace FeaturesFarming
                 return;
             }
 
-            // Sembunyikan semua dulu
+            // Hide all first
             HideAllCrops();
 
             bool isTaro = seed.itemName.ToLower().Contains("taro") || seed.itemId.ToLower().Contains("taro");
@@ -77,7 +77,7 @@ namespace FeaturesFarming
 
             if (state == TileState.ReadyToHarvest || progress >= 1f)
             {
-                // Tahap 3: Matang (Mature)
+                // Stage 3: Mature
                 if (isCorn)
                 {
                     if (matureCornVisual != null)
@@ -96,7 +96,7 @@ namespace FeaturesFarming
             }
             else if (progress >= 0.4f)
             {
-                // Tahap 2: Tumbuh Sedang (Growing)
+                // Stage 2: Growing
                 if (growingVisual != null)
                 {
                     growingVisual.SetActive(true);
@@ -106,7 +106,7 @@ namespace FeaturesFarming
             }
             else
             {
-                // Tahap 1: Tunas Baru (Sprout)
+                // Stage 1: Sprout
                 if (sproutVisual != null)
                 {
                     sproutVisual.SetActive(true);
@@ -120,8 +120,8 @@ namespace FeaturesFarming
         {
             if (soilRenderer == null) return;
 
-            // Jika mesh tanah memiliki lebih dari 1 material (seperti model farming_plot dengan dirt_001, dirt_002, dirt_003),
-            // kita terapkan tinting warna melalui MaterialPropertyBlock agar tekstur aslinya tetap terjaga.
+            // If the soil mesh has more than 1 material (such as the farming_plot model with dirt_001, dirt_002, dirt_003),
+            // apply color tinting via MaterialPropertyBlock to preserve the original textures.
             if (soilRenderer.sharedMaterials != null && soilRenderer.sharedMaterials.Length > 1)
             {
                 Color tint = Color.white;
@@ -167,7 +167,7 @@ namespace FeaturesFarming
             {
                 soilRenderer.sharedMaterial = targetMat;
 
-                // Sinkronkan cache material pada Highlightable agar tidak me-revert ke untilled saat un-hover
+                // Sync Highlightable material cache so it does not revert to untilled on un-hover
                 var highlight = GetComponent<FeaturesInteraction.Highlightable>() ?? GetComponentInParent<FeaturesInteraction.Highlightable>();
                 if (highlight != null)
                 {
@@ -185,7 +185,7 @@ namespace FeaturesFarming
         }
 
         /// <summary>
-        /// Membuat atau mereferensikan mesh default bila belum ada di hierarki.
+        /// Creates or references default meshes if not already present in the hierarchy.
         /// </summary>
         public void EnsureDefaultVisuals()
         {
@@ -209,7 +209,7 @@ namespace FeaturesFarming
                 }
             }
 
-            // Pastikan child visuals terhubung bila ada di dalam CropContainer
+            // Ensure child visuals are linked if present inside CropContainer
             if (cropContainer != null)
             {
                 if (sproutVisual == null)

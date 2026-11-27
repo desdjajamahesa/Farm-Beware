@@ -6,9 +6,9 @@ using UnityEngine.UI;
 namespace FeaturesCombat.UI
 {
     /// <summary>
-    /// Slot visual individual untuk bar kesehatan Boss di layar atas (Top HUD).
-    /// Mendukung kustomisasi nama gelar, icon boss, ghost damage fill,
-    /// indikator fase amukan (Enrage Divider), getaran saat terkena damage besar, dan transisi "DEFEATED".
+    /// Individual visual slot for a Boss health bar on the top HUD.
+    /// Supports custom title names, boss icon, ghost damage fill,
+    /// enrage phase divider marker, hit-shake on heavy damage, and "DEFEATED" transition.
     /// </summary>
     [RequireComponent(typeof(CanvasGroup))]
     public class BossHealthBarSlotUI : MonoBehaviour
@@ -65,7 +65,7 @@ namespace FeaturesCombat.UI
             if (boss == null) return;
             boundBoss = boss;
 
-            // Atur dimensi slot: Dual Boss (Hari 5) sedikit lebih ramping dari Single Boss
+            // Set slot dimensions: Dual Boss (Day 5) is slightly slimmer than Single Boss
             float width = isDualBossMode ? 480f : 560f;
             float height = isDualBossMode ? 46f : 54f;
             rectTransform.sizeDelta = new Vector2(width, height);
@@ -164,7 +164,7 @@ namespace FeaturesCombat.UI
                     mainFillImage.fillAmount = targetFillRatio;
                 }
 
-                // Shake & Punch efek saat boss terkena pukulan
+                // Shake & Punch effect when boss takes a hit
                 if (shakeCoroutine != null) StopCoroutine(shakeCoroutine);
                 shakeCoroutine = StartCoroutine(RoutinePunchShake());
 
@@ -180,7 +180,7 @@ namespace FeaturesCombat.UI
                 if (ghostFillImage != null) ghostFillImage.fillAmount = newRatio;
             }
 
-            // Cek Enrage phase untuk The Ranger (50% HP)
+            // Check Enrage phase for The Ranger (50% HP)
             if (boundBoss.enemyType == EnemyType.TheRanger && newRatio <= 0.501f && !isEnraged)
             {
                 isEnraged = true;
@@ -245,10 +245,10 @@ namespace FeaturesCombat.UI
 
             if (mainFillImage != null) mainFillImage.color = new Color(0.3f, 0.3f, 0.35f, 0.8f);
 
-            // Tunggu 0.8 detik agar pemain puas melihat teks DEFEATED
+            // Hold 0.8s so the player can clearly read the DEFEATED banner
             yield return new WaitForSeconds(0.8f);
 
-            // Fade out halus
+            // Smooth fade out
             float elapsed = 0f;
             float duration = 0.6f;
             while (elapsed < duration)
@@ -280,7 +280,7 @@ namespace FeaturesCombat.UI
                 cachedFrameSprite = CreateBoxSprite();
             }
 
-            // 1. Header Row (Nama & Subtitle)
+            // 1. Header Row (Name & Subtitle)
             if (bossNameText == null)
             {
                 var titleObj = new GameObject("BossTitle", typeof(RectTransform), typeof(TextMeshProUGUI));
@@ -341,7 +341,7 @@ namespace FeaturesCombat.UI
                 rt.anchoredPosition = new Vector2(0f, 2f);
                 rt.sizeDelta = new Vector2(0f, 24f);
 
-                // Background di dalam frame
+                // Background inside frame
                 var bgObj = new GameObject("BarBg", typeof(RectTransform), typeof(Image));
                 bgObj.transform.SetParent(frameObj.transform, false);
                 bgImage = bgObj.GetComponent<Image>();
@@ -388,7 +388,7 @@ namespace FeaturesCombat.UI
                 mainRt.offsetMin = Vector2.zero;
                 mainRt.offsetMax = Vector2.zero;
 
-                // Enrage Marker (Garis tengah di 50%)
+                // Enrage Marker (Center divider at 50%)
                 var markerObj = new GameObject("EnrageMarker_50", typeof(RectTransform), typeof(Image));
                 markerObj.transform.SetParent(bgObj.transform, false);
                 enrageMarkerImage = markerObj.GetComponent<Image>();
@@ -403,7 +403,7 @@ namespace FeaturesCombat.UI
                 markerRt.anchoredPosition = Vector2.zero;
                 markerObj.SetActive(false);
 
-                // Angka HP eksak
+                // Exact HP value text
                 var hpTxtObj = new GameObject("HpValueText", typeof(RectTransform), typeof(TextMeshProUGUI));
                 hpTxtObj.transform.SetParent(bgObj.transform, false);
                 hpValueText = hpTxtObj.GetComponent<TextMeshProUGUI>();

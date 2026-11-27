@@ -6,11 +6,11 @@ using FarmBeware.Core.Runtime;
 namespace PlayerUI
 {
     /// <summary>
-    /// Singleton manager untuk memunculkan teks pertarungan melayang (Floating Damage/Heal/Notification Text).
-    /// Membedakan secara visual dan dramatis antara:
-    /// 1. Outgoing Damage (Pemain memukul monster): Warna Emas/Amber/Api cerah tanpa minus, simbol petir/ledakan.
-    /// 2. Incoming Damage (Monster memukul pemain): Warna Merah Darah pekat dengan tanda minus dan label HP (-X HP).
-    /// Menggunakan dynamic camera tracking, high-contrast outlines, dan object pooling 0-GC.
+    /// Singleton manager for spawning floating combat text (Damage, Heal, and Notification text).
+    /// Visually distinguishes between:
+    /// 1. Outgoing Damage (player hitting monster): Bright gold/amber/fire colors without a minus sign, with burst/lightning icons.
+    /// 2. Incoming Damage (monster hitting player): Deep blood red with a minus sign and HP label (-X HP).
+    /// Uses dynamic camera tracking, high-contrast outlines, and zero-GC object pooling.
     /// </summary>
     public class FloatingCombatTextManager : MonoBehaviour, IFloatingTextService
     {
@@ -56,8 +56,8 @@ namespace PlayerUI
         [SerializeField] private Color playerCriticalDamageColor = new Color(0.92f, 0.04f, 0.04f);
 
         [Header("Colors - General")]
-        [SerializeField] private Color healColor = new Color(0.25f, 0.95f, 0.40f);        // Hijau Terang
-        [SerializeField] private Color noticeColor = new Color(0.95f, 0.88f, 0.35f);      // Kuning Lembut
+        [SerializeField] private Color healColor = new Color(0.25f, 0.95f, 0.40f);        // Bright Green
+        [SerializeField] private Color noticeColor = new Color(0.95f, 0.88f, 0.35f);      // Soft Yellow
 
         private static readonly Color32 DefaultEnemyOutline = new Color32(20, 20, 20, 255);
         private static readonly Color32 PlayerHurtOutline = new Color32(50, 0, 0, 255);
@@ -80,7 +80,7 @@ namespace PlayerUI
                 containerCanvas = GetComponent<RectTransform>();
             }
 
-            // Daftarkan dan nonaktifkan semua child pra-eksisting ke dalam pool
+            // Register and deactivate all pre-existing children into the pool
             if (containerCanvas != null)
             {
                 for (int i = 0; i < containerCanvas.childCount; i++)
@@ -154,8 +154,8 @@ namespace PlayerUI
         }
 
         /// <summary>
-        /// Memunculkan angka damage saat pemain memukul monster (Outgoing Hit).
-        /// Format: Angka emas/jingga cerah tanpa tanda minus, melayang naik dengan punch scale memuaskan.
+        /// Spawns outgoing damage numbers when the player hits a monster.
+        /// Format: Bright gold/orange number without a minus sign, rising with a punch scale effect.
         /// </summary>
         public void SpawnEnemyDamage(Vector3 worldPos, int damage, bool isCrit = false, bool isSkill = false)
         {
@@ -201,8 +201,8 @@ namespace PlayerUI
         }
 
         /// <summary>
-        /// Memunculkan angka luka saat monster memukul pemain (Incoming Hit / Hurt).
-        /// Format: Merah darah pekat dengan tanda minus jelas (-X HP), outline marun gelap, melayang di atas pemain.
+        /// Spawns incoming damage numbers when a monster hits the player.
+        /// Format: Deep blood red with an explicit minus sign (-X HP) and dark maroon outline above the player.
         /// </summary>
         public void SpawnPlayerDamage(Vector3 worldPos, int amount)
         {
@@ -273,7 +273,7 @@ namespace PlayerUI
                 return comp;
             }
 
-            // Fallback prosedural berkualitas tinggi
+            // High-quality procedural fallback
             return BuildProceduralFloatingText(containerCanvas);
         }
 

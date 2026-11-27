@@ -7,8 +7,8 @@ public class InventoryComponent : MonoBehaviour
     public List<InventorySlot> slots = new List<InventorySlot>();
     public int maxCapacity;
 
-    // BLOCK TROPHY: bila true (mis. Inventory Player), item bertipe Trophy TIDAK PERNAH
-    // bisa masuk ke inventory ini dari jalur mana pun (AddItem/MoveItemToSlot/TransferItemTo).
+    // BLOCK TROPHY: when true (e.g., Player Inventory), Trophy-type items can NEVER
+    // enter this inventory from any path (AddItem/MoveItemToSlot/TransferItemTo).
     [Tooltip("Tidak mengizinkan item tipe Trophy masuk ke inventory ini (Contoh: inventory Player).")]
     [SerializeField] private bool blockTrophyItems;
 
@@ -19,7 +19,7 @@ public class InventoryComponent : MonoBehaviour
 
     private void Awake()
     {
-        // Auto-detect player inventory agar hasHotbar aktif otomatis dan kapasitas 16 slot
+        // Auto-detect player inventory so hasHotbar is enabled automatically with 16-slot capacity
         if (CompareTag("Player") || GetComponent<IPlayerContext>() != null || blockTrophyItems)
         {
             hasHotbar = true;
@@ -36,7 +36,7 @@ public class InventoryComponent : MonoBehaviour
         else
         {
             EnsureSlotsAllocated();
-            // Pastikan item yang sudah ada di inspector tidak memiliki quantity <= 0
+            // Ensure items already set in the Inspector do not have quantity <= 0
             for (int i = 0; i < slots.Count; i++)
             {
                 if (slots[i] != null && slots[i].item != null && slots[i].quantity <= 0)
@@ -47,12 +47,12 @@ public class InventoryComponent : MonoBehaviour
         }
     }
 
-    // Pembatas kategori makanan yang boleh masuk (kosong = tanpa pembatasan).
-    // Contoh: Kulkas = [Vegetable, Fruit]; Sink = hanya item yang bisa dicuci.
+    // Food category filter for allowed items (empty = unrestricted).
+    // Example: Refrigerator = [Vegetable, Fruit]; Sink = washable items only.
     [Tooltip("Pembatas kategori makanan (FoodCategory). Kosong = semua boleh masuk.")]
     [SerializeField] private List<ItemData.FoodCategory> allowedFoodCategories;
 
-    // Akses baca publik untuk rule backend lain (mis. alur Trophy Cabinet / stasiun dapur).
+    // Public read access for other backend rules (e.g., Trophy Cabinet flow / kitchen stations).
     public bool BlockTrophyItems => blockTrophyItems;
     public void SetBlockTrophyItems(bool block) => blockTrophyItems = block;
     public IReadOnlyList<ItemData.FoodCategory> AllowedFoodCategories => allowedFoodCategories;
@@ -73,15 +73,15 @@ public class InventoryComponent : MonoBehaviour
     public void SetAllowAllCropsAndFood(bool allow) => allowAllCropsAndFood = allow;
 
     /// <summary>
-    /// Aturan backend tunggal: menentukan apakah sebuah item boleh MASUK ke inventory ini.
-    /// Kombinasi: blockTrophyItems + pembatasan kategori makanan.
+    /// Single backend rule: determines whether an item is allowed to ENTER this inventory.
+    /// Combines blockTrophyItems + food category restrictions.
     /// </summary>
     public bool CanAcceptItem(ItemData item)
     {
         if (item == null)
             return false;
 
-        // Trophy tidak boleh masuk ke inventory pemblokir (mis. Player).
+        // Trophies cannot enter blocking inventories (e.g., Player).
         if (blockTrophyItems && item.type == ItemData.ItemType.Trophy)
             return false;
 
@@ -110,7 +110,7 @@ public class InventoryComponent : MonoBehaviour
             return false;
         }
 
-        // Pembatasan kategori makanan (bila daftar diisi).
+        // Food category restriction (when list is populated).
         if (allowedFoodCategories != null && allowedFoodCategories.Count > 0)
         {
             bool allowed = false;
@@ -139,18 +139,18 @@ public class InventoryComponent : MonoBehaviour
         return true;
     }
 
-    // Listener hooking (tanpa mengubah struktur data) untuk memberi tahu UI ketika slot berubah.
+    // Listener hook (without altering data structures) to notify UI when slots change.
     public System.Action OnInventoryChanged;
     public static event System.Action<ItemData> OnItemConsumed;
     public static event System.Func<InventoryComponent, int, bool> OnEquipmentUseRequested;
 
-    // State & event Hotbar (4 slot pertama).
+    // Hotbar state & events (first 4 slots).
     public int selectedHotbarIndex = 0;
     public System.Action<int> OnHotbarSelected;
 
     public void SelectHotbarSlot(int index)
     {
-        // Batasi indeks ke rentang hotbar 0..3.
+        // Clamp index to hotbar range 0..3.
         index = Mathf.Clamp(index, 0, 3);
         selectedHotbarIndex = index;
         OnHotbarSelected?.Invoke(selectedHotbarIndex);
@@ -165,7 +165,7 @@ public class InventoryComponent : MonoBehaviour
     }
 
     /// <summary>
-    /// Memastikan list slot teralokasi hingga maxCapacity tanpa menghapus item yang sudah ada.
+    /// Ensures the slot list is allocated up to maxCapacity without clearing existing items.
     /// </summary>
     public void EnsureSlotsAllocated()
     {
@@ -175,7 +175,7 @@ public class InventoryComponent : MonoBehaviour
         while (slots.Count < maxCapacity)
             slots.Add(new InventorySlot());
 
-        // Normalisasi: jika ada slot yang terpasang item tapi quantity <= 0, perbaiki ke 1
+        // Normalize: if a slot has an assigned item with quantity <= 0, fix it to 1
         for (int i = 0; i < slots.Count; i++)
         {
             if (slots[i] != null && slots[i].item != null && slots[i].quantity <= 0)
@@ -197,17 +197,17 @@ public class InventoryComponent : MonoBehaviour
     }
 
     /// <summary>
-    /// Menambahkan item ke inventory.
-    /// Bila hasHotbar bernilai true (mis. player), item akan dimasukkan ke slot inventori utama (indeks 4+) terlebih dahulu,
-    /// dan hanya akan mengisi hotbar (indeks 0..3) jika slot utama sudah penuh.
-    /// Mengembalikan jumlah item yang BERHASIL ditambahkan.
+    /// Adds an item to the inventory.
+    /// When hasHotbar is true (e.g., player), items are placed into main inventory slots (index 4+) first,
+    /// and only fill the hotbar (index 0..3) if main slots are full.
+    /// Returns the number of items SUCCESSFULLY added.
     /// </summary>
     public int AddItemAmount(ItemData item, int amount)
     {
         if (item == null || amount <= 0)
             return 0;
 
-        // Aturan backend terpusat: trophy/ kategori terlarang tidak boleh masuk.
+        // Centralized backend rule: reject blocked trophies / restricted categories.
         if (!CanAcceptItem(item))
             return 0;
 
@@ -216,7 +216,7 @@ public class InventoryComponent : MonoBehaviour
 
         if (hasHotbar && slots.Count > 4)
         {
-            // 1a. Prioritize stacking onto existing matching item stacks in the active Hotbar (indeks 0..3)
+            // 1a. Prioritize stacking onto existing matching item stacks in the active Hotbar (indices 0..3)
             int hotbarEnd = Mathf.Min(4, slots.Count);
             for (int i = 0; i < hotbarEnd && remaining > 0; i++)
             {
@@ -233,7 +233,7 @@ public class InventoryComponent : MonoBehaviour
                 }
             }
 
-            // 1b. Tumpuk ke slot inventori utama (indeks >= 4) yang sudah berisi item sama
+            // 1b. Stack into main inventory slots (index >= 4) that already hold the same item
             for (int i = 4; i < slots.Count && remaining > 0; i++)
             {
                 InventorySlot slot = slots[i];
@@ -249,7 +249,7 @@ public class InventoryComponent : MonoBehaviour
                 }
             }
 
-            // 2a. Isi ke slot inventori utama (indeks >= 4) yang masih kosong
+            // 2a. Fill empty main inventory slots (index >= 4)
             for (int i = 4; i < slots.Count && remaining > 0; i++)
             {
                 InventorySlot slot = slots[i];
@@ -262,7 +262,7 @@ public class InventoryComponent : MonoBehaviour
                 }
             }
 
-            // 2b. Jika slot utama penuh dan masih ada sisa, isi ke slot hotbar (indeks 0..3) yang kosong
+            // 2b. If main slots are full and items remain, fill empty hotbar slots (index 0..3)
             for (int i = 0; i < hotbarEnd && remaining > 0; i++)
             {
                 InventorySlot slot = slots[i];
@@ -277,8 +277,8 @@ public class InventoryComponent : MonoBehaviour
         }
         else
         {
-            // Default inventory tanpa hotbar (mis. Chest, Storage, Lemari, dll.):
-            // 1. Tumpuk ke slot yang sudah punya item yang sama dan belum penuh
+            // Default inventory without hotbar (e.g., Chest, Storage, Wardrobe, etc.):
+            // 1. Stack onto existing non-full slots holding the same item
             for (int i = 0; i < slots.Count && remaining > 0; i++)
             {
                 InventorySlot slot = slots[i];
@@ -294,7 +294,7 @@ public class InventoryComponent : MonoBehaviour
                 }
             }
 
-            // 2. Isi ke slot kosong bila masih ada sisa.
+            // 2. Fill empty slots if items remain.
             for (int i = 0; i < slots.Count && remaining > 0; i++)
             {
                 InventorySlot slot = slots[i];
@@ -360,7 +360,7 @@ public class InventoryComponent : MonoBehaviour
     }
 
     /// <summary>
-    /// Menghapus sejumlah item langsung dari slot dengan indeks tertentu.
+    /// Removes a specific amount of items directly from a slot by index.
     /// </summary>
     public bool RemoveItemFromSlot(int slotIndex, int amount)
     {
@@ -383,10 +383,10 @@ public class InventoryComponent : MonoBehaviour
     }
 
     /// <summary>
-    /// Menghapus sejumlah item dari inventory.
-    /// Jika preferredSlotIndex ditentukan (atau jika hasHotbar aktif dan item yang dipilih pada hotbar cocok),
-    /// kuantitas akan dikurangkan dari slot tersebut terlebih dahulu sebelum mengambil dari slot lainnya.
-    /// Slot lainnya dikurangi dari belakang (indeks terbesar ke terkecil) agar slot depan/hotbar tetap rapi.
+    /// Removes a specified amount of an item from the inventory.
+    /// If preferredSlotIndex is specified (or hasHotbar is active and the selected hotbar item matches),
+    /// quantity is deducted from that slot first before taking from other slots.
+    /// Remaining slots are deducted from back to front (highest index to lowest) to keep front/hotbar slots tidy.
     /// </summary>
     public bool RemoveItem(ItemData item, int amount, int preferredSlotIndex = -1)
     {
@@ -398,8 +398,8 @@ public class InventoryComponent : MonoBehaviour
 
         int remaining = amount;
 
-        // Tentukan slot prioritas: jika tidak dispesifikasikan secara eksplisit,
-        // cek apakah hotbar aktif saat ini sedang memegang item yang sama.
+        // Determine priority slot: if not explicitly specified,
+        // check whether the active hotbar currently holds the same item.
         int resolvedPreferredIndex = preferredSlotIndex;
         if (resolvedPreferredIndex < 0 && hasHotbar && selectedHotbarIndex >= 0 && selectedHotbarIndex < Mathf.Min(4, slots.Count))
         {
@@ -410,7 +410,7 @@ public class InventoryComponent : MonoBehaviour
             }
         }
 
-        // 1. Kurangi dari slot prioritas terlebih dahulu jika ada
+        // 1. Deduct from the priority slot first if present
         if (resolvedPreferredIndex >= 0 && resolvedPreferredIndex < slots.Count)
         {
             InventorySlot prefSlot = slots[resolvedPreferredIndex];
@@ -428,7 +428,7 @@ public class InventoryComponent : MonoBehaviour
             }
         }
 
-        // 2. Kurangi sisa dari slot yang memiliki item (dari belakang agar rapi), lewati slot prioritas yang sudah dikurangi.
+        // 2. Deduct remaining amount from matching slots (back to front to keep tidy), skipping the already deducted priority slot.
         for (int i = slots.Count - 1; i >= 0 && remaining > 0; i--)
         {
             if (i == resolvedPreferredIndex)
@@ -477,13 +477,13 @@ public class InventoryComponent : MonoBehaviour
     }
 
     /// <summary>
-    /// Overload berbasis INDEKS: pindahkan isi slot [sourceIndex] pada inventory ini
-    /// ke targetInventory. Bila target inventory memiliki hotbar (mis. Player), item akan
-    /// masuk ke slot inventori utama (4+) terlebih dahulu, baru ke hotbar (0-3).
-    /// Mengurangi atau mengosongkan slot sumber sesuai jumlah item yang berhasil ditransfer.
+    /// INDEX-based overload: transfers the contents of slot [sourceIndex] in this inventory
+    /// to targetInventory. When targetInventory has a hotbar (e.g., Player), items enter
+    /// main inventory slots (4+) first, then hotbar (0-3).
+    /// Reduces or clears the source slot according to the amount successfully transferred.
     /// </summary>
-    /// <param name="targetInventory">Inventori tujuan transfer.</param>
-    /// <param name="sourceIndex">Indeks slot sumber pada inventory ini.</param>
+    /// <param name="targetInventory">Destination inventory for the transfer.</param>
+    /// <param name="sourceIndex">Source slot index in this inventory.</param>
     public void TransferItemTo(InventoryComponent targetInventory, int sourceIndex)
     {
         if (targetInventory == null || targetInventory == this)
@@ -535,7 +535,7 @@ public class InventoryComponent : MonoBehaviour
 
         if (item.type == ItemData.ItemType.Consumable && item is FoodItemData food)
         {
-            // Penanganan khusus botol air isi ulang (100L): minum per tegukan (25L) tanpa menghancurkan botol
+            // Special handling for refillable water bottle (100L): drink per sip (25L) without destroying the bottle
             if (item.itemId == "food_bottle_water")
             {
                 var bottle = ServiceLocator.Resolve<IWaterService>();
@@ -583,7 +583,7 @@ public class InventoryComponent : MonoBehaviour
 
             Debug.Log($"[Inventory] Mengonsumsi {item.itemName}: Heal={food.healAmount}, Hunger={food.hungerRestore}, Thirst={food.hydrationRestore}, Buffs={food.buffEffects?.Count ?? 0}");
 
-            // Kurangi quantity PADA SLOT yang diklik secara spesifik.
+            // Deduct quantity ON THE SPECIFICALLY clicked slot.
             slot.quantity -= 1;
             if (slot.quantity <= 0)
             {
@@ -598,7 +598,7 @@ public class InventoryComponent : MonoBehaviour
 
     public void DropItem(int slotIndex)
     {
-        // Validasi batas array dan pastikan slot tidak kosong.
+        // Validate array bounds and ensure slot is not empty.
         if (slotIndex < 0 || slotIndex >= slots.Count)
             return;
 
@@ -609,7 +609,7 @@ public class InventoryComponent : MonoBehaviour
         ItemData item = slot.item;
         Debug.Log(string.Format("Dropping {0} to the ground!", item.itemName));
 
-        // Kurangi quantity pada slot yang di-drop; kosongkan bila habis.
+        // Reduce quantity on the dropped slot; clear if depleted.
         slot.quantity -= 1;
         if (slot.quantity <= 0)
         {
@@ -619,15 +619,15 @@ public class InventoryComponent : MonoBehaviour
 
         OnInventoryChanged?.Invoke();
 
-        // Jika item yang di-drop berasal dari slot hotbar yang sedang active,
-        // beri tahu agar sistem visual equipment me-refresh (mis. hancurkan model).
+        // If the dropped item was in the active hotbar slot,
+        // notify listeners so the equipment visual system refreshes (e.g., destroys the model).
         if (slotIndex == selectedHotbarIndex)
             OnHotbarSelected?.Invoke(selectedHotbarIndex);
     }
 
     /// <summary>
-    /// Ganti isi satu slot dengan item lain (transformasi state makanan:
-    /// kotor -> bersih -> matang, dst.). Fires OnInventoryChanged.
+    /// Replaces a single slot's contents with another item (food state transitions:
+    /// dirty -> clean -> cooked, etc.). Fires OnInventoryChanged.
     /// </summary>
     public void ReplaceItemAt(int index, ItemData item, int quantity)
     {
@@ -644,8 +644,8 @@ public class InventoryComponent : MonoBehaviour
     }
 
     /// <summary>
-    /// Kurangi quantity pada satu slot secara spesifik (dipakai mengonsumsi bahan
-    /// saat mulai memasak). Fires OnInventoryChanged.
+    /// Decrements quantity on a specific slot (used to consume ingredients
+    /// when cooking starts). Fires OnInventoryChanged.
     /// </summary>
     public void RemoveFromSlot(int index, int amount)
     {
@@ -666,8 +666,8 @@ public class InventoryComponent : MonoBehaviour
         OnInventoryChanged?.Invoke();
     }
 
-    // Perpindahan presisi slot-ke-slot antar inventory (atau dalam inventory yang sama).
-    // Menangani tiga kasus: pindah ke slot kosong, penumpukan item sama, dan pertukaran item berbeda.
+    // Precision slot-to-slot transfer between inventories (or within the same inventory).
+    // Handles three cases: move to empty slot, stack matching items, and swap different items.
     // Returns true if transfer succeeded, false if failed (bounds check, full capacity, or validation failed).
     public bool MoveItemToSlot(int sourceIndex, InventoryComponent targetInventory, int targetIndex)
     {
@@ -687,13 +687,13 @@ public class InventoryComponent : MonoBehaviour
         if (sourceSlot.IsEmpty)
             return false;
 
-        // Aturan backend terpusat: item yang tidak boleh masuk target (trophy/kategori) ditolak.
+        // Centralized backend rule: reject items disallowed in target (trophy/category).
         if (sourceSlot.item != null && !targetInventory.CanAcceptItem(sourceSlot.item))
             return false;
 
         if (targetSlot.IsEmpty)
         {
-            // Pindahkan seluruh data dari source ke target, lalu kosongkan source.
+            // Move all data from source to target, then clear source.
             targetSlot.item = sourceSlot.item;
             targetSlot.quantity = sourceSlot.quantity;
             sourceSlot.item = null;
@@ -701,7 +701,7 @@ public class InventoryComponent : MonoBehaviour
         }
         else if (targetSlot.item == sourceSlot.item)
         {
-            // Penumpukan: isi ruang kosong target dengan item dari source.
+            // Stacking: fill target's free space with items from source.
             int maxStack = GetMaxStackLimit(targetSlot.item);
             int space = maxStack - targetSlot.quantity;
             if (space > 0)
@@ -723,7 +723,7 @@ public class InventoryComponent : MonoBehaviour
         }
         else
         {
-            // Item berbeda: tukar data antar slot.
+            // Different items: swap slot data.
             InventorySlot temp = new InventorySlot();
             temp.item = targetSlot.item;
             temp.quantity = targetSlot.quantity;
@@ -753,7 +753,7 @@ public class InventoryComponent : MonoBehaviour
         slots[indexA] = slots[indexB];
         slots[indexB] = temp;
 
-        // Beri tahu UI agar menggambar ulang seluruh slot (ikon + quantity).
+        // Notify UI to redraw all slots (icon + quantity).
         OnInventoryChanged?.Invoke();
     }
 

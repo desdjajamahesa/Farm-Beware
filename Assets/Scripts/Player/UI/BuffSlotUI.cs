@@ -6,12 +6,12 @@ using UnityEngine.UI;
 namespace PlayerUI
 {
     /// <summary>
-    /// Menampilkan satu slot buff aktif pada HUD:
-    /// - Ikon tematik buff (Hati untuk darah, Kilat untuk stamina, Sepatu untuk speed, Pedang untuk damage, dll)
-    /// - Frame rounded dark slate dengan border rim berwarna sesuai jenis buff
-    /// - Efek radial cooldown sweep (bayangan memudar seiring durasi habis)
-    /// - Countdown timer text yang kontras dan mudah dibaca
-    /// - Tooltip interaktif saat mouse diarahkan ke slot buff
+    /// Displays a single active buff slot on the HUD:
+    /// - Thematic buff icon (heart for health, lightning for stamina, boot for speed, sword for damage, etc.)
+    /// - Rounded dark slate frame with a colored border rim matching the buff category
+    /// - Radial cooldown sweep overlay (fading shadow as duration expires)
+    /// - High-contrast countdown timer text
+    /// - Interactive tooltip on mouse hover
     /// </summary>
     public class BuffSlotUI : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
     {
@@ -73,7 +73,7 @@ namespace PlayerUI
                 }
                 else
                 {
-                    // Fallback jika asset sprite tidak ditemukan
+                    // Fallback if sprite asset is missing
                     iconImage.color = themeColor;
                 }
             }
@@ -114,7 +114,7 @@ namespace PlayerUI
 
             float remaining = Mathf.Max(boundBuff.remainingDuration, 0f);
 
-            // Radial cooldown: bagian yang sudah habis terbayang gelap (clockwise sweep)
+            // Radial cooldown: darken the elapsed portion (clockwise sweep)
             if (radialFillImage != null)
             {
                 float elapsedFraction = 1f - Mathf.Clamp01(remaining / totalDuration);
@@ -135,10 +135,10 @@ namespace PlayerUI
                     timerText.text = $"{Mathf.CeilToInt(remaining)}s";
                 }
 
-                // Efek visual ketika buff hampir habis (< 5 detik)
+                // Visual warning when buff is about to expire (< 5 seconds)
                 if (remaining <= 5.0f)
                 {
-                    // Berkedip lembut atau berwarna peringatan
+                    // Soft warning pulse
                     float pulse = Mathf.PingPong(Time.time * 4f, 1f);
                     timerText.color = Color.Lerp(new Color(1f, 0.35f, 0.35f, 1f), new Color(1f, 0.85f, 0.2f, 1f), pulse);
                 }
@@ -168,7 +168,7 @@ namespace PlayerUI
         }
 
         /// <summary>
-        /// Palet warna tematik khas untuk setiap kategori buff
+        /// Thematic color palette for each buff category.
         /// </summary>
         public static Color GetBuffTypeColor(BuffType type)
         {

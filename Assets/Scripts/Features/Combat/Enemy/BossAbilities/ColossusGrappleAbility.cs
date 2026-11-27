@@ -5,10 +5,10 @@ using FarmBeware.Core.Runtime;
 namespace FeaturesCombat
 {
     /// <summary>
-    /// Kemampuan modular Grapple Slam untuk Taro Colossus (Task 2.2).
-    /// Mengecek kedekatan dengan pemain (radius <= 2.2m).
-    /// Mengunci pergerakan pemain sementara (SetControlLock), memberikan damage bantingan,
-    /// menerapkan stun (ApplyStun), dan menjamin safety unlock agar kontrol pemain tidak pernah terjebak.
+    /// Modular Grapple Slam ability for Taro Colossus (Task 2.2).
+    /// Checks proximity to the player (radius <= 2.2m).
+    /// Temporarily locks player movement (SetControlLock), deals slam damage,
+    /// applies stun (ApplyStun), and guarantees a safety unlock so player controls never remain stuck.
     /// </summary>
     [DisallowMultipleComponent]
     [RequireComponent(typeof(EnemyBase))]
@@ -50,7 +50,7 @@ namespace FeaturesCombat
 
         private void Start()
         {
-            lastGrappleTime = Time.time - cooldown + 8f; // Delay awal
+            lastGrappleTime = Time.time - cooldown + 8f; // Initial delay
         }
 
         private void Update()
@@ -60,7 +60,7 @@ namespace FeaturesCombat
             if (Time.time - lastGrappleTime < cooldown) return;
             if (bossEnemy.PlayerTarget == null) return;
 
-            // Cek apakah pemain berada di dalam radius cengkeraman dekat
+            // Check if player is within close grapple radius
             float dist = Vector3.Distance(transform.position, bossEnemy.PlayerTarget.position);
             if (dist <= grabRange && !NightBrawlManager.IsInsideHouse(bossEnemy.PlayerTarget.position))
             {
@@ -104,7 +104,7 @@ namespace FeaturesCombat
 
             var playerCtrl = bossEnemy.PlayerTarget != null ? bossEnemy.PlayerTarget.GetComponent<IPlayerContext>() : null;
 
-            // 1. Wind-up telegraf cengkeraman (0.4s)
+            // 1. Grapple telegraph wind-up (0.4s)
             if (FloatingCombatTextManager.Instance != null)
             {
                 FloatingCombatTextManager.Instance.SpawnText(
@@ -113,7 +113,7 @@ namespace FeaturesCombat
                     new Color(1f, 0.4f, 0.1f));
             }
 
-            // Hentikan sejenak dorongan bos
+            // Briefly halt boss momentum
             var rb = GetComponent<Rigidbody>();
             if (rb != null)
             {
@@ -122,13 +122,13 @@ namespace FeaturesCombat
 
             yield return new WaitForSeconds(0.4f);
 
-            // 2. Evaluasi apakah bos masih hidup dan target masih berada di dalam jangkauan
+            // 2. Verify boss is still alive and target remains within range
             if (bossEnemy != null && !bossEnemy.IsDead && bossEnemy.PlayerTarget != null && !NightBrawlManager.IsInsideHouse(bossEnemy.PlayerTarget.position))
             {
                 float currentDist = Vector3.Distance(transform.position, bossEnemy.PlayerTarget.position);
                 if (currentDist <= grabRange + 0.6f && playerCtrl != null)
                 {
-                    // Cengkeraman sukses: Kunci kontrol pemain dengan named lock
+                    // Grapple succeeded: apply named lock to player controls
                     lockedPlayerContext = playerCtrl;
                     playerCtrl.AddInputLock("ColossusGrapple");
 
@@ -140,26 +140,26 @@ namespace FeaturesCombat
                             new Color(1f, 0.1f, 0.1f));
                     }
 
-                    // Tahan pemain (hold phase)
+                    // Hold player (hold phase)
                     yield return new WaitForSeconds(holdDuration);
 
                     if (bossEnemy != null && !bossEnemy.IsDead)
                     {
-                        // Bantingan (Slam phase)
+                        // Slam phase
                         var playerDmg = playerCtrl.GetPlayerComponent<IDamageable>() ?? bossEnemy.PlayerTarget.GetComponent<IDamageable>();
                         playerDmg?.TakeDamage(grappleDamage, playerCtrl.Transform.position, Vector3.down);
 
-                        // Terapkan stun dan knockback terukur sesuai batasan PlayerControl
+                        // Apply stun and measured knockback within PlayerControl bounds
                         playerCtrl.ApplyStun(stunDuration);
                         playerCtrl.ApplyKnockback(-transform.forward + Vector3.up * 0.2f, 7.5f);
                     }
 
-                    // Buka kembali kunci kontrol (safety unlock)
+                    // Release control lock (safety unlock)
                     ReleaseGrappleLock();
                 }
                 else
                 {
-                    // Pemain berhasil menghindar / melompat menjauh
+                    // Player successfully dodged / leaped away
                     if (FloatingCombatTextManager.Instance != null)
                     {
                         FloatingCombatTextManager.Instance.SpawnText(
@@ -172,7 +172,7 @@ namespace FeaturesCombat
 
             yield return new WaitForSeconds(0.4f);
 
-            // Jaminan keamanan tambahan jika terjadi interupsi tak terduga
+            // Additional safety guarantee in case of unexpected interruption
             ReleaseGrappleLock();
 
             if (bossEnemy != null)

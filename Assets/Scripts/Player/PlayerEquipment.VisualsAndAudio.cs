@@ -29,7 +29,7 @@ public partial class PlayerEquipment
             armorState.OnEquipmentChanged += HandleArmorEquipmentChanged;
         }
 
-        // Refresh visual saat awal mulai game
+        // Refresh visuals on game start
         lastEquippedItem = CurrentEquippedItem;
         RefreshEquipmentForStance();
         UpdateRangeIndicatorState();
@@ -90,7 +90,7 @@ public partial class PlayerEquipment
     }
 
     /// <summary>
-    /// Inisialisasi dan pembaruan komponen LineRenderer untuk lingkaran jangkauan di tanah.
+    /// Initializes and updates the LineRenderer component for the ground range indicator circle.
     /// </summary>
     private void EnsureRangeIndicator()
     {
@@ -274,14 +274,14 @@ public partial class PlayerEquipment
             prev = next;
         }
 
-        // Gambar arah hadap serangan (forward ray)
+        // Draw attack facing direction (forward ray)
         Gizmos.color = new Color(1f, 0.4f, 0.2f, 0.7f);
         Vector3 forward = transform.forward * attackHitRange;
         Gizmos.DrawRay(center, forward);
     }
 
     /// <summary>
-    /// Dipanggil saat isi inventori berubah (mengambil/menaruh item di chest, memindahkan item di tas, pickup).
+    /// Invoked when inventory contents change (chest transfers, bag moves, item pickup).
     /// </summary>
     public void RefreshCurrentEquipment()
     {
@@ -291,15 +291,15 @@ public partial class PlayerEquipment
 
         UpdateEquipmentVisual(inventory.selectedHotbarIndex);
 
-        // Animasi equip/pegang barang dinonaktifkan
+        // Equip/hold animation disabled
 
         lastEquippedItem = currentItem;
         UpdateRangeIndicatorState();
     }
 
     /// <summary>
-    /// Dipanggil saat pemain mengganti slot hotbar (1-4, mouse scroll).
-    /// Mengganti model seketika TANPA memicu animasi equip agar tidak mengganggu gerakan jalan/lari.
+    /// Invoked when the player switches hotbar slots (keys 1-4 or mouse scroll).
+    /// Swaps the 3D model immediately WITHOUT triggering an equip animation to avoid interrupting locomotion.
     /// At night or during combat stance, held weapon is locked functionally and visually to the active combat weapon.
     /// </summary>
     public void OnHotbarSlotChanged(int hotbarIndex)
@@ -502,7 +502,7 @@ public partial class PlayerEquipment
             return;
         }
 
-        // Jika item bukan Tool atau belum punya prefab 3D (equipPrefab null), lewati spawning model
+        // Skip spawning a 3D model if the item is not a Tool or has no equipPrefab
         if (itemToDisplay is not ToolItemData tool || tool.equipPrefab == null)
             return;
 
@@ -521,7 +521,7 @@ public partial class PlayerEquipment
         );
         currentWeaponModel.transform.localScale = resolvedScale;
 
-        // Pastikan model senjata yang di-spawn memiliki WeaponHitbox, trigger collider, dan kinematic Rigidbody
+        // Ensure the spawned weapon model has WeaponHitbox, trigger collider, and kinematic Rigidbody
         var hitbox = currentWeaponModel.GetComponentInChildren<FeaturesCombat.WeaponHitbox>();
         if (hitbox == null)
         {
@@ -639,8 +639,8 @@ public partial class PlayerEquipment
             currentWeaponTrail = null;
         }
 
-        // Safeguard mutlak: Pastikan SELURUH child di handSocket dibersihkan agar tidak ada
-        // model senjata stray (seperti prefab yang tersimpan di scene) yang tertinggal atau menumpuk dobel.
+        // Safeguard: ensure ALL children under handSocket are cleared so no stray weapon models
+        // (such as scene-saved prefabs) remain or stack as duplicates.
         FindHandSocketIfNeeded();
         if (handSocket != null)
         {

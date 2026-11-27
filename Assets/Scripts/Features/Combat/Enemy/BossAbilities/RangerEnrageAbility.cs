@@ -6,10 +6,10 @@ using FarmBeware.Core.Runtime;
 namespace FeaturesCombat
 {
     /// <summary>
-    /// Kemampuan modular Enrage untuk Boss The Ranger (Task 2.3).
-    /// Memicu transisi fase amarah secara otomatis saat HP <= 50% (HANYA SEKALI, tidak spam).
-    /// Melontarkan 20 proyektil radial burst 360 derajat (Zero-Allocation Deferred+),
-    /// memberikan buff visual pendaran merah amarah, dan peningkatan kecepatan serang/gerak.
+    /// Modular Enrage ability for The Ranger boss (Task 2.3).
+    /// Automatically triggers enrage phase transition when HP <= 50% (ONCE ONLY, non-repeating).
+    /// Fires 20 projectiles in a 360-degree radial burst (Zero-Allocation Deferred+),
+    /// applies a crimson fury emissive visual buff, and boosts movement/attack speed.
     /// </summary>
     [ExecuteAlways]
     [DisallowMultipleComponent]
@@ -84,7 +84,7 @@ namespace FeaturesCombat
             bossEnemy.IsPerformingSkill = true;
             bossEnemy.IsUnstaggerable = true;
 
-            // Berhenti sejenak untuk pose amarah (Enrage stance)
+            // Pause briefly for the enrage stance
             var rb = GetComponent<Rigidbody>();
             if (rb != null)
             {
@@ -99,7 +99,7 @@ namespace FeaturesCombat
                     new Color(1f, 0.15f, 0.1f));
             }
 
-            // Visual: Ubah warna dan intensitas pendaran material menjadi Crimson Fury via MaterialPropertyBlock
+            // Visual: Set material color and emission intensity to Crimson Fury via MaterialPropertyBlock
             var rend = GetComponent<Renderer>();
             if (rend != null)
             {
@@ -112,10 +112,10 @@ namespace FeaturesCombat
                 rend.SetPropertyBlock(_mpb);
             }
 
-            // Wind-up channeling sebelum peluru meledak (0.45s)
+            // Channeling wind-up before projectile burst (0.45s)
             yield return new WaitForSeconds(0.45f);
 
-            // Tembakkan 20 butir proyektil melingkar 360 derajat (Radial 360 Burst)
+            // Fire 20 projectiles in a 360-degree radial burst
             Vector3 origin = transform.position + Vector3.up * 1.5f;
             float angleStep = 360f / Mathf.Max(1, projectileCount);
 
@@ -136,7 +136,7 @@ namespace FeaturesCombat
                 );
             }
 
-            // Buff stat boss setelah enrage: +25% MoveSpeed, +20% AttackRate
+            // Boss stat buff after enrage: +25% MoveSpeed, +20% AttackRate
             bossEnemy.moveSpeed *= 1.25f;
             bossEnemy.attackRate *= 1.20f;
 

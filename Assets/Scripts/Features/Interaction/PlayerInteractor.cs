@@ -6,7 +6,7 @@ namespace FeaturesInteraction
     public class PlayerInteractor : MonoBehaviour
     {
         [Header("Deteksi Interaksi")]
-        // Radius interaksi presisi dan dekat (default 2.0f).
+        // Precise, close-range interaction radius (default 2.0f).
         [SerializeField] private float interactRadius = 2.0f;
 
         [Header("Layer Interactable")]
@@ -27,7 +27,7 @@ namespace FeaturesInteraction
             var cam = ServiceLocator.Resolve<ICameraService>();
             if (cam != null && cam.CurrentMode == CameraMode.WardrobeMode) return;
 
-            // Jangan cari interaksi saat player input terkunci (UI sedang terbuka)
+            // Do not search for interactions while player input is locked (UI is open)
             var pc = GetComponent<IPlayerContext>();
             if (pc != null && pc.IsInputLocked)
             {
@@ -53,22 +53,22 @@ namespace FeaturesInteraction
             {
                 Collider hit = _interactHits[h];
                 if (hit == null) continue;
-                // Abaikan trigger collider zona ruangan (misal BedroomZone)
+                // Ignore room zone trigger colliders (e.g., BedroomZone)
                 if (hit.GetComponent<InteractionZone>() != null)
                     continue;
 
-                // Cek IInteractable pada collider itu sendiri atau di parent-nya (jangan cari ke children agar tidak salah target ke objek lain di dalam container)
+                // Check IInteractable on the collider itself or its parents (do not search children to avoid targeting wrong objects inside containers)
                 IInteractable interactable = hit.GetComponent<IInteractable>() ?? hit.GetComponentInParent<IInteractable>();
                 if (interactable == null) continue;
 
-                // Hitung posisi representatif objek interaktif
+                // Compute representative transform of the interactive object
                 Transform targetTransform = (interactable is MonoBehaviour mb) ? mb.transform : hit.transform;
 
                 // ZONE CHECK: If interactable is in a zone, player must be in same zone
                 if (!IsInSameZone(targetTransform))
                     continue;
 
-                // Objek yang mengimplementasikan IObstructionExempt dikecualikan dari pemblokiran raycast dinding/furniture
+                // Objects implementing IObstructionExempt are excluded from wall/furniture raycast blocking
                 bool isExempt = (interactable is IObstructionExempt)
                     || targetTransform.GetComponent<IObstructionExempt>() != null
                     || targetTransform.GetComponentInParent<IObstructionExempt>() != null;
@@ -76,11 +76,11 @@ namespace FeaturesInteraction
                 if (!isExempt && IsObstructedByWall(targetTransform))
                     continue;
 
-                // CAN-INTERACT CHECK: Tanyakan ke objek apakah bisa diinteraksikan saat ini
+                // CAN-INTERACT CHECK: Query whether the object can currently be interacted with
                 if (!interactable.CanInteract(gameObject))
                     continue;
 
-                // Jarak dihitung dari titik terdekat collider target ke pusat tubuh pemain
+                // Distance is measured from the closest point on the target collider to the player's body center
                 Vector3 closestPoint = (hit is MeshCollider mc && !mc.convex) 
                     ? hit.bounds.ClosestPoint(playerCenter) 
                     : hit.ClosestPoint(playerCenter);
@@ -88,20 +88,20 @@ namespace FeaturesInteraction
                 Vector3 toTargetH = Vector3.ProjectOnPlane(toTarget, Vector3.up);
                 float distSq = toTargetH.sqrMagnitude;
 
-                // Orientasi hadap pemain: prioritaskan objek di depan pemain
+                // Player facing orientation: prioritize objects in front of the player
                 float dot = 1.0f;
                 if (toTargetH.sqrMagnitude > 0.04f)
                 {
                     dot = Vector3.Dot(transform.forward, toTargetH.normalized);
                 }
 
-                // Abaikan objek yang jelas-jelas berada di belakang pemain (kecuali jika sangat menempel)
+                // Ignore objects clearly behind the player (unless very close / overlapping)
                 if (dot < -0.15f && distSq > 0.36f)
                 {
                     continue;
                 }
 
-                // Bobot arah: objek di depan mendapat penalti skor lebih rendah (lebih diprioritaskan)
+                // Directional weighting: objects in front get a lower score penalty (higher priority)
                 float dirFactor = Mathf.Lerp(1.25f, 0.75f, (dot + 1f) * 0.5f);
                 float effectiveScore = distSq * dirFactor;
 
@@ -130,22 +130,22 @@ namespace FeaturesInteraction
 
             if (dist < 0.1f) return false;
 
-            // Hanya periksa layer dinding (Layer 12 "Wall") agar furniture/kursi/dekorasi tidak salah dideteksi sebagai dinding
+            // Check only the wall layer (Layer 12 "Wall") so furniture/chairs/decorations are not misidentified as walls
             int wallMask = LayerMask.GetMask("Wall");
             if (wallMask == 0) wallMask = (1 << 12);
 
             if (Physics.Raycast(origin, dir.normalized, out RaycastHit hit, dist, wallMask, QueryTriggerInteraction.Ignore))
             {
-                // Jika terkena collider solid dinding yang bukan bagian dari target dan bukan collider player
+                // If hitting a solid wall collider that does not belong to the target or the player
                 if (hit.collider != null && hit.collider != playerCollider)
                 {
                     if (!hit.collider.transform.IsChildOf(target) && !target.IsChildOf(hit.collider.transform))
                     {
-                        // Hanya blokir jika permukaan yang tertabrak adalah bidang vertikal/dinding
+                        // Only block if the hit surface is vertical / wall-like
                         float wallAngle = Vector3.Angle(hit.normal, Vector3.up);
                         if (wallAngle > 45f && wallAngle < 135f)
                         {
-                            return true; // Terhalang dinding solid
+                            return true; // Obstructed by solid wall
                         }
                     }
                 }
@@ -160,11 +160,11 @@ namespace FeaturesInteraction
             var targetZone = target.GetComponentInParent<InteractionZone>();
             if (targetZone == null) return true; // No zone = always accessible
 
-            // Objek berada di dalam zona tertentu (mis. Bedroom).
-            // Player harus berada di dalam zona yang sama.
+            // Object is inside a specific zone (e.g., Bedroom).
+            // Player must be inside the same zone.
             if (currentZone == targetZone) return true;
 
-            // Fallback: periksa apakah posisi player saat ini berada di dalam bounds collider zone tersebut
+            // Fallback: check whether the player's current position is within the zone collider's bounds
             Vector3 playerPos = transform.position;
             if (targetZone.ContainsPoint(playerPos) || targetZone.ContainsPoint(playerPos + Vector3.up * 0.5f))
             {
@@ -172,7 +172,7 @@ namespace FeaturesInteraction
                 return true;
             }
 
-            // Player berada di luar zona kamar/koleksi -> tolak interaksi tembus kamar
+            // Player is outside the room/collection zone -> reject cross-room interaction
             return false;
         }
 
@@ -197,7 +197,7 @@ namespace FeaturesInteraction
                 return;
             }
 
-            // Jika belum terisi, coba lakukan pencarian objek interaksi terdekat sekali lagi
+            // If not yet populated, attempt one more search for the nearest interactable object
             if (currentInteractable == null)
                 currentInteractable = FindClosestInteractable();
 
@@ -211,7 +211,7 @@ namespace FeaturesInteraction
             currentInteractable.Interact(gameObject);
         }
 
-        // Target interaktif terdekat (untuk hover UI). Null bila tidak ada objek interaktif.
+        // Nearest interactive target (for hover UI). Null if no interactive object is in range.
         public GameObject CurrentTarget
         {
             get

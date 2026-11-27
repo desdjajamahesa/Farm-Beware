@@ -27,13 +27,13 @@ public class InventoryManagerUI : MonoBehaviour, IModalWindow
     [Header("Data Inventori")]
     public InventoryComponent playerInventory;
 
-    // Tampilan KANAN (panel storage). Di mode Trophy Cabinet, ini adalah Inventory Rak.
+    // RIGHT panel display (storage panel). In Trophy Cabinet mode, this is the Rack Inventory.
     [FormerlySerializedAs("currentChestInventory")]
     public InventoryComponent currentStorageInventory;
 
     [Header("Auto-Close Storage")]
-    // Diperbesar agar panel storage tetap terbuka saat pemain berdiri di depan
-    // Kabinet (jarak player -> Kabinet kini ~6.6 unit).
+    // Increased so the storage panel stays open when the player stands in front of
+    // the Cabinet (player -> Cabinet distance is now ~6.6 units).
     public float maxInteractDistance = 7f;
 
     private Transform playerTransform;
@@ -83,12 +83,12 @@ public class InventoryManagerUI : MonoBehaviour, IModalWindow
     private readonly List<InventorySlotUI> trophySlotUIs = new List<InventorySlotUI>();
     private bool isPlayerOpen;
 
-    // Inventori yang sebenarnya dirender di panel KIRI (default = Player).
+    // Inventory actually rendered in the LEFT panel (default = Player).
     private InventoryComponent displayLeftInventory;
 
-    // Modus khusus: interact Kabinet -> kiri = Inventory Kabinet, kanan = Inventory Rak.
+    // Special mode: interacting with Cabinet -> left = Cabinet Inventory, right = Rack Inventory.
     private bool isTrophyCabinetMode;
-    private InventoryComponent cabinetInventory; // kiri saat modus trophy (untuk unsubscribe)
+    private InventoryComponent cabinetInventory; // left panel during trophy mode (for unsubscribing)
     private int frameInventoryOpened = -1;
 
     void Awake()
@@ -113,7 +113,7 @@ public class InventoryManagerUI : MonoBehaviour, IModalWindow
             if (rt != null) defaultPlayerPanelPos = rt.anchoredPosition;
         }
 
-        // Sembunyikan semua UI paling awal + kunci kursor untuk game action.
+        // Hide all UI initially + lock cursor for game action.
         CloseAllUI();
     }
 
@@ -183,7 +183,7 @@ public class InventoryManagerUI : MonoBehaviour, IModalWindow
         BuildSlots(storageSlotsContainer, storageSlotUIs, null);
         UpdateUI();
 
-        // Tampilkan highlight awal di hotbar slot 0.
+        // Show initial highlight on hotbar slot 0.
         if (playerInventory != null)
             playerInventory.SelectHotbarSlot(0);
     }
@@ -249,7 +249,7 @@ public class InventoryManagerUI : MonoBehaviour, IModalWindow
 
     void Update()
     {
-        // Auto-close storage ketika pemain menjauh (anchor = storage / rak).
+        // Auto-close storage when the player moves away (anchor = storage / rack).
         Transform anchor = currentStorageInventory != null ? currentStorageInventory.transform : null;
         if (storagePanel != null && storagePanel.activeSelf && anchor != null)
         {
@@ -261,7 +261,7 @@ public class InventoryManagerUI : MonoBehaviour, IModalWindow
                 CloseAllUI();
         }
 
-        // Auto-close trophy cabinet jika jauh dari anchor
+        // Auto-close trophy cabinet if too far from anchor
         if (isTrophyCabinetMode && currentStorageInventory != null)
         {
             if (playerTransform == null) return;
@@ -316,7 +316,7 @@ public class InventoryManagerUI : MonoBehaviour, IModalWindow
 
     private void OnHotbarSelected(int index)
     {
-        // Saat Trophy Cabinet Mode, hotbar Player tidak relevan (dan tersembunyi).
+        // In Trophy Cabinet Mode, Player hotbar is irrelevant (and hidden).
         if (isTrophyCabinetMode)
             return;
 
@@ -337,10 +337,10 @@ public class InventoryManagerUI : MonoBehaviour, IModalWindow
         UpdateUI();
     }
 
-    // Hanya membuka/menutup panel pemain. Jika storage/Kabinet sedang terbuka, tutup semua.
+    // Only opens/closes the player panel. If storage/Cabinet is open, closes everything.
     public void TogglePlayerInventory()
     {
-        // Guard: jangan buka inventory jika sedang mode Trophy atau Wardrobe
+        // Guard: do not open inventory if currently in Trophy or Wardrobe mode
         var camService = ServiceLocator.Resolve<ICameraService>();
         if (camService != null && (camService.CurrentMode == CameraMode.TrophyMode || camService.CurrentMode == CameraMode.WardrobeMode))
             return;
@@ -438,17 +438,17 @@ public class InventoryManagerUI : MonoBehaviour, IModalWindow
     }
 
     /// <summary>
-    /// Membuka UI storage generik: panel Player (kiri) + storage (kanan). Biar list Player tetap tampil.
+    /// Opens generic storage UI: Player panel (left) + storage (right), keeping the Player list visible.
     /// </summary>
     public void OpenStorageUI(InventoryComponent storageInv, string storageTitle = "Storage", GameObject customPanel = null)
     {
         if (storageInv == null) return;
 
-        // Kalau sedang mode trophy, kembalikan dulu ke tampilan normal.
+        // If currently in trophy mode, reset back to normal display first.
         if (isTrophyCabinetMode)
             CloseAllUI();
 
-        // Mode Storage: Sembunyikan Stats dan Equipment, kembalikan posisi Player Panel ke kiri
+        // Storage Mode: Hide Stats and Equipment, restore Player Panel position to the left
         if (characterSheetRoot != null) characterSheetRoot.SetActive(false);
         if (playerStatsPanel != null) playerStatsPanel.SetActive(false);
         if (equipmentPanel != null) equipmentPanel.SetActive(false);
@@ -572,10 +572,10 @@ if (customPanel != null)
     }
 
     /// <summary>
-    /// Buka UI KHUSUS Trophy Cabinet:
-    /// KIRI  = Inventory Kabinet (berisi Trophy, siap di-drag keluar),
-    /// KANAN = Inventory Rak (4 slot utama SnapPoint).
-    /// MENGGUNAKAN PANEL TROPHY SPESIFIK (trophyPanel).
+    /// Opens DEDICATED Trophy Cabinet UI:
+    /// LEFT  = Cabinet Inventory (contains Trophies, ready to drag out),
+    /// RIGHT = Rack Inventory (4 main SnapPoint slots).
+    /// USES SPECIFIC TROPHY PANEL (trophyPanel).
     /// </summary>
     public void OpenTrophyCabinetUI(InventoryComponent cabinetInv, InventoryComponent rackInv)
     {
@@ -585,14 +585,14 @@ if (customPanel != null)
             return;
         }
 
-        // Bersihkan state tampilan sebelumnya (storage lama / player-open).
+        // Clear previous display state (old storage / player-open).
         if (isTrophyCabinetMode)
             CloseAllUI();
 
         UnsubscribeRight();
         UnsubscribeCabinet();
 
-        // Kabinet only — Rak placed via 3D SnapPoints, no UI panel.
+        // Cabinet only — Rack placed via 3D SnapPoints, no UI panel.
         if (rackInv != null)
         {
             currentStorageInventory = rackInv;
@@ -626,13 +626,13 @@ if (customPanel != null)
         if (rackInv != null && rackContainer != null)
             BuildSlots(rackContainer, rackList, rackInv);
 
-        // Sembunyikan hotbar Player selama trophy mode.
+        // Hide Player hotbar during trophy mode.
         if (playerHotbarContainer != null)
             playerHotbarContainer.gameObject.SetActive(false);
 
         isPlayerOpen = true;
 
-        // Mode Trophy Cabinet: Sembunyikan Stats dan Equipment, kembalikan posisi Player Panel ke KIRI
+        // Trophy Cabinet Mode: Hide Stats and Equipment, restore Player Panel position to the LEFT
         if (characterSheetRoot != null) characterSheetRoot.SetActive(false);
         if (playerStatsPanel != null) playerStatsPanel.SetActive(false);
         if (equipmentPanel != null) equipmentPanel.SetActive(false);
@@ -680,8 +680,8 @@ if (customPanel != null)
     }
 
     /// <summary>
-    /// Menutup semua panel dan mengunci kursor kembali. Saat berasal dari mode Trophy
-    /// Cabinet, panel KIRI di-set kembali ke inventory Player + hotbar dimunculkan.
+    /// Closes all panels and re-locks the cursor. When exiting Trophy Cabinet mode,
+    /// the LEFT panel is restored to the Player inventory + hotbar is shown again.
     /// </summary>
     public void CloseAllUI()
     {
@@ -706,7 +706,7 @@ if (customPanel != null)
         UnsubscribeRight();
         UnsubscribeCabinet();
 
-        // Pulihkan tampilan kiri ke Player bila tershop dari mode Trophy Cabinet.
+        // Restore left view to Player if closed from Trophy Cabinet mode.
         if (isTrophyCabinetMode)
         {
             isTrophyCabinetMode = false;
@@ -820,7 +820,7 @@ if (customPanel != null)
         int count = Mathf.Max(0, playerInventory.maxCapacity);
         for (int i = 0; i < count; i++)
         {
-            // 4 slot pertama (Hotbar) tampil di HUD; sisanya di panel inventory utama.
+            // First 4 slots (Hotbar) display on HUD; the rest display in the main inventory panel.
             Transform parent = i < 4 ? playerHotbarContainer : (Transform)playerSlotsContainer;
             if (parent == null) continue;
 
@@ -844,7 +844,7 @@ if (customPanel != null)
     {
         if (container == null) return;
 
-        // Bersihkan SELURUH anak container (termasuk sisa scaffold lama) agar tak ada duplikat.
+        // Clear ALL container children (including legacy scaffold leftovers) to prevent duplicates.
         for (int i = container.childCount - 1; i >= 0; i--)
             DestroyImmediate(container.GetChild(i).gameObject);
         list.Clear();
@@ -891,7 +891,7 @@ if (customPanel != null)
 
         if (slotOwner == playerInventory)
         {
-            // Jika UI Kitchen Sink sedang terbuka, transfer langsung ke slot input wastafel
+            // If Kitchen Sink UI is open, transfer directly to the sink input slot
             if (IsKitchenSinkOpen() && SinkTransferInputHandler != null)
             {
                 return SinkTransferInputHandler(slotIndex);

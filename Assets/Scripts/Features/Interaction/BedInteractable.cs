@@ -3,14 +3,14 @@ using FarmBeware.Core.Runtime;
 
 namespace FeaturesInteraction
 {
-    // Kasur hanya bertindak sebagai TRIGGER (pemicu), bukan pengontrol UI.
-    // Tidak mengelola layar hitam/efek fade; urusan visual tetap di tangan
-    // sistem lain (mis. SleepScreen di masa depan).
+    // Bed acts only as a TRIGGER, not a UI controller.
+    // Does not manage black screen/fade effects directly; visuals remain delegated to
+    // other systems (e.g., future SleepScreen).
     public class BedInteractable : MonoBehaviour, IInteractable, IBedInteractable
     {
         public static event System.Action OnBedSleepExecuted;
 
-        // Jumlah HP yang dipulihkan saat pemain tidur.
+        // Amount of HP restored when the player sleeps.
         [SerializeField] private int sleepHealAmount = 100;
 
         private WorldLabel worldLabel;
@@ -83,14 +83,14 @@ namespace FeaturesInteraction
             var pc = interactor != null ? interactor.GetComponent<IPlayerContext>() : ServiceLocator.Resolve<IPlayerContext>();
             var floatingText = ServiceLocator.Resolve<IFloatingTextService>();
 
-            // 0. Interaksi di Day 0 (Hari Kedatangan): Langsung tidur memajukan hari ke Day 1 tanpa Night Brawl
+            // 0. Interaction on Day 0 (Arrival Day): Sleep immediately to advance to Day 1 without Night Brawl
             if (timeService.CurrentDay == 0)
             {
                 ExecuteDay0Sleep(timeService, interactor);
                 return;
             }
 
-            // 1. Interaksi sebelum malam (Day / Dusk / Dawn): memicu fase malam (Night Brawl)
+            // 1. Interaction before night (Day / Dusk / Dawn): triggers night phase (Night Brawl)
             if (timeService.CurrentPhase != DayPhase.Night)
             {
                 var farmingService = ServiceLocator.Resolve<IFarmingService>();
@@ -107,8 +107,8 @@ namespace FeaturesInteraction
                 return;
             }
 
-            // 2. Interaksi di malam hari:
-            // Cek apakah gelombang musuh sudah tuntas
+            // 2. Interaction during night:
+            // Check whether the enemy wave has been cleared
             if (!timeService.IsNightEncounterCleared)
             {
                 Debug.Log("[BedInteractable] Monsters are still lurking outside! Clear the wave first.");
@@ -123,18 +123,18 @@ namespace FeaturesInteraction
                 return;
             }
 
-            // Kunci gerakan pemain selama proses tidur
+            // Lock player movement during the sleep transition
             if (pc != null)
             {
                 pc.AddInputLock("BedSleep");
             }
 
-            // Hapus seluruh food buff aktif saat pemain tidur (sehingga pagi hari bersih dari buff)
+            // Clear all active food buffs when the player sleeps (so morning starts buff-free)
             if (interactor != null)
             {
                 SafeClearBuffs(interactor);
 
-                // Malam selesai: pulihkan HP pemain bila komponen PlayerStats tersedia.
+                // Night complete: restore player HP if PlayerStats component is available.
                 SafeHeal(interactor, sleepHealAmount);
             }
 

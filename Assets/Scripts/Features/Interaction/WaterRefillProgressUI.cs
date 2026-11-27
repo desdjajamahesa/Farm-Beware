@@ -6,10 +6,10 @@ using FarmBeware.Core.Runtime;
 namespace FeaturesInteraction
 {
     /// <summary>
-    /// Screen-Space Projected UI untuk indikator progres pengisian air (Water Refill).
-    /// Digunakan seragam untuk Kitchen Sink (Botol Minum) dan Garden Well (Penyiram Tanaman).
-    /// Menggantikan ikon sprite mengambang dengan lingkaran progres radial yang bersih, tajam,
-    /// dan konsisten di layar pemain tanpa distorsi perspektif.
+    /// Screen-Space Projected UI for water refill progress indicators.
+    /// Used uniformly for Kitchen Sink (Water Bottle) and Garden Well (Plant Waterer).
+    /// Replaces floating sprite icons with a clean, crisp radial progress ring
+    /// rendered consistently on the player's screen without perspective distortion.
     /// </summary>
     [DisallowMultipleComponent]
     public class WaterRefillProgressUI : MonoBehaviour
@@ -65,7 +65,7 @@ namespace FeaturesInteraction
         private static IPlayerContext cachedPlayerControl;
 
         /// <summary>
-        /// Sembunyikan indikator saat jendela inventori, storage, pause, atau modal UI terbuka.
+        /// Hides the indicator when inventory, storage, pause, or modal UI windows are open.
         /// </summary>
         private static bool ShouldSuppressIndicators()
         {
@@ -129,7 +129,7 @@ namespace FeaturesInteraction
         }
 
         /// <summary>
-        /// Memperbarui progres dan teks countdown pengisian air.
+        /// Updates the water refill progress and countdown text.
         /// </summary>
         public void UpdateRefillState(bool active, float progress01, float remainingSeconds, bool isReadyToCollect = false, string customTitle = null)
         {

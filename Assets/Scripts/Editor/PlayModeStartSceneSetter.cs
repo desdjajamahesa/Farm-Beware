@@ -3,8 +3,8 @@ using UnityEditor;
 using UnityEditor.SceneManagement;
 
 /// <summary>
-/// Memastikan saat menekan tombol Play di Unity Editor, game selalu mulai dari MainMenuScene
-/// (scene index 0 pada Build Settings), terlepas dari scene apa yang sedang dibuka di Hierarchy.
+/// Ensures Play Mode in the Unity Editor always starts from MainMenuScene
+/// (scene index 0 in Build Settings), regardless of which scene is open in the Hierarchy.
 /// </summary>
 [InitializeOnLoad]
 public static class PlayModeStartSceneSetter

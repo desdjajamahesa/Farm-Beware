@@ -4,10 +4,10 @@ using UnityEngine.InputSystem;
 using UnityEngine.UI;
 using TMPro;
 
-// Singleton UI presenter untuk menampilkan informasi dan tooltip item di world-space:
-// 1) Popup nama item di hotbar saat pindah slot terpilih dengan smooth fade.
-// 2) Tooltip mengikuti kursor saat hover item di inventory.
-// 3) Banner prompt interaksi dengan badge tombol [E] dan formatting teks modern.
+// Singleton UI presenter for displaying item info and world-space tooltips:
+// 1) Hotbar item name popup with smooth fade when switching selected slot.
+// 2) Cursor-following tooltip when hovering inventory items.
+// 3) Interaction prompt banner with [E] key badge and modern text formatting.
 public class ItemDisplayUI : MonoBehaviour
 {
     public static ItemDisplayUI Instance { get; private set; }
@@ -29,8 +29,8 @@ public class ItemDisplayUI : MonoBehaviour
     public TextMeshProUGUI hotbarPopupTMP;
     public CanvasGroup hotbarPopupCanvasGroup;
 
-    // Offset posisi tooltip dari kursor (dapat diatur dari Inspector).
-    // Default (25, 65): tooltip muncul di atas kanan kursor agar tidak menutupi pointer.
+    // Tooltip position offset from cursor (configurable in Inspector).
+    // Default (25, 65): tooltip appears above and to the right of cursor to avoid obscuring pointer.
     [SerializeField] private Vector2 tooltipOffset = new Vector2(25f, 65f);
 
     private Coroutine hideHotbarCoroutine;
@@ -74,15 +74,15 @@ public class ItemDisplayUI : MonoBehaviour
 
     void Update()
     {
-        // Hanya gerakkan tooltip saat sedang tampil.
+        // Only move the tooltip while it is visible.
         if (mouseTooltipText == null || !mouseTooltipText.gameObject.activeSelf)
             return;
 
         if (Mouse.current == null)
             return;
 
-        // Hardening: jangan pernah menggerakkan teks popup hotbar,
-        // baik karena referensi Text yang sama maupun rect transform identik.
+        // Hardening: never move the hotbar popup text,
+        // whether due to shared Text reference or identical RectTransform.
         RectTransform tooltipRect = mouseTooltipText.rectTransform;
         if (hotbarPopupText != null &&
             (mouseTooltipText == hotbarPopupText || tooltipRect == hotbarPopupText.rectTransform))
@@ -93,9 +93,9 @@ public class ItemDisplayUI : MonoBehaviour
         if (canvasRect == null)
             return;
 
-        // Konversi posisi kursor (screen space) ke koordinat lokal canvas,
-        // lalu terapkan ke RectTransform tooltip (anak langsung kanvas,
-        // anchor 0.5/0.5) sehingga mengikuti kursor dengan aman.
+        // Convert cursor position (screen space) to local canvas coordinates,
+        // then apply to the tooltip RectTransform (direct canvas child,
+        // anchor 0.5/0.5) so it tracks the cursor safely.
         Vector2 localPoint;
         if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(
                 canvasRect,
@@ -107,7 +107,7 @@ public class ItemDisplayUI : MonoBehaviour
         Vector2 target = localPoint + tooltipOffset;
         tooltipRect.anchoredPosition = target;
 
-        // Kotak background ikut bergerak di belakang tooltip (kanvas yang sama).
+        // Background box moves along behind the tooltip (same canvas).
         if (tooltipBg != null)
             tooltipBg.anchoredPosition = target;
     }
@@ -133,10 +133,10 @@ public class ItemDisplayUI : MonoBehaviour
             tooltipBg.gameObject.SetActive(false);
     }
 
-    // Label nama objek dunia: dinonaktifkan untuk mencegah teks dobel di atas hotbar.
+    // World object name label: disabled to prevent duplicate text above hotbar.
     public void ShowWorldHover(string name)
     {
-        // Safe no-op. Jika masih ada worldHoverText legacy di scene, pastikan tetap nonaktif.
+        // Safe no-op. If a legacy worldHoverText remains in the scene, ensure it stays inactive.
         if (worldHoverText != null && worldHoverText.gameObject.activeSelf)
         {
             worldHoverText.text = "";
@@ -153,7 +153,7 @@ public class ItemDisplayUI : MonoBehaviour
         }
     }
 
-    // Prompt aksi "E — Nama" saat objek interaktif sedang di-hover.
+    // Action prompt "E — Name" when an interactive object is hovered.
     public void ShowInteractPrompt(string displayName)
     {
         if (worldHoverText != null)
@@ -222,7 +222,7 @@ public class ItemDisplayUI : MonoBehaviour
     {
         if (string.IsNullOrEmpty(raw)) return "";
 
-        // Bersihkan prefix jika ada string lama "E — " atau "E - " atau "[ E ]"
+        // Strip legacy prefixes such as "E — ", "E - ", or "[ E ]"
         if (raw.StartsWith("E — ") || raw.StartsWith("E - "))
             raw = raw.Substring(4);
         else if (raw.StartsWith("[ E ]") || raw.StartsWith("<b>[ E ]</b>"))
@@ -240,13 +240,13 @@ public class ItemDisplayUI : MonoBehaviour
             string mainAction = raw.Substring(0, parenOpen).Trim();
             string detail = raw.Substring(parenOpen, parenClose - parenOpen + 1);
 
-            // Jika countdown durasi seperti (15s)
+            // Duration countdown format such as (15s)
             if (detail.EndsWith("s)") && detail.Length > 2 && char.IsDigit(detail[1]))
             {
                 return $"<b>{mainAction}</b> <color=#FBBF24><size=90%>{detail}</size></color>";
             }
 
-            // Hint aksi / instruksi sekunder
+            // Action hint / secondary instruction
             return $"<b>{mainAction}</b> <color=#94A3B8><size=85%>{detail}</size></color>";
         }
 
@@ -306,7 +306,7 @@ public class ItemDisplayUI : MonoBehaviour
             cg.alpha = 1f;
         }
 
-        // Tampil stabil selama 1.8 detik
+        // Stay visible steadily for 1.8 seconds
         yield return new WaitForSecondsRealtime(1.8f);
 
         // Smooth fade out
@@ -338,8 +338,8 @@ public class ItemDisplayUI : MonoBehaviour
         text.gameObject.SetActive(false);
     }
 
-    // Bangun kotak gelap untuk tooltip sebagai sibling (indeks paling awal)
-    // sehingga dirender di belakang teks tooltip dan ikut bergerak setiap frame.
+    // Build dark tooltip box as a sibling (earliest index)
+    // so it renders behind the tooltip text and tracks it every frame.
     private void BuildTooltipBackground()
     {
         if (tooltipBg != null)
@@ -353,8 +353,8 @@ public class ItemDisplayUI : MonoBehaviour
 
         var bgGO = new GameObject("UI_MouseTooltipBG", typeof(RectTransform));
         bgGO.transform.SetParent(canvasRect, false);
-        // Indeks sibling 0: digambar paling awal, sehingga teks tooltip (sibling
-        // dengan indeks lebih besar) tampil di atas kotak gelap.
+        // Sibling index 0: drawn first, so tooltip text (higher sibling
+        // index) renders on top of the dark box.
         bgGO.transform.SetAsFirstSibling();
 
         var bgImg = bgGO.AddComponent<Image>();
@@ -386,7 +386,7 @@ public class ItemDisplayUI : MonoBehaviour
 
         var bgGO = new GameObject("UI_InteractPromptBG", typeof(RectTransform));
         bgGO.transform.SetParent(canvasRect, false);
-        // Posisikan tepat sebelum interactPromptText dalam urutan sibling agar berada di belakangnya
+        // Position immediately before interactPromptText in sibling order so it renders behind it
         int textSiblingIndex = textRect.GetSiblingIndex();
         bgGO.transform.SetSiblingIndex(Mathf.Max(0, textSiblingIndex));
 

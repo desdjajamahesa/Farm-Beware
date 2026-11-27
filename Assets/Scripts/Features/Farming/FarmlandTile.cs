@@ -8,16 +8,16 @@ namespace FeaturesFarming
 {
     public enum TileState
     {
-        Untilled,        // Belum dicangkul (rumput/tanah mentah)
-        Tilled,          // Sudah dicangkul (gembur kering), siap ditanam
-        PlantedDry,      // Bibit tertanam, butuh disiram air
-        PlantedWatered,  // Disiram air, timer pertumbuhan sedang berjalan
-        ReadyToHarvest   // Tanaman matang rimbun, siap dipanen
+        Untilled,        // Untilled soil (grass/raw dirt)
+        Tilled,          // Tilled (loose dry soil), ready for planting
+        PlantedDry,      // Seed planted, needs watering
+        PlantedWatered,  // Watered, growth timer is running
+        ReadyToHarvest   // Mature crop, ready to harvest
     }
 
     /// <summary>
-    /// Petak tanah kebun interaktif (IInteractable).
-    /// Mengontrol alur siklus: Cangkul -> Tanam Benih -> Siram Air -> Panen Hasil Kotor (Dirty Crop).
+    /// Interactive farmland tile (IInteractable).
+    /// Controls the cycle: Till -> Plant Seed -> Water -> Harvest Dirty Crop.
     /// </summary>
     [RequireComponent(typeof(BoxCollider))]
     [RequireComponent(typeof(WorldLabel))]
@@ -157,14 +157,14 @@ namespace FeaturesFarming
 
         private void Update()
         {
-            // Sesuai MVP Version Guideline V0.1:
+            // Per MVP Version Guideline V0.1:
             // "Crop growth: Only counts during the Day phase (night does not count)."
             // Module C Exception: Bio-Catalyst Night Overdrive allows 50% nocturnal growth + Clean Harvest purification.
             var timeService = ServiceLocator.Resolve<ITimeService>();
             bool isNight = (timeService != null && timeService.IsNight) ||
                            (TimeManager.Instance != null && TimeManager.Instance.currentPhase == TimeManager.DayPhase.Night);
 
-            // 1. Logika pertumbuhan jika tanah dalam kondisi tersiram air
+            // 1. Growth logic when the soil is watered
             if (currentState == TileState.PlantedWatered && plantedSeed != null)
             {
                 float timeMultiplier = FeaturesTime.DayNightTimeManager.Instance != null
@@ -189,7 +189,7 @@ namespace FeaturesFarming
                 }
                 growthProgress = Mathf.Clamp01(currentTimer / Mathf.Max(1f, growthDuration));
 
-                // Perbarui visual HANYA saat berpindah tahap pertumbuhan (hemat CPU/GC 99.9%)
+                // Update visuals ONLY when transitioning growth stages (saves 99.9% CPU/GC)
                 int currentStage = (growthProgress >= 1f) ? 2 : (growthProgress >= 0.5f ? 1 : 0);
                 if (currentStage != lastVisualStage)
                 {
@@ -198,7 +198,7 @@ namespace FeaturesFarming
                         visualController.UpdateVisuals(currentState, plantedSeed, growthProgress);
                 }
 
-                // Perbarui UI countdown lingkaran di atas tanaman
+                // Update the circular countdown UI above the crop
                 if (countdownUI != null)
                 {
                     float remainingSec = Mathf.Max(0f, growthDuration - currentTimer);
@@ -360,7 +360,7 @@ namespace FeaturesFarming
                 playerControl.TriggerPlantAnimation();
             }
 
-            // Sinkronkan pemunculan bibit saat tangan pemain membungkuk ke tanah (snappy ~0.25s)
+            // Sync seed spawn with the player's hand bending toward the soil (snappy ~0.25s)
             yield return new WaitForSeconds(0.25f);
 
             if (inventory != null && seed != null)
@@ -417,7 +417,7 @@ namespace FeaturesFarming
                 return;
             }
 
-            // Peringatan bila Plant Waterer kosong atau kurang dari 10L
+            // Warning if Plant Waterer is empty or has less than 10L
             ServiceLocator.Resolve<IFloatingTextService>()?.SpawnText(
                 transform.position + Vector3.up * 1.2f,
                 $"Need {waterRequired:F0}L Water! Refill at Garden Well.",
@@ -447,7 +447,7 @@ namespace FeaturesFarming
                 playerControl.TriggerHarvestAnimation();
             }
 
-            // Tunggu ~0.6 detik saat tangan pemain meraih tanaman di tanah
+            // Wait ~0.6s while the player's hand reaches the crop on the ground
             yield return new WaitForSeconds(0.6f);
 
             if (plantedSeed != null)
@@ -472,7 +472,7 @@ namespace FeaturesFarming
                     bool fruitAdded = inventory.AddItem(dropItem, yieldCount);
                     if (!fruitAdded)
                     {
-                        // Inventaris penuh untuk buah: jatuhkan buah ke tanah
+                        // Inventory full for crop yield: drop yield onto the ground
                         FeaturesCombat.WorldItemPickup.Spawn(
                             transform.position + Vector3.up * 0.4f,
                             dropItem,
@@ -480,7 +480,7 @@ namespace FeaturesFarming
                             Vector3.up + Random.insideUnitSphere * 0.3f);
                     }
 
-                    // Drop benih bonus sesuai tabel spesifikasi ekonomi MVP
+                    // Drop bonus seeds per the MVP economy specification table
                     int seedBonusCount = CalculateSeedDrop(plantedSeed);
                     bool seedAdded = false;
                     if (seedBonusCount > 0)
@@ -488,8 +488,8 @@ namespace FeaturesFarming
                         seedAdded = inventory.AddItem(plantedSeed, seedBonusCount);
                         if (!seedAdded)
                         {
-                            // Inventaris penuh (misal hanya tersisa 1 slot yang sudah terisi buah):
-                            // Jatuhkan benih ke tanah agar tidak hilang!
+                            // Inventory full (e.g., only 1 slot left and already filled by crop yield):
+                            // Drop seeds onto the ground so they are not lost!
                             FeaturesCombat.WorldItemPickup.Spawn(
                                 transform.position + Vector3.up * 0.4f,
                                 plantedSeed,
@@ -498,7 +498,7 @@ namespace FeaturesFarming
                         }
                     }
 
-                    // Catat hasil panen ke DailyEconomyManager via service
+                    // Record harvest yield to DailyEconomyManager via service
                     ServiceLocator.Resolve<IDailyEconomyService>()?.RecordCropHarvested(dropItem, yieldCount);
 
                     string harvestMsg;
@@ -531,7 +531,7 @@ namespace FeaturesFarming
                 }
             }
 
-            // Reset petak kembali ke kondisi Tilled
+            // Reset tile back to Tilled state
             plantedSeed = null;
             currentTimer = 0f;
             growthProgress = 0f;
@@ -572,7 +572,7 @@ namespace FeaturesFarming
                 return 3;
             }
 
-            // Fallback: 1 benih
+            // Fallback: 1 seed
             return roll < 0.75f ? 1 : 2;
         }
 
@@ -580,10 +580,10 @@ namespace FeaturesFarming
         {
             if (cleanOrDirtyItem == null) return null;
 
-            // Jika item sudah berstatus kotor, langsung gunakan
+            // If the item is already dirty, use it directly
             if (cleanOrDirtyItem.isDirty) return cleanOrDirtyItem;
 
-            // Jika clean, coba cari varian _dirty dari database
+            // If clean, try finding the _dirty variant from the database
             var db = Resources.Load<ItemDatabase>("Database/ItemDatabase");
             if (db != null)
             {
@@ -622,8 +622,8 @@ namespace FeaturesFarming
         }
 
         /// <summary>
-        /// Dipanggil saat transisi hari baru (AdvanceToNextDay) oleh TimeManager / FarmingManager.
-        /// Saat pemain tidur (termasuk tidur lebih awal), tanaman yang telah disiram menerima kemajuan pertumbuhan harian.
+        /// Called on new day transition (AdvanceToNextDay) by TimeManager / FarmingManager.
+        /// When the player sleeps (including early sleep), watered crops receive daily growth progress.
         /// </summary>
         public void AdvanceDay()
         {
@@ -653,7 +653,7 @@ namespace FeaturesFarming
                 }
                 else
                 {
-                    // Tanah mengering semalam, membutuhkan penyiraman di hari baru untuk melanjutkan pertumbuhan
+                    // Soil dries overnight, requiring watering on the new day to continue growth
                     SetState(TileState.PlantedDry);
                 }
 
@@ -672,7 +672,7 @@ namespace FeaturesFarming
             }
             else if (currentState == TileState.PlantedDry)
             {
-                // Belum disiram, tidak bertumbuh semalam
+                // Not watered, did not grow overnight
                 Debug.Log("[FarmlandTile] Dry crops did not grow overnight because they were not watered.");
             }
         }
@@ -805,7 +805,7 @@ namespace FeaturesFarming
         {
             if (interactor == null)
             {
-                // Fallback: cari player aktif di scene
+                // Fallback: find active player in scene
                 var player = ServiceLocator.Resolve<IPlayerContext>();
                 if (player != null) interactor = player.Transform.gameObject;
             }
@@ -860,7 +860,7 @@ namespace FeaturesFarming
         {
             if (interactor == null)
             {
-                // Fallback: cari player aktif di scene
+                // Fallback: find active player in scene
                 var player = ServiceLocator.Resolve<IPlayerContext>();
                 if (player != null) interactor = player.Transform.gameObject;
             }
@@ -893,7 +893,7 @@ namespace FeaturesFarming
             if (col != null)
             {
                 col.isTrigger = false;
-                // Ukuran collider petak tanah: 1.2 x 0.18 x 1.2 agar pas dengan bedengan tanah dan tidak menghalangi jalan
+                // Tile collider size: 1.2 x 0.18 x 1.2 to fit the soil bed without blocking movement
                 if (col.size == Vector3.one || col.size.y > 0.25f)
                 {
                     col.size = new Vector3(1.2f, 0.18f, 1.2f);

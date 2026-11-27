@@ -5,14 +5,14 @@ using UnityEngine;
 namespace FeaturesTime
 {
     /// <summary>
-    /// Manajer simulasi waktu lingkungan 24 jam yang independen dan decoupled.
-    /// Mematuhi Clean Architecture, SOLID (SRP & IoC), dan Event-Driven OOP.
+    /// Independent and decoupled 24-hour environmental time simulation manager.
+    /// Adheres to Clean Architecture, SOLID (SRP & IoC), and Event-Driven OOP.
     ///
-    /// PENTING (Prinsip Desain):
-    /// Komponen ini murni mengelola matematika progresi waktu dan pemancaran event.
-    /// SAMA SEKALI TIDAK memodifikasi parameter grafis, URP, Directional Light,
-    /// atau RenderSettings di dalam siklus Update(). Seluruh penyesuaian visual
-    /// dilakukan secara terisolasi oleh komponen Observer/Listener (Fase 2).
+    /// IMPORTANT (Design Principle):
+    /// This component purely manages time progression math and event emission.
+    /// It NEVER modifies graphics parameters, URP, Directional Light,
+    /// or RenderSettings inside Update(). All visual adjustments
+    /// are handled in isolation by Observer/Listener components (Phase 2).
     /// </summary>
     [DisallowMultipleComponent]
     public class DayNightTimeManager : MonoBehaviour, IDayNightTimeService, FarmBeware.Core.Runtime.ITimeService
@@ -119,22 +119,22 @@ namespace FeaturesTime
         public bool SyncWithLegacyTimeManager => syncWithLegacyTimeManager;
 
         /// <summary>
-        /// Jam awal siang hari (Day start hour, default 6.0f / 06:00).
+        /// Daytime start hour (default 6.0f / 06:00).
         /// </summary>
         public float DayStartHour => dayStartHour;
 
         /// <summary>
-        /// Status apakah mode percepatan waktu (> 1.0x) sedang aktif.
+        /// Whether time fast-forward mode (> 1.0x) is currently active.
         /// </summary>
         public bool IsFastForwardActive => currentSpeedMultiplier > 1.01f;
 
         /// <summary>
-        /// Pengali percepatan waktu yang sedang aktif.
+        /// Currently active time speed multiplier.
         /// </summary>
         public float FastForwardMultiplier => currentSpeedMultiplier;
 
         /// <summary>
-        /// Pengali mode cepat 8x.
+        /// 8x fast-forward speed multiplier.
         /// </summary>
         public float Multiplier8x => fastForwardMultiplier8x;
 
@@ -360,7 +360,7 @@ namespace FeaturesTime
             bool isDay = (TimeManager.Instance == null || TimeManager.Instance.currentPhase == TimeManager.DayPhase.Day) && currentPhase != EnvironmentPhase.Night;
 
             // Shortcut keybinds:
-            // '0' -> Toggle mode 8x Fast-Forward (18 menit selesai dalam 2.25 menit) - Day Phase only
+            // '0' -> Toggle 8x Fast-Forward mode (18 minutes complete in 2.25 minutes) - Day Phase only
             if (UnityEngine.InputSystem.Keyboard.current != null)
             {
                 var kb = UnityEngine.InputSystem.Keyboard.current;
@@ -396,7 +396,7 @@ namespace FeaturesTime
 
             if (isDay)
             {
-                // Advance real daytime timer dikalikan pengali kecepatan aktif
+                // Advance real daytime timer scaled by active speed multiplier
                 float timeStep = Time.deltaTime * currentSpeedMultiplier;
                 daytimeElapsedSeconds += timeStep;
                 float targetHour = EvaluateDaytimeHour(daytimeElapsedSeconds, daytimeDurationRealSeconds);
@@ -418,7 +418,7 @@ namespace FeaturesTime
         }
 
         /// <summary>
-        /// Menyalakan / mematikan mode percepatan waktu (misalnya 8x Fast-Forward).
+        /// Toggles time fast-forward mode (e.g., 8x Fast-Forward).
         /// </summary>
         public void ToggleSpeedMode(float targetMultiplier, string modeName)
         {
@@ -430,7 +430,7 @@ namespace FeaturesTime
 
             if (Mathf.Approximately(currentSpeedMultiplier, targetMultiplier))
             {
-                // Jika mode yang sama sudah aktif, matikan kembali ke normal 1x
+                // If the same mode is already active, revert back to normal 1x
                 currentSpeedMultiplier = 1.0f;
             }
             else
@@ -455,7 +455,7 @@ namespace FeaturesTime
         }
 
         /// <summary>
-        /// Menyalakan / mematikan mode percepatan waktu 8x (backward-compatible helper).
+        /// Toggles 8x time fast-forward mode (backward-compatible helper).
         /// </summary>
         public void ToggleFastForward()
         {
@@ -689,7 +689,7 @@ namespace FeaturesTime
         }
 
         /// <summary>
-        /// Mengklasifikasikan jam 24 jam ke dalam 4 kuadran fase lingkungan (Dawn, Day, Dusk, Night).
+        /// Classifies a 24-hour value into the 4 environmental phase quadrants (Dawn, Day, Dusk, Night).
         /// </summary>
         public EnvironmentPhase EvaluatePhase(float hour)
         {
@@ -700,7 +700,7 @@ namespace FeaturesTime
             if (hour >= duskStartHour && hour < nightStartHour)
                 return EnvironmentPhase.Dusk;
 
-            // Rentang malam: nightStartHour s/d 24:00 ATAU 00:00 s/d dawnStartHour
+            // Night range: nightStartHour to 24:00 OR 00:00 to dawnStartHour
             return EnvironmentPhase.Night;
         }
 

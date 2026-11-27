@@ -6,9 +6,9 @@ using FeaturesRendering.Lighting;
 namespace FeaturesEnvironment
 {
     /// <summary>
-    /// Mengontrol api unggun: nyala organik di malam hari dan mati di siang hari.
-    /// Mengatur kedipan Point Light (Perlin Noise), emisi bara api (EmbersCore),
-    /// serta partikel lidah api (FX_Campfire_Flames) dan percikan (FX_Campfire_Sparks).
+    /// Controls the campfire: lights up organically at night and turns off during the day.
+    /// Drives Point Light flicker (Perlin Noise), ember emission (EmbersCore),
+    /// and flame (FX_Campfire_Flames) and spark (FX_Campfire_Sparks) particle systems.
     /// </summary>
     [RequireComponent(typeof(Light))]
     public class CampfireLightFlicker : MonoBehaviour
@@ -202,7 +202,7 @@ namespace FeaturesEnvironment
             float noise = Mathf.PerlinNoise(Time.time * flickerSpeed, noiseOffset);
             fireLight.intensity = baseIntensity + (noise - 0.5f) * flickerRange;
 
-            // Pergeseran mikro posisi lidah api
+            // Micro offset for flame position
             float posX = (Mathf.PerlinNoise(Time.time * 4f, noiseOffset + 10f) - 0.5f) * 0.08f;
             float posZ = (Mathf.PerlinNoise(Time.time * 4f, noiseOffset + 20f) - 0.5f) * 0.08f;
             transform.localPosition = basePosition + new Vector3(posX, 0f, posZ);

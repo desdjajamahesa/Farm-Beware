@@ -3,10 +3,10 @@ using UnityEngine;
 namespace FeaturesTime.Atmosphere
 {
     /// <summary>
-    /// Komponen lampu taman outdoor (Garden Lamp - Dual Source Architecture).
-    /// Mengontrol sumber cahaya Point Light (radiosity sekeliling) + Spot Downlight (proyeksi tanah terang),
-    /// serta kap bohlam kaca dan filamen pijar dengan dukungan MaterialPropertyBlock (Zero-GC)
-    /// dan efek flickering organik.
+    /// Outdoor garden lamp component (Garden Lamp - Dual Source Architecture).
+    /// Controls Point Light (surrounding radiosity) + Spot Downlight (bright ground projection),
+    /// as well as glass bulb cover and incandescent filament with MaterialPropertyBlock support (Zero-GC)
+    /// and organic flickering effect.
     /// </summary>
     [SelectionBase]
     [DisallowMultipleComponent]
@@ -122,7 +122,7 @@ namespace FeaturesTime.Atmosphere
         }
 
         /// <summary>
-        /// Mengatur intensitas pencahayaan berdasarkan interpolasi Day-Night (0.0 = Siang murni, 1.0 = Malam murni).
+        /// Sets lighting intensity based on Day-Night interpolation (0.0 = Pure Day, 1.0 = Pure Night).
         /// </summary>
         public void SetNormalizedNight(float t, float flickerFactor = 1.0f)
         {
@@ -144,7 +144,7 @@ namespace FeaturesTime.Atmosphere
 
             if (propBlock == null) propBlock = new MaterialPropertyBlock();
 
-            // Atur visual bohlam luar
+            // Configure outer bulb visuals
             if (bulbRenderer != null)
             {
                 bulbRenderer.GetPropertyBlock(propBlock);
@@ -155,7 +155,7 @@ namespace FeaturesTime.Atmosphere
                 bulbRenderer.SetPropertyBlock(propBlock);
             }
 
-            // Atur visual filamen pijar dalam
+            // Configure inner incandescent filament visuals
             if (filamentRenderer != null)
             {
                 filamentRenderer.GetPropertyBlock(propBlock);
@@ -168,7 +168,7 @@ namespace FeaturesTime.Atmosphere
         }
 
         /// <summary>
-        /// Menghitung faktor kedip Perlin noise pada waktu tertentu.
+        /// Evaluates Perlin noise flicker factor at a given time.
         /// </summary>
         public float EvaluateFlicker(float time)
         {

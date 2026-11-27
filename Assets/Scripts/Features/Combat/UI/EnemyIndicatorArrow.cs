@@ -5,8 +5,8 @@ using UnityEngine.UI;
 namespace FeaturesCombat.UI
 {
     /// <summary>
-    /// Elemen panah indikator off-screen tunggal.
-    /// Menampilkan arah rotasi panah ke target monster, teks jarak, dan indikator visual Boss vs Normal.
+    /// Single off-screen indicator arrow element.
+    /// Displays arrow rotation toward the target monster, distance text, and Boss vs Normal visual styling.
     /// </summary>
     public class EnemyIndicatorArrow : MonoBehaviour
     {
@@ -35,25 +35,25 @@ namespace FeaturesCombat.UI
         {
             if (rectTransform == null) rectTransform = GetComponent<RectTransform>();
 
-            // Posisi clamped di layar
+            // Clamped screen position
             rectTransform.position = screenPosition;
 
-            // Rotasi mengarah ke target (-90 derajat karena sprite standar menunjuk ke atas)
+            // Rotate toward target (-90 degrees because default sprite points upward)
             rectTransform.rotation = Quaternion.Euler(0f, 0f, angleDegrees - 90f);
 
-            // Warna & ukuran
+            // Color & size
             Color color = isBoss ? bossColor : normalColor;
             if (arrowImage != null)
             {
                 arrowImage.color = color;
             }
 
-            // Teks jarak (tetap tegak lurus terhadap layar agar mudah dibaca pemain)
+            // Distance text (kept upright relative to screen for legibility)
             if (distanceText != null)
             {
                 distanceText.text = $"{Mathf.RoundToInt(distanceMeters)}m";
                 distanceText.color = color;
-                distanceText.transform.rotation = Quaternion.identity; // Tetap tegak
+                distanceText.transform.rotation = Quaternion.identity; // Keep upright
             }
 
             if (pulse)
@@ -121,7 +121,7 @@ namespace FeaturesCombat.UI
         }
 
         /// <summary>
-        /// Membuat sprite panah segitiga tajam secara prosedural (vector-clean).
+        /// Procedurally generates a crisp triangular arrow sprite (vector-clean).
         /// </summary>
         public static Sprite CreateArrowSprite()
         {
@@ -141,7 +141,7 @@ namespace FeaturesCombat.UI
                 }
             }
 
-            // Gambar segitiga menunjuk ke atas (Y = size-1)
+            // Draw upward-pointing triangle (Y = size-1)
             float half = size * 0.5f;
             for (int y = 4; y < size - 4; y++)
             {

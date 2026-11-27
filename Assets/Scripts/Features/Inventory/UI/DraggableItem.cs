@@ -36,7 +36,7 @@ public class DraggableItem : MonoBehaviour, IBeginDragHandler, IDragHandler, IEn
         origSizeDelta = rectTransform.sizeDelta;
         origLocalScale = rectTransform.localScale;
 
-        // Pindah ke Canvas agar tetap render tapi selalu di paling atas.
+        // Reparent to Canvas so it keeps rendering and stays on top of everything.
         Canvas canvas = GetComponentInParent<Canvas>();
         if (canvas != null)
             transform.SetParent(canvas.transform, true);
@@ -49,7 +49,7 @@ public class DraggableItem : MonoBehaviour, IBeginDragHandler, IDragHandler, IEn
         rectTransform.sizeDelta = new Vector2(60f, 60f);
         rectTransform.localScale = Vector3.one;
 
-        // SANGAT KRUSIAL: matikan raycastTarget agar kursor menembus ke slot di bawahnya.
+        // CRITICAL: disable raycastTarget so the cursor passes through to slots underneath.
         if (image != null)
             image.raycastTarget = false;
     }
@@ -64,8 +64,8 @@ public class DraggableItem : MonoBehaviour, IBeginDragHandler, IDragHandler, IEn
         if (image != null)
             image.raycastTarget = true;
 
-        // Hybrid Drop: jika dilepas di luar slot & sedang mode Trophy,
-        // coba ke Snap Point 3D (dunia). Jika berhasil, tandai sudah di-drop.
+        // Hybrid Drop: if released outside a slot & in Trophy mode,
+        // try dropping onto a 3D Snap Point (world). If successful, mark as dropped.
         if (!dropped)
         {
             if (TryHybridWorldDrop())
@@ -74,12 +74,12 @@ public class DraggableItem : MonoBehaviour, IBeginDragHandler, IDragHandler, IEn
 
         if (dropped)
         {
-            // Backend + UpdateUI sudah membangun ulang semua slot; buang salinan drag sementara.
+            // Backend + UpdateUI already rebuilt all slots; destroy the temporary drag copy.
             Destroy(gameObject);
         }
         else if (parentAfterDrag != null)
         {
-            // Kembalikan ke posisi asal dengan anchor & ukuran original.
+            // Restore to original parent with original anchors & size.
             transform.SetParent(parentAfterDrag, true);
             rectTransform.anchorMin = origAnchorMin;
             rectTransform.anchorMax = origAnchorMax;
@@ -90,14 +90,14 @@ public class DraggableItem : MonoBehaviour, IBeginDragHandler, IDragHandler, IEn
         }
     }
 
-    // Drop ke dunia 3D: raycast dari kamera trophy ke Layer SnapPoint.
-    // Berhasil bila SnapPoint ter-valid && item punya placeablePrefab.
-    // Data-driven: pindahkan item dari slot asal (Kabinet) ke Rack pada index snap.slotIndex
-    // via backend MoveItemToSlot. Model 3D di-render otomatis oleh TrophyRackVisuals
-    // (listener OnInventoryChanged) — TIDAK di-instantiate langsung di sini.
+    // Drop to 3D world: raycast from trophy camera to SnapPoint layer.
+    // Succeeds if SnapPoint is valid && item has placeablePrefab.
+    // Data-driven: moves item from origin slot (Cabinet) to Rack at snap.slotIndex
+    // via backend MoveItemToSlot. 3D model is rendered automatically by TrophyRackVisuals
+    // (OnInventoryChanged listener) — NOT instantiated directly here.
     public static System.Func<InventorySlotUI, bool> HybridWorldDropHandler;
 
-    // Drop ke dunia 3D: didelegasikan ke listener mode aktif (mis. TrophySystemManager).
+    // Drop to 3D world: delegated to the active mode listener (e.g., TrophySystemManager).
     private bool TryHybridWorldDrop()
     {
         if (HybridWorldDropHandler != null)
@@ -105,7 +105,7 @@ public class DraggableItem : MonoBehaviour, IBeginDragHandler, IDragHandler, IEn
         return false;
     }
 
-    // Dipanggil oleh InventorySlotUI.OnDrop bila transaksi backend berhasil.
+    // Called by InventorySlotUI.OnDrop when backend transaction succeeds.
     public void MarkDropped()
     {
         dropped = true;

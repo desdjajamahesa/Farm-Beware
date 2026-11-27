@@ -17,7 +17,7 @@ public class PlayerBuffManager : MonoBehaviour, IBuffStateService, IFoodBuffAppl
         {
             data = buff;
             remainingDuration = buff.duration;
-            tickIntervalTimer = 1f; // Default 1 detik per tick untuk efek periodik
+            tickIntervalTimer = 1f; // Default 1 second per tick for periodic effects
         }
     }
 
@@ -96,8 +96,8 @@ public class PlayerBuffManager : MonoBehaviour, IBuffStateService, IFoodBuffAppl
     }
 
     /// <summary>
-    /// Menghapus seluruh buff aktif seketika saat pemain tidur atau pergantian hari,
-    /// mengembalikan modifier status player ke nilai dasar, dan mengosongkan HUD buff.
+    /// Immediately clears all active buffs on sleep or day change,
+    /// resets player stat modifiers to base values, and clears the buff HUD.
     /// </summary>
     public void ClearAllBuffs()
     {
@@ -213,7 +213,7 @@ public class PlayerBuffManager : MonoBehaviour, IBuffStateService, IFoodBuffAppl
     }
 
     /// <summary>
-    /// Mengambil pengali kecepatan waktu yang aktif (mis. mode x8 Fast-Forward via Shortcut 0).
+    /// Returns the active time speed multiplier (e.g., x8 Fast-Forward mode via Shortcut 0).
     /// </summary>
     public float GetActiveTimeMultiplier()
     {
@@ -240,7 +240,7 @@ public class PlayerBuffManager : MonoBehaviour, IBuffStateService, IFoodBuffAppl
     }
 
     /// <summary>
-    /// Memperbarui durasi buff aktif berdasarkan deltaTime tertentu (mendukung percepatan waktu x8 dan pengujian unit).
+    /// Updates active buff durations using the given deltaTime (supports x8 fast-forward and unit tests).
     /// </summary>
     public void TickBuffs(float deltaSeconds)
     {
@@ -270,7 +270,7 @@ public class PlayerBuffManager : MonoBehaviour, IBuffStateService, IFoodBuffAppl
                 }
             }
 
-            // Cek kedaluwarsa
+            // Check expiration
             if (buff.remainingDuration <= 0f)
             {
                 activeBuffs.RemoveAt(i);
@@ -289,11 +289,11 @@ public class PlayerBuffManager : MonoBehaviour, IBuffStateService, IFoodBuffAppl
     {
         if (newBuff == null) return;
 
-        // Cek apakah buff serupa sudah ada
+        // Check if an equivalent buff already exists
         var existing = activeBuffs.Find(b => b.data.buffType == newBuff.buffType && b.data.buffName == newBuff.buffName);
         if (existing != null)
         {
-            // Refresh durasi dan ambil nilai tertinggi
+            // Refresh duration and keep the higher value
             existing.remainingDuration = Mathf.Max(existing.remainingDuration, newBuff.duration);
             existing.data.value = Mathf.Max(existing.data.value, newBuff.value);
         }

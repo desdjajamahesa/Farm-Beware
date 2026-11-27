@@ -4,7 +4,7 @@ using FarmBeware.Core.Runtime;
 
 public class PlayerStats : MonoBehaviour, FeaturesCombat.IDamageable, IPlayerDamageNotifier, IPlayerVitalsAction
 {
-    // Event Darah, Stamina, Hunger & Thirst
+    // Health, Stamina, Hunger & Thirst events
     public event Action<int, int> OnHealthChanged;
     public event Action<int> OnDamageTaken;
     public event Action<int> OnHealed;
@@ -144,16 +144,16 @@ public class PlayerStats : MonoBehaviour, FeaturesCombat.IDamageable, IPlayerDam
     {
         DefenseEvaluator.Tick(Time.deltaTime);
 
-        // Regenerasi stamina otomatis setelah delay (hanya jika tidak kelaparan/kehausan parah)
+        // Auto-regenerate stamina after delay (only when not critically hungry/thirsty)
         if (Time.time >= lastStaminaUseTime + staminaRegenDelay && currentStamina < maxStamina)
         {
             RegenStamina(staminaRegenRate * Time.deltaTime);
         }
 
-        // Pengurangan Hunger & Thirst seiring waktu
+        // Drain Hunger & Thirst over time
         DrainHungerAndThirst(Time.deltaTime);
 
-        // Penalti damage jika kelaparan atau kehausan habis
+        // Apply penalty damage when hunger or thirst is depleted
         HandleEmptyPenalty();
 
         // Shortcut: Toggle God Mode (G)
@@ -365,7 +365,7 @@ public class PlayerStats : MonoBehaviour, FeaturesCombat.IDamageable, IPlayerDam
         var weaponUpgrade = FeaturesWorkbench.PlayerWeaponUpgradeState.Instance;
         if (weaponUpgrade != null && weaponUpgrade.taroPathUnlocked)
         {
-            // Taro Path: +15 Armor (Damage reduction, minimal 1 damage jika serangan terkena)
+            // Taro Path: +15 Armor (flat damage reduction, minimum 1 damage on hit)
             amount = Mathf.Max(1, amount - 15);
         }
 
@@ -391,17 +391,17 @@ public class PlayerStats : MonoBehaviour, FeaturesCombat.IDamageable, IPlayerDam
             OnPlayerDied?.Invoke();
         }
 
-        // 1. Visual flash merah pada tubuh karakter pemain (agar jelas bahwa pemain yang terkena luka)
+        // 1. Red flash on player body to indicate incoming hit
         TriggerHurtFlash();
 
-        // 2. Camera trauma shake saat pemain menerima damage
+        // 2. Camera trauma shake on player damage
         FeaturesCombat.Adapters.TraumaCameraShake.Instance?.AddTrauma(0.20f);
         if (FeaturesCamera.IsometricCameraController.Instance != null)
         {
             FeaturesCamera.IsometricCameraController.Instance.TriggerShake(0.14f, 0.20f);
         }
 
-        // 3. Reaksi tubuh terhuyung mundur jika menerima luka berat (>= 20 HP), sedang tidak menyerang, dan tidak punya Super Armor
+        // 3. Stagger reaction on heavy hits (>= 20 HP) when not attacking and without Super Armor
         if (amount >= 20 && !mods.HasPassiveSuperArmor)
         {
             var pc = GetComponent<PlayerControl>();
@@ -483,7 +483,7 @@ public class PlayerStats : MonoBehaviour, FeaturesCombat.IDamageable, IPlayerDam
             OnStaminaChanged?.Invoke(currentStamina, maxStamina);
             return currentStamina > 0;
         }
-        return false; // Stamina habis
+        return false; // Stamina depleted
     }
 
     public void RegenStamina(float amount)

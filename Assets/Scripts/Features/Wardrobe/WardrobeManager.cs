@@ -181,16 +181,16 @@ namespace FeaturesWardrobe
                 }
             }
 
-            // --- FIX: Initialize currentOutfit sebelum UI dibangun ---
+            // --- FIX: Initialize currentOutfit before UI is built ---
             if (playerOutfit != null && playerOutfit.currentOutfit == null && playerOutfit.unlockedOutfits.Count > 0)
             {
-                // Ambil outfit pertama sebagai currentOutfit default
+                // Pick the first outfit as the default currentOutfit
                 playerOutfit.currentOutfit = Instantiate(playerOutfit.unlockedOutfits[0]);
                 Debug.Log($"[WardrobeManager] currentOutfit initialized from unlockedOutfits[0]: {playerOutfit.currentOutfit.outfitName}");
             }
             if (playerOutfit != null && playerOutfit.currentOutfit == null)
             {
-                // Fallback: outfit baru dengan variant 0 semua
+                // Fallback: new outfit with all variants set to 0
                 var defaultOutfit = ScriptableObject.CreateInstance<OutfitData>();
                 defaultOutfit.topVariant = 0;
                 defaultOutfit.bottomVariant = 0;

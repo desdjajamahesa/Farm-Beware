@@ -8,7 +8,7 @@ using FeaturesInventory;
 using FarmBeware.Core.Runtime;
 
 /// <summary>
-/// Status state machine proses memasak di kompor.
+/// State machine status for the stove cooking process.
 /// </summary>
 public enum CookingState
 {
@@ -19,7 +19,7 @@ public enum CookingState
 }
 
 /// <summary>
-/// Mewakili 1 slot / tungku masak di kompor (Burner).
+/// Represents 1 cooking slot / burner on the stove.
 /// </summary>
 [Serializable]
 public class CookingSlot
@@ -42,9 +42,9 @@ public class CookingSlot
 }
 
 /// <summary>
-/// Kompor memasak (Kitchen Cooking Controller):
-/// Mendukung 3 slot/tungku memasak simultan (Concurrent 3-Burner Stove).
-/// Berjalan mandiri di scene background bahkan saat panel UI ditutup.
+/// Cooking stove (Kitchen Cooking Controller):
+/// Supports 3 simultaneous cooking slots/burners (Concurrent 3-Burner Stove).
+/// Runs independently in the background scene even when the UI panel is closed.
 /// </summary>
 [DisallowMultipleComponent]
 public class KitchenStove : MonoBehaviour, IInteractable

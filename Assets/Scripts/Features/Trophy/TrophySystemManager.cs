@@ -3,14 +3,14 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 
-// Manager mode First-Person Trophy Arrangement (singleton).
-// Delegates camera switching to CameraManager. ESC untuk keluar dari mode.
+// First-Person Trophy Arrangement mode manager (singleton).
+// Delegates camera switching to CameraManager. ESC to exit mode.
 public class TrophySystemManager : MonoBehaviour, FarmBeware.Core.Runtime.ITrophyService
 {
     private static TrophySystemManager _instance;
 
-    // Singleton + lazy resolver (pola sama dengan TimeManager) agar Instance
-    // tetap ter-resolve bahkan bila Awake belum terpanggil (edit mode/dll).
+    // Singleton + lazy resolver (same pattern as TimeManager) so Instance
+    // still resolves even if Awake has not been called yet (edit mode/dll).
     public static TrophySystemManager Instance
     {
         get
@@ -33,7 +33,7 @@ public class TrophySystemManager : MonoBehaviour, FarmBeware.Core.Runtime.ITroph
     [Tooltip("Trophy first-person camera (child of TrophyCabinetSystem).")]
     [SerializeField] private Camera trophyCamera;
 
-    // Jarak maksimum raycast saat mengambil piala dari rak.
+    // Maximum raycast distance when collecting a trophy from the rack.
     private const float RaycastDistance = 10f;
 
     [Header("Dual-Inventory Trophy Cabinet")]
@@ -43,7 +43,7 @@ public class TrophySystemManager : MonoBehaviour, FarmBeware.Core.Runtime.ITroph
     [Tooltip("Inventory 2 (Rack): sumber kebenaran visual piala yang terpasang di rak.")]
     [SerializeField] private InventoryComponent currentRackInventory;
 
-    // Akses baca publik ke kamera trophy via CameraManager.
+    // Public read access to the trophy camera via CameraManager.
     public Camera TrophyFirstPersonCamera
     {
         get
@@ -59,13 +59,13 @@ public class TrophySystemManager : MonoBehaviour, FarmBeware.Core.Runtime.ITroph
         }
     }
 
-    // Akses baca publik ke kedua inventory (dipakai alur drag ke rak).
+    // Public read access to both inventories (used by the rack drag flow).
     public InventoryComponent CabinetInventory { get { return currentCabinetInventory; } }
     public InventoryComponent RackInventory { get { return currentRackInventory; } }
 
     private bool isInTrophyMode = false;
 
-    // Pembacaan publik untuk listener lain (mis. TrophyDragController).
+    // Public read access for other listeners (e.g., TrophyDragController).
     public bool IsInTrophyMode { get { return isInTrophyMode; } }
 
     private void Awake()
@@ -140,11 +140,11 @@ public class TrophySystemManager : MonoBehaviour, FarmBeware.Core.Runtime.ITroph
 
     private void Update()
     {
-        // Mode trophy TIDAK aktif: abaikan seluruh input di bawah ini.
+        // Trophy mode INACTIVE: ignore all input below.
         if (!isInTrophyMode)
             return;
 
-        // ESC untuk keluar dari mode trophy.
+        // ESC to exit trophy mode.
         if (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame)
         {
             FarmBeware.Core.Runtime.UIModalHelper.LastFrameUIPanelClosed = Time.frameCount;
@@ -152,23 +152,23 @@ public class TrophySystemManager : MonoBehaviour, FarmBeware.Core.Runtime.ITroph
             return;
         }
 
-        // Klik kiri: coba ambil piala yang sedang terpasang di rak (SnapPoint).
+        // Left-click: attempt to collect a trophy currently placed on the rack (SnapPoint).
         if (Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame)
             TryCollectTrophy();
     }
 
     /// <summary>
-    /// Klik kiri (New Input System) saat mode trophy: tembakkan raycast dari kamera
-    /// trophy ke layer SnapPoint (layer 10) lalu pindahkan isi slot rak yang bersangkutan
-    /// kembali ke Kabinet via backend TransferItemTo.
+    /// Left-click (New Input System) in trophy mode: cast a ray from the trophy camera
+    /// onto the SnapPoint layer (layer 10), then move the corresponding rack slot's contents
+    /// back to the Cabinet via backend TransferItemTo.
     /// </summary>
     private void TryCollectTrophy()
     {
         if (currentRackInventory == null || currentCabinetInventory == null)
             return;
 
-        // Klik di atas UI dikelola EventSystem (slot, tombol, dsb) — jangan ikut memproses
-        // world raycast agar piala di belakang panel tidak ikut terambil.
+        // Clicks over UI are handled by EventSystem (slots, buttons, etc.) — skip world raycast
+        // so trophies behind the panel are not accidentally collected.
         if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject())
             return;
 
@@ -184,8 +184,8 @@ public class TrophySystemManager : MonoBehaviour, FarmBeware.Core.Runtime.ITroph
         if (snap == null || snap.slotIndex < 0)
             return;
 
-        // Backend command: pindahkan isi slot rak tersebut kembali ke Kabinet.
-        // Visual (model 3D) otomatis dihapus oleh TrophyRackVisuals via OnInventoryChanged.
+        // Backend command: move that rack slot's contents back to the Cabinet.
+        // Visual (3D model) is automatically removed by TrophyRackVisuals via OnInventoryChanged.
         currentRackInventory.TransferItemTo(currentCabinetInventory, snap.slotIndex);
     }
 

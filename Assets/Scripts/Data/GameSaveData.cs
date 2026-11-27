@@ -12,7 +12,7 @@ namespace FeaturesSaveSystem
     public class SaveMetadata
     {
         public string saveId;              // Unique identifier (UUID or clean key)
-        public string displayName;         // Player-entered custom name (e.g. "Chapter 1 - Hutan")
+        public string displayName;         // Player-entered custom name (e.g. "Chapter 1 - Forest")
         public string fileName;            // Disk file name (e.g. "save_20260930_215500.json")
         public string timestamp;           // Sortable ISO timestamp (yyyy-MM-dd HH:mm:ss)
         public string formattedDate;       // Pretty human-readable date

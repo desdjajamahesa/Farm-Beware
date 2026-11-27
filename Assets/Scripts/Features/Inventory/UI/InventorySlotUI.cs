@@ -12,23 +12,23 @@ public class InventorySlotUI : MonoBehaviour, IDropHandler, IPointerClickHandler
     [Tooltip("Bar progress per-slot (stasiun dapur). Naik dari bawah ke atas di pinggir slot. Dibuat otomatis bila kosong.")]
     [SerializeField] private Image progressFill;
 
-    // Toggle diagnostik: log nilai fill saat berubah (untuk membuktikan proses bertahap).
+    // Diagnostic toggle: logs fill value on change (to verify incremental progress).
     public static bool debugLogProgress;
 
     private InventoryManagerUI manager;
     private Color defaultColor;
 
-    // Inventori backend yang menaungi slot ini (Player atau Storage).
+    // Backend inventory that owns this slot (Player or Storage).
     public InventoryComponent ownerInventory;
 
     public int SlotIndex { get; private set; }
     public InventorySlot BoundSlot { get; set; }
 
-    // State progress per-slot (hanya untuk inventory yang memiliki ISlotProgressProvider; selain itu null).
+    // Per-slot progress state (only for inventories implementing ISlotProgressProvider; otherwise null).
     private ISlotProgressProvider station;
     private bool stationChecked;
 
-    // Kontainer tunggal indikator progress (track + fill + teks %).
+    // Single container for progress indicator (track + fill + % text).
     private GameObject progressContainerGO;
     private Image progressTrack;
     private Text progressText;
@@ -56,7 +56,7 @@ public class InventorySlotUI : MonoBehaviour, IDropHandler, IPointerClickHandler
         if (backgroundImage != null)
             defaultColor = backgroundImage.color;
 
-        // Resolve stasiun dapur bila inventory ini adalah stasiun (Sink/Stove).
+        // Resolve kitchen station if this inventory belongs to a station (Sink/Stove).
         station = owner != null ? owner.GetComponent<ISlotProgressProvider>() : null;
         stationChecked = true;
 
@@ -75,9 +75,9 @@ public class InventorySlotUI : MonoBehaviour, IDropHandler, IPointerClickHandler
 
     public void SetSlotVisual(InventorySlot slot)
     {
-        // Data-driven murni: hapus semua gambar & teks lama di slot ini terlebih dahulu,
-        // lalu spawn ulang persis sesuai data array agar Ikon & Quantity tak pernah terpisah.
-        // Catatan: ProgressIndicator (bar progres) TIDAK ikut dihapus.
+        // Purely data-driven: remove all old images & texts in this slot first,
+        // then respawn strictly according to array data so Icon & Quantity never desync.
+        // Note: ProgressIndicator (progress bar) is NOT destroyed.
         for (int i = transform.childCount - 1; i >= 0; i--)
         {
             if (progressContainerGO != null && transform.GetChild(i).gameObject == progressContainerGO)
@@ -97,7 +97,7 @@ public class InventorySlotUI : MonoBehaviour, IDropHandler, IPointerClickHandler
 
         int effectiveQuantity = slot.quantity <= 0 ? 1 : slot.quantity;
 
-        // Spawn ulang ikon item.
+        // Respawn item icon.
         GameObject iconGO = new GameObject("Icon", typeof(RectTransform));
         iconGO.transform.SetParent(transform, false);
         RectTransform iconRT = iconGO.GetComponent<RectTransform>();
@@ -118,19 +118,19 @@ public class InventorySlotUI : MonoBehaviour, IDropHandler, IPointerClickHandler
         iconGO.AddComponent<DraggableItem>();
         iconImage = img;
 
-        // Jangan tampilkan kuantiti untuk senjata karena jumlahnya pasti hanya 1.
-        // Untuk item stackable lainnya, tampilkan kuantiti jika jumlah > 1.
+        // Do not display quantity for weapons since their count is always 1.
+        // For other stackable items, show quantity if count > 1.
         bool isWeapon = (slot.item.category == ItemCategory.Weapon)
             || (slot.item is ToolItemData tool && tool.isWeapon)
             || string.Equals(slot.item.itemId, "dummysword", System.StringComparison.OrdinalIgnoreCase);
 
         if (!isWeapon && effectiveQuantity > 1)
         {
-            // Spawn ulang teks quantity.
+            // Respawn quantity text.
             GameObject qtyGO = new GameObject("Quantity", typeof(RectTransform));
             qtyGO.transform.SetParent(transform, false);
             RectTransform qtyRT = qtyGO.GetComponent<RectTransform>();
-            // Jangkar ke pojok kanan-bawah
+            // Anchor to bottom-right corner
             qtyRT.anchorMin = new Vector2(1, 0);
             qtyRT.anchorMax = new Vector2(1, 0);
             qtyRT.pivot = new Vector2(1, 0);
@@ -184,16 +184,16 @@ public class InventorySlotUI : MonoBehaviour, IDropHandler, IPointerClickHandler
         if (originSlot == null || manager == null || ownerInventory == null)
             return;
 
-        // Dijatkan kembali ke slot asal: tidak ada perubahan data.
+        // Dropped back onto origin slot: no data change.
         if (originSlot == this)
             return;
 
-        // Perpindahan presisi slot-ke-slot. Backend MoveItemToSlot menangani
-        // pindah ke slot kosong, penumpukan item sama, dan pertukaran item berbeda.
-        // Berlaku untuk inventory sama maupun antar inventory (Player <-> Storage).
+        // Precision slot-to-slot transfer. Backend MoveItemToSlot handles
+        // moving to empty slots, stacking matching items, and swapping different items.
+        // Applies both within the same inventory and across inventories (Player <-> Storage).
         bool success = originSlot.ownerInventory.MoveItemToSlot(originSlot.SlotIndex, ownerInventory, SlotIndex);
 
-        // Tutup visual drag hanya jika transfer berhasil; jika gagal, DraggableItem akan memantulkan ikon kembali.
+        // Close drag visual only if transfer succeeded; if failed, DraggableItem snaps the icon back.
         if (success)
         {
             dragItem.MarkDropped();
@@ -290,9 +290,9 @@ public class InventorySlotUI : MonoBehaviour, IDropHandler, IPointerClickHandler
     }
 
     /// <summary>
-    /// Bangun indikator progress dalam SATU kontainer (ProgressIndicator):
-    /// track gelap + fill emas (naik dari bawah) + teks persen real-time.
-    /// Hanya dipakai bila inventory memiliki KitchenStation.
+    /// Builds the progress indicator inside ONE container (ProgressIndicator):
+    /// dark track + gold fill (rising from bottom) + real-time percentage text.
+    /// Used only when the inventory has a KitchenStation.
     /// </summary>
     private void BuildProgressIndicator()
     {
@@ -307,7 +307,7 @@ public class InventorySlotUI : MonoBehaviour, IDropHandler, IPointerClickHandler
         containerRT.offsetMin = Vector2.zero;
         containerRT.offsetMax = Vector2.zero;
 
-        // Track gelap (strip pinggir kanan slot, memakai ruang kosong di sekitar ikon).
+        // Dark track (right-edge strip on slot, using spare space around the icon).
         GameObject trackGO = new GameObject("Track", typeof(RectTransform));
         trackGO.transform.SetParent(container.transform, false);
         RectTransform trackRT = trackGO.GetComponent<RectTransform>();
@@ -320,7 +320,7 @@ public class InventorySlotUI : MonoBehaviour, IDropHandler, IPointerClickHandler
         trackImg.color = new Color(0.03f, 0.03f, 0.03f, 0.85f);
         trackImg.raycastTarget = false;
 
-        // Fill emas (transform-grow: tinggi berubah dari bawah ke atas, pivot bawah).
+        // Gold fill (transform-grow: height scales from bottom to top, bottom pivot).
         GameObject fillGO = new GameObject("Fill", typeof(RectTransform));
         fillGO.transform.SetParent(container.transform, false);
         RectTransform fillRT = fillGO.GetComponent<RectTransform>();
@@ -334,7 +334,7 @@ public class InventorySlotUI : MonoBehaviour, IDropHandler, IPointerClickHandler
         fillImg.color = fillDefaultColor;
         fillImg.raycastTarget = false;
 
-        // Teks persen (di atas slot, besar & jelas sebagai penanda real-time).
+        // Percentage text (above slot, large & clear as real-time indicator).
         GameObject pctGO = new GameObject("Percent", typeof(RectTransform));
         pctGO.transform.SetParent(container.transform, false);
         RectTransform pctRT = pctGO.GetComponent<RectTransform>();
@@ -369,7 +369,7 @@ public class InventorySlotUI : MonoBehaviour, IDropHandler, IPointerClickHandler
         if (wasActive != visible)
             progressContainerGO.SetActive(visible);
 
-        // Log HANYA saat ada transisi (hindari spam per-frame).
+        // Log ONLY on state transition (avoid per-frame spam).
         if (wasActive != visible && station != null && progressFill != null && ownerInventory != null)
         {
             Debug.Log("[InventorySlotUI] progress " + (visible ? "AKTIF" : "HILANG") + " slot " + SlotIndex
@@ -388,7 +388,7 @@ public class InventorySlotUI : MonoBehaviour, IDropHandler, IPointerClickHandler
         if (station == null || progressFill == null || progressContainerGO == null)
             return;
 
-        // Saat flash "Selesai!" berjalan, jangan diganggu polling.
+        // Do not let polling interrupt while completion flash is playing.
         if (flashing)
         {
             if (Time.time >= flashEndTime)
@@ -427,7 +427,7 @@ public class InventorySlotUI : MonoBehaviour, IDropHandler, IPointerClickHandler
         }
         SetProgressText(Mathf.RoundToInt(p * 100f) + "%");
 
-        // Debug: bukti proses bertahap (log saat nilai berubah >= 1%).
+        // Debug: verify incremental progress (log when value changes >= 1%).
         if (debugLogProgress && Mathf.Abs(p - lastLoggedFill) >= 0.01f)
         {
             lastLoggedFill = p;
@@ -448,7 +448,7 @@ public class InventorySlotUI : MonoBehaviour, IDropHandler, IPointerClickHandler
         if (slotIndex != SlotIndex || progressFill == null)
             return;
 
-        // Flash hijau "Selesai!" lalu sembunyikan.
+        // Green completion flash then hide.
         flashing = true;
         flashEndTime = Time.time + 0.35f;
         progressFill.color = new Color(0.2f, 1f, 0.35f, 0.95f);
@@ -466,7 +466,7 @@ public class InventorySlotUI : MonoBehaviour, IDropHandler, IPointerClickHandler
 
     private void OnDisable()
     {
-        // Sembunyikan tooltip agar tidak menyangkut saat panel ditutup tiba-tiba.
+        // Hide tooltip so it does not get stuck if the panel closes abruptly.
         if (ItemDisplayUI.Instance != null)
             ItemDisplayUI.Instance.HideHover();
 

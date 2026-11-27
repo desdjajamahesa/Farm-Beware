@@ -72,7 +72,7 @@ namespace FeaturesWardrobe
             TogglePart(allChildren, "shoes2_R",     shoesVariant == 1);
 
             // Hat — driven by isHatEquipped, not the asset's hatVariant, to keep
-            // the Topi button authoritative over the standalone toggle.
+            // the Hat button authoritative over the standalone toggle.
             // The asset's hatVariant is still persisted in save data.
         }
 

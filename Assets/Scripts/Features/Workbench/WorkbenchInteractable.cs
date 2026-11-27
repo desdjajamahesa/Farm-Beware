@@ -5,8 +5,8 @@ using FeaturesWorkbench.UI;
 namespace FeaturesWorkbench
 {
     /// <summary>
-    /// Meja kerja di garasi (IInteractable) yang membuka UI upgrade senjata.
-    /// Memungkinkan pemain meningkatkan level dasar senjata (Damage Lv 1-3) dan membuka jalur spesialisasi bibit.
+    /// Garage workbench (IInteractable) that opens the weapon upgrade UI.
+    /// Allows the player to upgrade base weapon level (Damage Lv 1-3) and unlock seed specialization paths.
     /// </summary>
     [RequireComponent(typeof(WorldLabel))]
     public class WorkbenchInteractable : MonoBehaviour, IInteractable
@@ -44,7 +44,7 @@ namespace FeaturesWorkbench
                     return;
                 }
 
-                // Jika belum ada di UI Canvas, bangun secara prosedural
+                // If not present on UI Canvas yet, build procedurally
                 var canvas = GameObject.Find("UI_Canvas");
                 if (canvas != null)
                 {

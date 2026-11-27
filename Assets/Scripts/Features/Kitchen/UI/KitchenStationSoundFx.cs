@@ -1,10 +1,10 @@
 using UnityEngine;
 
 /// <summary>
-/// Feedback suara kecil untuk stasiun dapur (Sink / Kompor).
-/// Murni visual/audio: subscribe OnProcessCompleted -> bunyi "pop" prosedural
-/// (AudioClip.Create, tanpa aset). Cooldown mencegah bunyi dobel saat 2 slot
-/// selesai hampir bersamaan. Layak juga digunakan oleh fitur lain di masa depan.
+/// Lightweight audio feedback for kitchen stations (Sink / Stove).
+/// Purely visual/audio: subscribes to OnProcessCompleted -> procedural "pop" sound
+/// (AudioClip.Create, asset-free). Cooldown prevents double sound when 2 slots
+/// finish nearly simultaneously. Reusable by future features as well.
 /// </summary>
 public class KitchenStationSoundFx : MonoBehaviour
 {

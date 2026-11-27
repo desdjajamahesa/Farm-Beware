@@ -6,9 +6,9 @@ using FeaturesRendering.Lighting;
 namespace FeaturesTime.Atmosphere
 {
     /// <summary>
-    /// Mengelola pencahayaan seluruh lampu luar ruangan (Outdoor Garden Lamps) di pekarangan dan area kebun.
-    /// Mengatur transisi halus intensitas dan pendaran emissive saat peralihan waktu Day/Night,
-    /// serta menjalankan coroutine micro-flicker organik.
+    /// Manages all outdoor garden lamps across the yard and garden areas.
+    /// Handles smooth intensity and emissive glow transitions during Day/Night shifts,
+    /// and runs an organic micro-flicker coroutine.
     /// </summary>
     [DisallowMultipleComponent]
     public class OutdoorLightingController : MonoBehaviour

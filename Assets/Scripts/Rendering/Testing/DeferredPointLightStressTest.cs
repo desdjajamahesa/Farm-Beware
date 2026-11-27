@@ -5,13 +5,13 @@ using UnityEngine.Rendering.Universal;
 namespace FeaturesRendering.Testing
 {
     /// <summary>
-    /// Skrip pengujian beban (stress test) untuk mensimulasikan lebih dari 200 Point Lights
-    /// proyektil aktif secara simultan pada mode URP Deferred+.
+    /// Stress-test script simulating 200+ active projectile Point Lights
+    /// simultaneously in URP Deferred+ mode.
     ///
-    /// TUJUAN TESTING:
-    /// 1. Menguji efisiensi light clustering URP Deferred+ pada beban pertempuran malam hari.
-    /// 2. Memvalidasi bahwa 200 Point Lights tanpa bayangan (shadows = None) mengonsumsi <= 3.0 ms ALU GPU.
-    /// 3. Menyediakan mode perbandingan interaktif untuk membuktikan mengapa proyektil dilarang menggunakan shadow casting.
+    /// TESTING GOALS:
+    /// 1. Benchmark URP Deferred+ light clustering efficiency under heavy night combat load.
+    /// 2. Validate that 200 unshadowed Point Lights (shadows = None) consume <= 3.0 ms GPU ALU.
+    /// 3. Provide an interactive comparison toggle proving why projectiles must not cast shadows.
     /// </summary>
     [ExecuteAlways]
     public class DeferredPointLightStressTest : MonoBehaviour
@@ -53,7 +53,7 @@ namespace FeaturesRendering.Testing
             fpsDeltaTime += (Time.unscaledDeltaTime - fpsDeltaTime) * 0.1f;
             currentFps = 1.0f / Mathf.Max(0.0001f, fpsDeltaTime);
 
-            // Animasi pergerakan proyektil dinamis
+            // Dynamic projectile motion animation
             if (spawnedLights.Count > 0 && Application.isPlaying)
             {
                 float time = Time.time * flightSpeed;
@@ -66,7 +66,7 @@ namespace FeaturesRendering.Testing
                     float p = phaseOffsets[i];
                     Vector3 offset = initialOffsets[i];
 
-                    // Gerakan orbit lissajous / swarming
+                    // Lissajous / swarming orbit motion
                     float x = Mathf.Sin(time + p) * offset.x + Mathf.Cos(time * 0.5f + p) * 3f;
                     float z = Mathf.Cos(time + p) * offset.z + Mathf.Sin(time * 0.7f + p) * 3f;
                     float y = Mathf.Clamp(Mathf.Sin(time * 2f + p) * 1.5f + 1.2f, 0.5f, 3.5f);
@@ -102,7 +102,7 @@ namespace FeaturesRendering.Testing
                 var go = new GameObject($"ProjLight_{i:D3}");
                 go.transform.SetParent(lightRoot.transform, false);
 
-                // Buat titik acak di dalam arena
+                // Pick a random point inside the arena
                 float angle = Random.Range(0f, Mathf.PI * 2f);
                 float dist = Random.Range(3f, arenaRadius);
                 Vector3 offset = new Vector3(Mathf.Cos(angle) * dist, 1.0f, Mathf.Sin(angle) * dist);
@@ -114,7 +114,7 @@ namespace FeaturesRendering.Testing
                 light.intensity = pointLightIntensity;
                 light.color = palette[i % palette.Length];
 
-                // ATURAN KRITIS DEFERRED+: Shadows WAJIB None
+                // CRITICAL DEFERRED+ RULE: Shadows MUST be None
                 light.shadows = forceEnableShadows ? LightShadows.Soft : LightShadows.None;
 
                 spawnedLights.Add(light);

@@ -4,9 +4,9 @@ using UnityEngine;
 namespace FeaturesCombat
 {
     /// <summary>
-    /// Manager Object Pooling terpusat untuk 6 varian monster di Night Brawl.
-    /// Mengeliminasi lag spike dan garbage collection runtime (Zero-Allocation)
-    /// dengan mendaur ulang entitas monster yang mati alih-alih Destroy/Instantiate berulang kali.
+    /// Centralized Object Pooling manager for the 6 Night Brawl monster variants.
+    /// Eliminates lag spikes and runtime garbage collection (Zero-Allocation)
+    /// by recycling defeated monster entities instead of repeated Destroy/Instantiate calls.
     /// </summary>
     public class EnemyObjectPool : MonoBehaviour
     {
@@ -68,7 +68,7 @@ namespace FeaturesCombat
             }
 #endif
 
-            // Inisialisasi antrean pool untuk ke-6 varian
+            // Initialize pool queues for all 6 variants
             foreach (EnemyType type in System.Enum.GetValues(typeof(EnemyType)))
             {
                 if (!pools.ContainsKey(type))
@@ -78,7 +78,7 @@ namespace FeaturesCombat
                 LoadPrefabForType(type);
             }
 
-            // Prewarm instansiasi di awal game saat memori masih tenang
+            // Prewarm instantiations at startup while memory is idle
             PrewarmAll();
         }
 
@@ -174,7 +174,7 @@ namespace FeaturesCombat
         }
 
         /// <summary>
-        /// Meminjam monster dari pool atau menginstansiasi baru jika pool kosong.
+        /// Borrows a monster from the pool or instantiates a new one if the pool is empty.
         /// </summary>
         public EnemyBase Spawn(EnemyType type, Vector3 position)
         {
@@ -186,7 +186,7 @@ namespace FeaturesCombat
 
             EnemyBase enemy = null;
 
-            // Bersihkan objek hancur jika ada
+            // Purge destroyed objects if any
             while (queue.Count > 0 && enemy == null)
             {
                 enemy = queue.Dequeue();
@@ -199,7 +199,7 @@ namespace FeaturesCombat
 
             if (enemy != null)
             {
-                enemy.transform.SetParent(null, false); // Lepas dari root saat aktif
+                enemy.transform.SetParent(null, false); // Detach from pool root while active
                 enemy.transform.position = position;
                 enemy.transform.rotation = Quaternion.identity;
 
@@ -233,7 +233,7 @@ namespace FeaturesCombat
         }
 
         /// <summary>
-        /// Mengembalikan monster yang telah tereliminasi kembali ke pool (Zero GC allocation).
+        /// Returns a defeated monster back to the pool (Zero GC allocation).
         /// </summary>
         public void ReturnToPool(EnemyBase enemy)
         {

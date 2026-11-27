@@ -1,8 +1,8 @@
 using UnityEngine;
 
-// Listener visual murni (Data-Driven) untuk sistem equip senjata 3D.
-// Tidak memanipulasi data inventori; hanya bereaksi terhadap event yang
-// dikirim oleh InventoryComponent untuk memperbarui model senjata di tangan.
+// Pure data-driven visual listener for the 3D weapon equip system.
+// Does not mutate inventory data; reacts to InventoryComponent events
+// to update the held weapon model in the player's hand.
 public partial class PlayerEquipment : MonoBehaviour
 {
     [SerializeField] private Transform handSocket;
@@ -212,7 +212,7 @@ public partial class PlayerEquipment : MonoBehaviour
     private PlayerBuffManager buffManager;
     private Coroutine currentSwingCoroutine;
 
-    // Komponen visual indikator jangkauan serangan (lingkaran di bawah kaki karakter)
+    // Visual attack-range indicator components (ground circle beneath player feet)
     private GameObject rangeIndicatorObj;
     private LineRenderer rangeLineRenderer;
     private Material indicatorMaterial;
@@ -482,7 +482,7 @@ public partial class PlayerEquipment : MonoBehaviour
 
         ItemData item = CurrentEquippedItem;
 
-        // Validasi senjata atau bare hands
+        // Validate weapon or bare hands
         if (item == null)
         {
             if (!allowBareHandsAttack)
@@ -571,7 +571,7 @@ public partial class PlayerEquipment : MonoBehaviour
             }
             int finalDamage = Mathf.RoundToInt(baseDmg * dmgMultiplier);
 
-            // Combo ke-3/4 (Finisher) atau Riposte adalah putaran/sapuan lebar
+            // 3rd/4th combo hit (Finisher) or Riposte performs a wide 360-degree sweep
             bool is360 = (currentComboIndex >= 2) || isRiposte;
             float activeRange = is360 ? attackHitRange * 1.15f : attackHitRange;
             float finalKnockback = knockback * combatStateMachine.GetCurrentKnockbackMultiplier() * statMods.KnockbackMultiplier * (isRiposte ? 2.0f : 1.0f);
@@ -1142,7 +1142,7 @@ public partial class PlayerEquipment : MonoBehaviour
             }
 
             lastAttackTime = Time.time;
-            currentComboIndex = 0; // Reset combo setelah skill
+            currentComboIndex = 0; // Reset combo after skill
 
             if (playerStats != null)
             {
@@ -1312,7 +1312,7 @@ public partial class PlayerEquipment : MonoBehaviour
 
         TriggerRangeIndicatorPulse(impactDelay + 0.35f);
 
-        // Tunggu ancang-ancang windup selesai saat karakter melompat ke udara
+        // Wait for leap windup to finish as the character launches airborne
         yield return new WaitForSeconds(launchDelay);
 
         PlaySwingAudio(swingSkillClip != null ? swingSkillClip : swingHeavyClip);
@@ -1323,7 +1323,7 @@ public partial class PlayerEquipment : MonoBehaviour
             activeSkillTrail.BeginTrail(2, isFinisher: true, isHeavy: true);
         }
 
-        // Jalankan trail sepanjang lintasan lompatan di udara hingga menghantam tanah
+        // Keep weapon trail active across the airborne arc until ground impact
         float flightDuration = Mathf.Max(0.05f, impactDelay - launchDelay);
         yield return new WaitForSeconds(flightDuration);
 

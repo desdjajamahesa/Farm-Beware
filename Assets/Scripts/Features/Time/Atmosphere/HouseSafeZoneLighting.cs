@@ -6,9 +6,9 @@ using FeaturesRendering.Lighting;
 namespace FeaturesTime.Atmosphere
 {
     /// <summary>
-    /// Mengelola sistem pencahayaan interior rumah sebagai Safe Zone (Industry-Standard Dual-Source).
-    /// Mendukung hierarki Key Downlight (Spot) + Ambient Radiosity Fill (Point),
-    /// kalibrasi suhu Kelvin, sinkronisasi material emissive, dan transisi halus siang/malam.
+    /// Manages interior house lighting as a Safe Zone (Industry-Standard Dual-Source).
+    /// Supports Key Downlight (Spot) + Ambient Radiosity Fill (Point) hierarchy,
+    /// Kelvin color temperature calibration, emissive material synchronization, and smooth day/night transitions.
     /// </summary>
     [DisallowMultipleComponent]
     public class HouseSafeZoneLighting : MonoBehaviour
@@ -170,7 +170,7 @@ namespace FeaturesTime.Atmosphere
                 flickerCoroutine = null;
             }
 
-            // Simpan start intensities untuk rooms
+            // Save start intensities for rooms
             float[] startDownlights = new float[rooms.Count];
             float[] startFills = new float[rooms.Count];
 
@@ -196,7 +196,7 @@ namespace FeaturesTime.Atmosphere
                 UpdateFixtureEmission(r, isNight ? 1.0f : 0.0f);
             }
 
-            // Simpan start intensities untuk legacy lights
+            // Save start intensities for legacy lights
             float[] legacyStarts = new float[lights.Count];
             for (int i = 0; i < lights.Count; i++)
             {
@@ -379,7 +379,7 @@ namespace FeaturesTime.Atmosphere
                     var r = rooms[i];
                     if (!r.enableMicroFlicker || r.downlight == null || !r.downlight.enabled) continue;
 
-                    // Perlin noise organik untuk variasi halus
+                    // Organic Perlin noise for subtle variation
                     float noise = Mathf.PerlinNoise(time * r.flickerSpeed + (i * 17.13f), 0f);
                     float factor = 1.0f + (noise - 0.5f) * 2.0f * r.flickerAmount;
                     r.downlight.intensity = r.currentDownlightBaseIntensity * factor;

@@ -1,16 +1,16 @@
 namespace FeaturesCombat
 {
     /// <summary>
-    /// 6 Varian musuh hasil evolusi 3 bibit tanaman (Sweet Potato, Taro, Corn) sesuai panduan MVP.
+    /// 6 enemy variants evolved from 3 crop seeds (Sweet Potato, Taro, Corn) per MVP specification.
     /// </summary>
     public enum EnemyType
     {
         // Sweet Potato Evolution
-        TuberMaw,           // Normal: Lincah, burrow strike, tunnel rush
+        TuberMaw,           // Normal: Agile, burrow strike, tunnel rush
         CyclopsTuberMaw,    // Boss: Laser tracking beam, summon minion
 
         // Taro Evolution
-        TaroBrute,          // Normal: Tangguh, knockback hit, root guard
+        TaroBrute,          // Normal: Tough, knockback hit, root guard
         TaroColossus,       // Boss: Airborne slam, grapple slam
 
         // Corn Evolution

@@ -6,11 +6,11 @@ using FarmBeware.Core.Runtime;
 namespace FeaturesFarming
 {
     /// <summary>
-    /// Screen-Space Projected UI untuk countdown pertumbuhan tanaman.
-    /// Menggambar lingkaran countdown tajam dan konsisten langsung di layar pemain (ScreenSpaceOverlay)
-    /// yang diproyeksikan dari posisi tanaman 3D di dunia.
-    /// Sempurna untuk kamera 3D Isometric Top-down tanpa terpengaruh kemiringan sudut kamera atau distorsi perspektif.
-    /// UI HANYA aktif saat tanaman sedang bertumbuh (PlantedWatered). Jika kosong, tanaman matang, atau panen, otomatis disembunyikan.
+    /// Screen-Space Projected UI for crop growth countdown.
+    /// Draws a crisp, consistent countdown ring directly on the player's screen (ScreenSpaceOverlay)
+    /// projected from the 3D world position of the crop.
+    /// Ideal for a 3D Isometric Top-down camera without tilt or perspective distortion.
+    /// UI is ONLY active while the crop is growing (PlantedWatered). Hidden automatically when empty, mature, or harvested.
     /// </summary>
     public class CropGrowthCountdownUI : MonoBehaviour
     {
@@ -64,18 +64,18 @@ namespace FeaturesFarming
         private static IPlayerContext cachedPlayerControl;
 
         /// <summary>
-        /// Mengembalikan true bila ada jendela modal/menu yang sedang terbuka (Inventori, Storage, Toko, Pause, dsb.),
-        /// sehingga indikator waktu tanam di layar otomatis disembunyikan agar tidak menutupi atau mengotori jendela UI.
+        /// Returns true if any modal window/menu is currently open (Inventory, Storage, Shop, Pause, etc.),
+        /// automatically hiding on-screen growth timers so they do not overlap or clutter UI windows.
         /// </summary>
         public static bool ShouldSuppressIndicators()
         {
-            // 1. Inventori pemain atau storage chest/fridge/trophy/sink
+            // 1. Player inventory or storage chest/fridge/trophy/sink
             if (InventoryManagerUI.Instance != null && InventoryManagerUI.Instance.IsAnyInventoryUIRelatedOpen())
             {
                 return true;
             }
 
-            // 2. State umum kunci input (digunakan saat modal Shop, Workbench, Wardrobe, Cooking terbuka)
+            // 2. General input lock state (used when Shop, Workbench, Wardrobe, or Cooking modals are open)
             if (cachedPlayerControl == null)
             {
                 cachedPlayerControl = ServiceLocator.Resolve<IPlayerContext>();
@@ -97,7 +97,7 @@ namespace FeaturesFarming
                 return true;
             }
 
-            // 5. Malam hari (Night phase): waktu dan pertumbuhan dibekukan, sembunyikan timer
+            // 5. Night phase: time and growth are frozen, hide timer
             if (FeaturesTime.DayNightTimeManager.Instance != null &&
                 (FeaturesTime.DayNightTimeManager.Instance.CurrentHour >= 18f || FeaturesTime.DayNightTimeManager.Instance.CurrentHour < 5f))
             {
@@ -127,7 +127,7 @@ namespace FeaturesFarming
                 return;
             }
 
-            // Sembunyikan indikator jika pemain sedang membuka inventori / menu modal
+            // Hide indicator if the player has an inventory / modal menu open
             if (ShouldSuppressIndicators())
             {
                 if (indicatorGO.activeSelf)
@@ -141,14 +141,14 @@ namespace FeaturesFarming
             Vector3 worldPos = transform.position + heightOffset;
             Vector3 screenPos = cam.WorldToScreenPoint(worldPos);
 
-            // Cek apakah di depan kamera dan di dalam area pandang layar
+            // Check if in front of the camera and within the screen viewport
             bool onScreen = screenPos.z > 0 &&
                             screenPos.x >= -60f && screenPos.x <= Screen.width + 60f &&
                             screenPos.y >= -60f && screenPos.y <= Screen.height + 60f;
 
             if (onScreen)
             {
-                // Set z = 0f agar tidak merusak urutan depth rendering UI canvas
+                // Set z = 0f to avoid breaking UI canvas depth ordering
                 indicatorRect.position = new Vector3(screenPos.x, screenPos.y, 0f);
                 if (!indicatorGO.activeSelf)
                     indicatorGO.SetActive(true);
@@ -161,10 +161,10 @@ namespace FeaturesFarming
         }
 
         /// <summary>
-        /// Memperbarui visual countdown berdasarkan status tanaman.
-        /// UI HANYA aktif saat tanaman sedang bertumbuh (PlantedWatered).
-        /// Jika petak kosong (Untilled, Tilled), belum disiram (PlantedDry), sudah siap panen (ReadyToHarvest),
-        /// atau tidak ada tanaman, UI langsung disembunyikan.
+        /// Updates countdown visuals based on crop state.
+        /// UI is ONLY active while the crop is growing (PlantedWatered).
+        /// If the tile is empty (Untilled, Tilled), unwatered (PlantedDry), ready to harvest (ReadyToHarvest),
+        /// or has no crop, the UI is hidden immediately.
         /// </summary>
         public void UpdateTileState(TileState state, float growthProgress, float remainingSeconds, string seedName)
         {
@@ -319,17 +319,17 @@ namespace FeaturesFarming
             if (screenIndicatorContainer != null)
                 return screenIndicatorContainer;
 
-            // Cari Canvas ScreenSpaceOverlay
+            // Find ScreenSpaceOverlay Canvas
             Canvas screenCanvas = null;
 
-            // 1. Cek UI_Canvas
+            // 1. Check UI_Canvas
             var uiCanvasGO = GameObject.Find("UI_Canvas");
             if (uiCanvasGO != null && uiCanvasGO.TryGetComponent<Canvas>(out var c) && c.renderMode == RenderMode.ScreenSpaceOverlay)
             {
                 screenCanvas = c;
             }
 
-            // 2. Cek semua Canvas di scene yang ScreenSpaceOverlay
+            // 2. Check all ScreenSpaceOverlay Canvases in the scene
             if (screenCanvas == null)
             {
                 var allCanvases = FindObjectsByType<Canvas>(FindObjectsInactive.Include, FindObjectsSortMode.None);
@@ -343,7 +343,7 @@ namespace FeaturesFarming
                 }
             }
 
-            // 3. Fallback: Buat Canvas ScreenSpaceOverlay khusus HUD indikator jika belum ada
+            // 3. Fallback: Create a dedicated ScreenSpaceOverlay Canvas for HUD indicators if none exists
             if (screenCanvas == null)
             {
                 var canvasGO = new GameObject("CropHUD_ScreenCanvas", typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
@@ -355,7 +355,7 @@ namespace FeaturesFarming
                 scaler.referenceResolution = new Vector2(1920, 1080);
             }
 
-            // Cari jika sudah ada container di scene
+            // Check if a container already exists in the scene
             var existingContainer = GameObject.Find("CropCountdownContainer");
             if (existingContainer != null)
             {
@@ -368,10 +368,10 @@ namespace FeaturesFarming
                 return screenIndicatorContainer;
             }
 
-            // Wadah khusus penampung indikator dengan Sub-Canvas terisolasi.
-            // Ditempatkan sebagai sibling pertama (paling belakang) di UI_Canvas agar selalu
-            // berada di belakang jendela modal/inventori, dan overrideSorting = false agar patuh
-            // pada hierarki kanvas HUD utama.
+            // Dedicated indicator container with an isolated Sub-Canvas.
+            // Placed as the first sibling (backmost) in UI_Canvas so it always renders
+            // behind modal/inventory windows, with overrideSorting = false to follow
+            // the main HUD canvas hierarchy.
             var containerGO = new GameObject("CropCountdownContainer", typeof(RectTransform), typeof(Canvas));
             containerGO.transform.SetParent(screenCanvas.transform, false);
             containerGO.transform.SetAsFirstSibling();

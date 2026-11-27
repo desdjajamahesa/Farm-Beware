@@ -233,7 +233,7 @@ public class KitchenSinkInteractable : KitchenStation, IInteractable, IModalWind
             }
         }
 
-        // Update clean in-world Screen-Space Refill UI (tanpa sprite mengambang)
+        // Update clean in-world Screen-Space Refill UI (without floating sprites)
         if (refillProgressUI != null)
         {
             float remSec = Mathf.Max(0f, refillWaterDuration * (1f - refillWaterProgress));

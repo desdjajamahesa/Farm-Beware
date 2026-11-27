@@ -436,7 +436,7 @@ namespace FarmBeware.EditorTests
             try
             {
                 var inv = playerGO.AddComponent<InventoryComponent>();
-                // Simulasikan prefab/scene dengan 12 slot lama
+                // Simulate prefab/scene with legacy 12 slots
                 inv.maxCapacity = 12;
                 inv.slots.Clear();
                 for (int i = 0; i < 12; i++) inv.slots.Add(new InventorySlot());

@@ -1,17 +1,17 @@
 using UnityEngine;
 
 /// <summary>
-/// Titik tempel (Snap Point) di ruang 3D untuk rak piala.
-/// Murni data: hanya memetakan posisi fisik ini ke satu slot milik
-/// Inventory 2 (Trophy Rack). Tidak menyimpan state, tidak meng-instantiate
-/// apa pun — seluruh visual dikelola TrophyRackVisuals (Visual Listener)
-/// yang bereaksi pada event OnInventoryChanged dari rackInventory.
+/// 3D Snap Point anchor for the trophy rack.
+/// Pure data: only maps this physical position to a single slot belonging to
+/// Inventory 2 (Trophy Rack). Holds no state and instantiates nothing —
+/// all visuals are managed by TrophyRackVisuals (Visual Listener)
+/// reacting to OnInventoryChanged from rackInventory.
 /// </summary>
 public class TrophySnapPoint : MonoBehaviour
 {
     /// <summary>
-    /// Indeks slot pada InventoryComponent Rack yang dipetakan oleh titik ini.
-    /// Diatur dari Inspector (0..3 untuk rak 4 slot); -1 = belum diwire / nonaktif.
+    /// Slot index on the Rack InventoryComponent mapped by this point.
+    /// Configured in Inspector (0..3 for a 4-slot rack); -1 = unwired / inactive.
     /// </summary>
     public int slotIndex = -1;
 }

@@ -2,9 +2,9 @@ using UnityEngine;
 
 namespace FeaturesInteraction
 {
-    // Interaksi spesifik untuk Kabinet: masuk ke mode First-Person Trophy
-    // sekaligus membuka UI Kabinet <-> Rak (inventori Kabinet sebagai sumber
-    // trophy yang bisa di-drag ke rak/Snap Point 3D).
+    // Cabinet-specific interaction: enters First-Person Trophy mode
+    // while opening the Cabinet <-> Rack UI (Cabinet inventory serves as the source
+    // of trophies that can be dragged onto the rack / 3D Snap Points).
     [RequireComponent(typeof(InventoryComponent))]
     public class TrophyCabinetInteractable : MonoBehaviour, IInteractable
     {
@@ -13,12 +13,12 @@ namespace FeaturesInteraction
             // Report narrative telemetry for trophy inspection
             FarmBeware.Core.Runtime.NarrativeTelemetryHooks.ReportTrophyInspected();
 
-            // Masuk mode trophy (kunci input pemain + pindah kamera ke rak).
+            // Enter trophy mode (lock player input + switch camera to rack).
             if (TrophySystemManager.Instance != null)
                 TrophySystemManager.Instance.EnterTrophyMode();
 
-            // Buka UI KHUSUS Kabinet (tanpa panel Rak):
-            // Rak ditempatkan/dikoleksi via interaksi 3D SnapPoints.
+            // Open Cabinet-ONLY UI (without Rack panel):
+            // Rack items are placed/collected via 3D SnapPoints interaction.
             if (InventoryManagerUI.Instance != null)
             {
                 InventoryComponent cabinetInv = GetComponent<InventoryComponent>();

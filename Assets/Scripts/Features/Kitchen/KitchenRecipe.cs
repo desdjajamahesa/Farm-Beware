@@ -2,8 +2,8 @@ using UnityEngine;
 using System.Collections.Generic;
 
 /// <summary>
-/// Satu bahan dalam resep: item + jumlah yang dibutuhkan.
-/// Digunakan oleh KitchenStove untuk mengecek inventory pemain.
+/// Single recipe ingredient: item + required quantity.
+/// Used by KitchenStove to check the player's inventory.
 /// </summary>
 [System.Serializable]
 public class RecipeIngredient
@@ -13,10 +13,10 @@ public class RecipeIngredient
 }
 
 /// <summary>
-/// Resep proses dapur (mencuci / memasak). Data murni, di-edit di Inspector.
-/// Mendukung dua mode:
-/// - Sink: pakai field `input` tunggal (backward compat, auto-start).
-/// - Stove: pakai field `ingredients` list (manual cook, cek dari inventory pemain).
+/// Kitchen processing recipe (washing / cooking). Pure data, edited in Inspector.
+/// Supports two modes:
+/// - Sink: uses single `input` field (backward compat, auto-start).
+/// - Stove: uses `ingredients` list (manual cook, checked from player inventory).
 /// </summary>
 [CreateAssetMenu(fileName = "NewRecipe", menuName = "FarmBeware/Kitchen Recipe")]
 public class KitchenRecipe : ScriptableObject
@@ -55,10 +55,10 @@ public class KitchenRecipe : ScriptableObject
 
     // === ACCESSORS ===
 
-    /// <summary>True jika resep pakai multi-bahan (Stove mode).</summary>
+    /// <summary>True if recipe uses multiple ingredients (Stove mode).</summary>
     public bool IsMultiIngredient => ingredients != null && ingredients.Count > 0;
 
-    /// <summary>Dapatkan semua bahan (gabungkan field lama + baru).</summary>
+    /// <summary>Get all ingredients (combines legacy + new fields).</summary>
     public IReadOnlyList<RecipeIngredient> GetAllIngredients()
     {
         if (IsMultiIngredient)

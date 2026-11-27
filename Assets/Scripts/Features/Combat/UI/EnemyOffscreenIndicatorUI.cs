@@ -5,8 +5,8 @@ using FarmBeware.Core.Runtime;
 namespace FeaturesCombat.UI
 {
     /// <summary>
-    /// Manager UI untuk menampilkan indikator panah tepi layar (off-screen indicators)
-    /// yang mengarahkan pandangan pemain ke posisi monster saat bertarung di malam hari (Night Brawl).
+    /// UI manager for displaying screen-edge arrow indicators (off-screen indicators)
+    /// that guide the player's attention toward monster positions during Night Brawl.
     /// </summary>
     public class EnemyOffscreenIndicatorUI : MonoBehaviour
     {
@@ -83,7 +83,7 @@ namespace FeaturesCombat.UI
 
         private void LateUpdate()
         {
-            // Ambil kamera aktif
+            // Acquire active camera
             if (targetCamera == null || !targetCamera.isActiveAndEnabled)
             {
                 var cameraService = ServiceLocator.Resolve<ICameraService>();
@@ -103,7 +103,7 @@ namespace FeaturesCombat.UI
                 return;
             }
 
-            // Pastikan referensi karakter pemain tersedia secara ketat (tidak pernah fallback ke posisi kamera)
+            // Strictly require player character reference (never fall back to camera position)
             EnsurePlayerReference();
             if (playerTransform == null)
             {
@@ -111,7 +111,7 @@ namespace FeaturesCombat.UI
                 return;
             }
 
-            // Jika NightBrawlManager belum aktif atau sedang tidak ada pertarungan malam, sembunyikan semua
+            // Hide all indicators if NightBrawlManager is inactive or no night brawl is running
             if (NightBrawlManager.Instance == null || !NightBrawlManager.Instance.IsNightBrawlActive)
             {
                 HideAllIndicators();
@@ -139,7 +139,7 @@ namespace FeaturesCombat.UI
                 Vector3 worldPos = enemy.transform.position + Vector3.up * 0.8f;
                 Vector3 screenPos = targetCamera.WorldToScreenPoint(worldPos);
 
-                // Koreksi jika target berada di belakang frustum kamera
+                // Correct coordinates if target is behind camera frustum
                 bool isBehind = !targetCamera.orthographic && screenPos.z < 0;
                 if (isBehind)
                 {
@@ -147,10 +147,10 @@ namespace FeaturesCombat.UI
                     screenPos.y = Screen.height - screenPos.y;
                 }
 
-                // Validasi kedalaman pandangan kamera
+                // Validate camera depth bounds
                 bool isWithinDepth = screenPos.z >= targetCamera.nearClipPlane && screenPos.z <= targetCamera.farClipPlane;
 
-                // Cek apakah monster sudah terlihat jelas di dalam batas layar
+                // Check whether monster is already clearly visible within screen bounds
                 bool isOnScreen = isWithinDepth && !isBehind &&
                                   screenPos.x >= edgeMargin && screenPos.x <= Screen.width - edgeMargin &&
                                   screenPos.y >= edgeMargin && screenPos.y <= Screen.height - edgeMargin;
@@ -163,14 +163,14 @@ namespace FeaturesCombat.UI
 
                 currentOffscreenSet.Add(enemy);
 
-                // Hitung arah dari pusat layar ke target
+                // Compute direction from screen center to target
                 Vector2 fromCenter = new Vector2(screenPos.x, screenPos.y) - screenCenter;
                 if (fromCenter.sqrMagnitude < 0.001f)
                 {
                     fromCenter = Vector2.up;
                 }
 
-                // Interseksi vektor dengan kotak batas layar
+                // Intersect vector with screen bounds box
                 float scaleX = Mathf.Abs(fromCenter.x) > 0.0001f ? (halfWidth / Mathf.Abs(fromCenter.x)) : 9999f;
                 float scaleY = Mathf.Abs(fromCenter.y) > 0.0001f ? (halfHeight / Mathf.Abs(fromCenter.y)) : 9999f;
                 float scale = Mathf.Min(scaleX, scaleY);
@@ -178,7 +178,7 @@ namespace FeaturesCombat.UI
 
                 float angleDegrees = Mathf.Atan2(fromCenter.y, fromCenter.x) * Mathf.Rad2Deg;
 
-                // Hitung jarak real-time murni di bidang datar XZ antara pemain dan musuh
+                // Compute real-time planar XZ distance between player and enemy
                 float distance = Vector2.Distance(
                     new Vector2(playerPos.x, playerPos.z),
                     new Vector2(worldPos.x, worldPos.z));
@@ -189,7 +189,7 @@ namespace FeaturesCombat.UI
 
                 bool shouldPulse = pulsingEnemies.Contains(enemy.GetInstanceID());
 
-                // Dapatkan atau buat indikator yang terpetakan khusus ke instans musuh ini
+                // Get or create an indicator mapped specifically to this enemy instance
                 if (!activeIndicators.TryGetValue(enemy, out var arrow))
                 {
                     arrow = GetOrCreateFreeArrow();
@@ -199,7 +199,7 @@ namespace FeaturesCombat.UI
                 arrow.SetData(clampedEdgePos, angleDegrees, distance, isBoss, shouldPulse);
             }
 
-            // Kembalikan panah dari musuh yang sudah tidak off-screen / sudah mati ke pool bebas
+            // Return arrows for enemies that are no longer off-screen or have died back to the free pool
             toRemoveList.Clear();
             foreach (var kvp in activeIndicators)
             {

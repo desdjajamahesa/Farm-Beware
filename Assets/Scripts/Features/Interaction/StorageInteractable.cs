@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace FeaturesInteraction
 {
-    // Definisi satu entri loot table storage (peti/lemari/cabinet).
+    // Defines a single storage loot table entry (chest/wardrobe/cabinet).
     [System.Serializable]
     public struct LootDrop
     {
@@ -13,8 +13,8 @@ namespace FeaturesInteraction
         [Range(0f, 100f)] public float dropChance;
     }
 
-    // Storage generik: bisa dipasang pada prefab Peti, Lemari, atau Kabinet
-    // tanpa menulis ulang logika penyimpanan.
+    // Generic storage: can be attached to Chest, Wardrobe, or Cabinet prefabs
+    // without rewriting storage logic.
     [RequireComponent(typeof(InventoryComponent))]
     public class StorageInteractable : MonoBehaviour, IInteractable
     {
@@ -41,7 +41,7 @@ namespace FeaturesInteraction
                 if (drop.item == null)
                     continue;
 
-                // Bangkitkan angka acak 0-100; masukkan item bila lolos peluang.
+                // Roll a random number 0-100; add item if within drop chance.
                 float roll = Random.Range(0f, 100f);
                 if (roll > drop.dropChance)
                     continue;
@@ -56,7 +56,7 @@ public void Interact(GameObject interactor)
     {
         Debug.Log("Storage dibuka oleh " + interactor.name);
 
-        // Buka UI dual-panel (player + storage) tanpa auto-transfer item.
+        // Open dual-panel UI (player + storage) without auto-transferring items.
         if (InventoryManagerUI.Instance != null)
             InventoryManagerUI.Instance.OpenStorageUI(GetComponent<InventoryComponent>(), "Storage");
     }

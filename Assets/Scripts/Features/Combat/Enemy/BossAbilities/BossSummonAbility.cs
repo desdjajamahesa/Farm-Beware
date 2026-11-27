@@ -7,9 +7,9 @@ using FarmBeware.Core.Runtime;
 namespace FeaturesCombat
 {
     /// <summary>
-    /// Komponen modular untuk kemampuan Boss memanggil minion (Task 2.1).
-    /// Menggunakan EnemyObjectPool terpusat (Zero-GC), validasi NavMesh & batas outdoor,
-    /// serta pembatasan kuota minion aktif agar tidak membebani performa dan gameplay.
+    /// Modular ability component for Boss minion summoning (Task 2.1).
+    /// Uses centralized EnemyObjectPool (Zero-GC), NavMesh &amp; outdoor bounds validation,
+    /// and active minion quota capping to protect performance and gameplay balance.
     /// </summary>
     [DisallowMultipleComponent]
     [RequireComponent(typeof(EnemyBase))]
@@ -102,7 +102,7 @@ namespace FeaturesCombat
             if (Time.time - lastSummonTime < summonCooldown) return;
             if (bossEnemy.PlayerTarget == null) return;
 
-            // Bersihkan referensi minion yang sudah mati / kembali ke pool
+            // Purge dead or pooled minion references
             activeMinions.RemoveAll(m => m == null || m.IsDead || !m.gameObject.activeInHierarchy);
 
             if (activeMinions.Count >= maxActiveMinions) return;
@@ -120,14 +120,14 @@ namespace FeaturesCombat
                 bossEnemy.IsUnstaggerable = true;
             }
 
-            // Hentikan pergerakan saat channeling
+            // Halt movement while channeling
             var rb = GetComponent<Rigidbody>();
             if (rb != null)
             {
                 rb.linearVelocity = Vector3.zero;
             }
 
-            // Notifikasi visual di atas bos
+            // Visual alert above the boss
             if (FloatingCombatTextManager.Instance != null)
             {
                 string bossName = bossEnemy.displayName;
@@ -137,7 +137,7 @@ namespace FeaturesCombat
                     new Color(0.9f, 0.2f, 0.4f));
             }
 
-            // Efek visual / wind-up channeling via MaterialPropertyBlock
+            // Channeling wind-up visual effect via MaterialPropertyBlock
             var rend = GetComponent<Renderer>();
             if (_mpb == null) _mpb = new MaterialPropertyBlock();
             Color originalCol = Color.white;
@@ -194,7 +194,7 @@ namespace FeaturesCombat
                 yield break;
             }
 
-            // Eksekusi pemanggilan minion
+            // Execute minion summoning
             int toSpawn = Mathf.Min(minionCount, maxActiveMinions - activeMinions.Count);
             for (int i = 0; i < toSpawn; i++)
             {
@@ -254,13 +254,13 @@ namespace FeaturesCombat
             Vector3 offset = new Vector3(Mathf.Cos(angle) * dist, 0f, Mathf.Sin(angle) * dist);
             Vector3 candidate = transform.position + offset;
 
-            // Validasi batas outdoor (dilarang spawn di dalam rumah)
+            // Validate outdoor bounds (prevent spawning inside the house)
             if (NightBrawlManager.IsInsideHouse(candidate))
             {
                 candidate = NightBrawlManager.GetNearestOutdoorPosition(candidate, 2.0f);
             }
 
-            // Snap ke NavMesh
+            // Snap to NavMesh
             if (NavMesh.SamplePosition(candidate, out NavMeshHit hit, 4.0f, NavMesh.AllAreas))
             {
                 return hit.position;

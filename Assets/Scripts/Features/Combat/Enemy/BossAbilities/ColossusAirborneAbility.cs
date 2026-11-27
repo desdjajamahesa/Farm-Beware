@@ -6,10 +6,10 @@ using FarmBeware.Core.Runtime;
 namespace FeaturesCombat
 {
     /// <summary>
-    /// Kemampuan modular Airborne Slam untuk Taro Colossus (Task 2.2).
-    /// Taro Colossus melompat ke udara, memunculkan bayangan penjejak (Tracking Shadow Decal)
-    /// yang mengikuti pemain selama beberapa detik, dapat di-interrupt dengan 4 hit stagger,
-    /// dan meluncurkan 3 proyektil batu (Rock Projectiles) serta AoE shockwave saat mendarat.
+    /// Modular Airborne Slam ability for Taro Colossus (Task 2.2).
+    /// Taro Colossus leaps into the air, spawns a Tracking Shadow Decal
+    /// that follows the player for several seconds, can be interrupted by 4 stagger hits,
+    /// and launches 3 Rock Projectiles plus an AoE shockwave upon landing.
     /// </summary>
     [DisallowMultipleComponent]
     [RequireComponent(typeof(EnemyBase))]
@@ -39,7 +39,7 @@ namespace FeaturesCombat
 
         private void Start()
         {
-            lastSlamTime = Time.time - cooldown + 6f; // Delay awal di awal pertempuran
+            lastSlamTime = Time.time - cooldown + 6f; // Initial delay at encounter start
         }
 
         private void Update()
@@ -75,7 +75,7 @@ namespace FeaturesCombat
                     new Color(0.9f, 0.5f, 0.1f));
             }
 
-            // 1. Naik ke udara
+            // 1. Ascend into the air
             Vector3 startPos = transform.position;
             Vector3 elevatedPos = startPos + Vector3.up * airborneHeight;
             float ascendTime = 0.5f;
@@ -88,14 +88,14 @@ namespace FeaturesCombat
             }
             transform.position = elevatedPos;
 
-            // 2. Buat / Munculkan Tracking Shadow Decal di tanah
+            // 2. Create / show Tracking Shadow Decal on the ground
             EnsureTrackingDecal();
             if (trackingDecal != null)
             {
                 trackingDecal.SetActive(true);
             }
 
-            // 3. Tracking Phase (Bayangan dan Colossus mengikuti pemain di udara)
+            // 3. Tracking Phase (Shadow and Colossus follow the player from above)
             float trackTimer = 0f;
             Vector3 targetGroundPos = startPos;
             targetGroundPos.y = 0.05f;
@@ -115,13 +115,13 @@ namespace FeaturesCombat
                     targetGroundPos.y = 0.05f;
                 }
 
-                // Posisikan decal di tanah tepat di bawah Colossus
+                // Position ground decal directly beneath Colossus
                 if (trackingDecal != null)
                 {
                     trackingDecal.transform.position = targetGroundPos;
                 }
 
-                // Gerakkan Colossus di atas target
+                // Move Colossus above target
                 Vector3 newAirPos = targetGroundPos + Vector3.up * airborneHeight;
                 transform.position = Vector3.MoveTowards(transform.position, newAirPos, 8f * Time.deltaTime);
 
@@ -133,7 +133,7 @@ namespace FeaturesCombat
                 yield return null;
             }
 
-            // Sembunyikan decal tanah
+            // Hide ground decal
             if (trackingDecal != null)
             {
                 trackingDecal.SetActive(false);
@@ -141,10 +141,10 @@ namespace FeaturesCombat
 
             bossEnemy.OnHealthChanged -= HandleHitDuringFlight;
 
-            // 4. Mendarat / Crash Slam
+            // 4. Landing / Crash Slam
             if (wasInterrupted)
             {
-                // Jatuh tak terkontrol (interrupted)
+                // Uncontrolled fall (interrupted)
                 if (FloatingCombatTextManager.Instance != null)
                 {
                     FloatingCombatTextManager.Instance.SpawnText(
@@ -153,7 +153,7 @@ namespace FeaturesCombat
                         new Color(0.3f, 0.8f, 1f));
                 }
 
-                // Jatuh ke tanah
+                // Drop to the ground
                 Vector3 crashPos = transform.position;
                 crashPos.y = targetGroundPos.y;
                 transform.position = crashPos;
@@ -161,7 +161,7 @@ namespace FeaturesCombat
             }
             else
             {
-                // Slam ke tanah secara cepat
+                // Rapidly slam down to the ground
                 Vector3 finalGroundPos = targetGroundPos;
                 float descendTime = 0.25f;
                 Vector3 currentAir = transform.position;
@@ -208,7 +208,7 @@ namespace FeaturesCombat
                     }
                 }
 
-                // 5. Tembakkan 3 Rock Projectiles radial burst
+                // 5. Fire 3 Rock Projectiles in a radial burst
                 SpawnRockProjectiles();
 
                 yield return new WaitForSeconds(0.6f);

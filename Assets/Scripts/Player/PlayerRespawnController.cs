@@ -141,7 +141,7 @@ public class PlayerRespawnController : MonoBehaviour
         if (isRespawning || isDefeated) return;
         isDefeated = true;
 
-        // 1. Kunci input pergerakan & aksi pemain
+        // 1. Lock player movement and action input
         if (playerControl != null)
         {
             playerControl.AddInputLock("Respawn");
@@ -153,7 +153,7 @@ public class PlayerRespawnController : MonoBehaviour
             playerRb.angularVelocity = Vector3.zero;
         }
 
-        // Tampilkan teks feedback kekalahan seketika di posisi pingsan
+        // Show defeat feedback text immediately at the collapse position
         var floatingText = ServiceLocator.Resolve<IFloatingTextService>();
         if (floatingText != null)
         {
@@ -170,8 +170,8 @@ public class PlayerRespawnController : MonoBehaviour
     }
 
     /// <summary>
-    /// Menjalankan alur pemulihan di kasur kamar tidur (Checkpoint):
-    /// Fade hitam -> Hentikan Night Brawl -> Majukan waktu ke 06:00 -> Pulihkan 50% HP -> Teleportasi ke kasur -> Fade terang -> Buka kontrol.
+    /// Executes the bedroom bed recovery sequence (Checkpoint):
+    /// Fade to black -> Abort Night Brawl -> Reset time to morning -> Restore vitals -> Teleport to bed -> Fade in -> Unlock controls.
     /// </summary>
     public void ExecuteBedRespawn(System.Action onComplete = null)
     {
@@ -184,23 +184,23 @@ public class PlayerRespawnController : MonoBehaviour
         isRespawning = true;
         isDefeated = false;
 
-        // Pulihkan kecepatan simulasi game
+        // Restore game simulation speed
         UIModalHelper.RemovePauseLock("DeathScreenUI");
         Time.timeScale = 1f;
 
-        // Kunci input kontrol pemain selama transisi respawn
+        // Lock player control input during respawn transition
         if (playerControl != null)
         {
             playerControl.AddInputLock("Respawn");
         }
 
-        // Tutup Death Screen jika masih terbuka
+        // Close Death Screen if still open
         if (DeathScreenUI.Instance != null && DeathScreenUI.Instance.IsOpen)
         {
             DeathScreenUI.Instance.Close();
         }
 
-        // 2. Transisi layar menghitam (Fade In to black)
+        // 2. Fade screen to black (Fade In)
         var fadeService = ServiceLocator.Resolve<IFadeService>();
         if (fadeService != null)
         {
@@ -216,13 +216,13 @@ public class PlayerRespawnController : MonoBehaviour
             yield return new WaitForSeconds(0.6f);
         }
 
-        // 3. Hentikan pertarungan malam dan bersihkan seluruh sisa musuh yang masih aktif
+        // 3. Abort Night Brawl and clear all remaining active enemies
         if (NightBrawlManager.Instance != null)
         {
             NightBrawlManager.Instance.AbortBrawl();
         }
 
-        // 4. Kembalikan waktu ke pagi hari pada hari yang sama (sebelum night terpicu)
+        // 4. Reset time to morning on the same day (before night triggers)
         if (TimeManager.Instance != null)
         {
             TimeManager.Instance.SetTimeState(TimeManager.Instance.currentDay, TimeManager.DayPhase.Day, false, notifyPhaseChanged: true);
@@ -233,7 +233,7 @@ public class PlayerRespawnController : MonoBehaviour
             DayNightTimeManager.Instance.SetTime(DayNightTimeManager.Instance.DayStartHour);
         }
 
-        // 5. Pulihkan vital pemain sama seperti waktu pagi hari (100% HP, stamina, hunger, thirst)
+        // 5. Restore player vitals to morning state (100% HP, stamina, hunger, thirst)
         if (playerStats != null)
         {
             playerStats.RestoreStats(
@@ -250,14 +250,14 @@ public class PlayerRespawnController : MonoBehaviour
             anim.SetBool("IsDead", false);
         }
 
-        // Bersihkan seluruh food buff aktif agar pemain terbangun di pagi hari tanpa sisa buff
+        // Clear all active food buffs so the player wakes up in the morning with no lingering buffs
         var buffMgr = GetComponent<PlayerBuffManager>() ?? FindFirstObjectByType<PlayerBuffManager>();
         if (buffMgr != null)
         {
             buffMgr.ClearAllBuffs();
         }
 
-        // 6. Teleportasikan karakter pemain ke kasur kamar tidur secara aman
+        // 6. Safely teleport the player character to the bedroom bed
         Vector3 respawnPos = new Vector3(27.1f, 0.5f, 21.04f); // Fallback bedroom coordinates sanitized to y = 0.5f
         Quaternion respawnRot = Quaternion.identity;
 
@@ -286,10 +286,10 @@ public class PlayerRespawnController : MonoBehaviour
         }
         Physics.SyncTransforms();
 
-        // Jeda sejenak dalam keadaan gelap agar kamera dan fisika stabil
+        // Brief pause in darkness so camera and physics stabilize
         yield return new WaitForSeconds(0.4f);
 
-        // 7. Transisi layar memudar kembali terang (Fade Out from black)
+        // 7. Fade screen back in from black (Fade Out)
         if (fadeService != null)
         {
             bool fadeDone = false;
@@ -304,7 +304,7 @@ public class PlayerRespawnController : MonoBehaviour
             yield return new WaitForSeconds(0.6f);
         }
 
-        // 8. Buka kembali kunci kontrol pemain & beri pesan informatif
+        // 8. Unlock player controls and display recovery message
         if (playerControl != null)
         {
             playerControl.RemoveInputLock("Respawn");

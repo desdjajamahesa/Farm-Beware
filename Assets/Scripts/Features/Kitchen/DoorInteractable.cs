@@ -3,9 +3,9 @@ using FeaturesInteraction;
 using FarmBeware.Core.Runtime;
 
 /// <summary>
-/// Pintu: menjembatani pemain antar area dalam scene yang sama (Opsi A saat ini).
-/// Saat di-interact, player di-teleport ke spawnPoint tujuan.
-/// Untuk transisi antar scene sungguhan, ganti implementasi dengan SceneManager + bootstrap.
+/// Door: bridges the player between areas within the same scene (current Option A).
+/// On interaction, teleports the player to the destination spawnPoint.
+/// For true cross-scene transitions, replace implementation with SceneManager + bootstrap.
 /// </summary>
 public enum ThresholdAxis
 {
@@ -163,7 +163,7 @@ public class DoorInteractable : MonoBehaviour, IInteractable, IDynamicLabelProvi
         if (player == null)
             return;
 
-        // Kunci gerakan pemain selama proses teleport
+        // Lock player movement during teleportation
         player.AddInputLock("DoorTeleport");
 
         bool isInside = IsPlayerInside(player.Transform.position);
@@ -178,7 +178,7 @@ public class DoorInteractable : MonoBehaviour, IInteractable, IDynamicLabelProvi
         else
         {
             TeleportPlayer(player, targetSpawn.position);
-            player.RemoveInputLock("DoorTeleport"); // Langsung buka kunci jika tanpa fade
+            player.RemoveInputLock("DoorTeleport"); // Immediately unlock if no fade is used
         }
 
         Debug.Log($"[DoorInteractable] Player teleported to " + (isInside ? "outside" : "inside") + " via " + gameObject.name);
@@ -200,7 +200,7 @@ public class DoorInteractable : MonoBehaviour, IInteractable, IDynamicLabelProvi
         fade.FadeOut(fadeDuration);
         yield return new WaitForSeconds(fadeDuration);
 
-        // Buka kunci gerakan setelah fade selesai
+        // Unlock movement after fade completes
         if (player != null)
             player.RemoveInputLock("DoorTeleport");
     }

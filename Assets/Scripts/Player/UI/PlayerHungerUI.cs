@@ -4,9 +4,9 @@ using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// Listener visual modern untuk indikator rasa lapar (hunger) pemain.
-/// Mendukung label persentase TextMeshPro, warna oranye panggang hangat,
-/// serta peringatan bahaya kelaparan (starvation alert pulse saat memicu penalti damage).
+/// Visual listener for the player's hunger indicator.
+/// Supports TextMeshPro percentage label, warm roast orange styling,
+/// and a starvation alert pulse when empty penalty damage triggers.
 /// </summary>
 public class PlayerHungerUI : MonoBehaviour
 {

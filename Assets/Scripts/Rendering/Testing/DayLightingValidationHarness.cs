@@ -6,12 +6,12 @@ using FeaturesRendering.Lighting;
 namespace FeaturesRendering.Testing
 {
     /// <summary>
-    /// Skrip pengujian interaktif (Testing Harness) untuk memvalidasi pencahayaan siang (Phase 2).
-    /// Memungkinkan developer untuk:
-    /// 1. Merotasikan Directional Light matahari secara halus dari Azimuth 135° ke 225°.
-    /// 2. Memvalidasi persilangan garis terminator bayangan (Shadow Terminator) pada hamparan botani.
-    /// 3. Memverifikasi hilangnya artefak Shadow Acne pada sudut pandang isometrik curam berkat Shadow Pancaking.
-    /// 4. Memverifikasi ketiadaan efek Peter-panning dengan memonitor Shadow Near Plane Offset.
+    /// Interactive testing harness for validating daytime lighting (Phase 2).
+    /// Enables developers to:
+    /// 1. Smoothly sweep the sun Directional Light from Azimuth 135 deg to 225 deg.
+    /// 2. Validate Shadow Terminator traversal across botanical foliage.
+    /// 3. Verify elimination of Shadow Acne at steep isometric angles via Shadow Pancaking.
+    /// 4. Verify absence of Peter-panning by monitoring Shadow Near Plane Offset.
     /// </summary>
     [ExecuteAlways]
     public class DayLightingValidationHarness : MonoBehaviour
@@ -114,26 +114,26 @@ namespace FeaturesRendering.Testing
 
             if (targetSunLight != null)
             {
-                // Shadow Near Plane harus <= 0.25f untuk mencegah Peter-panning
+                // Shadow Near Plane must be <= 0.25f to prevent Peter-panning
                 isPeterPanningSafe = targetSunLight.shadowNearPlane <= 0.25f && targetSunLight.shadowNearPlane >= 0.05f;
             }
         }
 
         /// <summary>
-        /// Mengalkulasi dan menerapkan parameter pencahayaan uji coba ke Directional Light.
+        /// Computes and applies test lighting parameters to the Directional Light.
         /// </summary>
         public void ApplyTestLighting()
         {
             if (targetSunLight == null) return;
 
-            // Normalisasi posisi Azimuth dalam rentang [135°, 225°] -> [0, 1]
+            // Normalize Azimuth across [135 deg, 225 deg] -> [0, 1]
             float t = Mathf.Clamp01((testAzimuth - 135f) / (225f - 135f));
 
-            // Elevasi: Kurva sinus simetris, puncak di t = 0.5 (Azimuth 180°)
+            // Elevation: symmetric sine curve peaking at t = 0.5 (Azimuth 180 deg)
             float elevationFactor = Mathf.Sin(t * Mathf.PI);
             calculatedElevation = Mathf.Lerp(minElevation, maxElevation, elevationFactor);
 
-            // Kelvin: 5500K di t <= 0.5, lalu menurun secara eksponensial ke 3200K saat t -> 1.0 (senja)
+            // Kelvin: 5500K for t <= 0.5, then drops exponentially to 3200K as t -> 1.0 (dusk)
             if (t <= 0.5f)
             {
                 calculatedKelvin = 5500f;
@@ -210,7 +210,7 @@ namespace FeaturesRendering.Testing
             GUILayout.Label($"Suhu Kelvin: {calculatedKelvin:F0} K | Intensitas: {calculatedIntensity:F2} lux");
 
             GUILayout.Space(4);
-            // Checklist Indikator
+            // Indicator Checklist
             GUI.color = isCameraRelativeCullingActive ? Color.green : Color.yellow;
             GUILayout.Label($"✔ Camera-Relative Culling: {(isCameraRelativeCullingActive ? "AKTIF (Bebas Kedip)" : "NONAKTIF")}");
 

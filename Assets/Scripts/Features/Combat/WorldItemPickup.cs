@@ -5,8 +5,8 @@ using FarmBeware.Core.Runtime;
 namespace FeaturesCombat
 {
     /// <summary>
-    /// Item drop fisik di dunia yang terlempar ke belakang saat monster mati, memantul,
-    /// menampilkan visual ikon sprite 2D billboard, dan tertarik secara magnetis ke arah pemain.
+    /// Physical world drop item tossed backward upon monster death, bounces on landing,
+    /// displays a 2D billboard sprite icon, and magnetizes toward the player.
     /// </summary>
     [RequireComponent(typeof(SphereCollider))]
     public class WorldItemPickup : MonoBehaviour
@@ -79,8 +79,8 @@ namespace FeaturesCombat
             {
                 sr.sprite = item.itemIcon;
 
-                // Hitung skala agar ukuran ikon di dunia game proporsional (~0.40m / 40 cm)
-                // terlepas dari resolusi sprite (1024x1024 dsb) maupun scale root GameObject.
+                // Compute scale so world-space icon size stays proportional (~0.40m / 40 cm)
+                // regardless of sprite resolution (1024x1024, etc.) or root GameObject scale.
                 float spriteUnscaledSize = Mathf.Max(sr.sprite.bounds.size.x, sr.sprite.bounds.size.y);
                 if (spriteUnscaledSize > 0.001f)
                 {
@@ -94,7 +94,7 @@ namespace FeaturesCombat
                 }
             }
 
-            // Sembunyikan mesh renderer bola agar ikon menjadi visual utama
+            // Hide sphere mesh renderer so the icon serves as the primary visual
             var meshR = GetComponent<MeshRenderer>();
             if (meshR != null)
             {
@@ -112,7 +112,7 @@ namespace FeaturesCombat
             isTossing = true;
             Vector3 origin = transform.position;
 
-            // Pastikan arah horizontal
+            // Ensure horizontal direction
             tossDirection.y = 0f;
             if (tossDirection.sqrMagnitude < 0.001f)
             {
@@ -122,7 +122,7 @@ namespace FeaturesCombat
 
             Vector3 destination = origin + tossDirection * tossDistance;
 
-            // Cari elevasi tanah melalui raycast
+            // Find ground elevation via raycast
             if (Physics.Raycast(destination + Vector3.up * 3f, Vector3.down, out RaycastHit hit, 8f))
             {
                 destination.y = hit.point.y + 0.15f;
@@ -148,7 +148,7 @@ namespace FeaturesCombat
                 yield return null;
             }
 
-            // Mini bounce setelah jatuh ke tanah
+            // Mini bounce after hitting the ground
             float bounceDuration = 0.16f;
             float bounceHeight = 0.30f;
             float bounceElapsed = 0f;
@@ -189,7 +189,7 @@ namespace FeaturesCombat
 
         private void Update()
         {
-            // Billboard ikon menghadap kamera
+            // Billboard icon facing the camera
             if (iconBillboardGO != null)
             {
                 if (mainCam == null) mainCam = Camera.main;
@@ -211,7 +211,7 @@ namespace FeaturesCombat
 
             if (isFlyingToPlayer)
             {
-                // Jika saat terbang inventori mendadak penuh, batalkan terbang agar item tidak hilang
+                // If inventory suddenly becomes full mid-flight, cancel flight so item is not lost
                 if (!CanPlayerPickUp())
                 {
                     isFlyingToPlayer = false;
@@ -259,7 +259,7 @@ namespace FeaturesCombat
 
             if (playerInventory != null && item != null)
             {
-                // Proteksi inventori penuh: jangan hancurkan item bila inventori tidak memiliki ruang!
+                // Full-inventory protection: never destroy the item when inventory lacks space!
                 if (!playerInventory.HasSpaceFor(item, quantity))
                 {
                     isFlyingToPlayer = false;
@@ -288,7 +288,7 @@ namespace FeaturesCombat
         }
 
         /// <summary>
-        /// Helper untuk memunculkan item drop di posisi tertentu dengan lemparan ke arah belakang.
+        /// Helper for spawning a world item drop at a position with a backward toss.
         /// </summary>
         public static WorldItemPickup Spawn(Vector3 position, ItemData item, int quantity, Vector3 tossDirection = default)
         {

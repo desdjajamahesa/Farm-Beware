@@ -9,14 +9,14 @@ namespace FeaturesTime.UI
 {
     public enum ClockDisplayMode
     {
-        FullStep60s = 0,    // 60 detik real = +40 menit game (Default)
-        HalfStep30s = 1,    // 30 detik real = +20 menit game (Setengahnya)
-        QuarterStep15s = 2  // 15 detik real = +10 menit game (Seperempatnya)
+        FullStep60s = 0,    // 60 real seconds = +40 game minutes (Default)
+        HalfStep30s = 1,    // 30 real seconds = +20 game minutes (Half)
+        QuarterStep15s = 2  // 15 real seconds = +10 game minutes (Quarter)
     }
 
     /// <summary>
-    /// Menampilkan tracker fase waktu (Day/Night) dan gelombang tempur (Combat Wave) di pojok kanan atas HUD.
-    /// Memberi peringatan visual saat malam tiba dan siap menerima data wave dari spawner monster.
+    /// Displays the time phase (Day/Night) and combat wave tracker in the top-right HUD corner.
+    /// Provides visual warnings at nightfall and receives wave data from the monster spawner.
     /// </summary>
     public class CombatPhaseTrackerUI : MonoBehaviour
     {
@@ -280,7 +280,7 @@ namespace FeaturesTime.UI
         }
 
         /// <summary>
-        /// Mengatur mode tampilan jam digital (FullStep60s = 60s real/40m game, HalfStep30s = 30s real/20m game, QuarterStep15s = 15s real/10m game).
+        /// Sets the digital clock display mode (FullStep60s = 60s real/40m game, HalfStep30s = 30s real/20m game, QuarterStep15s = 15s real/10m game).
         /// </summary>
         public void SetClockMode(ClockDisplayMode newMode, bool showFeedback = true)
         {
@@ -338,7 +338,7 @@ namespace FeaturesTime.UI
         }
 
         /// <summary>
-        /// Beralih berurutan antara Mode 1 (60s real = 40m game), Mode 2 (30s real = 20m game), dan Mode 3 (15s real = 10m game).
+        /// Cycles sequentially through Mode 1 (60s real = 40m game), Mode 2 (30s real = 20m game), and Mode 3 (15s real = 10m game).
         /// </summary>
         public void ToggleClockMode()
         {
@@ -683,7 +683,7 @@ namespace FeaturesTime.UI
             phaseBadgeBackground = badgeObj.GetComponent<Image>();
             phaseBadgeBackground.color = dayBadgeColor;
 
-            // Day Text (Pill / Tag di kiri atas)
+            // Day Text (Top-left pill / tag)
             GameObject dayObj = new GameObject("DayText", typeof(RectTransform), typeof(TextMeshProUGUI));
             dayObj.transform.SetParent(badgeObj.transform, false);
             RectTransform dayRt = dayObj.GetComponent<RectTransform>();
@@ -702,7 +702,7 @@ namespace FeaturesTime.UI
             dayText.text = $"DAY {initialDay}";
             dayObj.SetActive(true);
 
-            // Phase Text (Berdampingan dengan Day Text)
+            // Phase Text (Adjacent to Day Text)
             GameObject phaseObj = new GameObject("PhaseText", typeof(RectTransform), typeof(TextMeshProUGUI));
             phaseObj.transform.SetParent(badgeObj.transform, false);
             RectTransform phaseRt = phaseObj.GetComponent<RectTransform>();
@@ -717,10 +717,10 @@ namespace FeaturesTime.UI
             phaseText.color = new Color(0.95f, 0.96f, 0.98f);
             phaseText.text = "DAY";
 
-            // Clock Text (Kanan Atas: HH:mm)
+            // Clock Text (Top-right: HH:mm)
             CreateProceduralClockText(badgeObj.transform);
 
-            // Wave & Status Row (Bawah)
+            // Wave & Status Row (Bottom)
             GameObject waveObj = new GameObject("WaveText", typeof(RectTransform), typeof(TextMeshProUGUI));
             waveObj.transform.SetParent(badgeObj.transform, false);
             RectTransform waveRt = waveObj.GetComponent<RectTransform>();

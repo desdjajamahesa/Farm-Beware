@@ -3,12 +3,12 @@ using System.Collections;
 using System.Collections.Generic;
 
 /// <summary>
-/// Overlay progress bar visual berbasis world-space untuk Stove & Kitchen Sink.
-/// MURNI visual: subscribe ke event KitchenStation, tidak menyimpan state gameplay.
-/// Visual: "veil" putih transparan yang NAIK dari bawah ke atas mengikuti progress
-/// real-time (OnProcessProgress per frame), billboard menghadap kamera,
-/// plus flash + bunyi saat selesai.
-/// Backend tetap sumber kebenaran (timer ada di KitchenStation).
+/// World-space visual progress bar overlay for Stove & Kitchen Sink.
+/// PURELY visual: subscribes to KitchenStation events and stores no gameplay state.
+/// Visual: translucent white "veil" rising from bottom to top following real-time
+/// progress (OnProcessProgress per frame), billboarded toward the camera,
+/// plus completion flash + sound.
+/// Backend remains the single source of truth (timers live in KitchenStation).
 /// </summary>
 public class KitchenStationProgressOverlay : MonoBehaviour
 {
@@ -45,11 +45,11 @@ public class KitchenStationProgressOverlay : MonoBehaviour
 
     private class SlotOverlay
     {
-        public Transform root;          // pivot tetap di dasar slot (kompensasi skala parent)
-        public Transform quad;          // quad anak pengisi progress garis horizontal
-        public Transform track;         // quad latar rel garis panjang
+        public Transform root;          // fixed pivot at slot base (compensates parent scale)
+        public Transform quad;          // child quad filling horizontal line progress
+        public Transform track;         // background track quad
         public MeshRenderer renderer;
-        public bool started;            // sedang proses aktif
+        public bool started;            // process currently active
         public Coroutine hideRoutine;
         public Color defaultColor;
     }
@@ -102,8 +102,8 @@ public class KitchenStationProgressOverlay : MonoBehaviour
 
     private void Update()
     {
-        // Lapis kedua (mandiri dari event): sinkron dari state backend setiap frame.
-        // Menyembuhkan kasus event terlewat / stasiun aktif di tengah proses.
+        // Second layer (event-independent): sync from backend state every frame.
+        // Recovers from missed events or stations activated mid-process.
         if (station == null || overlays.Count == 0)
             return;
 
@@ -113,7 +113,7 @@ public class KitchenStationProgressOverlay : MonoBehaviour
             if (o == null || o.quad == null)
                 continue;
 
-            // Jangan ganggu saat flash "Selesai!" sedang berjalan.
+            // Do not interrupt while the completion flash is playing.
             if (o.hideRoutine != null)
                 continue;
 
@@ -129,7 +129,7 @@ public class KitchenStationProgressOverlay : MonoBehaviour
             }
             else if (o.started || o.root.gameObject.activeSelf)
             {
-                // Proses berhenti tanpa event (mis. re-enable di tengah) -> sembunyikan.
+                // Process stopped without an event (e.g., re-enabled mid-way) -> hide.
                 o.started = false;
                 o.root.gameObject.SetActive(false);
             }
@@ -180,7 +180,7 @@ public class KitchenStationProgressOverlay : MonoBehaviour
 
             Vector3 worldPos = anchor != null ? anchor.position : fallbackAnchor;
 
-            // Root pivot: kompensasi skala non-uniform parent agar ukuran quad = satuan dunia.
+            // Root pivot: compensate non-uniform parent scale so quad dimensions equal world units.
             GameObject rootGO = new GameObject("ProgressOverlay_" + i);
             Transform root = rootGO.transform;
             root.SetParent(transform, false);
@@ -189,7 +189,7 @@ public class KitchenStationProgressOverlay : MonoBehaviour
                 root.localScale = new Vector3(1f / s.x, 1f / s.y, 1f / s.z);
             root.position = worldPos;
 
-            // 1. Rel Latar Belakang Garis Vertikal (Track)
+            // 1. Vertical Background Track Rail
             GameObject trackGO = GameObject.CreatePrimitive(PrimitiveType.Quad);
             trackGO.name = "Track_" + i;
             Collider trackCol = trackGO.GetComponent<Collider>();
@@ -227,7 +227,7 @@ public class KitchenStationProgressOverlay : MonoBehaviour
                 trackMesh.SetPropertyBlock(trackBlock);
             }
 
-            // 2. Garis Pengisi Progress Vertikal (Fill Bar dari Bawah ke Atas)
+            // 2. Vertical Progress Fill Bar (bottom to top)
             GameObject quadGO = GameObject.CreatePrimitive(PrimitiveType.Quad);
             quadGO.name = "Veil_" + i;
             Collider col = quadGO.GetComponent<Collider>();
@@ -319,7 +319,7 @@ public class KitchenStationProgressOverlay : MonoBehaviour
         if (o == null || o.quad == null)
             return;
 
-        // Guard anti-lost: bila proses sudah berjalan sebelum enable / event Started terlewat.
+        // Anti-loss guard: in case process was already running before enable / Started event was missed.
         if (!o.started || !o.root.gameObject.activeSelf)
         {
             o.started = true;
@@ -367,7 +367,7 @@ public class KitchenStationProgressOverlay : MonoBehaviour
 
     private IEnumerator FlashThenHideRoutine(SlotOverlay o)
     {
-        // Flash cepat: alpha berdenyut 1 -> baseAlpha -> 1 selama flashDuration.
+        // Quick flash: alpha pulses 1 -> baseAlpha -> 1 over flashDuration.
         float t = 0f;
         while (t < flashDuration && o.renderer != null)
         {
@@ -397,7 +397,7 @@ public class KitchenStationProgressOverlay : MonoBehaviour
         float progress01 = maxHeight > 0.001f ? Mathf.Clamp01(height / maxHeight) : 0f;
         float currentH = Mathf.Max(maxHeight * progress01, 0.0001f);
         o.quad.localScale = new Vector3(barThickness, currentH, 1f);
-        // Quad ber-pivot di tengah -> geser setengah tinggi dari dasar agar terisi dari bawah ke atas secara konsisten
+        // Center-pivoted quad -> shift by half height from base so it fills bottom-to-top consistently
         o.quad.localPosition = new Vector3(0f, currentH * 0.5f, -0.002f);
     }
 
@@ -422,7 +422,7 @@ public class KitchenStationProgressOverlay : MonoBehaviour
         if (overlays.TryGetValue(slotIndex, out SlotOverlay o))
             return o;
 
-        // Slot di luar jumlah anchor -> gunakan anchor dengan index terbesar (robust).
+        // Slot outside anchor count -> use the anchor with the highest index (robust fallback).
         int lastIndex = -1;
         foreach (KeyValuePair<int, SlotOverlay> pair in overlays)
         {

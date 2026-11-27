@@ -5,19 +5,19 @@ using UnityEngine;
 namespace FarmBeware.Features.Environment
 {
     /// <summary>
-    /// Sistem Trigger Interior untuk bangunan.
-    /// Mendeteksi masuknya protagonis ke area interior melalui BoxCollider Trigger,
-    /// lalu menginterpolasi parameter _DitherFade pada material atap/dinding secara halus
-    /// menggunakan Coroutine dan MaterialPropertyBlock (tanpa instansiasi material baru).
+    /// Interior Trigger System for buildings.
+    /// Detects when the protagonist enters an interior area via a BoxCollider Trigger,
+    /// then smoothly interpolates the _DitherFade parameter on roof/wall materials
+    /// using a Coroutine and MaterialPropertyBlock (without instantiating new materials).
     ///
-    /// Desain:
-    /// - OnTriggerEnter: Fade dinding/atap ke transparansi dithered (_DitherFade → targetFade)
-    /// - OnTriggerExit:  Kembalikan ke solid penuh (_DitherFade → 0.0)
-    /// - Memancarkan event OnInteriorStateChanged(bool) untuk didengarkan oleh
-    ///   sistem lain (Light Layer switcher, audio ambience, UI indicator, dll).
+    /// Design:
+    /// - OnTriggerEnter: Fade walls/roof to dithered transparency (_DitherFade → targetFade)
+    /// - OnTriggerExit:  Restore to full solid (_DitherFade → 0.0)
+    /// - Emits OnInteriorStateChanged(bool) for other systems to listen to
+    ///   (Light Layer switcher, audio ambience, UI indicator, etc.).
     ///
-    /// PERINGATAN: GameObject ini HARUS memiliki BoxCollider dengan isTrigger = true.
-    /// Tag protagonis harus diatur di field playerTag (default: "Player").
+    /// WARNING: This GameObject MUST have a BoxCollider with isTrigger = true.
+    /// The protagonist tag must be set in the playerTag field (default: "Player").
     /// </summary>
     [RequireComponent(typeof(BoxCollider))]
     public class HouseInteriorTrigger : MonoBehaviour
@@ -44,9 +44,9 @@ namespace FarmBeware.Features.Environment
         // ─────────────── Events ───────────────
 
         /// <summary>
-        /// Dipancarkan saat status interior berubah.
-        /// true = pemain masuk interior, false = pemain keluar.
-        /// Listener yang direkomendasikan: LightLayerAssignment, AudioAmbience, UI.
+        /// Emitted when the interior state changes.
+        /// true = player entered interior, false = player exited.
+        /// Recommended listeners: LightLayerAssignment, AudioAmbience, UI.
         /// </summary>
         public event Action<bool> OnInteriorStateChanged;
         public static event Action<bool> OnAnyInteriorStateChanged;
@@ -74,7 +74,7 @@ namespace FarmBeware.Features.Environment
         {
             propertyBlock = new MaterialPropertyBlock();
 
-            // Validasi BoxCollider trigger
+            // Validate trigger BoxCollider
             var col = GetComponent<BoxCollider>();
             if (col != null && !col.isTrigger)
             {
@@ -85,13 +85,13 @@ namespace FarmBeware.Features.Environment
                 col.isTrigger = true;
             }
 
-            // Pastikan seluruh renderer dimulai dalam keadaan solid
+            // Ensure all renderers start fully solid
             ApplyDitherImmediate(0.0f);
         }
 
         private void OnDestroy()
         {
-            // Kembalikan ke solid saat komponen dihancurkan (pembersihan)
+            // Restore to solid when component is destroyed (cleanup)
             ApplyDitherImmediate(0.0f);
         }
 
@@ -139,9 +139,9 @@ namespace FarmBeware.Features.Environment
         }
 
         /// <summary>
-        /// Interpolasi halus _DitherFade menggunakan SmoothStep.
-        /// Menggunakan MaterialPropertyBlock untuk menghindari instansiasi material
-        /// dan menjaga kompatibilitas dengan GPU Resident Drawer / SRP Batcher.
+        /// Smoothly interpolates _DitherFade using SmoothStep.
+        /// Uses MaterialPropertyBlock to avoid material instantiation
+        /// and preserve GPU Resident Drawer / SRP Batcher compatibility.
         /// </summary>
         private IEnumerator DitherFadeRoutine(float target)
         {
@@ -158,15 +158,15 @@ namespace FarmBeware.Features.Environment
                 yield return null;
             }
 
-            // Pastikan nilai akhir tepat
+            // Ensure exact final value
             currentDitherValue = target;
             ApplyDitherToRenderers(currentDitherValue);
             fadeCoroutine = null;
         }
 
         /// <summary>
-        /// Menerapkan nilai _DitherFade ke seluruh renderer target
-        /// via MaterialPropertyBlock (tanpa instansiasi material baru di RAM).
+        /// Applies the _DitherFade value to all target renderers
+        /// via MaterialPropertyBlock (without instantiating new materials in RAM).
         /// </summary>
         private void ApplyDitherToRenderers(float ditherValue)
         {
@@ -183,8 +183,8 @@ namespace FarmBeware.Features.Environment
         }
 
         /// <summary>
-        /// Menerapkan nilai dither secara instan tanpa interpolasi.
-        /// Digunakan untuk inisialisasi dan pembersihan.
+        /// Applies the dither value immediately without interpolation.
+        /// Used for initialization and cleanup.
         /// </summary>
         private void ApplyDitherImmediate(float ditherValue)
         {
@@ -195,12 +195,12 @@ namespace FarmBeware.Features.Environment
         // ─────────────── Public API ───────────────
 
         /// <summary>
-        /// Memeriksa apakah pemain saat ini berada di dalam interior.
+        /// Checks whether the player is currently inside the interior.
         /// </summary>
         public bool IsPlayerInside => isPlayerInside;
 
         /// <summary>
-        /// Mengatur nilai dither secara paksa (untuk debugging / editor scripting).
+        /// Forces the dither value immediately (for debugging / editor scripting).
         /// </summary>
         public void ForceSetDither(float value)
         {

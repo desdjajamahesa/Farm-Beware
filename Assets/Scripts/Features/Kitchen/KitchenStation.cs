@@ -2,10 +2,10 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// Backend generik stasiun dapur (Sink & Kompor), murni data-driven:
-/// - State & timer hidup DI SINI (bukan di UI).
-/// - Bereaksi pada OnInventoryChanged dari stationInventory (auto-mulai saat slot terisi).
-/// - Sinyal event untuk listener UI: OnProcessStarted / OnProcessProgress / OnProcessCompleted.
+/// Generic kitchen station backend (Sink & Stove), purely data-driven:
+/// - State & timers live HERE (not in UI).
+/// - Reacts to OnInventoryChanged from stationInventory (auto-starts when slot is filled).
+/// - Signals events for UI listeners: OnProcessStarted / OnProcessProgress / OnProcessCompleted.
 /// </summary>
 public abstract class KitchenStation : MonoBehaviour, FarmBeware.Core.Runtime.ISlotProgressProvider
 {
@@ -15,16 +15,16 @@ public abstract class KitchenStation : MonoBehaviour, FarmBeware.Core.Runtime.IS
     [Tooltip("Tujuan hasil (mis. Inventory Player). Kosong = hasil tetap di slot stasiun.")]
     [SerializeField] protected InventoryComponent resultTarget;
 
-    // State processing per-slot.
+    // Per-slot processing state.
     private readonly Dictionary<int, KitchenRecipe> activeRecipes = new Dictionary<int, KitchenRecipe>();
     private readonly Dictionary<int, float> remainingTime = new Dictionary<int, float>();
     private readonly Dictionary<int, float> totalDuration = new Dictionary<int, float>();
     private readonly Dictionary<int, int> processQuantity = new Dictionary<int, int>();
 
-    public event System.Action<int, float> OnProcessStarted;   // (slot, durasi)
+    public event System.Action<int, float> OnProcessStarted;   // (slot, duration)
     public event System.Action<int, float> OnProcessProgress;  // (slot, 0..1)
     public event System.Action<int> OnProcessCompleted;        // (slot)
-    public event System.Action<int> OnProcessCancelled;        // (slot) — proses dibatalkan (item dicabut di tengah)
+    public event System.Action<int> OnProcessCancelled;        // (slot) — process cancelled (item removed mid-process)
 
     protected void RaiseProcessStarted(int slot, float duration) => OnProcessStarted?.Invoke(slot, duration);
     protected void RaiseProcessProgress(int slot, float progress01) => OnProcessProgress?.Invoke(slot, progress01);
@@ -33,8 +33,8 @@ public abstract class KitchenStation : MonoBehaviour, FarmBeware.Core.Runtime.IS
 
     public InventoryComponent StationInventory { get { return stationInventory; } }
 
-    // Akses state read-only untuk visual/data-driven (mis. overlay polling),
-    // mandiri dari event agar UI tidak menggantung ketika proses sudah berjalan sebelum subscribe.
+    // Read-only state access for data-driven visuals (e.g., overlay polling),
+    // independent of events so UI does not stall when processing started before subscribing.
     public int ActiveSlotCount { get { return activeRecipes.Count; } }
     public virtual bool IsProcessing(int slot) { return activeRecipes.ContainsKey(slot); }
     public virtual float GetSlotProgress(int slot)
@@ -59,8 +59,8 @@ public abstract class KitchenStation : MonoBehaviour, FarmBeware.Core.Runtime.IS
         if (stationInventory != null)
         {
             stationInventory.OnInventoryChanged += HandleInventoryChanged;
-            // Auto-proses item yang SUDAH berada di slot saat stasiun aktif
-            // (mis. item di-sisa dari sesi sebelumnya / di-seed editor) — idempoten.
+            // Auto-process items ALREADY in slots when the station activates
+            // (e.g., leftover items from a previous session / seeded in editor) — idempotent.
             HandleInventoryChanged();
         }
     }
@@ -105,7 +105,7 @@ public abstract class KitchenStation : MonoBehaviour, FarmBeware.Core.Runtime.IS
         remainingTime[slotIndex] = recipe.processTime;
         totalDuration[slotIndex] = recipe.processTime;
 
-        // Simpan quantity item di slot saat proses mulai (batch processing).
+        // Store item quantity in slot when processing starts (batch processing).
         InventorySlot slot = SafeSlot(slotIndex);
         if (slot != null && !slot.IsEmpty)
             processQuantity[slotIndex] = slot.quantity;
@@ -144,7 +144,7 @@ public abstract class KitchenStation : MonoBehaviour, FarmBeware.Core.Runtime.IS
                 !totalDuration.TryGetValue(i, out float total) || total <= 0f)
                 continue;
 
-            // Bila slot berubah/kosong saat proses berjalan -> batal proses.
+            // If slot changes/empties while processing -> cancel process.
             InventorySlot slot = SafeSlot(i);
             if (slot == null || slot.IsEmpty || slot.item == null)
             {
@@ -165,23 +165,23 @@ public abstract class KitchenStation : MonoBehaviour, FarmBeware.Core.Runtime.IS
         if (!activeRecipes.TryGetValue(slotIndex, out KitchenRecipe recipe))
             return;
 
-        // Ambil quantity yang diproses (batch).
+        // Get processed quantity (batch).
         int qty = 1;
         if (processQuantity.TryGetValue(slotIndex, out int savedQty) && savedQty > 0)
             qty = savedQty;
 
-        // Kosongkan state DULU agar handler internal tidak mengulang proses.
+        // Clear state FIRST so internal handlers do not restart the process.
         activeRecipes.Remove(slotIndex);
         remainingTime.Remove(slotIndex);
         totalDuration.Remove(slotIndex);
         processQuantity.Remove(slotIndex);
 
-        // Konsumsi bahan dari slot (batch quantity).
+        // Consume ingredients from slot (batch quantity).
         InventorySlot slot = SafeSlot(slotIndex);
         if (slot != null && !slot.IsEmpty && slot.item == recipe.input)
             stationInventory.RemoveFromSlot(slotIndex, qty);
 
-        // Hasil: auto-kembali ke resultTarget, atau langsung di slot stasiun (batch output).
+        // Output: auto-return to resultTarget, or place directly in station slot (batch output).
         bool stored = resultTarget != null && resultTarget.AddItem(recipe.output, qty * recipe.outputCount);
         if (!stored)
             stationInventory.ReplaceItemAt(slotIndex, recipe.output, qty * recipe.outputCount);

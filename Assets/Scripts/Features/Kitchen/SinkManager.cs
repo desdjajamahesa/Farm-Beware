@@ -309,7 +309,7 @@ public class SinkManager : MonoBehaviour
         var bottle = FeaturesKitchen.PlayerWaterBottle.Instance;
         var btnImg = refillWaterButton != null ? refillWaterButton.GetComponent<Image>() : null;
 
-        // 1. Botol sudah penuh di sink, menunggu diambil (Ready to Collect)
+        // 1. Bottle is already full in sink, waiting to be picked up (Ready to Collect)
         if (processor != null && processor.IsBottleReadyToCollect)
         {
             refillWaterButtonText.text = "💧 Take Full Water Bottle [Collect]";
@@ -319,7 +319,7 @@ public class SinkManager : MonoBehaviour
             return;
         }
 
-        // 2. Botol sedang diisi di sink (Refilling in progress)
+        // 2. Bottle is currently refilling in sink (Refilling in progress)
         if (processor != null && processor.IsRefillingWater)
         {
             float remaining = Mathf.Max(0f, Mathf.Ceil(processor.RefillWaterDuration * (1f - processor.RefillWaterProgress)));
@@ -330,7 +330,7 @@ public class SinkManager : MonoBehaviour
             return;
         }
 
-        // 3. Normal idle state (botol di inventori player)
+        // 3. Normal idle state (bottle in player inventory)
         int curCharges = bottle != null ? Mathf.FloorToInt(bottle.CurrentWater) : 4;
         int maxCharges = bottle != null ? Mathf.FloorToInt(bottle.MaxWater) : 4;
         int remainingQuota = processor != null ? processor.RemainingBottleRefillsToday : 2;

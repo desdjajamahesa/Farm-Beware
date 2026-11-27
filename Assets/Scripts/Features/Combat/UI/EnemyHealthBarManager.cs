@@ -5,9 +5,9 @@ using FarmBeware.Core.Runtime;
 namespace FeaturesCombat.UI
 {
     /// <summary>
-    /// Manager terpusat untuk mengelola pool dan proyeksi layar bar darah melayang (Overhead Floating Health Bars)
-    /// bagi seluruh monster biasa yang aktif di Night Brawl.
-    /// Dilengkapi Zero-GC object pooling, Camera Frustum Culling, dan Dynamic Height Offset.
+    /// Centralized manager for pooling and screen-space projection of Overhead Floating Health Bars
+    /// for all active regular monsters during Night Brawl.
+    /// Includes Zero-GC object pooling, Camera Frustum Culling, and Dynamic Height Offset.
     /// </summary>
     public class EnemyHealthBarManager : MonoBehaviour
     {
@@ -70,7 +70,7 @@ namespace FeaturesCombat.UI
                 NightBrawlManager.Instance.OnEnemySpawned += HandleEnemySpawned;
                 NightBrawlManager.Instance.OnEnemyDied += HandleEnemyDied;
 
-                // Bind monster yang sudah aktif sebelumnya
+                // Bind previously active monsters
                 if (NightBrawlManager.Instance.ActiveEnemies != null)
                 {
                     foreach (var enemy in NightBrawlManager.Instance.ActiveEnemies)
@@ -100,7 +100,7 @@ namespace FeaturesCombat.UI
             var targetCanvas = CanvasHelper.ResolveMainUICanvas();
             if (targetCanvas == null) return;
 
-            // Pastikan manager GameObject sendiri berada di bawah target canvas
+            // Ensure manager GameObject itself is parented under the target canvas
             if (transform.parent != targetCanvas.transform)
             {
                 transform.SetParent(targetCanvas.transform, false);
@@ -162,7 +162,7 @@ namespace FeaturesCombat.UI
         {
             if (enemy == null || activeBars.ContainsKey(enemy)) return;
 
-            // Jika boss dan setting overhead boss dimatikan, abaikan (karena sudah ditangani BossHealthBarManager)
+            // If boss and overhead boss bar setting is disabled, ignore (handled by BossHealthBarManager)
             if (enemy.isBoss && !showOverheadBarForBosses) return;
 
             EnemyOverheadBarUI bar = pool.Count > 0 ? pool.Dequeue() : CreateNewBarInstance();
@@ -221,21 +221,21 @@ namespace FeaturesCombat.UI
                 EnemyBase enemy = kvp.Key;
                 EnemyOverheadBarUI bar = kvp.Value;
 
-                // Validasi siklus hidup
+                // Lifecycle validation
                 if (enemy == null || enemy.IsDead || !enemy.gameObject.activeInHierarchy)
                 {
                     deadBuffer.Add(enemy);
                     continue;
                 }
 
-                // Hitung posisi kepala di dunia 3D berdasarkan skala fisik monster
+                // Compute 3D world head position based on monster physical scale
                 float heightOffset = GetHeadHeightOffset(enemy.enemyType, enemy.isBoss);
                 Vector3 headWorldPos = enemy.transform.position + Vector3.up * heightOffset;
 
-                // Proyeksikan posisi 3D dunia ke 2D koordinat layar
+                // Project 3D world position to 2D screen coordinates
                 Vector3 screenPoint = targetCamera.WorldToScreenPoint(headWorldPos);
 
-                // Frustum Culling: hanya update & tampilkan jika berada di depan dan dalam batas pandang kamera
+                // Frustum Culling: update & show only when in front of and within camera viewport bounds
                 bool isVisible = screenPoint.z > 0f &&
                                  screenPoint.x >= -40f && screenPoint.x <= screenWidth + 40f &&
                                  screenPoint.y >= -40f && screenPoint.y <= screenHeight + 40f;
@@ -248,7 +248,7 @@ namespace FeaturesCombat.UI
                 bar.EvaluateVisibility(isVisible);
             }
 
-            // Bersihkan entitas mati atau dikembalikan ke pool
+            // Purge dead or pooled entities
             if (deadBuffer.Count > 0)
             {
                 for (int i = 0; i < deadBuffer.Count; i++)
@@ -274,7 +274,7 @@ namespace FeaturesCombat.UI
         }
 
         /// <summary>
-        /// Ketinggian offset di atas kepala berdasarkan tipe dan ukuran fisik masing-masing monster.
+        /// Overhead height offset based on each monster's type and physical size.
         /// </summary>
         public static float GetHeadHeightOffset(EnemyType type, bool isBoss)
         {

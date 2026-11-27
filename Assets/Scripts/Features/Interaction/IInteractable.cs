@@ -7,9 +7,9 @@ namespace FeaturesInteraction
         void Interact(GameObject interactor);
 
         /// <summary>
-        /// Menentukan apakah objek saat ini bisa diinteraksikan.
-        /// Default: true. Override untuk menonaktifkan interaksi dalam kondisi tertentu
-        /// (misalnya furniture dekoratif, objek dalam cooldown, dsb).
+        /// Determines whether this object can currently be interacted with.
+        /// Default: true. Override to disable interaction under specific conditions
+        /// (e.g. decorative furniture, objects on cooldown, etc.).
         /// </summary>
         bool CanInteract(GameObject interactor) => true;
     }

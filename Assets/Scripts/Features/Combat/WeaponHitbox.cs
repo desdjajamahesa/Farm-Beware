@@ -5,9 +5,9 @@ using FarmBeware.Core.Runtime;
 namespace FeaturesCombat
 {
     /// <summary>
-    /// Komponen deteksi tabrakan senjata (hitbox).
-    /// Dipasang pada bilah senjata (DummySword, Cangkul Tempur, dll.) untuk mendeteksi IDamageable,
-    /// memberikan damage terhitung, menerapkan efek knockback, dan memunculkan floating text.
+    /// Weapon collision detection component (hitbox).
+    /// Attached to weapon blades (DummySword, Combat Hoe, etc.) to detect IDamageable targets,
+    /// deal calculated damage, apply knockback, and spawn floating combat text.
     /// </summary>
     [RequireComponent(typeof(Collider))]
     public class WeaponHitbox : MonoBehaviour
@@ -62,7 +62,7 @@ namespace FeaturesCombat
                 hitboxCollider.enabled = false;
             }
 
-            // Pastikan memiliki Kinematic Rigidbody agar PhysX merouting OnTriggerEnter langsung ke GameObject ini
+            // Ensure a Kinematic Rigidbody is present so PhysX routes OnTriggerEnter directly to this GameObject
             Rigidbody rb = GetComponent<Rigidbody>();
             if (rb == null)
             {
@@ -86,7 +86,7 @@ namespace FeaturesCombat
         }
 
         /// <summary>
-        /// Mengatur radius jangkauan deteksi hit agar sinkron dengan pengaturan PlayerEquipment.
+        /// Sets hit detection reach radius to stay synchronized with PlayerEquipment settings.
         /// </summary>
         public void ConfigureHitRange(float hitRange)
         {
@@ -95,7 +95,7 @@ namespace FeaturesCombat
         }
 
         /// <summary>
-        /// Mengaktifkan hitbox selama jendela ayunan aktif.
+        /// Activates the hitbox during the active swing window.
         /// </summary>
         public void Activate(GameObject attackerOwner, int damage, float knockback, Vector3 direction)
         {
@@ -111,12 +111,12 @@ namespace FeaturesCombat
                 hitboxCollider.enabled = true;
             }
 
-            // Lakukan sweep proaktif seketika saat ayunan dimulai
+            // Perform proactive sweep immediately when swing begins
             PerformSweepCheck();
         }
 
         /// <summary>
-        /// Menonaktifkan hitbox setelah ayunan selesai.
+        /// Deactivates the hitbox after the swing completes.
         /// </summary>
         public void Deactivate()
         {
@@ -130,9 +130,9 @@ namespace FeaturesCombat
         }
 
         /// <summary>
-        /// Pemeriksaan sapuan bola (OverlapSphere) di depan penyerang untuk menjamin registrasi pukulan
-        /// terlepas dari rotasi bone animasi atau tipisnya collider fisik.
-        /// Memvalidasi sudut hadap (cone check) agar musuh di belakang penyerang tidak terkena hit.
+        /// Performs a forward OverlapSphere sweep in front of the attacker to guarantee hit registration
+        /// regardless of animation bone rotation or thin physical colliders.
+        /// Validates facing cone angle so enemies behind the attacker are not hit.
         /// </summary>
         public void PerformSweepCheck()
         {
@@ -150,11 +150,11 @@ namespace FeaturesCombat
                 var col = _sharedSweepBuffer[i];
                 if (col == null) continue;
 
-                // Abaikan penyerang sendiri
+                // Ignore the attacker itself
                 if (attacker != null && (col.gameObject == attacker || col.transform.IsChildOf(attacker.transform)))
                     continue;
 
-                // Cone Check: Pastikan target berada di depan penyerang (sudut hadap frontal)
+                // Cone Check: Ensure target lies in front of the attacker (frontal facing arc)
                 Vector3 toTarget = col.transform.position - origin;
                 toTarget.y = 0f;
                 if (toTarget.sqrMagnitude > 0.04f)
@@ -163,7 +163,7 @@ namespace FeaturesCombat
                     float dot = Vector3.Dot(forwardDir, normDir);
                     if (dot < minForwardDot)
                     {
-                        // Target berada di belakang atau samping luar jangkauan sudut serang
+                        // Target is behind or outside the frontal attack cone
                         continue;
                     }
                 }
@@ -191,11 +191,11 @@ namespace FeaturesCombat
         {
             if (!isActive || other == null) return;
 
-            // Abaikan penyerang sendiri
+            // Ignore the attacker itself
             if (attacker != null && (other.gameObject == attacker || other.transform.IsChildOf(attacker.transform)))
                 return;
 
-            // Validasi arah hadap juga pada trigger fisik
+            // Validate facing arc on physical trigger as well
             Vector3 origin = (attacker != null) ? attacker.transform.position : transform.position;
             Vector3 forwardDir = (attacker != null) ? attacker.transform.forward : attackDirection;
             Vector3 toTarget = other.transform.position - origin;
@@ -239,7 +239,7 @@ namespace FeaturesCombat
 
             target.TakeDamage(effectiveDamage, hitPoint, attackDirection);
 
-            // Terapkan knockback pada Rigidbody musuh jika ada
+            // Apply knockback to enemy Rigidbody if present
             Rigidbody targetRb = targetObj.GetComponent<Rigidbody>() ?? targetObj.GetComponentInParent<Rigidbody>();
             if (targetRb != null && !targetRb.isKinematic)
             {
@@ -247,7 +247,7 @@ namespace FeaturesCombat
                 targetRb.AddForce(knockbackDir * currentKnockback, ForceMode.Impulse);
             }
 
-            // Munculkan floating combat text untuk serangan pemain ke monster (warna emas cerah, tanpa minus)
+            // Spawn floating combat text for player-to-monster hit (bright gold, no minus sign)
             if (FloatingCombatTextManager.Instance != null)
             {
                 FloatingCombatTextManager.Instance.SpawnEnemyDamage(

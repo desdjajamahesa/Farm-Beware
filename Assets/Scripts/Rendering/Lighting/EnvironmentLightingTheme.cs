@@ -4,21 +4,21 @@ using UnityEngine;
 namespace FeaturesRendering.Lighting
 {
     /// <summary>
-    /// Enum mendefinisikan fase waktu lingkungan 24 jam.
+    /// Defines 24-hour environmental time phases.
     /// </summary>
     public enum EnvironmentPhase
     {
-        Dawn = 0,       // Fajar / Pagi Awal (05:00 - 07:00)
-        Day = 1,        // Siang Hari (07:00 - 17:00)
-        Dusk = 2,       // Senja / Sore Hari (17:00 - 19:30)
-        Night = 3       // Malam Hari / Night Brawl (19:30 - 05:00)
+        Dawn = 0,       // Dawn / Early Morning (05:00 - 07:00)
+        Day = 1,        // Daytime (07:00 - 17:00)
+        Dusk = 2,       // Dusk / Late Afternoon (17:00 - 19:30)
+        Night = 3       // Night / Night Brawl (19:30 - 05:00)
     }
 
     /// <summary>
-    /// ScriptableObject yang berfungsi sebagai basis data Dependency Injection (DI)
-    /// untuk konfigurasi pencahayaan dan atmosfer lingkungan di Unity 6 URP.
-    /// Berisi palet temperatur Kelvin, intensitas Adaptive Probe Volumes (APV),
-    /// kabut atmosfer (fog), dan kompensasi eksposur (EV).
+    /// ScriptableObject serving as a Dependency Injection (DI) data asset
+    /// for lighting and atmospheric environment configuration in Unity 6 URP.
+    /// Stores Kelvin temperature palette, Adaptive Probe Volumes (APV) intensity,
+    /// atmospheric fog, and exposure compensation (EV).
     /// </summary>
     [CreateAssetMenu(fileName = "New_EnvironmentLightingTheme", menuName = "Farm-Beware/Rendering/Environment Lighting Theme")]
     public class EnvironmentLightingTheme : ScriptableObject
@@ -135,15 +135,15 @@ namespace FeaturesRendering.Lighting
         #region Kelvin to RGB Utility
 
         /// <summary>
-        /// Mengonversi suhu Kelvin (1000K - 40000K) menjadi Color RGB terkalibrasi secara matematis.
-        /// Menggunakan algoritma Tanner Helland yang dioptimasi untuk real-time graphics.
+        /// Converts Kelvin color temperature (1000K - 40000K) to a calibrated RGB Color.
+        /// Uses Tanner Helland's algorithm optimized for real-time graphics.
         /// </summary>
         public static Color ConvertKelvinToRGB(float kelvin)
         {
             float temp = Mathf.Clamp(kelvin, 1000f, 40000f) / 100f;
             float red, green, blue;
 
-            // Hitung Red
+            // Compute Red
             if (temp <= 66f)
             {
                 red = 255f;
@@ -155,7 +155,7 @@ namespace FeaturesRendering.Lighting
                 red = Mathf.Clamp(red, 0f, 255f);
             }
 
-            // Hitung Green
+            // Compute Green
             if (temp <= 66f)
             {
                 green = temp;
@@ -169,7 +169,7 @@ namespace FeaturesRendering.Lighting
                 green = Mathf.Clamp(green, 0f, 255f);
             }
 
-            // Hitung Blue
+            // Compute Blue
             if (temp >= 66f)
             {
                 blue = 255f;
@@ -267,8 +267,8 @@ namespace FeaturesRendering.Lighting
         #region Factory & Interpolation (Clean Pure Methods)
 
         /// <summary>
-        /// Membuat instance runtime baru sebagai hasil interpolasi linier antara dua EnvironmentLightingTheme.
-        /// Metode murni (pure method) tanpa side-effect, siap digunakan untuk transisi halus pada Fase 2.
+        /// Creates a new runtime instance by linearly interpolating between two EnvironmentLightingTheme assets.
+        /// Side-effect-free pure method ready for smooth Phase 2 transitions.
         /// </summary>
         public static EnvironmentLightingTheme Lerp(EnvironmentLightingTheme from, EnvironmentLightingTheme to, float t)
         {

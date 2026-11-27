@@ -4,14 +4,14 @@ using FarmBeware.Core.Runtime;
 namespace FeaturesRendering.Lighting
 {
     /// <summary>
-    /// Observer/Listener untuk mengontrol rotasi, iluminasi matematis, dan suhu kelvin matahari (Directional Light).
-    /// Mematuhi Clean Architecture, SOLID, dan Event-Driven OOP.
+    /// Observer/Listener controlling solar rotation, mathematical illumination, and Kelvin color temperature (Directional Light).
+    /// Adheres to Clean Architecture, SOLID, and Event-Driven OOP.
     ///
-    /// ATURAN ARSITEKTUR KETAT:
-    /// Komponen ini TIDAK MEMILIKI kode iterasi di siklus Update() utama.
-    /// Seluruh pembaruan posisi azimuth, elevasi, intensitas lux, dan suhu warna kelvin
-    /// dipicu secara murni oleh event OnMinuteChanged / OnTimePhaseChanged dari DayNightTimeManager.
-    /// Hal ini mengeliminasi overhead CPU per-frame dan memastikan pembaruan terisolasi hanya saat jam bergerak.
+    /// STRICT ARCHITECTURE RULE:
+    /// This component has NO Update() polling iteration for solar progression.
+    /// All azimuth, elevation, lux intensity, and Kelvin color temperature updates
+    /// are strictly event-driven via DayNightTimeManager.OnMinuteChanged / OnTimePhaseChanged.
+    /// This eliminates per-frame CPU overhead and isolates updates to time-tick boundaries.
     /// </summary>
     [DisallowMultipleComponent]
     [RequireComponent(typeof(Light))]
@@ -150,7 +150,7 @@ namespace FeaturesRendering.Lighting
                 TrySubscribeTimeService();
             }
 
-            // Defensive resolution jika ITimeService belum siap di Awake/OnEnable
+            // Defensive resolution if ITimeService is not ready in Awake/OnEnable
             var timeService = ServiceLocator.Resolve<ITimeService>();
             if (timeService != null)
             {
@@ -204,16 +204,16 @@ namespace FeaturesRendering.Lighting
             }
         }
 
-        // CATATAN ARSITEKTUR:
-        // Update() DIHAPUSKAN SECARA EKSPLISIT.
-        // Tidak ada perulangan polling render loop di komponen ini.
+        // ARCHITECTURE NOTE:
+        // Solar polling in Update() is intentionally omitted.
+        // No continuous render-loop polling occurs in this component.
 
         #endregion
 
         #region Observer Event Handlers
 
         /// <summary>
-        /// Handler dipanggil secara reaktif hanya ketika menit berganti pada ITimeService.
+        /// Reactive handler invoked only when the minute changes on ITimeService.
         /// </summary>
         private void HandleMinuteChanged(int minute)
         {
@@ -227,7 +227,7 @@ namespace FeaturesRendering.Lighting
         }
 
         /// <summary>
-        /// Handler dipanggil saat transisi fase besar (Dawn, Day, Dusk, Night).
+        /// Handler invoked on major phase transitions (Dawn, Day, Dusk, Night).
         /// </summary>
         private void HandlePhaseChanged(int day, DayPhase phase)
         {
@@ -256,8 +256,8 @@ namespace FeaturesRendering.Lighting
         #region Core Mathematical Solar Model
 
         /// <summary>
-        /// Menghitung trajektori rotasi matahari, suhu kelvin, dan intensitas secara matematis
-        /// berdasarkan jam kontinu (0.0f - 24.0f).
+        /// Mathematically evaluates sun rotation trajectory, Kelvin temperature, and intensity
+        /// from the continuous hour (0.0f - 24.0f).
         /// </summary>
         public void EvaluateSunParameters(float hour)
         {
@@ -274,7 +274,7 @@ namespace FeaturesRendering.Lighting
                 return;
             }
 
-            // Apakah berada di dalam siklus matahari siang?
+            // Within the daytime solar cycle?
             if (hour >= sunriseHour && hour <= sunsetHour)
             {
                 isDaytime = true;
@@ -303,15 +303,15 @@ namespace FeaturesRendering.Lighting
             }
             else
             {
-                // Phase 3: Night Lighting (Pencahayaan Malam Minimal & APV Sync)
+                // Phase 3: Night Lighting (Minimal Night Lighting & APV Sync)
                 ApplyNightLighting();
             }
         }
 
         /// <summary>
-        /// Mengatur pencahayaan siang hari (Phase 2: Day Lighting):
-        /// Menggunakan tema dayTheme (pitch 50°, yaw -30°, lux 1.1, warna 5000K daylight) secara statis
-        /// tanpa iterasi trajektori bergerak saat mode kontinu tidak aktif.
+        /// Configures daytime lighting (Phase 2: Day Lighting):
+        /// Applies static dayTheme values (pitch 50 deg, yaw -30 deg, lux 1.1, 5000K daylight)
+        /// without moving trajectory iteration when continuous time is disabled.
         /// </summary>
         public void ApplyDayLighting()
         {
@@ -348,10 +348,10 @@ namespace FeaturesRendering.Lighting
         }
 
         /// <summary>
-        /// Mengatur pencahayaan malam hari (Phase 3: Night Lighting):
-        /// Meredupkan Directional Light ke intensitas 0.1 - 0.2 lux dengan spektrum biru-keunguan
-        /// untuk memastikan visibilitas orientasi spasial pemain di mode Action Survival.
-        /// Menyelaraskan ambient dan kabut atmosfer agar APV Sky Occlusion merefleksikan cahaya malam.
+        /// Configures nighttime lighting (Phase 3: Night Lighting):
+        /// Dims the Directional Light to 0.1 - 0.2 lux with a blue-violet spectrum
+        /// to preserve spatial orientation visibility in Action Survival mode.
+        /// Aligns ambient and atmospheric fog so APV Sky Occlusion reflects night lighting.
         /// </summary>
         public void ApplyNightLighting()
         {
@@ -369,7 +369,7 @@ namespace FeaturesRendering.Lighting
                 currentIntensity = Mathf.Clamp(nightTheme.MainLightIntensity, 0.05f, 3.0f);
                 ApplyToLight(nightTheme.MainLightEulerAngles.x, nightTheme.MainLightEulerAngles.y, currentEvaluatedColor, currentIntensity);
 
-                // Sinkronisasi Ambient & APV Sky Occlusion
+                // Sync Ambient & APV Sky Occlusion
                 RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Trilight;
                 RenderSettings.ambientSkyColor = nightTheme.AmbientSkyColor;
                 RenderSettings.ambientEquatorColor = nightTheme.AmbientEquatorColor;
@@ -399,8 +399,8 @@ namespace FeaturesRendering.Lighting
         }
 
         /// <summary>
-        /// Memastikan konfigurasi bayangan Directional Light terkalibrasi optimal:
-        /// Soft Shadows aktif, Shadow Near Plane Offset aman dari Peter-panning.
+        /// Ensures Directional Light shadow settings are calibrated:
+        /// Soft Shadows enabled, Shadow Near Plane Offset guarded against Peter-panning.
         /// </summary>
         public void EnforceShadowSettings()
         {
@@ -415,7 +415,7 @@ namespace FeaturesRendering.Lighting
         #region Public Inspection & Testing Interface
 
         /// <summary>
-        /// Mengatur rotasi matahari secara manual untuk tujuan pengujian visual / testing harness.
+        /// Manually sets sun rotation for visual verification / testing harness use.
         /// </summary>
         public void SetManualSunRotation(float azimuth, float elevation, float kelvin, float intensity)
         {

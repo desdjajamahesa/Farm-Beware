@@ -6,8 +6,8 @@ using FarmBeware.Core.Runtime;
 namespace PlayerUI
 {
     /// <summary>
-    /// Tooltip mengambang untuk menampilkan informasi detail buff aktif saat kursor mouse diarahkan ke slot buff.
-    /// Dibangun secara prosedural otomatis jika belum ada di scene/canvas.
+    /// Floating tooltip displaying active buff details when hovering over a buff slot.
+    /// Procedurally constructed automatically if not present in the scene/canvas.
     /// </summary>
     public class BuffTooltipUI : MonoBehaviour
     {

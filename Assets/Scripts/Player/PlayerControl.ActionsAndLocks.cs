@@ -7,7 +7,7 @@ using FarmBeware.Core.Runtime;
 public partial class PlayerControl
 {
     /// <summary>
-    /// Membatalkan aksi menanam atau menyiram secara seketika saat pemain menekan tombol gerak.
+    /// Immediately cancels a planting or watering action when the player presses movement input.
     /// </summary>
     public void CancelFarmAction()
     {
@@ -26,7 +26,7 @@ public partial class PlayerControl
     }
 
     /// <summary>
-    /// Memanggil animasi menanam secara kontekstual (mis. saat berinteraksi dengan FarmlandTile).
+    /// Triggers the planting animation contextually (e.g., when interacting with a FarmlandTile).
     /// </summary>
     public void TriggerPlantAnimation()
     {
@@ -36,7 +36,7 @@ public partial class PlayerControl
     }
 
     /// <summary>
-    /// Memanggil animasi memanen/mengambil tanaman dari tanah.
+    /// Triggers the crop harvesting animation.
     /// </summary>
     public void TriggerHarvestAnimation()
     {
@@ -64,7 +64,7 @@ public partial class PlayerControl
             animator.SetBool("Sprinting", false);
         }
 
-        // Tunggu frame berikutnya agar transisi animator ke PlantSeed dimulai
+        // Wait one frame for the Animator transition into PlantSeed to begin
         yield return null;
 
         float timer = 0f;
@@ -72,7 +72,7 @@ public partial class PlayerControl
         {
             timer += Time.deltaTime;
 
-            // Early cancel jika pemain mulai bergerak
+            // Early cancel if the player starts moving
             if (timer > 0.15f && inputActions != null)
             {
                 Vector2 moveInput = inputActions.Player.Move.ReadValue<Vector2>();
@@ -82,7 +82,7 @@ public partial class PlayerControl
                 }
             }
 
-            // Jika animasi sudah selesai dan bertransisi kembali ke Idle/Moving setelah minimal 0.25 detik (kecepatan 2x)
+            // Break once animation completes and transitions back to Idle/Moving after at least 0.25s (2x speed)
             if (timer > 0.25f && animator != null)
             {
                 var stateInfo = animator.GetCurrentAnimatorStateInfo(0);
@@ -104,7 +104,7 @@ public partial class PlayerControl
     }
 
     /// <summary>
-    /// Memanggil animasi menyiram tanaman secara kontekstual (mis. saat menyiram FarmlandTile).
+    /// Triggers the watering animation contextually (e.g., when watering a FarmlandTile).
     /// </summary>
     public void TriggerWaterAnimation()
     {
@@ -143,7 +143,7 @@ public partial class PlayerControl
         {
             timer += Time.deltaTime;
 
-            // Early cancel jika pemain mulai bergerak
+            // Early cancel if the player starts moving
             if (timer > 0.12f && inputActions != null)
             {
                 Vector2 moveInput = inputActions.Player.Move.ReadValue<Vector2>();
@@ -173,13 +173,13 @@ public partial class PlayerControl
         farmActionRoutine = null;
     }
 
-    // Tombol Tab / I membuka-menutup panel pemain. Jika storage terbuka, tutup semua.
+    // Tab / I toggles the player inventory panel; closes all UI if storage is open.
     private void HandleInventoryInput()
     {
         Keyboard keyboard = Keyboard.current;
         if (keyboard == null) return;
 
-        // Guard: jangan buka inventory jika sedang Trophy Mode
+        // Guard: do not open inventory while in Trophy Mode
         if (TrophySystemManager.Instance != null && TrophySystemManager.Instance.IsInTrophyMode)
             return;
 
@@ -198,7 +198,7 @@ public partial class PlayerControl
         }
     }
 
-    // Seleksi Hotbar: angka 1-4 + scroll mouse (wrapping).
+    // Hotbar selection: keys 1-4 and mouse scroll wheel (wrapping).
     private void HandleHotbarInput()
     {
         if (playerInventory == null) return;
@@ -259,7 +259,7 @@ public partial class PlayerControl
             }
         }
 
-        // Hanya bisa lompat jika menginjak tanah
+        // Can only jump when grounded
         if (isGrounded)
         {
             isGrounded = false;
@@ -271,7 +271,7 @@ public partial class PlayerControl
                 animator.Play("AirBorn", 0, 0f);
             }
 
-            // Reset kecepatan Y agar lompatan konsisten, lalu dorong ke atas
+            // Reset vertical velocity for consistent jump height, then apply upward impulse
             rb.linearVelocity = new Vector3(rb.linearVelocity.x, 0f, rb.linearVelocity.z);
             rb.AddForce(Vector3.up * jumpForce, ForceMode.Impulse);
         }
@@ -511,8 +511,8 @@ public partial class PlayerControl
     private int lastInteractFrame = -1;
 
     /// <summary>
-    /// Menghentikan gerakan pemain secara paksa.
-    /// Dipanggil saat memulai interaksi agar pemain tidak sliding/bergerak.
+    /// Force-stops player movement.
+    /// Called before starting an interaction to prevent sliding.
     /// </summary>
     public void StopMovement()
     {
@@ -539,15 +539,15 @@ public partial class PlayerControl
             return;
         }
 
-        // Pastikan skrip interactor tidak hilang/error
+        // Ensure the interactor component is present
         if (interactor == null)
             interactor = GetComponent<PlayerInteractor>();
 
         if (interactor != null)
         {
-            // Hentikan gerakan pemain sebelum memulai interaksi
+            // Stop player movement before starting interaction
             StopMovement();
-            // Perintahkan "Tangan" untuk menjalankan logikanya
+            // Dispatch interaction logic to PlayerInteractor
             interactor.OnInteractInput();
         }
         else
@@ -564,12 +564,12 @@ public partial class PlayerControl
 
     private void CheckGrounded()
     {
-        // Jika sedang fase awal lompat (bergerak ke atas karena dorongan lompat), abaikan ground check
+        // Skip ground check during the upward jump impulse phase
         if (isJumping)
         {
             if (rb != null && rb.linearVelocity.y <= 0f)
             {
-                // Sudah mencapai puncak loncatan dan mulai jatuh
+                // Reached jump apex and started falling
                 isJumping = false;
             }
             else
@@ -580,8 +580,8 @@ public partial class PlayerControl
             }
         }
 
-        // SphereCast ke bawah untuk mendeteksi tanah secara akurat di tanjakan/tangga
-        // Mulai sedikit di atas kaki karakter (y = 0.25f), radius 0.2f, jarak cast 0.25f
+        // Downward SphereCast for accurate ground detection on slopes/stairs
+        // Start slightly above feet (y = 0.25f), radius 0.2f, cast distance 0.25f
         float sphereRadius = 0.2f;
         Vector3 origin = transform.position + Vector3.up * (sphereRadius + 0.05f);
         float castDistance = 0.25f;
@@ -596,7 +596,7 @@ public partial class PlayerControl
             QueryTriggerInteraction.Ignore
         );
 
-        // Abaikan jika collider yang terkena adalah collider diri sendiri
+        // Ignore hits against the player's own collider
         if (hitGround && playerCollider != null && hit.collider == playerCollider)
         {
             hitGround = false;
@@ -626,8 +626,8 @@ public partial class PlayerControl
     private Coroutine stunCoroutine;
 
     /// <summary>
-    /// Memberikan efek stun sementara pada pemain (misal: akibat bantingan grapple bos).
-    /// Dilengkapi safety timeout coroutine agar pemain tidak pernah terkunci selamanya.
+    /// Applies a temporary stun to the player (e.g., from a boss grapple slam).
+    /// Includes a safety timeout coroutine so input is never permanently locked.
     /// </summary>
     public void ApplyStun(float duration)
     {
@@ -657,7 +657,7 @@ public partial class PlayerControl
     }
 
     /// <summary>
-    /// Menerapkan dorongan knockback fisika pada pemain.
+    /// Applies a physics knockback impulse to the player.
     /// </summary>
     public void ApplyKnockback(Vector3 direction, float force)
     {
@@ -675,7 +675,7 @@ public partial class PlayerControl
     }
 
     /// <summary>
-    /// Mengunci / membuka input kontrol pemain secara eksplisit (misal: saat diangkat bos).
+    /// Explicitly locks or unlocks player control input (e.g., while grabbed by a boss).
     /// </summary>
     public void SetControlLock(bool locked)
     {
@@ -765,7 +765,7 @@ public partial class PlayerControl
     }
 
     /// <summary>
-    /// Helper eksplisit untuk mengaktifkan / menonaktifkan input kontrol pemain.
+    /// Explicit helper to enable or disable player control input.
     /// </summary>
     public void SetInputActive(bool active) => SetControlLock(!active);
 

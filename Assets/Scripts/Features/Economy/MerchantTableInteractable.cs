@@ -220,14 +220,14 @@ namespace FeaturesEconomy
             // 6. Highlightable (with highlight material auto-resolved)
             var highlightable = tableGO.AddComponent<Highlightable>();
 
-            // Coba cari material highlight dari Highlightable lain di scene
+            // Attempt to find a highlight material from another Highlightable in the scene
             Material highlightMat = null;
             var existingHighlightables = FindObjectsByType<Highlightable>(FindObjectsInactive.Include, FindObjectsSortMode.None);
             foreach (var h in existingHighlightables)
             {
                 if (h != highlightable)
                 {
-                    // Akses field private via refleksi untuk menyalin material
+                    // Access private field via reflection to copy the material
                     var field = typeof(Highlightable).GetField("highlightMaterial",
                         System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
                     if (field != null)

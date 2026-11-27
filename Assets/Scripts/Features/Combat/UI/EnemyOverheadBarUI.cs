@@ -6,9 +6,9 @@ using UnityEngine.UI;
 namespace FeaturesCombat.UI
 {
     /// <summary>
-    /// Widget bar darah mengambang (Overhead Floating Health Bar) individual untuk satu musuh.
-    /// Berada di dalam Screen-Space UI Canvas dan diposisikan di atas kepala monster via Camera.WorldToScreenPoint.
-    /// Dilengkapi Ghost Damage Fill (amber catch-up), fade kontekstual, dan tekstur prosedural bersih.
+    /// Individual Overhead Floating Health Bar widget for a single enemy.
+    /// Lives inside Screen-Space UI Canvas and is positioned above the monster's head via Camera.WorldToScreenPoint.
+    /// Includes Ghost Damage Fill (amber catch-up), contextual fading, and clean procedural textures.
     /// </summary>
     [RequireComponent(typeof(CanvasGroup))]
     public class EnemyOverheadBarUI : MonoBehaviour
@@ -65,14 +65,14 @@ namespace FeaturesCombat.UI
             isBossBar = enemy.isBoss;
             this.hideAtFullHealth = hideAtFullHealth;
 
-            // Sesuaikan ukuran bar: Boss bar sedikit lebih lebar jika diaktifkan overhead
+            // Adjust bar dimensions: Boss bar is slightly wider when overhead display is enabled
             float width = isBossBar ? 110f : 80f;
             float height = isBossBar ? 9f : 7f;
             rectTransform.sizeDelta = new Vector2(width, height);
 
             boundEnemy.OnHealthChanged += HandleHealthChanged;
 
-            // Inisialisasi rasio darah
+            // Initialize health ratio
             float maxHp = Mathf.Max(1, enemy.maxHealth);
             float curHp = Mathf.Clamp(enemy.currentHealth, 0, enemy.maxHealth);
             currentFillRatio = curHp / maxHp;
@@ -83,7 +83,7 @@ namespace FeaturesCombat.UI
 
             UpdateHpText(curHp, maxHp);
 
-            // Kondisi awal: tampilkan jika hideAtFullHealth false atau sudah terluka
+            // Initial state: show if hideAtFullHealth is false or already damaged
             if (!this.hideAtFullHealth || curHp < maxHp)
             {
                 canvasGroup.alpha = 1f;
@@ -127,7 +127,7 @@ namespace FeaturesCombat.UI
 
             float newRatio = Mathf.Clamp01((float)currentHp / Mathf.Max(1, maxHp));
 
-            // Jika menerima damage (rasio berkurang)
+            // If taking damage (ratio decreased)
             if (newRatio < targetFillRatio)
             {
                 lastDamageTime = Time.time;
@@ -139,17 +139,17 @@ namespace FeaturesCombat.UI
                     mainFillImage.color = targetFillRatio <= 0.25f ? criticalHealthColor : normalHealthColor;
                 }
 
-                // Mulai lag ghost catch-up
+                // Start ghost catch-up lag
                 if (ghostCoroutine != null) StopCoroutine(ghostCoroutine);
                 ghostCoroutine = StartCoroutine(RoutineGhostDrop(targetFillRatio));
 
-                // Pastikan bar langsung terlihat (Snap Alpha 1)
+                // Ensure bar is immediately visible (Snap Alpha 1)
                 if (fadeCoroutine != null) StopCoroutine(fadeCoroutine);
                 canvasGroup.alpha = 1f;
             }
             else
             {
-                // Healing: Naikkan langsung bersamaan
+                // Healing: Raise both bars immediately together
                 targetFillRatio = newRatio;
                 currentFillRatio = newRatio;
                 if (mainFillImage != null) mainFillImage.fillAmount = newRatio;
@@ -161,7 +161,7 @@ namespace FeaturesCombat.UI
 
             UpdateHpText(currentHp, maxHp);
 
-            // Jika mati, fade out seketika
+            // If dead, fade out immediately
             if (currentHp <= 0)
             {
                 FadeOut(0.12f);
@@ -183,8 +183,8 @@ namespace FeaturesCombat.UI
         }
 
         /// <summary>
-        /// Mengecek apakah bar sudah idle di luar pertarungan dan perlu memudar.
-        /// Dipanggil secara terpusat oleh EnemyHealthBarManager demi menghemat per-frame Update overhead.
+        /// Checks whether the bar has been idle out of combat and should fade out.
+        /// Invoked centrally by EnemyHealthBarManager to avoid per-frame Update overhead.
         /// </summary>
         public void EvaluateVisibility(bool isVisibleOnScreen)
         {
@@ -194,7 +194,7 @@ namespace FeaturesCombat.UI
                 return;
             }
 
-            // Jika hideAtFullHealth diaktifkan: sembunyikan jika HP penuh dan sudah melebihi durasi combat visible
+            // If hideAtFullHealth is enabled: hide when at full HP and past combatVisibleDuration
             if (hideAtFullHealth && targetFillRatio >= 0.999f && Time.time - lastDamageTime > combatVisibleDuration)
             {
                 if (canvasGroup.alpha > 0f && fadeCoroutine == null)
@@ -204,7 +204,7 @@ namespace FeaturesCombat.UI
             }
             else if (hideAtFullHealth && targetFillRatio < 0.999f && Time.time - lastDamageTime > 5.0f)
             {
-                // Jika musuh terluka tapi dianggurkan lebih dari 5 detik, fade out lembut agar layar tidak kotor
+                // If enemy is damaged but left idle for over 5s, softly dim bar to avoid screen clutter
                 if (canvasGroup.alpha > 0.35f && fadeCoroutine == null)
                 {
                     fadeCoroutine = StartCoroutine(RoutineFadeAlpha(0.35f, fadeDuration));
@@ -212,7 +212,7 @@ namespace FeaturesCombat.UI
             }
             else if (!hideAtFullHealth)
             {
-                // Jika tidak menyembunyikan di full health, pastikan bar tetap terlihat selama musuh aktif & tampak di layar
+                // If not hiding at full health, keep bar visible while enemy is active & on-screen
                 if (canvasGroup.alpha < 1f && fadeCoroutine == null)
                 {
                     canvasGroup.alpha = 1f;
@@ -256,8 +256,8 @@ namespace FeaturesCombat.UI
         public EnemyBase BoundEnemy => boundEnemy;
 
         /// <summary>
-        /// Membangun struktur visual bar darah prosedural jika prefab/komponen belum terisi di inspector.
-        /// Menggunakan round rectangle sprite beresolusi tinggi yang ramah GPU batching.
+        /// Procedurally builds the health bar visual hierarchy if prefab/components are unassigned in the Inspector.
+        /// Uses a high-resolution rounded-rectangle sprite friendly to GPU batching.
         /// </summary>
         private void EnsureVisualElements()
         {
@@ -324,7 +324,7 @@ namespace FeaturesCombat.UI
                 rt.offsetMax = new Vector2(-1f, -1f);
             }
 
-            // 4. HP Text opsional
+            // 4. Optional HP Text
             if (hpText == null)
             {
                 var txtObj = new GameObject("HpText", typeof(RectTransform), typeof(TextMeshProUGUI));
@@ -344,7 +344,7 @@ namespace FeaturesCombat.UI
                 rt.pivot = new Vector2(0.5f, 0f);
                 rt.sizeDelta = new Vector2(60f, 14f);
                 rt.anchoredPosition = new Vector2(0f, 1f);
-                txtObj.SetActive(false); // Sembunyikan angka default pada kroco agar ultra-minimalis
+                txtObj.SetActive(false); // Hide default numbers on regular enemies for ultra-minimalist look
             }
         }
 

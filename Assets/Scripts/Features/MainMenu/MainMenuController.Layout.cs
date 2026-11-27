@@ -281,7 +281,7 @@ public partial class MainMenuController
         }
         else
         {
-            // Pastikan MainMenuPanel dan GameTitle tertutup dan tidak memblokir raycast
+            // Ensure MainMenuPanel and GameTitle are closed and do not block raycasts
             if (mainMenuPanel != null && mainMenuPanel.activeSelf)
                 mainMenuPanel.SetActive(false);
             if (titleRoot != null && titleRoot.activeSelf)
@@ -305,7 +305,7 @@ public partial class MainMenuController
             Vector3 targetScale = GetSettingsTargetScale();
             Vector3 startScale = targetScale * 0.9f;
 
-            // Aktifkan SettingsPanel
+            // Enable SettingsPanel
             if (settingsPanel != null && !settingsPanel.activeSelf)
             {
                 settingsPanel.SetActive(true);
@@ -365,7 +365,7 @@ public partial class MainMenuController
         }
         else
         {
-            // Pastikan SettingsPanel sepenuhnya tertutup dan dinonaktifkan agar tidak memblokir raycast
+            // Ensure SettingsPanel is completely closed and disabled so it does not block raycasts
             if (settingsCG != null)
             {
                 settingsCG.alpha = 0f;
@@ -378,7 +378,7 @@ public partial class MainMenuController
                 settingsPanel.SetActive(false);
             }
 
-            // Aktifkan kembali MainMenuPanel dan GameTitle
+            // Re-enable MainMenuPanel and GameTitle
             if (mainMenuPanel != null && !mainMenuPanel.activeSelf)
             {
                 mainMenuPanel.SetActive(true);

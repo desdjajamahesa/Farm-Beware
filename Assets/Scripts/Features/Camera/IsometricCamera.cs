@@ -3,8 +3,8 @@ using UnityEngine;
 public class IsometricCamera : MonoBehaviour
 {
     [Header("Target & Offset")]
-    public Transform target; // Karakter yang akan diikuti
-    public Vector3 offset = new Vector3(-10f, 10f, -10f); // Jarak default kamera isometrik
+    public Transform target; // Target character to follow
+    public Vector3 offset = new Vector3(-10f, 10f, -10f); // Default isometric camera offset
 
     [Header("Pengaturan Kehalusan")]
     public float smoothSpeed = 5f;
@@ -13,13 +13,13 @@ public class IsometricCamera : MonoBehaviour
     {
         if (target == null) return;
 
-        // Tentukan posisi tujuan kamera
+        // Compute target camera position
         Vector3 desiredPosition = target.position + offset;
 
-        // Buat transisi mulus dari posisi sekarang ke posisi tujuan (Lerp)
+        // Smoothly interpolate from current position to target position (Lerp)
         Vector3 smoothedPosition = Vector3.Lerp(transform.position, desiredPosition, smoothSpeed * Time.deltaTime);
 
-        // Terapkan posisi baru ke kamera
+        // Apply new position to the camera
         transform.position = smoothedPosition;
     }
 }

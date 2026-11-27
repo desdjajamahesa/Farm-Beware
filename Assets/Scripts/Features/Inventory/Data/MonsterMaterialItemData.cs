@@ -8,10 +8,10 @@ public enum MaterialTier
 
 public enum UpgradePath
 {
-    SpeedMobility,          // Jalur Speed / Mobility (Tuber Maw - Mutated Root)
-    PrecisionTracking,      // Jalur Precision / Tracking (Cyclops Tuber Maw - Cyclops Eye)
-    PowerDefense,           // Jalur Power / Defense / Knockback (Taro Brute - Hardened Root)
-    HeavyImpactArmor        // Jalur Heavy Impact / Armor (Taro Colossus - Colossus Core)
+    SpeedMobility,          // Speed / Mobility path (Tuber Maw - Mutated Root)
+    PrecisionTracking,      // Precision / Tracking path (Cyclops Tuber Maw - Cyclops Eye)
+    PowerDefense,           // Power / Defense / Knockback path (Taro Brute - Hardened Root)
+    HeavyImpactArmor        // Heavy Impact / Armor path (Taro Colossus - Colossus Core)
 }
 
 [CreateAssetMenu(fileName = "NewMonsterMaterial", menuName = "Inventory/Monster Material Item Data")]

@@ -6,10 +6,10 @@ using UnityEngine.UI;
 namespace PlayerUI
 {
     /// <summary>
-    /// Mengontrol container bar daftar buff aktif di HUD.
-    /// Berlangganan langsung ke PlayerBuffManager.OnBuffsChanged untuk merefresh tampilan slot.
-    /// Mendukung pembangunan UI prosedural otomatis jika prefab belum di-assign di Inspector.
-    /// Memuat ikon tematik secara otomatis dari Resources/Icons/Buffs/ (Hati untuk darah, Listrik untuk stamina, dll).
+    /// Controls the active buff bar container on the HUD.
+    /// Subscribes directly to PlayerBuffManager.OnBuffsChanged to refresh slot visuals.
+    /// Supports automatic procedural UI generation if no prefab is assigned in the Inspector.
+    /// Automatically loads thematic icons from Resources/Icons/Buffs/ (heart for health, lightning for stamina, etc.).
     /// </summary>
     public class ActiveBuffHUDController : MonoBehaviour
     {
@@ -105,7 +105,7 @@ namespace PlayerUI
 
             var buffs = buffManager.ActiveBuffs;
 
-            // Sesuaikan jumlah slot dengan jumlah buff aktif
+            // Match slot count to active buff count
             while (activeSlots.Count < buffs.Count)
             {
                 activeSlots.Add(CreateSlotInstance());
@@ -133,7 +133,7 @@ namespace PlayerUI
                 return obj.GetComponent<BuffSlotUI>();
             }
 
-            // Bangun struktur UI Slot secara prosedural dengan visual rounded slate & rim
+            // Build slot UI structure procedurally with rounded slate & rim visuals
             return BuildProceduralSlot(containerTransform);
         }
 
@@ -146,7 +146,7 @@ namespace PlayerUI
             RectTransform rt = slotObj.GetComponent<RectTransform>();
             rt.sizeDelta = new Vector2(46f, 62f);
 
-            // Container untuk Icon & Frame (44 x 44)
+            // Container for Icon & Frame (44 x 44)
             GameObject frameObj = new GameObject("FrameContainer", typeof(RectTransform));
             frameObj.transform.SetParent(slotObj.transform, false);
             RectTransform frameRt = frameObj.GetComponent<RectTransform>();
@@ -170,7 +170,7 @@ namespace PlayerUI
             bgImg.type = Image.Type.Sliced;
             bgImg.color = Color.white;
 
-            // 2. Icon Image (Ikon tematik: Hati, Listrik, Sepatu, Pedang, dll)
+            // 2. Icon Image (thematic icon: heart, lightning, boot, sword, etc.)
             GameObject iconObj = new GameObject("Icon", typeof(RectTransform), typeof(Image));
             iconObj.transform.SetParent(frameObj.transform, false);
             RectTransform iconRt = iconObj.GetComponent<RectTransform>();
@@ -198,7 +198,7 @@ namespace PlayerUI
             radialImg.fillClockwise = true;
             radialImg.color = new Color(0f, 0f, 0f, 0.65f);
 
-            // 4. Border Rim (Border rounded menyala sesuai warna buff)
+            // 4. Border Rim (glowing rounded border matching buff color)
             GameObject borderObj = new GameObject("BorderRim", typeof(RectTransform), typeof(Image));
             borderObj.transform.SetParent(frameObj.transform, false);
             RectTransform borderRt = borderObj.GetComponent<RectTransform>();
@@ -213,7 +213,7 @@ namespace PlayerUI
             borderImg.color = Color.white;
             borderImg.raycastTarget = false;
 
-            // 5. Timer Text (TMP di bawah frame icon)
+            // 5. Timer Text (TMP below icon frame)
             GameObject textObj = new GameObject("TimerText", typeof(RectTransform), typeof(TextMeshProUGUI));
             textObj.transform.SetParent(slotObj.transform, false);
             RectTransform textRt = textObj.GetComponent<RectTransform>();
@@ -254,7 +254,7 @@ namespace PlayerUI
         }
 
         /// <summary>
-        /// Mengambil ikon default bawaan berdasarkan BuffType langsung dari Resources/Icons/Buffs/.
+        /// Loads the default built-in icon for a BuffType directly from Resources/Icons/Buffs/.
         /// </summary>
         public static Sprite GetDefaultBuffIcon(BuffType type)
         {

@@ -10,12 +10,12 @@ using FeaturesSaveSystem;
 
 /// <summary>
 /// Death Screen Menu UI (YOU DIED).
-/// Muncul saat pemain tewas / collapsed:
-/// 1. Layar meredup dengan vignet gelap & tulisan "YOU DIED" muncul dengan animasi scale & fade.
-/// 2. Setelah animasi teks selesai (atau di-skip), banner bergeser ke atas dan menu pilihan muncul:
-///    - Checkpoint: Bangun di kasur kamar tidur pada pagi hari sebelum malam tiba dengan vital pulih.
-///    - Load Game: Membuka modal Save & Load system multi-slot untuk memuat file simpanan.
-///    - Main Menu: Keluar ke scene menu utama secara mulus.
+/// Shown when the player dies / collapses:
+/// 1. Screen dims with a dark vignette and "YOU DIED" animates in via scale and fade.
+/// 2. After the text animation finishes (or is skipped), the banner shifts upward and the action menu appears:
+///    - Checkpoint: Awaken in the bedroom bed on the morning before nightfall with restored vitals.
+///    - Load Game: Opens the multi-slot Save & Load modal to load a saved file.
+///    - Main Menu: Smoothly exits to the main menu scene.
 /// </summary>
 public class DeathScreenUI : MonoBehaviour, IModalWindow
 {
@@ -260,28 +260,28 @@ public class DeathScreenUI : MonoBehaviour, IModalWindow
     {
         if (!isOpen) return;
 
-        // Skip intro jika pemain menekan sembarang tombol atau klik mouse saat animasi intro berlangsung
+        // Skip intro if player presses any key or clicks mouse during intro animation
         if (isIntroAnimating && CheckAnyInputPressed())
         {
             SkipIntroToMenu();
             return;
         }
 
-        // Pastikan kursor selalu aktif saat berada di Death Screen Menu
+        // Keep cursor visible and unlocked while on the Death Screen Menu
         if (!Cursor.visible || Cursor.lockState != CursorLockMode.None)
         {
             Cursor.visible = true;
             Cursor.lockState = CursorLockMode.None;
         }
 
-        // Efek denyut halus (breathing aura) pada tulisan 'YOU DIED' setelah menu terbuka
+        // Subtle breathing pulse on 'YOU DIED' banner once menu is open
         if (!isIntroAnimating && bannerContainer != null)
         {
             float breath = 1f + Mathf.Sin(Time.unscaledTime * 2.0f) * 0.012f;
             bannerContainer.localScale = bannerHeaderScale * breath;
         }
 
-        // Pertahankan jeda simulasi dunia selama tidak sedang mengeksekusi respawn
+        // Keep world simulation paused unless executing a respawn
         bool isRespawning = PlayerRespawnController.Instance != null && PlayerRespawnController.Instance.IsRespawning;
         if (!isRespawning && !isBrowsingSaveUI && Time.timeScale != 0f)
         {
@@ -307,7 +307,7 @@ public class DeathScreenUI : MonoBehaviour, IModalWindow
     }
 
     /// <summary>
-    /// Memastikan hierarki UI tersedia di canvas, membuat hierarki dinamis jika belum ada di scene.
+    /// Ensures the UI hierarchy exists on the canvas, building it dynamically if missing from the scene.
     /// </summary>
     public void EnsureUIHierarchy()
     {
@@ -334,7 +334,7 @@ public class DeathScreenUI : MonoBehaviour, IModalWindow
             ResolveComponentReferences();
             if (bannerContainer != null && menuCard != null) return;
 
-            // Jika ada hierarchy lama yang tidak lengkap, bangun ulang secara bersih
+            // Rebuild cleanly if an incomplete legacy hierarchy exists
             DestroyImmediate(existing.gameObject);
             modalPanel = null;
         }
@@ -415,7 +415,7 @@ public class DeathScreenUI : MonoBehaviour, IModalWindow
         modalCanvasGroup = modalPanel.GetComponent<CanvasGroup>();
         modalCanvasGroup.alpha = 0f;
 
-        // 2. Backdrop (Transparan)
+        // 2. Backdrop (Transparent)
         var backdropGO = new GameObject("Backdrop", typeof(RectTransform), typeof(Image));
         backdropGO.transform.SetParent(modalPanel.transform, false);
         var bdRT = backdropGO.GetComponent<RectTransform>();
@@ -426,7 +426,7 @@ public class DeathScreenUI : MonoBehaviour, IModalWindow
         backdropImage.color = new Color(0f, 0f, 0f, backdropMaxAlpha);
         backdropImage.raycastTarget = true;
 
-        // 3. Banner 'YOU DIED' Container (Murni transparan, tanpa kotak background)
+        // 3. Banner 'YOU DIED' Container (Purely transparent, no background box)
         var bannerGO = new GameObject("Banner_YouDied", typeof(RectTransform), typeof(CanvasGroup));
         bannerGO.transform.SetParent(modalPanel.transform, false);
         bannerContainer = bannerGO.GetComponent<RectTransform>();
@@ -459,7 +459,7 @@ public class DeathScreenUI : MonoBehaviour, IModalWindow
             youDiedImage.color = Color.white;
         }
 
-        // 3c. Fallback TextMeshPro jika gambar sprite tidak tersedia
+        // 3c. Fallback TextMeshPro if sprite graphic is unavailable
         var textGO = new GameObject("Text_YouDiedFallback", typeof(RectTransform), typeof(TextMeshProUGUI));
         textGO.transform.SetParent(bannerContainer, false);
         var textRT = textGO.GetComponent<RectTransform>();
@@ -503,7 +503,7 @@ public class DeathScreenUI : MonoBehaviour, IModalWindow
         subtitleText.alignment = TextAlignmentOptions.Center;
         subtitleText.raycastTarget = false;
 
-        // 4. Central Modal Card (Menu Pilihan: Checkpoint, Load, Main Menu)
+        // 4. Central Modal Card (Options Menu: Checkpoint, Load, Main Menu)
         var cardGO = new GameObject("DeathMenuCard", typeof(RectTransform), typeof(CanvasGroup), typeof(Image));
         cardGO.transform.SetParent(modalPanel.transform, false);
         menuCard = cardGO.GetComponent<RectTransform>();
@@ -525,7 +525,7 @@ public class DeathScreenUI : MonoBehaviour, IModalWindow
         outline.effectColor = new Color(0.68f, 0.18f, 0.22f, 0.85f);
         outline.effectDistance = new Vector2(2f, -2f);
 
-        // Divider Line di atas tombol
+        // Divider line above buttons
         var divGO = new GameObject("DividerLine", typeof(RectTransform), typeof(Image));
         divGO.transform.SetParent(menuCard, false);
         var dRT = divGO.GetComponent<RectTransform>();
@@ -537,7 +537,7 @@ public class DeathScreenUI : MonoBehaviour, IModalWindow
         var divImg = divGO.GetComponent<Image>();
         divImg.color = new Color(0.60f, 0.16f, 0.20f, 0.75f);
 
-        // Tombol 1: Checkpoint (Bed Recovery)
+        // Button 1: Checkpoint (Bed Recovery)
         checkpointButton = CreateMenuButton(
             menuCard,
             "Btn_Checkpoint",
@@ -550,7 +550,7 @@ public class DeathScreenUI : MonoBehaviour, IModalWindow
             new Vector2(0f, 64f),
             OnCheckpointClicked);
 
-        // Tombol 2: Load Game
+        // Button 2: Load Game
         loadGameButton = CreateMenuButton(
             menuCard,
             "Btn_LoadGame",
@@ -563,7 +563,7 @@ public class DeathScreenUI : MonoBehaviour, IModalWindow
             new Vector2(0f, 2f),
             OnLoadGameClicked);
 
-        // Tombol 3: Main Menu
+        // Button 3: Main Menu
         mainMenuButton = CreateMenuButton(
             menuCard,
             "Btn_MainMenu",
@@ -707,8 +707,8 @@ public class DeathScreenUI : MonoBehaviour, IModalWindow
     }
 
     /// <summary>
-    /// Membuka antarmuka Death Screen:
-    /// Memulai dengan animasi 'YOU DIED', lalu membuka menu Checkpoint, Load Game, dan Main Menu.
+    /// Opens the Death Screen UI:
+    /// Plays the 'YOU DIED' intro animation, then reveals the Checkpoint, Load Game, and Main Menu options.
     /// </summary>
     public void Open()
     {
@@ -729,7 +729,7 @@ public class DeathScreenUI : MonoBehaviour, IModalWindow
             feedbackText.text = "Select an option above to continue.";
         }
 
-        // Aktifkan panel dan GameObject agar coroutine berjalan
+        // Activate panel and GameObject so coroutines can run
         modalPanel.SetActive(true);
         if (!gameObject.activeInHierarchy)
         {
@@ -741,7 +741,7 @@ public class DeathScreenUI : MonoBehaviour, IModalWindow
             ModalStackManager.Instance.Push(this);
         }
 
-        // Hentikan getaran kamera pertarungan
+        // Stop combat camera shake
         if (FeaturesCamera.IsometricCameraController.Instance != null)
         {
             FeaturesCamera.IsometricCameraController.Instance.StopShake();
@@ -751,11 +751,11 @@ public class DeathScreenUI : MonoBehaviour, IModalWindow
             FeaturesCombat.Adapters.TraumaCameraShake.Instance.ResetTrauma();
         }
 
-        // Pastikan kursor selalu aktif dan bebas
+        // Ensure cursor is visible and unlocked
         Cursor.visible = true;
         Cursor.lockState = CursorLockMode.None;
 
-        // Jeda waktu game seketika
+        // Pause game time immediately
         UIModalHelper.AddPauseLock("DeathScreenUI");
 
         if (activeSequenceCoroutine != null) StopCoroutine(activeSequenceCoroutine);
@@ -763,12 +763,12 @@ public class DeathScreenUI : MonoBehaviour, IModalWindow
     }
 
     /// <summary>
-    /// Coroutine sekuens animasi kematian:
-    /// 1. Vignet gelap menggelap, tulisan 'YOU DIED' muncul di tengah dengan pembesaran lembut (scale & fade).
-    /// 2. Dentang nada gong kematian beresonansi.
-    /// 3. Jeda dramatis saat teks membesar secara halus & subtitle memudar masuk.
-    /// 4. Banner 'YOU DIED' bergeser mulus ke atas menjadi header.
-    /// 5. Menu card (Checkpoint, Load, Main Menu) muncul meluncur dari bawah.
+    /// Death animation sequence coroutine:
+    /// 1. Dark vignette fades in; 'YOU DIED' appears centered with gentle scale & fade.
+    /// 2. Death gong chime resonates.
+    /// 3. Dramatic hold while text scales smoothly & subtitle fades in.
+    /// 4. 'YOU DIED' banner slides smoothly up into header position.
+    /// 5. Menu card (Checkpoint, Load, Main Menu) slides up from below.
     /// </summary>
     private IEnumerator RoutineDeathIntroSequence()
     {
@@ -809,7 +809,7 @@ public class DeathScreenUI : MonoBehaviour, IModalWindow
 
         PlayDeathGongSound();
 
-        // 1. Fase Kemunculan (0.75 detik) - Fade & Scale
+        // 1. Appear Phase (0.75s) - Fade & Scale
         float elapsed = 0f;
         float appearDuration = 0.75f;
 
@@ -832,7 +832,7 @@ public class DeathScreenUI : MonoBehaviour, IModalWindow
             yield return null;
         }
 
-        // 2. Fase Tahan & Subtitle (0.95 detik)
+        // 2. Hold & Subtitle Phase (0.95s)
         elapsed = 0f;
         float holdDuration = 0.95f;
 
@@ -854,7 +854,7 @@ public class DeathScreenUI : MonoBehaviour, IModalWindow
             yield return null;
         }
 
-        // 3. Fase Transisi: Banner bergeser ke atas & Menu Card meluncur masuk (0.4 detik)
+        // 3. Transition Phase: Banner shifts up & Menu Card slides in (0.4s)
         elapsed = 0f;
         float transitionDuration = 0.40f;
         Vector2 bStartPos = bannerContainer != null ? bannerContainer.anchoredPosition : bannerCenterPos;
@@ -889,7 +889,7 @@ public class DeathScreenUI : MonoBehaviour, IModalWindow
     }
 
     /// <summary>
-    /// Melewati animasi intro secara langsung jika pemain menekan tombol apapun untuk merespon cepat.
+    /// Immediately skips the intro animation when the player presses any input for quick response.
     /// </summary>
     private void SkipIntroToMenu()
     {
@@ -973,7 +973,7 @@ public class DeathScreenUI : MonoBehaviour, IModalWindow
     }
 
     /// <summary>
-    /// Menutup antarmuka Death Screen dengan animasi fade-out.
+    /// Closes the Death Screen UI with a fade-out animation.
     /// </summary>
     public void Close()
     {
@@ -1002,7 +1002,7 @@ public class DeathScreenUI : MonoBehaviour, IModalWindow
     }
 
     /// <summary>
-    /// Menutup panel Death Screen secara instan tanpa menunggu coroutine fade.
+    /// Closes the Death Screen panel immediately without waiting for the fade coroutine.
     /// </summary>
     public void CloseInstant()
     {
@@ -1183,8 +1183,8 @@ public class DeathScreenUI : MonoBehaviour, IModalWindow
 }
 
 /// <summary>
-/// Helper mikro-animasi tactile untuk tombol pada Death Screen Menu.
-/// Memberikan respons scale spring saat di-hover dan ditekan.
+/// Tactile micro-animation helper for Death Screen Menu buttons.
+/// Provides spring scale feedback on hover and press.
 /// </summary>
 public class DeathMenuButtonAnimator : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler, IPointerDownHandler, IPointerUpHandler
 {

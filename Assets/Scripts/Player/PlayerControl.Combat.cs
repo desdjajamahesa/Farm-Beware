@@ -6,10 +6,10 @@ using FarmBeware.Core.Runtime;
 
 public partial class PlayerControl
 {
-    // --- LOGIKA AKSI ---
+    // --- ACTION LOGIC ---
 
-    // Klik Kiri Mouse / Tombol F: Light Combo 3-Hit (1-3-4) / Dash Attack saat berlari
-    // Klik Kanan Mouse: Heavy Attack (Chain 1-2-3-4 & Branching Heavy Finisher L->H / L->L->H / L->L->L->H)
+    // Left Mouse / F: 3-hit Light Combo (1-3-4) or Dash Attack while sprinting
+    // Right Mouse: Heavy Attack (4-hit chain 1-2-3-4 & branching Heavy Finisher L->H / L->L->H / L->L->L->H)
     private void HandleAttackInput()
     {
         if (isInputLocked || isPlanting)
@@ -23,7 +23,7 @@ public partial class PlayerControl
         bool isPointerOverUI = UnityEngine.EventSystems.EventSystem.current != null &&
                                UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject();
 
-        // 1. Light Attack (Klik Kiri / F) & Heavy Attack (Klik Kanan)
+        // 1. Light Attack (Left Click / F) & Heavy Attack (Right Click)
         bool leftPressed = Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame && !isPointerOverUI;
         bool fPressed = Keyboard.current != null && Keyboard.current.fKey.wasPressedThisFrame;
         bool lightPressed = leftPressed || fPressed;
@@ -563,7 +563,7 @@ public partial class PlayerControl
             isInAttackRecovery = false;
         }
 
-        // Tunggu satu frame agar transisi animator ke state attack dimulai
+        // Wait one frame for the Animator transition into the attack state to begin
         yield return null;
 
         float atkSpeed = (playerEquipment != null) ? Mathf.Max(0.5f, playerEquipment.AttackAnimationSpeed) : 1f;
@@ -625,7 +625,7 @@ public partial class PlayerControl
 
         Vector3 forwardDir = transform.forward;
 
-        // Fase 1: Windup / ancang-ancang melompat (~0.25s / atkSpeed)
+        // Phase 1: Leap windup (~0.25s / atkSpeed)
         float windupDuration = 0.25f / atkSpeed;
         float elapsed = 0f;
         while (elapsed < windupDuration)
@@ -634,13 +634,13 @@ public partial class PlayerControl
             yield return null;
         }
 
-        // Berikan dorongan awal melompat ke udara
+        // Apply initial leap impulse into the air
         if (rb != null)
         {
             rb.linearVelocity = forwardDir * leapForwardImpulse + Vector3.up * leapUpwardImpulse;
         }
 
-        // Fase 2: Meluncur maju di udara hingga pedang menghantam tanah (~1.14s total / atkSpeed)
+        // Phase 2: Airborne forward glide until ground slam impact (~1.14s total / atkSpeed)
         float impactTime = 1.14f / atkSpeed;
         while (elapsed < impactTime)
         {
@@ -652,14 +652,14 @@ public partial class PlayerControl
             yield return new WaitForFixedUpdate();
         }
 
-        // Fase 3: Mendarat & hantaman tanah (hentikan laju horizontal agar mendarat kokoh di titik hantaman)
+        // Phase 3: Landing & ground slam (halt horizontal velocity to plant firmly at impact point)
         isSkillLeaping = false;
         if (rb != null)
         {
             rb.linearVelocity = new Vector3(0f, rb.linearVelocity.y, 0f);
         }
 
-        // Fase 4: Recovery pasca hantaman dan transisi kembali ke Idle/Moving (~1.35s / atkSpeed)
+        // Phase 4: Post-slam recovery and transition back to Idle/Moving (~1.35s / atkSpeed)
         float totalLock = 1.35f / atkSpeed;
         while (elapsed < totalLock)
         {

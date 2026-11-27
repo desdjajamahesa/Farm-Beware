@@ -6,15 +6,15 @@ using FeaturesCombat.Core.PureLogic;
 namespace FeaturesCombat.Projectiles
 {
     /// <summary>
-    /// Komponen entitas proyektil (sihir, peluru, panah, serangan energi, Corn Cob Repeater) yang terintegrasi
-    /// dengan CombatProjectilePool untuk alokasi memori zero-GC.
-    /// Dilengkapi sumber cahaya dinamis Point Light beradius pendek untuk mode Deferred+.
+    /// Projectile entity component (magic, bullets, arrows, energy attacks, Corn Cob Repeater) integrated
+    /// with CombatProjectilePool for zero-GC memory allocation.
+    /// Equipped with a short-radius dynamic Point Light for Deferred+ rendering.
     ///
-    /// ATURAN KRITIS (GPU PERFORMANCE GUARD):
-    /// Fitur Shadow Caster pada Point Light proyektil ini SECARA ABSOLUT DINONAKTIFKAN (shadows = None).
-    /// Pada arsitektur Deferred+ (clustered shading), ratusan proyektil bercahaya tanpa bayangan
-    /// dapat dirender secara simultan dengan cost ALU minimal. Namun jika bayangan diaktifkan,
-    /// GPU akan dipaksa merender ratusan pass shadow map per frame yang akan memacetkan rasterizer.
+    /// CRITICAL RULE (GPU PERFORMANCE GUARD):
+    /// Shadow Caster on this projectile's Point Light MUST BE ABSOLUTELY DISABLED (shadows = None).
+    /// Under Deferred+ architecture (clustered shading), hundreds of unshadowed glowing projectiles
+    /// can render simultaneously at minimal ALU cost. If shadows are enabled,
+    /// the GPU would be forced to render hundreds of shadow map passes per frame, stalling the rasterizer.
     /// </summary>
     [DisallowMultipleComponent]
     [RequireComponent(typeof(Collider))]
@@ -121,7 +121,7 @@ namespace FeaturesCombat.Projectiles
             float stepDist = speed * Time.deltaTime;
             Vector3 step = moveDirection * stepDist;
 
-            // Continuous sphere cast sweep agar peluru tidak pernah menembus (tunneling) target
+            // Continuous sphere cast sweep so projectiles never tunnel through targets
             if (Physics.SphereCast(transform.position, 0.25f, moveDirection, out RaycastHit hit, stepDist, ~LayerMask.GetMask("Ignore Raycast"), QueryTriggerInteraction.Ignore))
             {
                 if (IsValidTarget(hit.collider))
@@ -141,8 +141,8 @@ namespace FeaturesCombat.Projectiles
         }
 
         /// <summary>
-        /// Menginisialisasi proyektil saat ditembakkan dari pool atau secara manual.
-        /// Zero heap allocation: menggunakan MaterialPropertyBlock dan cached gradients.
+        /// Initializes the projectile when fired from the pool or manually.
+        /// Zero heap allocation: uses MaterialPropertyBlock and cached gradients.
         /// </summary>
         public void Launch(GameObject shooter, Vector3 direction, Color color, int damageAmount = 25, float projSpeed = 14f, CombatProjectilePool pool = null)
         {
@@ -201,8 +201,8 @@ namespace FeaturesCombat.Projectiles
         }
 
         /// <summary>
-        /// Factory helper untuk membangkitkan entitas proyektil.
-        /// Menggunakan CombatProjectilePool untuk menjamin 0 byte runtime GC allocation.
+        /// Factory helper for spawning projectile entities.
+        /// Uses CombatProjectilePool to guarantee 0-byte runtime GC allocation.
         /// </summary>
         public static CombatProjectile Spawn(GameObject shooter, Vector3 position, Vector3 direction, int damageAmount, float projSpeed, Color projectileColor)
         {
@@ -211,8 +211,8 @@ namespace FeaturesCombat.Projectiles
         }
 
         /// <summary>
-        /// Mengonfigurasi dan memvalidasi properti Point Light:
-        /// Tipe = Point, Radius pendek, dan SHADOWS ABSOLUT NONE.
+        /// Configures and validates Point Light properties:
+        /// Type = Point, short radius, and SHADOWS ABSOLUTELY NONE.
         /// </summary>
         public void EnsurePointLightConfiguration()
         {
@@ -232,8 +232,8 @@ namespace FeaturesCombat.Projectiles
             projectileLight.intensity = lightIntensity;
             projectileLight.color = lightColor;
 
-            // ATURAN KRITIS DEFERRED+:
-            // Shadows WAJIB None untuk mencegah overhead shadow map pass di GPU!
+            // CRITICAL DEFERRED+ RULE:
+            // Shadows MUST be None to prevent GPU shadow map pass overhead!
             projectileLight.shadows = LightShadows.None;
 
             var additionalData = projectileLight.GetComponent<UniversalAdditionalLightData>();
@@ -252,7 +252,7 @@ namespace FeaturesCombat.Projectiles
                 if (other.gameObject == shooterOwner || other.transform.IsChildOf(shooterOwner.transform))
                     return false;
 
-                // Cegah friendly fire antar sesama monster
+                // Prevent friendly fire between monsters
                 if (shooterOwner.GetComponent<EnemyBase>() != null && (other.GetComponent<EnemyBase>() != null || other.GetComponentInParent<EnemyBase>() != null))
                     return false;
             }
@@ -411,7 +411,7 @@ namespace FeaturesCombat.Projectiles
         {
             if (projectileLight != null)
             {
-                // Jaga agar inspector tidak sengaja menyalakan shadows
+                // Prevent Inspector from accidentally enabling shadows
                 if (projectileLight.shadows != LightShadows.None)
                 {
                     Debug.LogWarning("[CombatProjectile] Shadows pada proyektil dilarang diaktifkan. Dikembalikan ke LightShadows.None demi stabilitas Deferred+.");

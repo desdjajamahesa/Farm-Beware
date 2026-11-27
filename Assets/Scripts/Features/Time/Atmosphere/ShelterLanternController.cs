@@ -5,9 +5,9 @@ using FeaturesRendering.Lighting;
 namespace FeaturesTime.Atmosphere
 {
     /// <summary>
-    /// Mengontrol pencahayaan ShelterLantern di CraftingShelter agar hanya hidup di malam hari.
-    /// Mendukung transisi intensitas cahaya yang halus (lerp), sinkronisasi emissive glow pada LanternGlass (Zero-GC),
-    /// dan efek kedip mikro organik (flicker) saat malam hari.
+    /// Controls ShelterLantern lighting in CraftingShelter so it is active only at night.
+    /// Supports smooth light intensity lerping, emissive glow synchronization on LanternGlass (Zero-GC),
+    /// and organic micro-flicker effects at night.
     /// </summary>
     [DisallowMultipleComponent]
     [SelectionBase]

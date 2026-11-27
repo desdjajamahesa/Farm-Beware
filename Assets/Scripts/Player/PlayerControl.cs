@@ -1,7 +1,7 @@
 using System.Collections;
 using FeaturesInteraction;
 using UnityEngine;
-using UnityEngine.InputSystem; // Pastikan ini tetap ada
+using UnityEngine.InputSystem; // Keep this import
 using FarmBeware.Core.Runtime;
 
 [RequireComponent(typeof(Rigidbody))]
@@ -125,7 +125,7 @@ public partial class PlayerControl : MonoBehaviour, IPlayerContext
     [SerializeField] private float deceleration = 25f;
     [SerializeField] private float airControl = 12f;
 
-    // Status internal
+    // Internal state
     private bool isGrounded;
     private bool isRunning;
     private bool isJumping;
@@ -189,7 +189,7 @@ public partial class PlayerControl : MonoBehaviour, IPlayerContext
         animator = GetComponentInChildren<Animator>();
         playerCollider = GetComponent<CapsuleCollider>();
 
-        // Berikan material tanpa friksi agar pergerakan dan sliding di tembok sangat mulus
+        // Apply frictionless material for smooth movement and wall sliding
         if (playerCollider != null)
         {
             PhysicsMaterial frictionless = new PhysicsMaterial("PlayerFrictionless")
@@ -234,24 +234,24 @@ public partial class PlayerControl : MonoBehaviour, IPlayerContext
 
     void OnEnable()
     {
-        // Guard: pastikan inputActions selalu ada meski OnEnable berjalan sebelum Awake.
+        // Guard: ensure inputActions exists even if OnEnable runs before Awake.
         if (inputActions == null)
             inputActions = new PlayerInputActions();
 
         inputActions.Player.Enable();
 
-        // Mendaftarkan event: Saat tombol ditekan, panggil fungsi yang sesuai
+        // Register input action callbacks
         inputActions.Player.Jump.performed += OnJumpPerformed;
         inputActions.Player.Interact.performed += OnInteractPressed;
     }
 
     void OnDisable()
     {
-        // Guard null agar OnDisable aman saat OnEnable gagal/urutan tidak menentu.
+        // Null guard in case OnEnable failed or ran out of order.
         if (inputActions == null)
             inputActions = new PlayerInputActions();
 
-        // Mencabut pendaftaran event untuk mencegah memory leak
+        // Unregister input callbacks to prevent memory leaks
         inputActions.Player.Jump.performed -= OnJumpPerformed;
         inputActions.Player.Interact.performed -= OnInteractPressed;
 
@@ -267,7 +267,7 @@ public partial class PlayerControl : MonoBehaviour, IPlayerContext
 
     void Update()
     {
-        // Kunci input: hentikan inventory/hotbar/gerak/animator saat terkunci.
+        // Input lock: halt inventory, hotbar, movement, and animator while locked.
         if (isInputLocked)
         {
             if (isAttacking || isSkillLeaping || isChargingAttack || hasBufferedAttack)
@@ -275,7 +275,7 @@ public partial class PlayerControl : MonoBehaviour, IPlayerContext
                 CancelActiveCombatAction();
             }
 
-            // Izinkan Tab / I menutup inventori saat UI inventori sedang terbuka
+            // Allow Tab / I to close the inventory UI while it is open
             if (InventoryManagerUI.Instance != null && InventoryManagerUI.Instance.IsAnyInventoryUIRelatedOpen())
             {
                 Keyboard kb = Keyboard.current;
@@ -288,7 +288,7 @@ public partial class PlayerControl : MonoBehaviour, IPlayerContext
                 }
             }
 
-            // Pastikan velocity benar-benar nol dan animasi idle saat UI terbuka
+            // Ensure velocity is zeroed and animator stays idle while UI is open
             CheckGrounded();
             inputVector = Vector3.zero;
             isRunning = false;
@@ -304,8 +304,8 @@ public partial class PlayerControl : MonoBehaviour, IPlayerContext
             return;
         }
 
-        // Saat menanam benih / menyiram, karakter diam di tempat (tidak bisa bergerak/berlari/lompat/interact)
-        // KECUALI pemain memberikan input gerak (WASD) untuk membatalkan animasi menyiram/menanam secara instan!
+        // Hold position while planting or watering (blocks movement/sprint/jump/interact)
+        // EXCEPT when movement input (WASD) is pressed to immediately cancel the animation.
         if (isPlanting)
         {
             Vector2 moveVal = (inputActions != null)
@@ -330,7 +330,7 @@ public partial class PlayerControl : MonoBehaviour, IPlayerContext
             }
         }
 
-        // 1. Cek apakah karakter menginjak tanah
+        // 1. Check grounded state
         CheckGrounded();
         if (isGrounded)
         {
@@ -341,7 +341,7 @@ public partial class PlayerControl : MonoBehaviour, IPlayerContext
             groundedGraceTimer -= Time.deltaTime;
         }
 
-        // 2. Membaca Input Pergerakan (Deadzone check agar micro-drift tidak menormalkan sudut acak)
+        // 2. Read movement input (deadzone check prevents micro-drift from normalizing random angles)
         Vector2 moveInput = inputActions.Player.Move.ReadValue<Vector2>();
         float inputMag = moveInput.magnitude;
         if (inputMag > 0.05f)
@@ -356,13 +356,13 @@ public partial class PlayerControl : MonoBehaviour, IPlayerContext
             inputVector = Vector3.zero;
         }
 
-        // 3. Aksi Defensif (Dodge Roll & Parry) - bisa dieksekusi saat bergerak, idle, atau cancel serangan
+        // 3. Defensive actions (Dodge Roll & Parry) - usable while moving, idle, or canceling attacks
         HandleDefensiveInput();
 
-        // 4. Input Serangan (mendukung combo buffering, early cancel, dan branching heavy finisher saat sedang mengayun)
+        // 4. Attack input (supports combo buffering, early cancel, and branching heavy finishers mid-swing)
         HandleAttackInput();
 
-        // Input aksi non-kombat diblokir saat sedang mengeksekusi serangan
+        // Block non-combat actions while executing an attack
         if (!isAttacking)
         {
             HandleInventoryInput();
@@ -374,22 +374,22 @@ public partial class PlayerControl : MonoBehaviour, IPlayerContext
             }
         }
 
-        // 3. Cek apakah pemain menahan tombol Shift untuk Lari (Sprint)
+        // 3. Check Shift key for sprinting
         bool isMoving = inputVector.magnitude >= 0.1f;
         bool wantsToRun = !isAttacking && Keyboard.current != null && (Keyboard.current.leftShiftKey.isPressed || Keyboard.current.rightShiftKey.isPressed);
 
-        // Karakter hanya berlari jika bergerak, menekan shift, memiliki stamina, dan menginjak tanah (dengan grace buffer mencegah stutter di tanjakan/turunan)
+        // Sprint only when moving, holding Shift, having stamina, and grounded (grace buffer prevents slope stutter)
         bool hasStamina = playerStats == null || (!playerStats.IsExhausted && playerStats.currentStamina > 0.5f);
         isRunning = isMoving && wantsToRun && hasStamina && isGroundedRecently;
 
-        // 4. Konsumsi Stamina HANYA saat Berlari (Sprint) dan benar-benar bergerak secara fisik
+        // 4. Drain stamina ONLY while sprinting and physically moving
         if (isRunning)
         {
             sprintDuration += Time.deltaTime;
             bool hasPhysicalMovement = rb != null && Vector3.ProjectOnPlane(rb.linearVelocity, Vector3.up).sqrMagnitude > 0.04f;
 
-            // Sprint grace period ~0.15s agar respon awal dari posisi diam tetap responsif;
-            // setelah 0.15s, butuh pergerakan fisik nyata agar stamina tidak terkuras saat menabrak dinding/kolider.
+            // ~0.15s sprint grace period keeps initial takeoff from standstill responsive;
+            // after 0.15s, require physical movement so stamina does not drain when blocked by walls/colliders.
             if ((sprintDuration <= 0.15f || hasPhysicalMovement) && playerStats != null)
             {
                 playerStats.UseStamina(playerStats.staminaDrainRate * Time.deltaTime);
@@ -400,14 +400,14 @@ public partial class PlayerControl : MonoBehaviour, IPlayerContext
             sprintDuration = 0f;
         }
 
-        // 5. Sinkronisasi Animator secara natural
+        // 5. Synchronize Animator parameters naturally
         if (animator != null)
         {
             animator.SetBool("IsAttacking", isAttacking);
             if (isAttacking)
             {
                 animator.SetBool("Sprinting", false);
-                animator.SetBool("Grounded", true); // Kunci Grounded tetap true saat menyerang agar AirBorn tidak memotong animasi
+                animator.SetBool("Grounded", true); // Keep Grounded true while attacking so AirBorn does not interrupt the swing
                 animator.SetFloat("Vel", isMoving ? 0.3f : 0f);
             }
             else
@@ -416,7 +416,7 @@ public partial class PlayerControl : MonoBehaviour, IPlayerContext
                 if (HasAnimatorParameter(animator, "InAttackRecovery", AnimatorControllerParameterType.Bool))
                     animator.SetBool("InAttackRecovery", false);
 
-                // Kecepatan horizontal fisik aktual agar langkah kaki sinkron (mencegah efek kaki selip)
+                // Use actual horizontal speed so footsteps stay synchronized without sliding
                 Vector3 horizVel = rb != null ? new Vector3(rb.linearVelocity.x, 0f, rb.linearVelocity.z) : Vector3.zero;
                 float currentSpeed = horizVel.magnitude;
 
@@ -433,21 +433,21 @@ public partial class PlayerControl : MonoBehaviour, IPlayerContext
                     }
                 }
 
-                // Gunakan dampTime 0.12f agar perubahan kecepatan dan langkah kaki bertransisi mulus
+                // Use 0.12f dampTime for smooth speed and footstep transitions
                 animator.SetFloat("Vel", targetSpeed, 0.12f, Time.deltaTime);
                 animator.SetBool("Grounded", isGrounded);
-                // Idle aktif jika pemain tidak memberi input dan kecepatan tubuh sudah melambat
+                // Idle active when there is no movement input and body velocity has slowed down
                 bool isIdleNow = !isMoving && currentSpeed < 0.25f;
                 animator.SetBool("Idle", isIdleNow);
 
-                // Sinkronisasi status memegang senjata (opsional, hanya jika parameter ada di Animator Controller)
+                // Sync weapon-held state (optional, only if parameter exists in Animator Controller)
                 bool hasWeapon = (playerEquipment != null && playerEquipment.IsHoldingWeapon);
                 if (HasAnimatorParameter(animator, "HasWeapon", AnimatorControllerParameterType.Bool))
                 {
                     animator.SetBool("HasWeapon", hasWeapon);
                 }
 
-                // Idle fidget: HANYA jika sedang memegang senjata dan diam lebih dari 9 detik
+                // Idle fidget: ONLY when holding a weapon and idle for > 9 seconds
                 if (isIdleNow && hasWeapon && HasAnimatorParameter(animator, "LookAround", AnimatorControllerParameterType.Trigger))
                 {
                     idleFidgetTimer += Time.fixedDeltaTime;
@@ -469,7 +469,7 @@ public partial class PlayerControl : MonoBehaviour, IPlayerContext
         }
     }
 
-    // Step-Up: Angkat karakter secara smooth melewati anak tangga rendah (tanpa invisible wall)
+    // Step-Up: smoothly lift the character over low stairs without invisible walls
     private void HandleStepUp(Vector3 moveDir)
     {
         if (moveDir.sqrMagnitude < 0.001f || playerCollider == null || rb == null) return;
@@ -478,35 +478,35 @@ public partial class PlayerControl : MonoBehaviour, IPlayerContext
         float radius = playerCollider.radius;
         float checkDist = radius + 0.2f;
 
-        // 1. Cek ada rintangan pendek di depan bawah (setinggi < stepUpHeight)
+        // 1. Check for a low obstacle ahead near feet (< stepUpHeight)
         Vector3 lowOrigin = transform.position + Vector3.up * 0.05f;
         if (!Physics.Raycast(lowOrigin, moveDir, out RaycastHit lowHit, checkDist,
             ~LayerMask.GetMask("Ignore Raycast"), QueryTriggerInteraction.Ignore))
             return;
 
-        // Pastikan rintangan cukup rendah (bukan dinding tinggi)
+        // Ensure obstacle is low enough (not a tall wall)
         float obstacleTopY = lowHit.collider.bounds.max.y;
         float stepDelta = obstacleTopY - transform.position.y;
         if (stepDelta <= 0f || stepDelta > stepUpHeight) return;
 
-        // 2. Cek apakah di atas step ada ruang yang cukup (tidak ada atap rendah)
+        // 2. Check for sufficient headroom above the step
         Vector3 aboveStepOrigin = transform.position + Vector3.up * (stepDelta + 0.05f) + moveDir * checkDist;
         if (Physics.CheckSphere(aboveStepOrigin, radius * 0.9f,
             ~LayerMask.GetMask("Ignore Raycast"), QueryTriggerInteraction.Ignore))
             return;
 
-        // 3. Angkat player ke atas anak tangga secara smooth
+        // 3. Smoothly lift player onto the step
         float targetY = transform.position.y + stepDelta;
         float newY = Mathf.MoveTowards(rb.position.y, targetY, stepUpSpeed * Time.fixedDeltaTime);
         rb.MovePosition(new Vector3(rb.position.x, newY, rb.position.z));
-        // Reset vertical velocity saat step-up agar tidak memantul
+        // Reset downward velocity during step-up to prevent bouncing
         if (rb.linearVelocity.y < 0f)
             rb.linearVelocity = new Vector3(rb.linearVelocity.x, 0f, rb.linearVelocity.z);
     }
 
         void FixedUpdate()
     {
-        // Kunci input: hentikan fisika pergerakan saat terkunci atau sedang menanam benih
+        // Input lock: halt movement physics when locked or planting seeds
         if (isInputLocked || isPlanting)
         {
             if (rb != null && !rb.isKinematic)
@@ -514,7 +514,7 @@ public partial class PlayerControl : MonoBehaviour, IPlayerContext
             return;
         }
 
-        // Saat dodge roll aktif, dorong rigidbody ke arah dodgeRollDirection dengan pelambatan halus di 30% akhir animasi
+        // During dodge roll, drive rigidbody along dodgeRollDirection with smooth deceleration in the final 30%
         if (isDodging)
         {
             if (rb != null)
@@ -533,13 +533,13 @@ public partial class PlayerControl : MonoBehaviour, IPlayerContext
             contactWallNormal = Vector3.zero;
         }
 
-        // Saat jurus lompat menerjang (skill leap), biarkan momentum fisika menggerakkan tubuh maju
+        // During skill leap, let physics momentum carry the character forward
         if (isSkillLeaping)
         {
             return;
         }
 
-        // Pertahankan komponen kecepatan vertikal (gravitasi/lompatan)
+        // Preserve vertical velocity component (gravity/jump)
         Vector3 currentHorizontalVel = new Vector3(rb.linearVelocity.x, 0f, rb.linearVelocity.z);
         Vector3 targetHorizontalVel = Vector3.zero;
 
@@ -561,11 +561,11 @@ public partial class PlayerControl : MonoBehaviour, IPlayerContext
             float maxSpeed = baseSpeed * speedMultiplier;
             Vector3 desiredMove = moveDirection;
 
-            // 1. Wall Sliding via kontak fisika aktif
+            // 1. Wall sliding via active physics contact
             if (isTouchingWall && contactWallNormal.sqrMagnitude > 0.01f)
             {
                 float dot = Vector3.Dot(desiredMove, contactWallNormal);
-                if (dot < -0.01f) // Bergerak menabrak tembok
+                if (dot < -0.01f) // Moving into a wall
                 {
                     Vector3 slide = Vector3.ProjectOnPlane(desiredMove, contactWallNormal);
                     slide.y = 0f;
@@ -574,7 +574,7 @@ public partial class PlayerControl : MonoBehaviour, IPlayerContext
                 }
             }
 
-            // 2. Wall Sliding prediktif via CapsuleCast ke depan (mencegah tersendat sebelum kontak dengan tembok statis)
+            // 2. Predictive wall sliding via forward CapsuleCast (prevents snagging before static wall contact)
             if (playerCollider != null)
             {
                 float halfHeight = Mathf.Max(playerCollider.height * 0.5f - playerCollider.radius, 0f);
@@ -584,7 +584,7 @@ public partial class PlayerControl : MonoBehaviour, IPlayerContext
                 float castDist = maxSpeed * Time.fixedDeltaTime + 0.15f;
                 int wallLayerMask = (1 << LayerMask.NameToLayer("Wall")) | (1 << LayerMask.NameToLayer("Default"));
 
-                // Pass 1: Deteksi dan defleksikan arah ke dinding pertama
+                // Pass 1: Detect and deflect movement along the first wall
                 if (Physics.CapsuleCast(p1, p2, radius * 0.90f, desiredMove, out RaycastHit hit, castDist, wallLayerMask, QueryTriggerInteraction.Ignore))
                 {
                     if (hit.collider != playerCollider && !hit.transform.IsChildOf(transform) && (hit.rigidbody == null || hit.rigidbody.isKinematic) && hit.distance > 0.01f)
@@ -604,7 +604,7 @@ public partial class PlayerControl : MonoBehaviour, IPlayerContext
                                 if (slide.sqrMagnitude > 0.001f)
                                     desiredMove = slide.normalized;
 
-                                // Pass 2: Jika berada di sudut (dua dinding bertemu), cek dinding kedua
+                                // Pass 2: Check for a second wall when wedged in a corner
                                 if (Physics.CapsuleCast(p1, p2, radius * 0.90f, desiredMove, out RaycastHit hitCorner, castDist * 0.5f, wallLayerMask, QueryTriggerInteraction.Ignore))
                                 {
                                     if (hitCorner.collider != playerCollider && !hitCorner.transform.IsChildOf(transform) && (hitCorner.rigidbody == null || hitCorner.rigidbody.isKinematic) && hitCorner.distance > 0.01f)
@@ -632,7 +632,7 @@ public partial class PlayerControl : MonoBehaviour, IPlayerContext
                 }
             }
 
-            // Penyesuaian kecepatan saat berputar tajam (>90 derajat) memberi kesan bobot inersia tubuh
+            // Dampen speed on sharp turns (>90 degrees) for grounded rotational inertia
             float angleDiff = Vector3.Angle(transform.forward, desiredMove);
             float turnSpeedFactor = 1f;
             if (angleDiff > 90f)
@@ -642,10 +642,10 @@ public partial class PlayerControl : MonoBehaviour, IPlayerContext
 
             targetHorizontalVel = desiredMove * (maxSpeed * turnSpeedFactor);
 
-            // Step-Up: naik anak tangga otomatis tanpa invisible wall
+            // Step-Up: automatically climb low steps without invisible walls
             HandleStepUp(desiredMove);
 
-            // Rotasi karakter menghadap arah pergerakan / sliding
+            // Rotate character toward movement or wall-slide direction
             if (desiredMove.sqrMagnitude > 0.001f)
             {
                 Vector3 lookEuler = Quaternion.LookRotation(desiredMove).eulerAngles;
@@ -655,7 +655,7 @@ public partial class PlayerControl : MonoBehaviour, IPlayerContext
             }
         }
 
-        // Terapkan akselerasi / deselerasi inersia yang halus
+        // Apply smooth inertial acceleration / deceleration
         float accelRate;
         if (isGrounded)
         {
@@ -669,7 +669,7 @@ public partial class PlayerControl : MonoBehaviour, IPlayerContext
         Vector3 newHorizontalVel = Vector3.MoveTowards(currentHorizontalVel, targetHorizontalVel, accelRate * Time.fixedDeltaTime);
         rb.linearVelocity = new Vector3(newHorizontalVel.x, rb.linearVelocity.y, newHorizontalVel.z);
 
-        // Redam sisa angular velocity fisik
+        // Dampen residual angular velocity
         rb.angularVelocity = Vector3.zero;
     }
 
@@ -685,7 +685,7 @@ public partial class PlayerControl : MonoBehaviour, IPlayerContext
 
     private void ProcessWallCollision(Collision collision)
     {
-        // Abaikan objek dinamis (musuh, proyektil, item loot) - sliding hanya untuk struktur tembok/lingkungan statis
+        // Ignore dynamic objects (enemies, projectiles, loot) - wall sliding applies only to static walls/environment geometry
         if (collision.collider == null || collision.collider.isTrigger) return;
         if (collision.rigidbody != null && !collision.rigidbody.isKinematic) return;
         if (collision.gameObject.GetComponent<FeaturesCombat.EnemyBase>() != null) return;

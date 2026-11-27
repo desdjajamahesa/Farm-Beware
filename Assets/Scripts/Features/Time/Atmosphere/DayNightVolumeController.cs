@@ -10,15 +10,15 @@ using FarmBeware.Core.Runtime;
 namespace FeaturesTime.Atmosphere
 {
     /// <summary>
-    /// Mengatur Post-Processing Volume URP 17 secara dinamis dan filmik untuk siklus Day/Night 24 jam.
-    /// Mematuhi Clean Architecture, SOLID, zero polling (Event-Driven OOP), dan zero GC.
+    /// Dynamically and cinematically manages URP 17 Post-Processing Volume for the 24-hour Day/Night cycle.
+    /// Adheres to Clean Architecture, SOLID, zero polling (Event-Driven OOP), and zero GC.
     ///
-    /// Mengontrol komponen URP Volume Profile:
+    /// Controls URP Volume Profile components:
     /// - Tonemapping (ACES)
-    /// - Bloom (Threshold responsif monster rim light & projectiles)
+    /// - Bloom (Responsive threshold for monster rim light & projectiles)
     /// - ColorAdjustments (Exposure EV, Contrast, Saturation, Color Filter)
-    /// - WhiteBalance (Temperature ~5500K hangat siang vs ~8000K kebiruan malam, Tint)
-    /// - Vignette (Perimeter sirkular untuk fokus action survival)
+    /// - WhiteBalance (Temperature ~5500K warm day vs ~8000K cool blue night, Tint)
+    /// - Vignette (Circular perimeter for survival action focus)
     /// </summary>
     [DisallowMultipleComponent]
     public class DayNightVolumeController : MonoBehaviour
@@ -294,7 +294,7 @@ namespace FeaturesTime.Atmosphere
 
         private void OnEnable()
         {
-            // Berlangganan (subscribe) ke DayNightTimeManager.Instance.OnTimePhaseChanged
+            // Subscribe to DayNightTimeManager.Instance.OnTimePhaseChanged
             if (DayNightTimeManager.Instance != null)
             {
                 DayNightTimeManager.Instance.OnTimePhaseChanged += HandleTimePhaseChanged;
@@ -308,7 +308,7 @@ namespace FeaturesTime.Atmosphere
 
         private void OnDisable()
         {
-            // Batalkan langganan (unsubscribe) bersih saat disabled untuk mencegah dangling delegate / memory leak
+            // Unsubscribe cleanly when disabled to prevent dangling delegates / memory leaks
             if (DayNightTimeManager.Instance != null)
             {
                 DayNightTimeManager.Instance.OnTimePhaseChanged -= HandleTimePhaseChanged;
@@ -342,18 +342,18 @@ namespace FeaturesTime.Atmosphere
                 BindPlayerStats();
             }
 
-            // Defensive resolution: pastikan event terdaftar bila saat Awake/OnEnable DayNightTimeManager belum siap
+            // Defensive resolution: ensure event is registered if DayNightTimeManager was not ready during Awake/OnEnable
             if (DayNightTimeManager.Instance != null)
             {
                 DayNightTimeManager.Instance.OnTimePhaseChanged -= HandleTimePhaseChanged;
                 DayNightTimeManager.Instance.OnTimePhaseChanged += HandleTimePhaseChanged;
 
-                // Initial sync pada fase aktif
+                // Initial sync on active phase
                 ApplyPhaseSettingsInstant(DayNightTimeManager.Instance.CurrentPhase);
             }
             else if (TimeManager.Instance != null)
             {
-                // Fallback kompatibilitas dengan legacy TimeManager
+                // Compatibility fallback for legacy TimeManager
                 EnvironmentPhase legacyPhase = TimeManager.Instance.currentPhase == TimeManager.DayPhase.Night
                     ? EnvironmentPhase.Night
                     : EnvironmentPhase.Day;
@@ -365,9 +365,9 @@ namespace FeaturesTime.Atmosphere
             }
         }
 
-        // CATATAN ARSITEKTUR:
-        // Update() DIHAPUSKAN SECARA EKSPLISIT.
-        // Komponen ini murni event-driven tanpa polling CPU per-frame.
+        // ARCHITECTURE NOTE:
+        // Update() IS EXPLICITLY OMITTED.
+        // This component is purely event-driven with zero per-frame CPU polling.
 
         #endregion
 
@@ -388,7 +388,7 @@ namespace FeaturesTime.Atmosphere
                 return;
             }
 
-            // Mengambil profile instanced runtime (bukan sharedProfile) agar modifikasi aman dan tidak mengubah asset di disk
+            // Fetch runtime instanced profile (not sharedProfile) so modifications are safe and do not mutate disk assets
             _runtimeProfile = baseVolume.profile;
             if (_runtimeProfile == null)
             {
@@ -445,14 +445,14 @@ namespace FeaturesTime.Atmosphere
             _vignette.smoothness.overrideState = true;
             _vignette.color.overrideState = true;
 
-            // 6. Chromatic Aberration (Combat Juice / Taktil Impulse)
+            // 6. Chromatic Aberration (Combat Juice / Tactile Impulse)
             if (!_runtimeProfile.TryGet(out _chromaticAberration))
             {
                 _chromaticAberration = _runtimeProfile.Add<ChromaticAberration>(true);
             }
             _chromaticAberration.active = true;
             _chromaticAberration.intensity.overrideState = true;
-            _chromaticAberration.intensity.value = 0f; // Baseline selalu 0 untuk kestabilan pandangan isometrik
+            _chromaticAberration.intensity.value = 0f; // Always keep baseline at 0 for isometric view stability
 
             // 7. Lift Gamma Gain (Shadows Midtones Highlights)
             if (!_runtimeProfile.TryGet(out _liftGammaGain))
@@ -467,7 +467,7 @@ namespace FeaturesTime.Atmosphere
 
         private void ValidatePresetsIntegrity()
         {
-            // Guard: jika scene lama memiliki preset kosong/ter-reset ke 0
+            // Guard: if an older scene has empty/zero-reset presets
             if (daySettings.bloomThreshold <= 0.001f && daySettings.bloomIntensity <= 0.001f)
                 daySettings = CreateDefaultDaySettings();
 
@@ -514,13 +514,13 @@ namespace FeaturesTime.Atmosphere
             currentActivePhase = targetPhase;
             VolumePhaseSettings target = GetSettingsForPhase(targetPhase);
 
-            // Wajib pastikan TonemappingMode.ACES aktif
+            // Ensure TonemappingMode.ACES is active
             if (_tonemapping != null)
             {
                 _tonemapping.mode.value = target.tonemappingMode;
             }
 
-            // Capture nilai awal (value types pada stack - zero GC heap allocation)
+            // Capture initial values (stack value types - zero GC heap allocation)
             float startBloomThreshold = _bloom != null ? _bloom.threshold.value : target.bloomThreshold;
             float startBloomIntensity = _bloom != null ? _bloom.intensity.value : target.bloomIntensity;
             float startBloomScatter = _bloom != null ? _bloom.scatter.value : target.bloomScatter;
@@ -550,7 +550,7 @@ namespace FeaturesTime.Atmosphere
                 elapsed += Time.deltaTime;
                 float progress = Mathf.Clamp01(elapsed / transitionDuration);
 
-                // Kurva organik: AnimationCurve kustom atau fallback Mathf.SmoothStep
+                // Organic curve: custom AnimationCurve or Mathf.SmoothStep fallback
                 float blend = (transitionCurve != null && transitionCurve.length > 1)
                     ? transitionCurve.Evaluate(progress)
                     : Mathf.SmoothStep(0f, 1f, progress);
@@ -598,7 +598,7 @@ namespace FeaturesTime.Atmosphere
                 yield return null;
             }
 
-            // Snap nilai target di akhir transisi
+            // Snap target values at end of transition
             ApplyPhaseSettingsInstant(targetPhase);
 
             _transitionCoroutine = null;
@@ -610,7 +610,7 @@ namespace FeaturesTime.Atmosphere
         #region Public Commands & Instant Application
 
         /// <summary>
-        /// Menerapkan pengaturan post-processing fase secara instan tanpa interpolasi.
+        /// Applies phase post-processing settings immediately without interpolation.
         /// </summary>
         public void ApplyPhaseSettingsInstant(EnvironmentPhase phase)
         {
@@ -688,7 +688,7 @@ namespace FeaturesTime.Atmosphere
         }
 
         /// <summary>
-        /// Mendapatkan struct konfigurasi preset untuk fase yang ditentukan.
+        /// Gets the preset configuration struct for the specified phase.
         /// </summary>
         public VolumePhaseSettings GetSettingsForPhase(EnvironmentPhase phase)
         {
@@ -703,7 +703,7 @@ namespace FeaturesTime.Atmosphere
         }
 
         /// <summary>
-        /// Mengatur struct konfigurasi preset untuk fase tertentu secara runtime / testing.
+        /// Sets the preset configuration struct for a specific phase at runtime / for testing.
         /// </summary>
         public void SetSettingsForPhase(EnvironmentPhase phase, VolumePhaseSettings settings)
         {
@@ -721,12 +721,12 @@ namespace FeaturesTime.Atmosphere
         #region Combat Juice & Chromatic Impulse
 
         /// <summary>
-        /// Memicu lonjakan aberasi kromatik tajam yang meluruh secara organik (smooth decay)
-        /// untuk memberikan umpan balik benturan taktil (misal saat player menerima damage kritis atau saat bos/Taro Colossus spawn).
-        /// Zero GC: berjalan murni menggunakan stack value types dan interpolasi frame time.
+        /// Triggers a sharp chromatic aberration spike with organic smooth decay
+        /// to provide tactile impact feedback (e.g., when taking critical damage or when a boss/Taro Colossus spawns).
+        /// Zero GC: runs purely using stack value types and frame-time interpolation.
         /// </summary>
-        /// <param name="peakIntensity">Intensitas puncak aberasi kromatik (0.0 s/d 1.0).</param>
-        /// <param name="duration">Durasi total getaran dalam detik.</param>
+        /// <param name="peakIntensity">Peak chromatic aberration intensity (0.0 to 1.0).</param>
+        /// <param name="duration">Total impulse duration in seconds.</param>
         /// <summary>
         /// Triggers a brief cinematic chromatic aberration impulse for heavy melee combat tactile feedback (juice).
         /// </summary>
@@ -745,7 +745,7 @@ namespace FeaturesTime.Atmosphere
             if (_chromaticAberration == null)
                 return;
 
-            // Hentikan coroutine impulse sebelumnya jika masih aktif agar tidak terjadi tumpang tindih
+            // Stop previous impulse coroutine if still active to prevent overlap
             if (_impulseCoroutine != null)
             {
                 StopCoroutine(_impulseCoroutine);
@@ -763,8 +763,8 @@ namespace FeaturesTime.Atmosphere
 
         private IEnumerator ChromaticImpulseRoutine(float peakIntensity, float totalDuration)
         {
-            // Attack phase: ~20% durasi (interpolasi tajam naik ke peak)
-            // Decay phase : ~80% durasi (peluruhan halus kembali ke 0f)
+            // Attack phase: ~20% duration (sharp interpolation up to peak)
+            // Decay phase : ~80% duration (smooth decay back to 0f)
             float attackDuration = totalDuration * 0.20f;
             float decayDuration = totalDuration - attackDuration;
             float elapsed = 0f;
@@ -787,7 +787,7 @@ namespace FeaturesTime.Atmosphere
                 yield return null;
             }
 
-            // Pastikan baseline kembali tepat ke 0f
+            // Ensure baseline returns cleanly to 0f
             _chromaticAberration.intensity.value = 0f;
             _impulseCoroutine = null;
         }
@@ -836,7 +836,7 @@ namespace FeaturesTime.Atmosphere
         #region Backward Compatibility Overloads
 
         /// <summary>
-        /// Overload kompatibilitas untuk pemanggil berbasis EnvironmentPhase.
+        /// Compatibility overload for EnvironmentPhase-based callers.
         /// </summary>
         public void ApplyInstant(EnvironmentPhase phase) => ApplyPhaseSettingsInstant(phase);
 

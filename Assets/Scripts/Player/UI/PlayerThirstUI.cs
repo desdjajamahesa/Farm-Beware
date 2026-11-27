@@ -4,9 +4,9 @@ using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// Listener visual modern untuk indikator rasa haus (thirst) pemain.
-/// Mendukung label persentase TextMeshPro, warna safir laut pekat,
-/// serta peringatan bahaya dehidrasi (dehydration alert pulse saat memicu penalti damage).
+/// Visual listener for the player's thirst indicator.
+/// Supports TextMeshPro percentage label, deep ocean sapphire styling,
+/// and a dehydration alert pulse when empty penalty damage triggers.
 /// </summary>
 public class PlayerThirstUI : MonoBehaviour
 {

@@ -4,9 +4,9 @@ using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// Listener visual modern & responsif untuk bar kesehatan pemain.
-/// Mendukung Ghost Damage Bar (efek lag damage), label angka TextMeshPro,
-/// kilatan saat sembuh (heal flash), dan denyut bahaya saat darah kritis.
+/// Responsive visual listener for the player's health bar.
+/// Supports a Ghost Damage Bar (delayed damage trail), TextMeshPro numeric label,
+/// heal flash feedback, and critical-health warning pulse.
 /// </summary>
 public class PlayerHealthUI : MonoBehaviour
 {
@@ -127,7 +127,7 @@ public class PlayerHealthUI : MonoBehaviour
         if (ghostSlider != null)
         {
             ghostSlider.maxValue = max;
-            // Jika healing, sinkronkan ghost slider seketika ke atas
+            // Sync ghost slider upward immediately when healing
             if (current >= ghostSlider.value)
             {
                 if (ghostCoroutine != null) StopCoroutine(ghostCoroutine);
@@ -140,7 +140,7 @@ public class PlayerHealthUI : MonoBehaviour
             healthText.text = $"{current} / {max}";
         }
 
-        // Cek kondisi kritis
+        // Check critical health threshold
         float ratio = max > 0 ? (float)current / max : 0f;
         if (ratio <= criticalThresholdPercent && current > 0)
         {
@@ -167,7 +167,7 @@ public class PlayerHealthUI : MonoBehaviour
             ghostCoroutine = StartCoroutine(GhostBarRoutine(healthSlider != null ? healthSlider.value : 0f));
         }
 
-        // Sedikit hentakan skala pada ikon darah
+        // Subtle scale bump on the health icon
         if (iconTransform != null && isActiveAndEnabled)
         {
             StartCoroutine(IconBumpRoutine());

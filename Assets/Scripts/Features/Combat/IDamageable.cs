@@ -3,17 +3,17 @@ using UnityEngine;
 namespace FeaturesCombat
 {
     /// <summary>
-    /// Interface standar untuk semua entitas yang dapat menerima luka fisik/damage dalam combat (Pemain, Musuh, Boss).
+    /// Standard interface for all entities that can take physical damage in combat (Player, Enemy, Boss).
     /// </summary>
     public interface IDamageable
     {
         /// <summary>
-        /// Menerima damage dengan informasi posisi dan arah benturan untuk efek knockback/partikel.
+        /// Applies damage with hit point and impact direction for knockback/particle effects.
         /// </summary>
         void TakeDamage(int damage, Vector3 hitPoint, Vector3 hitDirection);
 
         /// <summary>
-        /// Status apakah entitas sudah mati/hancur.
+        /// Whether the entity is dead or destroyed.
         /// </summary>
         bool IsDead { get; }
     }

@@ -6,7 +6,7 @@ using FeaturesRendering.Lighting;
 namespace FeaturesTime
 {
     /// <summary>
-    /// Model entri aktivitas harian berdasarkan linimasa 18 menit (06:00 - 18:00).
+    /// Daily activity entry model based on the 18-minute timeline (06:00 - 18:00).
     /// </summary>
     [System.Serializable]
     public struct DayActivityEntry
@@ -26,9 +26,9 @@ namespace FeaturesTime
     }
 
     /// <summary>
-    /// Mengelola linimasa aktivitas 18 menit siang hari (Day Phase Timeline).
-    /// Memancarkan notifikasi perubahan aktivitas harian dan mempertahankan
-    /// status aktivitas aktif di HUD tanpa terputus selama fase siang.
+    /// Manages the 18-minute daytime activity timeline (Day Phase Timeline).
+    /// Emits daily activity change notifications and maintains the active
+    /// activity status on the HUD uninterrupted throughout the day phase.
     /// </summary>
     [DisallowMultipleComponent]
     public class DayActivityTimelineManager : MonoBehaviour

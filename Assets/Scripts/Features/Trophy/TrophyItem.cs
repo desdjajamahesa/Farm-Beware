@@ -1,10 +1,10 @@
 using UnityEngine;
 
-// Penanda/identitas sederhana untuk objek Piala (Trophy).
-// Dipasang pada GameObject 3D piala; collider dijamin ada berkat RequireComponent.
+// Simple marker/identity component for Trophy objects.
+// Attached to 3D trophy GameObjects; collider is guaranteed via RequireComponent.
 [RequireComponent(typeof(Collider))]
 public class TrophyItem : MonoBehaviour
 {
-    // Nama piala untuk keperluan tooltip/UI di masa depan.
+    // Trophy name for future tooltip/UI use.
     public string trophyName = "Unnamed Trophy";
 }

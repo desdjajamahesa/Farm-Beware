@@ -5,9 +5,9 @@ using UnityEngine;
 namespace FeaturesCombat.UI
 {
     /// <summary>
-    /// Manager terpusat untuk menampilkan bar darah Boss sinematik di layar atas (Top-Center HUD).
-    /// Mendukung 1 Boss tunggal (Hari 2-4) ataupun Multi-Boss sekaligus (Hari 5 Dual Boss: Cyclops Tuber Maw + The Ranger).
-    /// Otomatis mengatur layout (Single vs Dual Stacked), fade transisi saat muncul/kalah, dan Zero-GC runtime.
+    /// Centralized manager for displaying cinematic Boss health bars at the top-center HUD.
+    /// Supports both single Boss encounters (Days 2-4) and Multi-Boss encounters (Day 5 Dual Boss: Cyclops Tuber Maw + The Ranger).
+    /// Automatically manages layout (Single vs Dual Stacked), spawn/defeat fade transitions, and Zero-GC runtime behavior.
     /// </summary>
     public class BossHealthBarManager : MonoBehaviour
     {
@@ -59,7 +59,7 @@ namespace FeaturesCombat.UI
                 NightBrawlManager.Instance.OnEnemySpawned += HandleEnemySpawned;
                 NightBrawlManager.Instance.OnEnemyDied += HandleEnemyDied;
 
-                // Bind jika ada boss yang sudah spawn
+                // Bind if any boss has already spawned
                 if (NightBrawlManager.Instance.ActiveEnemies != null)
                 {
                     foreach (var enemy in NightBrawlManager.Instance.ActiveEnemies)
@@ -92,7 +92,7 @@ namespace FeaturesCombat.UI
             var targetCanvas = FarmBeware.Core.Runtime.CanvasHelper.ResolveMainUICanvas();
             if (targetCanvas == null) return;
 
-            // Pastikan manager GameObject sendiri berada di bawah target canvas
+            // Ensure manager GameObject itself is parented under the target canvas
             if (transform.parent != targetCanvas.transform)
             {
                 transform.SetParent(targetCanvas.transform, false);
@@ -113,7 +113,7 @@ namespace FeaturesCombat.UI
                     containerRect = bossPanel.GetComponent<RectTransform>();
                     mainCanvasGroup = bossPanel.GetComponent<CanvasGroup>();
 
-                    // Posisikan di layar atas tengah, sedikit di bawah indikator wave tracker
+                    // Position at top-center screen, slightly below the wave tracker indicator
                     containerRect.anchorMin = new Vector2(0.5f, 1f);
                     containerRect.anchorMax = new Vector2(0.5f, 1f);
                     containerRect.pivot = new Vector2(0.5f, 1f);
@@ -170,7 +170,7 @@ namespace FeaturesCombat.UI
         {
             if (enemy == null || !enemy.isBoss || activeBosses.ContainsKey(enemy)) return;
 
-            // Ambil slot bebas dari pool
+            // Acquire a free slot from the pool
             BossHealthBarSlotUI slot = null;
             for (int i = 0; i < slotPool.Count; i++)
             {
@@ -190,7 +190,7 @@ namespace FeaturesCombat.UI
             activeBosses[enemy] = slot;
             ReorderAndLayoutSlots();
 
-            // Fade in seluruh boss HUD
+            // Fade in the entire boss HUD
             if (mainCanvasGroup != null && mainCanvasGroup.alpha < 0.99f)
             {
                 if (fadeCoroutine != null) StopCoroutine(fadeCoroutine);
@@ -210,7 +210,7 @@ namespace FeaturesCombat.UI
                 slot.gameObject.SetActive(false);
                 ReorderAndLayoutSlots();
 
-                // Jika tidak ada lagi boss aktif, fade out seluruh HUD boss
+                // If no active bosses remain, fade out the entire boss HUD
                 if (activeBosses.Count == 0 && mainCanvasGroup != null)
                 {
                     if (fadeCoroutine != null) StopCoroutine(fadeCoroutine);
