@@ -95,7 +95,7 @@ namespace FarmBeware.EditorTests
             ResetTestAuditHarness();
 
             int passed = 0;
-            int total = 115;
+            int total = 116;
 
             if (Test_DayNight_PhaseProgression_DuskUntilNight()) passed++;
             if (Test_BedInteractable_Logic_AllowsDuskAndBlocksNightOnly()) passed++;
@@ -213,6 +213,7 @@ namespace FarmBeware.EditorTests
             if (Test_QuestLogUI_Aggregation_Progress_FinishUnfinishFilters_And_ZeroGC_Audit()) passed++;
             if (Test_QAHub_ComprehensiveBugFixes_Audit()) passed++;
             if (Test_PlayerModular_CombatOverhaul_HeavyChain_RecoveryHold_ActionCancels_And_ZeroWarnings_Audit()) passed++;
+            if (Test_WoodenBoardPanels_TwoColumnThemeAndHierarchy_Audit()) passed++;
 
             Debug.Log("[AUDIT-SUITE] ========================================================");
             Debug.Log($"[AUDIT-SUITE] Complete! Passed: {passed}/{total}");
@@ -316,6 +317,195 @@ namespace FarmBeware.EditorTests
             public void SkipCurrentCutscene()
             {
                 SetPlaying(false);
+            }
+        }
+
+        // Test 116: WoodenBoard_TwoColumn sprite, normalized layout regions, and Tier 1 + Tier 2 panel theme contracts
+        private static bool Test_WoodenBoardPanels_TwoColumnThemeAndHierarchy_Audit()
+        {
+            var cleanup = new List<GameObject>();
+            var renamedOriginals = new List<(Transform tr, string origName)>();
+            GameObject uiCanvasGO = null;
+            bool hadCanvas = false;
+            bool canvasWasActive = true;
+            var prevJournalInst = typeof(JournalUI).GetField("_instance", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)?.GetValue(null);
+            var prevSaveInst = typeof(FeaturesSaveSystem.SaveSystemUI).GetField("instance", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)?.GetValue(null);
+
+            try
+            {
+                // 1. Verify sprite resolution & non-overlapping two-column layout regions
+                Sprite boardSprite = WoodenBoardStyle.GetTwoColumnBoardSprite();
+                if (boardSprite == null)
+                {
+                    Debug.LogError("[Test 116] WoodenBoardStyle.GetTwoColumnBoardSprite() returned null!");
+                    return false;
+                }
+
+                if (WoodenBoardStyle.LeftPaneMax.x >= WoodenBoardStyle.RightPaneMin.x)
+                {
+                    Debug.LogError($"[Test 116] Left/Right panes overlap! LeftMaxX={WoodenBoardStyle.LeftPaneMax.x}, RightMinX={WoodenBoardStyle.RightPaneMin.x}");
+                    return false;
+                }
+
+                // 2. Verify Canvas host & preserve any pre-existing scene panels
+                var resolvedCanvas = CanvasHelper.ResolveMainUICanvas();
+                uiCanvasGO = resolvedCanvas != null ? resolvedCanvas.gameObject : GameObject.Find("UI_Canvas");
+                if (uiCanvasGO == null)
+                {
+                    uiCanvasGO = new GameObject("UI_Canvas", typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
+                    uiCanvasGO.GetComponent<Canvas>().renderMode = RenderMode.ScreenSpaceOverlay;
+                    cleanup.Add(uiCanvasGO);
+                }
+                else
+                {
+                    hadCanvas = true;
+                    canvasWasActive = uiCanvasGO.activeSelf;
+                    if (!canvasWasActive) uiCanvasGO.SetActive(true);
+                }
+
+                string[] panelNames = { "JournalPanel", "Panel_QuestLog", "Panel_MerchantShop", "Panel_OrderBoard", "Panel_SavingSystem" };
+                foreach (var pName in panelNames)
+                {
+                    var pre = uiCanvasGO.transform.Find(pName);
+                    if (pre != null)
+                    {
+                        renamedOriginals.Add((pre, pName));
+                        pre.name = "__PreExisting_" + pName;
+                    }
+                }
+
+                // A. StoveUIManager.ApplyWoodenBoardTheme()
+                var stoveHost = new GameObject("Test_StoveHost_116", typeof(RectTransform));
+                cleanup.Add(stoveHost);
+                var stovePanel = new GameObject("Test_StovePanel_116", typeof(RectTransform), typeof(Image));
+                stovePanel.transform.SetParent(stoveHost.transform, false);
+                var stoveUI = stoveHost.AddComponent<StoveUIManager>();
+                typeof(StoveUIManager).GetField("panelStove", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)?.SetValue(stoveUI, stovePanel);
+                stoveUI.ApplyWoodenBoardTheme();
+                if (stovePanel.GetComponent<Image>().sprite != boardSprite || stovePanel.transform.Find("PlaqueTitleText") == null)
+                {
+                    Debug.LogError("[Test 116] StoveUIManager did not apply WoodenBoard_TwoColumn sprite & PlaqueTitleText!");
+                    return false;
+                }
+
+                // B. WorkbenchUI
+                var wbHost = new GameObject("Test_Workbench_116", typeof(RectTransform));
+                cleanup.Add(wbHost);
+                var prevWb = FeaturesWorkbench.UI.WorkbenchUI.Instance;
+                try
+                {
+                    typeof(FeaturesWorkbench.UI.WorkbenchUI).GetProperty("Instance")?.SetValue(null, null);
+                    var wbComp = wbHost.AddComponent<FeaturesWorkbench.UI.WorkbenchUI>();
+                    typeof(FeaturesWorkbench.UI.WorkbenchUI)
+                        .GetMethod("BuildUIHierarchyIfNeeded", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+                        ?.Invoke(wbComp, null);
+                    var wbDialogImg = wbHost.transform.Find("WorkbenchRoot/DialogBorder/Dialog")?.GetComponent<Image>();
+                    if (wbDialogImg == null || wbDialogImg.sprite != boardSprite || wbDialogImg.transform.Find("PlaqueTitleText") == null)
+                    {
+                        Debug.LogError("[Test 116] WorkbenchUI did not apply WoodenBoard_TwoColumn sprite & PlaqueTitleText!");
+                        return false;
+                    }
+                }
+                finally
+                {
+                    typeof(FeaturesWorkbench.UI.WorkbenchUI).GetProperty("Instance")?.SetValue(null, prevWb);
+                }
+
+                // C. JournalUI
+                typeof(JournalUI).GetField("_instance", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)?.SetValue(null, null);
+                var journalHost = new GameObject("Test_Journal_116");
+                cleanup.Add(journalHost);
+                var journalUI = journalHost.AddComponent<JournalUI>();
+                journalUI.EnsureUIHierarchy();
+                var journalPanelTr = uiCanvasGO.transform.Find("JournalPanel");
+                if (journalPanelTr != null) cleanup.Add(journalPanelTr.gameObject);
+                var journalImg = journalPanelTr?.GetComponent<Image>();
+                if (journalImg == null || journalImg.sprite != boardSprite || journalPanelTr.Find("EntryListPane/EntryScrollView/Viewport/EntryListContent") == null)
+                {
+                    Debug.LogError($"[Test 116] JournalUI failed: panel={(journalPanelTr != null)}, spriteMatch={(journalImg != null && journalImg.sprite == boardSprite)}, list={(journalPanelTr != null && journalPanelTr.Find("EntryListPane/EntryScrollView/Viewport/EntryListContent") != null)}");
+                    return false;
+                }
+
+                // D. QuestLogUI
+                var qlHost = new GameObject("Test_QuestLog_116");
+                cleanup.Add(qlHost);
+                var qlUI = qlHost.AddComponent<QuestLogUI>();
+                qlUI.EnsureUIHierarchy();
+                var qlRoot = uiCanvasGO.transform.Find("Panel_QuestLog");
+                if (qlRoot != null) cleanup.Add(qlRoot.gameObject);
+                var qlCardImg = qlRoot?.Find("QuestLogModalCard")?.GetComponent<Image>();
+                if (qlCardImg == null || qlCardImg.sprite != boardSprite || qlRoot.Find("QuestLogModalCard/QuestScrollView/Viewport/QuestsContent") == null)
+                {
+                    Debug.LogError("[Test 116] QuestLogUI did not preserve QuestScrollView path with wooden board sprite!");
+                    return false;
+                }
+
+                // E. MerchantShopUI
+                var shopHost = new GameObject("Test_Shop_116");
+                cleanup.Add(shopHost);
+                var shopUI = shopHost.AddComponent<MerchantShopUI>();
+                shopUI.EnsureUIHierarchy();
+                var shopRoot = uiCanvasGO.transform.Find("Panel_MerchantShop");
+                if (shopRoot != null) cleanup.Add(shopRoot.gameObject);
+                var shopCardImg = shopRoot?.Find("ShopModalCard")?.GetComponent<Image>();
+                if (shopCardImg == null || shopCardImg.sprite != boardSprite || shopRoot.Find("ShopModalCard/CategoryFilterBar") == null)
+                {
+                    Debug.LogError("[Test 116] MerchantShopUI did not construct wooden two-column board!");
+                    return false;
+                }
+
+                // F. OrderBoardUI
+                var obHost = new GameObject("Test_OrderBoard_116");
+                cleanup.Add(obHost);
+                var obUI = obHost.AddComponent<OrderBoardUI>();
+                obUI.EnsureUIHierarchy();
+                var obRoot = uiCanvasGO.transform.Find("Panel_OrderBoard");
+                if (obRoot != null) cleanup.Add(obRoot.gameObject);
+                var obCardImg = obRoot?.Find("OrderBoardModalCard")?.GetComponent<Image>();
+                if (obCardImg == null || obCardImg.sprite != boardSprite || obRoot.Find("OrderBoardModalCard/OrderScrollView/Viewport/OrdersContent") == null)
+                {
+                    Debug.LogError("[Test 116] OrderBoardUI did not construct wooden two-column board!");
+                    return false;
+                }
+
+                // G. SaveSystemUI
+                typeof(FeaturesSaveSystem.SaveSystemUI).GetField("instance", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)?.SetValue(null, null);
+                var saveHost = new GameObject("Test_SaveSystem_116");
+                cleanup.Add(saveHost);
+                var saveUI = saveHost.AddComponent<FeaturesSaveSystem.SaveSystemUI>();
+                typeof(FeaturesSaveSystem.SaveSystemUI)
+                    .GetMethod("EnsureUIHierarchy", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+                    ?.Invoke(saveUI, null);
+                var saveRoot = uiCanvasGO.transform.Find("Panel_SavingSystem");
+                if (saveRoot != null) cleanup.Add(saveRoot.gameObject);
+                var saveCardImg = saveRoot?.Find("SaveModalCard")?.GetComponent<Image>();
+                if (saveCardImg == null || saveCardImg.sprite != boardSprite || saveRoot.Find("SaveModalCard/NewSaveSection") == null)
+                {
+                    Debug.LogError($"[Test 116] SaveSystemUI failed: root={(saveRoot != null)}, spriteMatch={(saveCardImg != null && saveCardImg.sprite == boardSprite)}, newSave={(saveRoot != null && saveRoot.Find("SaveModalCard/NewSaveSection") != null)}");
+                    return false;
+                }
+
+                Debug.Log("✅ Test 116: WoodenBoard_TwoColumn sprite, normalized layout regions, and all 7 UI panel themes verified.");
+                return true;
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogError($"[Test 116] Exception: {ex.Message}\n{ex.StackTrace}");
+                return false;
+            }
+            finally
+            {
+                for (int i = cleanup.Count - 1; i >= 0; i--)
+                {
+                    if (cleanup[i] != null) Object.DestroyImmediate(cleanup[i]);
+                }
+                for (int i = 0; i < renamedOriginals.Count; i++)
+                {
+                    if (renamedOriginals[i].tr != null) renamedOriginals[i].tr.name = renamedOriginals[i].origName;
+                }
+                if (hadCanvas && uiCanvasGO != null && !canvasWasActive) uiCanvasGO.SetActive(false);
+                typeof(JournalUI).GetField("_instance", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)?.SetValue(null, prevJournalInst);
+                typeof(FeaturesSaveSystem.SaveSystemUI).GetField("instance", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)?.SetValue(null, prevSaveInst);
             }
         }
         #endregion

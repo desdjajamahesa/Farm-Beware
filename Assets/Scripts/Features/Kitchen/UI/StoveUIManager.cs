@@ -163,6 +163,7 @@ public class StoveUIManager : MonoBehaviour, IModalWindow
 
         EnsureCookedSlotUI();
         EnsureBurnerUI();
+        ApplyWoodenBoardTheme();
     }
 
     private void Update()
@@ -277,6 +278,7 @@ public class StoveUIManager : MonoBehaviour, IModalWindow
         if (panelStove != null)
             panelStove.SetActive(true);
 
+        ApplyWoodenBoardTheme();
         ModalStackManager.Instance?.Push(this);
 
         EnsureCookedSlotUI();
@@ -828,7 +830,7 @@ public class StoveUIManager : MonoBehaviour, IModalWindow
         cardRect.sizeDelta = new Vector2(118f, 90f);
 
         var bg = cardGO.GetComponent<Image>();
-        bg.color = new Color(0.10f, 0.13f, 0.18f, 0.95f);
+        bg.color = WoodenBoardStyle.DarkOakSubtle;
 
         TMP_FontAsset fontAsset = resultName != null ? resultName.font : null;
 
@@ -848,7 +850,7 @@ public class StoveUIManager : MonoBehaviour, IModalWindow
         titleTmp.fontSize = 11f;
         titleTmp.fontStyle = FontStyles.Bold;
         titleTmp.alignment = TextAlignmentOptions.Center;
-        titleTmp.color = new Color(0.7f, 0.75f, 0.85f, 1f);
+        titleTmp.color = WoodenBoardStyle.TextMutedWarm;
 
         // Middle Row (Icon & Status Text)
         var midRowGO = new GameObject("MidRow", typeof(RectTransform));
@@ -1035,13 +1037,13 @@ public class StoveUIManager : MonoBehaviour, IModalWindow
             if (slot == null || slot.IsIdle)
             {
                 ui.titleText.text = $"Burner {i + 1}";
-                ui.titleText.color = new Color(0.6f, 0.65f, 0.75f, 1f);
+                ui.titleText.color = WoodenBoardStyle.TextMutedWarm;
                 ui.iconImage.enabled = false;
                 ui.statusText.text = "Empty\n<color=#22C55E>Ready</color>";
                 ui.statusText.alignment = TextAlignmentOptions.Center;
                 ui.progressBarRoot.SetActive(false);
                 ui.actionButton.gameObject.SetActive(false);
-                ui.background.color = new Color(0.08f, 0.11f, 0.16f, 0.95f);
+                ui.background.color = WoodenBoardStyle.DarkOakOverlay;
             }
             else if (slot.IsCooking)
             {
@@ -1075,10 +1077,10 @@ public class StoveUIManager : MonoBehaviour, IModalWindow
                 }
 
                 ui.actionButton.gameObject.SetActive(true);
-                ui.actionButtonImage.color = new Color(0.85f, 0.25f, 0.25f, 1f);
+                ui.actionButtonImage.color = WoodenBoardStyle.BtnDanger;
                 ui.actionButtonText.text = "Cancel";
 
-                ui.background.color = new Color(0.13f, 0.16f, 0.23f, 0.98f);
+                ui.background.color = WoodenBoardStyle.DarkOakSubtle;
             }
             else if (slot.HasOutput)
             {
@@ -1105,10 +1107,10 @@ public class StoveUIManager : MonoBehaviour, IModalWindow
                 ui.progressBarRoot.SetActive(false);
 
                 ui.actionButton.gameObject.SetActive(true);
-                ui.actionButtonImage.color = new Color(0.18f, 0.65f, 0.38f, 1f);
+                ui.actionButtonImage.color = WoodenBoardStyle.BtnPrimary;
                 ui.actionButtonText.text = "Take Dish";
 
-                ui.background.color = new Color(0.10f, 0.18f, 0.15f, 0.98f);
+                ui.background.color = new Color(0.14f, 0.24f, 0.14f, 0.82f);
             }
         }
 
@@ -1432,6 +1434,108 @@ public class StoveUIManager : MonoBehaviour, IModalWindow
         int m = totalSec / 60;
         int s = totalSec % 60;
         return s > 0 ? $"{m}m {s}s" : $"{m}m";
+    }
+
+    private bool _woodenThemeApplied = false;
+
+    /// <summary>
+    /// Applies the shared WoodenBoard_TwoColumn styling and aligns Left (Recipe List) / Right (Details & Burners)
+    /// panes cleanly inside the gold trim borders without breaking serialized scene references.
+    /// </summary>
+    public void ApplyWoodenBoardTheme()
+    {
+        if (panelStove == null) return;
+
+        var boardRt = panelStove.GetComponent<RectTransform>();
+        if (boardRt != null)
+        {
+            boardRt.anchorMin = new Vector2(0.5f, 0.5f);
+            boardRt.anchorMax = new Vector2(0.5f, 0.5f);
+            boardRt.pivot = new Vector2(0.5f, 0.5f);
+            boardRt.anchoredPosition = Vector2.zero;
+            boardRt.sizeDelta = new Vector2(1240f, 694f);
+        }
+
+        var bgImg = panelStove.GetComponent<Image>() ?? panelStove.AddComponent<Image>();
+        WoodenBoardStyle.ApplyBoardBackground(bgImg);
+
+        // Align Left Column (direct child hosting recipeListContent)
+        Transform leftRoot = FindDirectChildAncestor(panelStove.transform, recipeListContent)
+            ?? panelStove.transform.Find("LeftContent")
+            ?? panelStove.transform.Find("RecipeListPanel");
+        if (leftRoot != null && leftRoot != panelStove.transform)
+        {
+            WoodenBoardStyle.SetAnchorRegion(leftRoot.GetComponent<RectTransform>(), WoodenBoardStyle.LeftPaneMin, WoodenBoardStyle.LeftPaneMax, 8f, 8f, 8f, 8f);
+            if (leftRoot.TryGetComponent<Image>(out var lImg))
+            {
+                lImg.color = WoodenBoardStyle.DarkOakOverlay;
+            }
+        }
+
+        // Align Right Column
+        Transform rightRoot = panelStove.transform.Find("RightContent");
+        if (rightRoot != null)
+        {
+            WoodenBoardStyle.SetAnchorRegion(rightRoot.GetComponent<RectTransform>(), WoodenBoardStyle.RightPaneMin, WoodenBoardStyle.RightPaneMax, 10f, 8f, 10f, 8f);
+            if (rightRoot.TryGetComponent<Image>(out var rImg))
+            {
+                rImg.color = WoodenBoardStyle.DarkOakOverlay;
+            }
+        }
+
+        // Suppress legacy flat header bar if present on panelStove
+        if (!_woodenThemeApplied)
+        {
+            string[] legacyHeaders = { "Header", "HeaderBar", "TitleBar", "TopBar" };
+            for (int i = 0; i < legacyHeaders.Length; i++)
+            {
+                Transform h = panelStove.transform.Find(legacyHeaders[i]);
+                if (h != null) h.gameObject.SetActive(false);
+            }
+            _woodenThemeApplied = true;
+        }
+
+        // Title inside the protruding wooden plaque
+        var plaqueTmp = WoodenBoardStyle.EnsurePlaqueTitle<TextMeshProUGUI>(panelStove.transform);
+        if (plaqueTmp != null)
+        {
+            plaqueTmp.text = "KITCHEN STOVE";
+            plaqueTmp.fontSize = 21f;
+            plaqueTmp.fontStyle = FontStyles.Bold;
+            plaqueTmp.alignment = TextAlignmentOptions.Center;
+        }
+
+        // Place Close button in upper-right rim corner
+        if (closeButton != null)
+        {
+            var cRt = closeButton.GetComponent<RectTransform>();
+            if (cRt != null)
+            {
+                if (cRt.parent != panelStove.transform)
+                    cRt.SetParent(panelStove.transform, false);
+                cRt.anchorMin = WoodenBoardStyle.CloseButtonAnchor;
+                cRt.anchorMax = WoodenBoardStyle.CloseButtonAnchor;
+                cRt.pivot = new Vector2(0.5f, 0.5f);
+                cRt.anchoredPosition = Vector2.zero;
+                cRt.sizeDelta = new Vector2(36f, 36f);
+            }
+            if (closeButton.TryGetComponent<Image>(out var cImg))
+            {
+                cImg.color = WoodenBoardStyle.BtnDanger;
+            }
+        }
+    }
+
+    private static Transform FindDirectChildAncestor(Transform root, Transform descendant)
+    {
+        if (root == null || descendant == null) return null;
+        Transform curr = descendant;
+        while (curr != null && curr.parent != null)
+        {
+            if (curr.parent == root) return curr;
+            curr = curr.parent;
+        }
+        return null;
     }
 
     private static Sprite _whiteSprite;

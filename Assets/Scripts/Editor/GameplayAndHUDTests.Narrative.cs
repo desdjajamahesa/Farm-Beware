@@ -1535,10 +1535,20 @@ namespace FarmBeware.EditorTests
                 var canvasGo = new GameObject("Test_HUDCanvas", typeof(Canvas), typeof(GraphicRaycaster));
                 cleanupList.Add(canvasGo);
 
+                var uiCanvasPre = GameObject.Find("UI_Canvas");
+                bool hadJournalPanelPre = uiCanvasPre != null && uiCanvasPre.transform.Find("JournalPanel") != null;
+
                 var journalGo = new GameObject("Test_JournalUI");
                 cleanupList.Add(journalGo);
                 var journal = journalGo.AddComponent<JournalUI>();
                 journal.EnsureUIHierarchy();
+
+                if (!hadJournalPanelPre)
+                {
+                    var uiCanvasPost = GameObject.Find("UI_Canvas");
+                    var createdJournalPanel = uiCanvasPost != null ? uiCanvasPost.transform.Find("JournalPanel") : null;
+                    if (createdJournalPanel != null) cleanupList.Add(createdJournalPanel.gameObject);
+                }
 
                 // 1. Verify HUD_DocsButton is NOT created on Canvas (Zero cutscene/gameplay HUD clutter per user mandate)
                 var allButtons = Object.FindObjectsByType<Button>(FindObjectsInactive.Include, FindObjectsSortMode.None);
