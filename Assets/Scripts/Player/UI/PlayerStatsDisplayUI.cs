@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI;
+using FarmBeware.Core.Runtime;
 using FeaturesEconomy;
 using FeaturesKitchen;
 using FeaturesWorkbench;
@@ -10,7 +11,7 @@ namespace PlayerUI
     /// Menampilkan informasi status/atribut hidup dari Player secara real-time
     /// pada kolom kiri ("PLAYER") di jendela Character Sheet (Tab).
     /// </summary>
-    public class PlayerStatsDisplayUI : MonoBehaviour
+    public class PlayerStatsDisplayUI : MonoBehaviour, IStatsDisplayRefreshable
     {
         [Header("Referensi Player Components (Auto-find jika kosong)")]
         [SerializeField] private PlayerStats playerStats;

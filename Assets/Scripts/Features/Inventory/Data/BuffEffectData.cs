@@ -1,5 +1,14 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
+
+/// <summary>
+/// Decoupled contract for applying food buff effects without SendMessage.
+/// </summary>
+public interface IFoodBuffApplier
+{
+    void ApplyBuffs(IEnumerable<BuffEffectData> buffs);
+}
 
 public enum BuffType
 {

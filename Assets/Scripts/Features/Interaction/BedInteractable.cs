@@ -402,43 +402,27 @@ namespace FeaturesInteraction
         private static void SafeClearBuffs(GameObject target)
         {
             if (target == null) return;
-            var buffMgr = target.GetComponent("PlayerBuffManager");
-            if (buffMgr != null)
+            var buffSvc = target.GetComponent<IBuffStateService>();
+            if (buffSvc != null)
             {
-                buffMgr.GetType().GetMethod("ClearAllBuffs")?.Invoke(buffMgr, null);
+                buffSvc.ClearAllBuffs();
             }
-            else if (Application.isPlaying && target.activeInHierarchy)
+            else if (ServiceLocator.TryResolve<IBuffStateService>(out var globalBuffSvc))
             {
-                target.SendMessage("ClearAllBuffs", SendMessageOptions.DontRequireReceiver);
+                globalBuffSvc.ClearAllBuffs();
             }
         }
 
         private static void SafeHeal(GameObject target, int amount)
         {
             if (target == null) return;
-            var stats = target.GetComponent("PlayerStats");
-            if (stats != null)
-            {
-                stats.GetType().GetMethod("Heal", new System.Type[] { typeof(int) })?.Invoke(stats, new object[] { amount });
-            }
-            else if (Application.isPlaying && target.activeInHierarchy)
-            {
-                target.SendMessage("Heal", amount, SendMessageOptions.DontRequireReceiver);
-            }
+            target.GetComponent<IPlayerVitalsAction>()?.Heal(amount);
         }
 
         private static void SafeEnsureStarterKit(GameObject target, int day)
         {
             if (target == null) return;
-            var kit = target.GetComponent("PlayerStarterKit");
-            if (kit != null)
-            {
-                kit.GetType().GetMethod("EnsureStarterKit", new System.Type[] { typeof(int) })?.Invoke(kit, new object[] { day });
-            }
-            else if (Application.isPlaying && target.activeInHierarchy)
-            {
-                target.SendMessage("EnsureStarterKit", day, SendMessageOptions.DontRequireReceiver);
-            }
+            target.GetComponent<IStarterKitProvider>()?.EnsureStarterKit(day);
         }
     }
 }

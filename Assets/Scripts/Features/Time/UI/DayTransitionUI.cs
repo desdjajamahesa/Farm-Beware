@@ -449,17 +449,9 @@ public partial class DayTransitionUI : MonoBehaviour
 
         foreach (var mb in FindObjectsByType<MonoBehaviour>(FindObjectsInactive.Include, FindObjectsSortMode.None))
         {
-            if (mb != null && mb.GetType().Name == "StorylineUI")
+            if (mb is IDialogueDismissible dismissible)
             {
-                var method = mb.GetType().GetMethod("DismissDialogue", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
-                if (method != null)
-                {
-                    method.Invoke(mb, null);
-                }
-                else if (Application.isPlaying && mb.gameObject.activeInHierarchy)
-                {
-                    mb.SendMessage("DismissDialogue", SendMessageOptions.DontRequireReceiver);
-                }
+                dismissible.DismissDialogue();
                 break;
             }
         }

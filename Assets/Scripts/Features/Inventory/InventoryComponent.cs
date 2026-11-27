@@ -567,18 +567,19 @@ public class InventoryComponent : MonoBehaviour
                 }
             }
 
-            // Terapkan efek penyembuhan, nutrisi lapar & haus, serta buff status via decoupled messaging
+            // Apply healing, hunger/thirst restoration, and status buffs via typed contracts
+            var vitals = GetComponent<IPlayerVitalsAction>();
             if (food.healAmount > 0)
-                SendMessage("Heal", food.healAmount, SendMessageOptions.DontRequireReceiver);
+                vitals?.Heal(food.healAmount);
 
             if (food.hungerRestore != 0)
-                SendMessage("Eat", food.hungerRestore, SendMessageOptions.DontRequireReceiver);
+                vitals?.Eat(food.hungerRestore);
 
             if (food.hydrationRestore != 0)
-                SendMessage("Drink", food.hydrationRestore, SendMessageOptions.DontRequireReceiver);
+                vitals?.Drink(food.hydrationRestore);
 
             if (food.buffEffects != null && food.buffEffects.Count > 0)
-                SendMessage("ApplyBuffs", food.buffEffects, SendMessageOptions.DontRequireReceiver);
+                GetComponent<IFoodBuffApplier>()?.ApplyBuffs(food.buffEffects);
 
             Debug.Log($"[Inventory] Mengonsumsi {item.itemName}: Heal={food.healAmount}, Hunger={food.hungerRestore}, Thirst={food.hydrationRestore}, Buffs={food.buffEffects?.Count ?? 0}");
 

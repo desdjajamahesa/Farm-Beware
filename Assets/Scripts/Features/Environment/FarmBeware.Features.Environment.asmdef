@@ -1,0 +1,19 @@
+{
+    "name": "FarmBeware.Features.Environment",
+    "rootNamespace": "FeaturesEnvironment",
+    "references": [
+        "FarmBeware.Core.Runtime",
+        "FarmBeware.Features.Time",
+        "FarmBeware.Features.Interaction",
+        "FarmBeware.Rendering.Runtime"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

@@ -420,8 +420,8 @@ namespace FeaturesWardrobe
 
             // 4. Cleanup UI & interaction systems.
             if (wardrobeUI != null && wardrobeUI.gameObject != null) wardrobeUI.gameObject.SetActive(false);
-            try { if (playerInteractor != null) playerInteractor.enabled = true; } catch { }
-            try { if (hoverLabelController != null) hoverLabelController.enabled = true; } catch { }
+            if (playerInteractor != null) playerInteractor.enabled = true;
+            if (hoverLabelController != null) hoverLabelController.enabled = true;
 
             // Disable MirrorCamera
             try

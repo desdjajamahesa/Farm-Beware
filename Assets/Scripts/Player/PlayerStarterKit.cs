@@ -15,7 +15,7 @@ namespace Player
     /// - Slot 3: 3x Sweet Potato Seeds (Seed_SweetPotato)
     /// Combat armor and slingshot must be earned, crafted at Workbench, or purchased from Merchant.
     /// </summary>
-    public class PlayerStarterKit : MonoBehaviour
+    public class PlayerStarterKit : MonoBehaviour, IStarterKitProvider
     {
         [Header("Starter Kit Items (Auto-loaded if null)")]
         [SerializeField] private ItemData hoeItem;

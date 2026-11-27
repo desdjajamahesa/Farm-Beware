@@ -783,17 +783,6 @@ namespace FeaturesCombat
                                            kb.nKey.wasPressedThisFrame;
                         }
 
-                        if (!enterPressed)
-                        {
-                            try
-                            {
-                                enterPressed = Input.GetKeyDown(KeyCode.Return) ||
-                                               Input.GetKeyDown(KeyCode.KeypadEnter) ||
-                                               Input.GetKeyDown(KeyCode.N);
-                            }
-                            catch { }
-                        }
-
                         if (enterPressed)
                         {
                             skipped = true;

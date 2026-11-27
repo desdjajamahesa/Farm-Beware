@@ -4,7 +4,7 @@ using UnityEngine;
 using FarmBeware.Core.Runtime;
 using FeaturesTime;
 
-public class PlayerBuffManager : MonoBehaviour, IBuffStateService
+public class PlayerBuffManager : MonoBehaviour, IBuffStateService, IFoodBuffApplier
 {
     [Serializable]
     public class ActiveBuff

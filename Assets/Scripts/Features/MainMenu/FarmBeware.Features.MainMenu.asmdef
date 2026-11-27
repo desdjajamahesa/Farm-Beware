@@ -1,0 +1,30 @@
+{
+    "name": "FarmBeware.Features.MainMenu",
+    "rootNamespace": "",
+    "references": [
+        "FarmBeware.Core.Runtime",
+        "FarmBeware.Gameplay.Runtime",
+        "FarmBeware.Features.Common",
+        "FarmBeware.Features.Combat",
+        "FarmBeware.Features.Economy",
+        "FarmBeware.Features.Inventory",
+        "FarmBeware.Features.Kitchen",
+        "FarmBeware.Features.Quest",
+        "FarmBeware.Features.SaveSystem",
+        "FarmBeware.Features.Storyline",
+        "FarmBeware.Features.Trophy",
+        "FarmBeware.Features.Wardrobe",
+        "FarmBeware.Features.Workbench",
+        "Unity.InputSystem",
+        "Unity.TextMeshPro"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

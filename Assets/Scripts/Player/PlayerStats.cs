@@ -2,7 +2,7 @@ using System;
 using UnityEngine;
 using FarmBeware.Core.Runtime;
 
-public class PlayerStats : MonoBehaviour, FeaturesCombat.IDamageable, IPlayerDamageNotifier
+public class PlayerStats : MonoBehaviour, FeaturesCombat.IDamageable, IPlayerDamageNotifier, IPlayerVitalsAction
 {
     // Event Darah, Stamina, Hunger & Thirst
     public event Action<int, int> OnHealthChanged;

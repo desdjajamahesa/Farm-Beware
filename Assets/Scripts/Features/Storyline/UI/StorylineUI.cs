@@ -41,7 +41,7 @@ namespace FeaturesStoryline.UI
     /// Automatically guarantees runtime UI elements exist via procedural construction if canvas is unassigned.
     /// </summary>
     [DisallowMultipleComponent]
-    public class StorylineUI : MonoBehaviour, IModalWindow
+    public class StorylineUI : MonoBehaviour, IModalWindow, IDialogueDismissible
     {
         public enum DialogueDisplayState
         {

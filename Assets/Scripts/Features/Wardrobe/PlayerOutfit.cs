@@ -221,7 +221,14 @@ namespace FeaturesWardrobe
             // Auto-recover from leftover .tmp if interrupted mid-save
             if (!File.Exists(SavePath) && File.Exists(SavePath + ".tmp"))
             {
-                try { File.Move(SavePath + ".tmp", SavePath); } catch { }
+                try
+                {
+                    File.Move(SavePath + ".tmp", SavePath);
+                }
+                catch (System.Exception ex)
+                {
+                    Debug.LogWarning($"[PlayerOutfit] Failed to recover temporary save file: {ex.Message}");
+                }
             }
 
             // Auto-migrate if file exists in legacy persistentDataPath but not in SavePath
@@ -237,7 +244,10 @@ namespace FeaturesWardrobe
                             Directory.CreateDirectory(dir);
                         File.Copy(legacyPath, SavePath, true);
                     }
-                    catch { }
+                    catch (System.Exception ex)
+                    {
+                        Debug.LogWarning($"[PlayerOutfit] Failed to migrate legacy wardrobe save: {ex.Message}");
+                    }
                 }
             }
 

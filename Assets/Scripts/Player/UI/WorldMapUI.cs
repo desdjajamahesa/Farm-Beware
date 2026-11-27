@@ -130,30 +130,37 @@ namespace FarmBeware.Player.UI
             }
         }
 
+        private static bool TryMapKeyCodeToInputKey(KeyCode keyCode, out Key mappedKey)
+        {
+            if (keyCode >= KeyCode.A && keyCode <= KeyCode.Z)
+            {
+                mappedKey = Key.A + (keyCode - KeyCode.A);
+                return true;
+            }
+            if (keyCode == KeyCode.Tab) { mappedKey = Key.Tab; return true; }
+            if (keyCode == KeyCode.Escape) { mappedKey = Key.Escape; return true; }
+            mappedKey = Key.None;
+            return false;
+        }
+
         private void HandleHotkeyInput()
         {
             bool togglePressed = false;
 
 #if ENABLE_INPUT_SYSTEM
-            if (Keyboard.current != null && Keyboard.current.mKey.wasPressedThisFrame)
+            var kb = Keyboard.current;
+            if (kb != null && toggleKey != KeyCode.None)
             {
-                togglePressed = true;
+                if (toggleKey == KeyCode.M)
+                {
+                    togglePressed = kb.mKey.wasPressedThisFrame;
+                }
+                else if (TryMapKeyCodeToInputKey(toggleKey, out var mappedKey))
+                {
+                    togglePressed = kb[mappedKey].wasPressedThisFrame;
+                }
             }
 #endif
-            if (!togglePressed && toggleKey != KeyCode.None)
-            {
-                try
-                {
-                    if (Input.GetKeyDown(toggleKey))
-                    {
-                        togglePressed = true;
-                    }
-                }
-                catch
-                {
-                    // Ignore legacy input manager exceptions when active input handler is new input system
-                }
-            }
 
             if (togglePressed)
             {
@@ -175,28 +182,15 @@ namespace FarmBeware.Player.UI
 
             // 1. Mouse Scroll Wheel input for Zoom In / Zoom Out
             float scroll = 0f;
-#if ENABLE_INPUT_SYSTEM
-            if (Mouse.current != null)
-            {
-                scroll = Mouse.current.scroll.ReadValue().y;
-            }
-#endif
-            if (Mathf.Abs(scroll) < 0.001f)
-            {
-                try { scroll = Input.mouseScrollDelta.y; } catch { }
-            }
-
             Vector2 mousePos = Vector2.zero;
 #if ENABLE_INPUT_SYSTEM
-            if (Mouse.current != null)
+            var ms = Mouse.current;
+            if (ms != null)
             {
-                mousePos = Mouse.current.position.ReadValue();
+                scroll = ms.scroll.ReadValue().y;
+                mousePos = ms.position.ReadValue();
             }
 #endif
-            if (mousePos == Vector2.zero)
-            {
-                try { mousePos = Input.mousePosition; } catch { }
-            }
 
             bool mouseInViewport = true;
             if (mapViewport != null)
@@ -224,23 +218,13 @@ namespace FarmBeware.Player.UI
             bool mouseReleased = false;
 
 #if ENABLE_INPUT_SYSTEM
-            if (Mouse.current != null)
+            if (ms != null)
             {
-                mouseDown = Mouse.current.leftButton.isPressed || Mouse.current.rightButton.isPressed || Mouse.current.middleButton.isPressed;
-                mousePressed = Mouse.current.leftButton.wasPressedThisFrame || Mouse.current.rightButton.wasPressedThisFrame || Mouse.current.middleButton.wasPressedThisFrame;
-                mouseReleased = Mouse.current.leftButton.wasReleasedThisFrame || Mouse.current.rightButton.wasReleasedThisFrame || Mouse.current.middleButton.wasReleasedThisFrame;
+                mouseDown = ms.leftButton.isPressed || ms.rightButton.isPressed || ms.middleButton.isPressed;
+                mousePressed = ms.leftButton.wasPressedThisFrame || ms.rightButton.wasPressedThisFrame || ms.middleButton.wasPressedThisFrame;
+                mouseReleased = ms.leftButton.wasReleasedThisFrame || ms.rightButton.wasReleasedThisFrame || ms.middleButton.wasReleasedThisFrame;
             }
 #endif
-            try
-            {
-                if (!mouseDown)
-                {
-                    mouseDown = Input.GetMouseButton(0) || Input.GetMouseButton(1) || Input.GetMouseButton(2);
-                    mousePressed = Input.GetMouseButtonDown(0) || Input.GetMouseButtonDown(1) || Input.GetMouseButtonDown(2);
-                    mouseReleased = Input.GetMouseButtonUp(0) || Input.GetMouseButtonUp(1) || Input.GetMouseButtonUp(2);
-                }
-            }
-            catch { }
 
             if (mousePressed && mouseInViewport)
             {

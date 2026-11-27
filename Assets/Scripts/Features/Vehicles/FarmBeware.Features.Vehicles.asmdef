@@ -1,0 +1,24 @@
+{
+    "name": "FarmBeware.Features.Vehicles",
+    "rootNamespace": "FarmBeware.Features.Vehicles",
+    "references": [
+        "FarmBeware.Core.Runtime",
+        "FarmBeware.Features.Interaction",
+        "FarmBeware.Features.Camera",
+        "FarmBeware.Features.Time",
+        "FarmBeware.Features.Environment",
+        "FarmBeware.Features.Storyline",
+        "FarmBeware.Gameplay.Runtime",
+        "Unity.InputSystem",
+        "Unity.TextMeshPro"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

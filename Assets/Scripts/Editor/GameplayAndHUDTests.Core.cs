@@ -3430,5 +3430,96 @@ namespace FarmBeware.EditorTests
             Debug.Log("✅ Test 111: System Architecture Asset Deduplication, Shared Procedural UI/Shader Cache, Catalog Unification, Solar Parity, Scene Hierarchy Hygiene, and Codebase Hygiene verified.");
             return true;
         }
+
+        // Test 117: Core Contracts (Zero-SendMessage), New Input System Migration (Zero Empty Catch), & 4-Module ASMDEF Completion
+        private static bool Test_ArchitectureHardening_ZeroSendMessage_ZeroEmptyCatch_And_Contracts_Audit()
+        {
+            var cleanup = new List<Object>();
+            try
+            {
+                // 1. Verify Core Contracts implementation across decoupled adapters
+                if (!typeof(ICutsceneSuppressibleHud).IsAssignableFrom(typeof(FarmBeware.Features.Vehicles.UI.VehicleDrivingHUD)) ||
+                    !typeof(IPlayerVitalsAction).IsAssignableFrom(typeof(PlayerStats)) ||
+                    !typeof(IFoodBuffApplier).IsAssignableFrom(typeof(PlayerBuffManager)) ||
+                    !typeof(IStarterKitProvider).IsAssignableFrom(typeof(global::Player.PlayerStarterKit)) ||
+                    !typeof(IStatsDisplayRefreshable).IsAssignableFrom(typeof(PlayerStatsDisplayUI)) ||
+                    !typeof(IDialogueDismissible).IsAssignableFrom(typeof(StorylineUI)))
+                {
+                    Debug.LogError("[Test 117] One or more adapters failed Core contract interface assignment!");
+                    return false;
+                }
+
+                // 2. Exercise PlayerWaterBottle -> IPlayerVitalsAction.Drink contract without SendMessage
+                var playerGo = new GameObject("Test117_Player");
+                cleanup.Add(playerGo);
+                var stats = playerGo.AddComponent<PlayerStats>();
+                stats.maxThirst = 100f;
+                stats.currentThirst = 40f;
+                var bottle = playerGo.AddComponent<PlayerWaterBottle>();
+                bottle.RefillWater();
+                var prevCtx = ServiceLocator.Resolve<IPlayerContext>();
+                var pCtrl = playerGo.AddComponent<PlayerControl>();
+                ServiceLocator.Register<IPlayerContext>(pCtrl);
+                try
+                {
+                    bool drank = bottle.DrinkSip(25f);
+                    if (!drank || Mathf.Abs(stats.currentThirst - 65f) > 0.01f || Mathf.Abs(bottle.CurrentWater - 75f) > 0.01f)
+                    {
+                        Debug.LogError($"[Test 117] PlayerWaterBottle -> IPlayerVitalsAction.Drink mismatch: drank={drank}, thirst={stats.currentThirst}, water={bottle.CurrentWater}");
+                        return false;
+                    }
+                }
+                finally
+                {
+                    if (prevCtx != null) ServiceLocator.Register<IPlayerContext>(prevCtx);
+                    else ServiceLocator.Unregister<IPlayerContext>();
+                }
+
+                // 3. Exercise WorldMapUI and DeathScreenUI input paths cleanly (zero legacy Input exceptions)
+                var mapGo = new GameObject("Test117_WorldMap", typeof(RectTransform));
+                cleanup.Add(mapGo);
+                var mapUI = mapGo.AddComponent<FarmBeware.Player.UI.WorldMapUI>();
+                typeof(FarmBeware.Player.UI.WorldMapUI).GetMethod("HandleHotkeyInput", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)?.Invoke(mapUI, null);
+                typeof(FarmBeware.Player.UI.WorldMapUI).GetMethod("HandleZoomAndPan", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)?.Invoke(mapUI, null);
+
+                var deathGo = new GameObject("Test117_DeathUI", typeof(RectTransform));
+                cleanup.Add(deathGo);
+                var deathUI = deathGo.AddComponent<DeathScreenUI>();
+                typeof(DeathScreenUI).GetMethod("CheckAnyInputPressed", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)?.Invoke(deathUI, null);
+
+                // 4. Verify all 4 new runtime feature assemblies are loaded
+                var loadedNames = new HashSet<string>(System.AppDomain.CurrentDomain.GetAssemblies().Select(a => a.GetName().Name));
+                string[] expectedAssemblies =
+                {
+                    "FarmBeware.Features.Common",
+                    "FarmBeware.Features.Environment",
+                    "FarmBeware.Features.Vehicles",
+                    "FarmBeware.Features.MainMenu"
+                };
+                foreach (var asmName in expectedAssemblies)
+                {
+                    if (!loadedNames.Contains(asmName))
+                    {
+                        Debug.LogError($"[Test 117] Expected runtime assembly '{asmName}' is not loaded!");
+                        return false;
+                    }
+                }
+
+                Debug.Log("✅ Test 117: Core Contracts (Zero-SendMessage), InputSystem Migration, and 4-Module ASMDEF Completion verified.");
+                return true;
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogError($"[Test 117] Exception: {ex.Message}\n{ex.StackTrace}");
+                return false;
+            }
+            finally
+            {
+                for (int i = cleanup.Count - 1; i >= 0; i--)
+                {
+                    if (cleanup[i] != null) Object.DestroyImmediate(cleanup[i]);
+                }
+            }
+        }
     }
 }

@@ -494,15 +494,8 @@ public class PauseMenuAnimator : MonoBehaviour
     {
         if (cardRect == null) return;
 
-        Vector2 mousePos = Vector2.zero;
-        if (UnityEngine.InputSystem.Mouse.current != null)
-        {
-            mousePos = UnityEngine.InputSystem.Mouse.current.position.ReadValue();
-        }
-        else
-        {
-            try { mousePos = Input.mousePosition; } catch { }
-        }
+        if (UnityEngine.InputSystem.Mouse.current == null) return;
+        Vector2 mousePos = UnityEngine.InputSystem.Mouse.current.position.ReadValue();
 
         float normX = Mathf.Clamp((mousePos.x / Screen.width - 0.5f) * 2f, -1f, 1f);
         float normY = Mathf.Clamp((mousePos.y / Screen.height - 0.5f) * 2f, -1f, 1f);

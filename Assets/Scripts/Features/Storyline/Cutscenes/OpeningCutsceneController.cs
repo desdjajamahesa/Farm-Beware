@@ -457,15 +457,7 @@ namespace FeaturesStoryline.Cutscenes
                 equip.GetType().GetMethod("DestroyCurrentWeapon")?.Invoke(equip, null);
                 equip.GetType().GetMethod("UpdateEquipmentVisual")?.Invoke(equip, new object[] { 0 });
             }
-            var starterKit = playerObj.GetComponent("PlayerStarterKit");
-            if (starterKit != null)
-            {
-                starterKit.GetType().GetMethod("EnsureStarterKit", new Type[] { typeof(int) })?.Invoke(starterKit, new object[] { 0 });
-            }
-            else if (Application.isPlaying && playerObj.activeInHierarchy)
-            {
-                playerObj.SendMessage("EnsureStarterKit", 0, SendMessageOptions.DontRequireReceiver);
-            }
+            playerObj.GetComponent<IStarterKitProvider>()?.EnsureStarterKit(0);
         }
 
         private void InitializeVehicleAndPlayerForCutscene()
@@ -1132,15 +1124,7 @@ namespace FeaturesStoryline.Cutscenes
                 var hudHost = GameObject.Find("VehicleDrivingHUD_Host");
                 if (hudHost != null)
                 {
-                    var hud = hudHost.GetComponent("VehicleDrivingHUD");
-                    if (hud != null)
-                    {
-                        hud.GetType().GetMethod("SnapHidden", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance)?.Invoke(hud, null);
-                    }
-                    else if (Application.isPlaying && hudHost.activeInHierarchy)
-                    {
-                        hudHost.SendMessage("SnapHidden", SendMessageOptions.DontRequireReceiver);
-                    }
+                    hudHost.GetComponent<ICutsceneSuppressibleHud>()?.SnapHidden();
                 }
 
                 var allCanvases = UnityEngine.Object.FindObjectsByType<Canvas>(FindObjectsInactive.Include, FindObjectsSortMode.None);
@@ -1150,15 +1134,7 @@ namespace FeaturesStoryline.Cutscenes
 
                     if (allCanvases[i].gameObject.name == "VehicleDrivingCanvas")
                     {
-                        var hud = allCanvases[i].GetComponent("VehicleDrivingHUD");
-                        if (hud != null)
-                        {
-                            hud.GetType().GetMethod("SnapHidden", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance)?.Invoke(hud, null);
-                        }
-                        else if (Application.isPlaying && allCanvases[i].gameObject.activeInHierarchy)
-                        {
-                            allCanvases[i].gameObject.SendMessage("SnapHidden", SendMessageOptions.DontRequireReceiver);
-                        }
+                        allCanvases[i].GetComponent<ICutsceneSuppressibleHud>()?.SnapHidden();
                         allCanvases[i].gameObject.SetActive(false);
                         allCanvases[i].enabled = false;
                         var cg = allCanvases[i].GetComponent<CanvasGroup>();

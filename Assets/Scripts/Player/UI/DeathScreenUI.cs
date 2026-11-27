@@ -291,30 +291,17 @@ public class DeathScreenUI : MonoBehaviour, IModalWindow
 
     private bool CheckAnyInputPressed()
     {
-        try
+        var kb = UnityEngine.InputSystem.Keyboard.current;
+        if (kb != null && (kb.anyKey.wasPressedThisFrame || kb.spaceKey.wasPressedThisFrame || kb.enterKey.wasPressedThisFrame || kb.escapeKey.wasPressedThisFrame))
         {
-            var kb = UnityEngine.InputSystem.Keyboard.current;
-            if (kb != null && (kb.anyKey.wasPressedThisFrame || kb.spaceKey.wasPressedThisFrame || kb.enterKey.wasPressedThisFrame || kb.escapeKey.wasPressedThisFrame))
-            {
-                return true;
-            }
-
-            var ms = UnityEngine.InputSystem.Mouse.current;
-            if (ms != null && (ms.leftButton.wasPressedThisFrame || ms.rightButton.wasPressedThisFrame))
-            {
-                return true;
-            }
+            return true;
         }
-        catch { }
 
-        try
+        var ms = UnityEngine.InputSystem.Mouse.current;
+        if (ms != null && (ms.leftButton.wasPressedThisFrame || ms.rightButton.wasPressedThisFrame))
         {
-            if (Input.anyKeyDown || Input.GetMouseButtonDown(0))
-            {
-                return true;
-            }
+            return true;
         }
-        catch { }
 
         return false;
     }

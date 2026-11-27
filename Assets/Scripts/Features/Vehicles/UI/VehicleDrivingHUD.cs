@@ -11,7 +11,7 @@ namespace FarmBeware.Features.Vehicles.UI
     /// Dynamically binds or builds a sleek driving interface with zero external prefab dependencies.
     /// </summary>
     [DisallowMultipleComponent]
-    public class VehicleDrivingHUD : MonoBehaviour
+    public class VehicleDrivingHUD : MonoBehaviour, ICutsceneSuppressibleHud
     {
         private static VehicleDrivingHUD _instance;
         public static VehicleDrivingHUD Instance => _instance;

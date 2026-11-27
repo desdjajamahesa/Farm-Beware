@@ -225,15 +225,7 @@ public class MainMenuController : MonoBehaviour
 
     void Update()
     {
-        bool escPressed = false;
-        if (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame)
-        {
-            escPressed = true;
-        }
-        else
-        {
-            try { escPressed = Input.GetKeyDown(KeyCode.Escape); } catch { }
-        }
+        bool escPressed = Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame;
         if (escPressed)
         {
             HandleEscapeKey();

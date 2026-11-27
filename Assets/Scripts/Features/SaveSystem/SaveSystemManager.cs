@@ -672,7 +672,14 @@ namespace FeaturesSaveSystem
                 string tmpPath = filePath + ".tmp";
                 if (File.Exists(tmpPath))
                 {
-                    try { File.Move(tmpPath, filePath); } catch { }
+                    try
+                    {
+                        File.Move(tmpPath, filePath);
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.LogWarning($"[SaveSystemManager] Failed to recover temporary save '{tmpPath}': {ex.Message}");
+                    }
                 }
             }
 

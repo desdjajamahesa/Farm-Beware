@@ -218,16 +218,8 @@ public class FantasyMenuAnimator : MonoBehaviour
     private void UpdateMouseParallax(float dt)
     {
         if (bgParallaxStrength <= 0f) return;
-        Vector2 mouseScreen = Vector2.zero;
-
-        if (UnityEngine.InputSystem.Mouse.current != null)
-        {
-            mouseScreen = UnityEngine.InputSystem.Mouse.current.position.ReadValue();
-        }
-        else
-        {
-            try { mouseScreen = Input.mousePosition; } catch { }
-        }
+        if (UnityEngine.InputSystem.Mouse.current == null) return;
+        Vector2 mouseScreen = UnityEngine.InputSystem.Mouse.current.position.ReadValue();
 
         float normX = (mouseScreen.x / Screen.width - 0.5f) * 2f;
         float normY = (mouseScreen.y / Screen.height - 0.5f) * 2f;
