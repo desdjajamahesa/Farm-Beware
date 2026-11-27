@@ -8,54 +8,46 @@ Standard Operating Procedure (SOP) for Git commits, branching constraints, and s
 
 The repository enforces a 3-Layer authority model. **Agents operate strictly in Layer 3.**
 
-1. **Layer 1 (Tech Lead)**: `main` (Production release) and `staging` (Experimental candidate).
-2. **Layer 2 (Reiya's Team)**: `development` or `dev` (Primary feature integration target).
+1. **Layer 1 (Tech Lead)**: `main` (Production release) and `staging` (QA release candidate).
+2. **Layer 2 (Lead Dev)**: `development` / `dev` (Primary feature integration target).
 3. **Layer 3 (Programmer/Agent)**: `<programmer_name>` (Active branch: `Rafi-branch`). **Exclusive agent workspace.**
 
 ---
 
 ## 2. Commit Message Conventions
 
-Commit history is the single source of truth for tracking task progression. All commit messages must be atomic, descriptive, and structured.
+All commits must be atomic, descriptive, and structured using Conventional Commits:
 
-**Format**: `<type>(<scope>): <clear, concise description>` or `<type> : <description>`
+**Format**: `<type>(<scope>): <clear, concise description>`
 
 ### Permitted Commit Types:
-- **`feat`**: Fully completed, verified feature ready for review.
+- **`feat`**: Completed, verified feature ready for review.
 - **`fix`**: Bug, error, assertion, or null reference fix.
+- **`test`**: Automated audit test additions or NUnit CI harness updates.
 - **`progress`**: Work-in-progress checkpoint backup.
 - **`refactor`**: Code restructuring or optimization with zero functional change.
-- **`chore`**: Maintenance, package dependencies, documentation, rules, or gitignore updates.
-- **`assets`**: Visual/audio resource modifications (3D models, textures, audio, materials, scenes).
+- **`chore`**: Maintenance, package dependencies, `.gitattributes`, or cleanup.
+- **`docs`**: Documentation, rules, GDD, and changelog updates.
+- **`assets`**: Visual/audio resource modifications (models, textures, audio, scenes, prefabs).
 
 ---
 
 ## 3. Agent Execution Workflow
 
-Follow this sequence whenever writing, modifying, and committing code:
-
-1. **Step 1: Synchronize (Pull)**:
-   ```bash
-   git checkout Rafi-branch
-   git pull origin development
-   ```
-2. **Step 2: Isolated Execution & Anti-Regression Verification**:
-   Implement changes with minimal blast radius. Before staging, run the full audit suite:
-   `FarmBeware.EditorTests.GameplayAndHUDTests.RunAllTests()` (All 79 tests must pass).
-   Verify that existing systems (Combat, Economy, Farming, Cutscenes, Time) remain unaffected.
-3. **Step 3: Collateral Diff Audit & Stage Specific Files**:
-   Inspect modified files with `git status` and `git diff --name-only`. Ensure no unintended `.unity` or `.prefab` edits occurred:
+1. **Synchronize**: Work strictly on `Rafi-branch` (`git pull origin development` when integrating approved updates).
+2. **Isolated Execution & Verification**:
+   Implement edits with minimal blast radius, then verify **117/117 Passed** via:
+   - `FarmBeware.EditorTests.GameplayAndHUDTests.RunAllTests()`
+   - `run_tests(mode: "EditMode", assembly_names: ["FarmBeware.Editor.Tests"])`
+3. **Collateral Diff Audit & Selective Stage**:
+   Inspect `git status -s` and `git diff --name-only` to ensure zero unintended `.unity`, `.prefab`, or `.asset` changes:
    ```bash
    git add <path/to/modified_file>
    ```
-   *(Never use blanket `git add .`)*.
-4. **Step 4: Atomic Commit**:
-   Commit using the mandatory convention:
+   *(Prefer explicit paths over blanket `git add .`)*.
+4. **Atomic Commit & Push**:
    ```bash
    git commit -m "<type>(<scope>): <description>"
-   ```
-5. **Step 5: Push to Remote Workspace**:
-   ```bash
    git push origin Rafi-branch
    ```
 
@@ -63,9 +55,8 @@ Follow this sequence whenever writing, modifying, and committing code:
 
 ## 4. Strict Constraints & Prohibitions
 
-1. ❌ **No Ad-Hoc Feature Branches**: Never create new branches (`git checkout -b feature/...`). Work occurs strictly on assigned Layer 3 branch (`Rafi-branch`).
-2. ❌ **No Direct Layer 1 & 2 Pushes**: Never run `git push origin main`, `staging`, or `development`. All pushes target `origin/Rafi-branch`.
-3. ❌ **Mandatory Atomic Commits**: Never combine unrelated concerns in a single commit.
-4. ❌ **Mandatory Verification Invariant**: Never commit code with failing tests or unhandled console errors.
-5. ❌ **No Bundled Fix/Feat Commits**: Never bundle regression bug fixes with new feature commits; commit `fix` first, then `feat`.
-6. ❌ **No Unintended Scene Dirtying**: Never commit modified `.unity` scene files unless the task explicitly mandated scene modifications.
+1. **No Ad-Hoc Feature Branches**: Never run `git checkout -b ...`; stay on `Rafi-branch`.
+2. **Never Touch Protected Branches**: Never checkout, merge into, reset, or push to `main`, `staging`, or `development`.
+3. **Mandatory Verification Gate**: Never commit code with compilation errors, warnings, or failing tests (< 117/117).
+4. **No Bundled Fix/Feat Commits**: Commit `fix` separately from new `feat` or `refactor` changes.
+5. **No Unintended Scene Dirtying**: Never stage modified `.unity` scenes unless explicitly required and verified.

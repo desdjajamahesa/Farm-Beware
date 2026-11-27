@@ -187,13 +187,12 @@ Implementasi alur misi pembuka (*Side Quest: First Steps*) yang membimbing pemai
 Implementasi sistem peta dunia interaktif (`WorldMapUI`) dengan proyeksi koordinat matematis normalisasi dan pelacakan orientasi pemain real-time (`bhaskoro-branch`, diintegrasikan ke `Sprint-branch` via commit `38582b8b`).
 
 ### Komponen & Arsitektur:
-- [`WorldMapUI.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Map/UI/WorldMapUI.cs):
-  - Antarmuka modal peta bertekstur perkamen fantasi yang dapat dibuka/ditutup secara cepat menggunakan tombol pintas **`M`**.
+- [`WorldMapUI.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Player/UI/WorldMapUI.cs):
+  - Antarmuka modal peta bertekstur perkamen fantasi yang dapat dibuka/ditutup secara cepat menggunakan tombol pintas **`M`** (termasuk rendering marker dinamis).
   - Mengimplementasikan `IModalWindow` dan terdaftar ke `ModalStackManager`, mengunci pergerakan dan aksi pemain secara aman saat peta aktif.
-- [`MapProjectionMath.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Map/Core/MapProjectionMath.cs):
+- [`MapProjectionMath.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Core/UI/MapProjectionMath.cs):
   - Modul matematika murni POCO (Zero-GC) yang memetakan koordinat 3D dunia game $(X, Z)$ ke bidang 2D RectTransform peta $(U, V)$ secara deterministik dan presisi.
-- [`WorldMapMarker.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Map/UI/WorldMapMarker.cs):
-  - Penanda visual dinamis untuk posisi pemain (dengan pin berputar sesuai rotasi arah pandang pemain) dan titik-titik penting (POI):
+  - Penanda visual dinamis posisi pemain (berputar sesuai heading) dan titik-titik penting (POI) dirender di dalam `WorldMapUI`:
     - **Marker_House**: Lokasi kabin utama dan kamar tidur.
     - **Marker_Farm**: Lokasi 16 petak lahan pertanian.
     - **Marker_Merchant**: Lokasi outpost Commercial Trading Post di barat.

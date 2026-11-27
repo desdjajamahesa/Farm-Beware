@@ -50,10 +50,11 @@ graph TD
 ## ✨ Key Features
 
 ### 🌾 1. Agriculture & Crop Economy
-- **3 Dynamic Crop Archetypes**:
-  - **Sweet Potato** *(Fast: 6 min growth)* — Sells for 750 Gold. Drops from *Tuber Maw*.
-  - **Taro** *(Medium: 15 min growth)* — Sells for 1,600 Gold. Drops from *Taro Brute*.
-  - **Corn** *(Medium: 15 min growth)* — Sells for 1,600 Gold. Drops from *Corn Musketeer*.
+- **3 Dynamic Crop Archetypes** *(Calibrated Base Market Price)*:
+  - **Sweet Potato** *(Fast: 6 min growth)* — **375 – 500G / unit** *(Clean; 50% dirty discount)*. Drops from *Tuber Maw*.
+  - **Taro** *(Medium: 15 min growth)* — **700 – 900G / unit** *(Clean; 50% dirty discount)*. Drops from *Taro Brute*.
+  - **Corn** *(Medium: 15 min growth)* — **700 – 900G / unit** *(Clean; 50% dirty discount)*. Drops from *Corn Musketeer*.
+- **Outdoor Order Board & Land Deeds**: Fulfill clean-only produce orders outdoors for a **1.2× payout bonus**, or buy Land Expansion Deeds at the Trading Post to expand from 16 up to **32 plots**.
 - **Realistic Farming Pipeline**: Till dirt with hoes $\rightarrow$ Plant seeds $\rightarrow$ Irrigate with watering cans $\rightarrow$ Harvest dirty crops $\rightarrow$ Wash at the kitchen sink before selling or cooking.
 - **Diurnal Crop Growth**: Crops only grow while the sun shines. When night falls, growth progress freezes and resumes at dawn.
 
@@ -116,52 +117,53 @@ graph TD
 
 | Action | Key / Input | Description |
 | :--- | :---: | :--- |
-| **Movement** | `W` `A` `S` `D` | Move character in isometric 3D space |
-| **Interact / Action** | `E` / `Left Mouse` | Interact with stations, tiles, NPCs, and objects |
-| **Primary Attack** | `Left Click` (Tap / Hold) | Swing equipped weapon / perform charged combo |
-| **Open Inventory** | `Tab` | View stats, backpack, and equipment slots |
-| **Hotbar Slots** | `1` – `8` | Select active handheld item, seed, or tool |
-| **Drink Water** | `Q` | Take a 25L hydration sip from the water flask |
-| **Cancel / Menu** | `Esc` | Close modal menus / dismiss sleep confirmation dialog |
+| **Movement** | `W` `A` `S` `D` | Move character in isometric 3D space / steer pickup truck |
+| **Sprint / Jump** | `Left Shift` / `Space` | Sprint or Jump (Handbrake when driving) |
+| **Interact / Action** | `E` / `Left Mouse` | Interact with stations, plots, Order Board, Merchant, Bed, Truck |
+| **Primary / Heavy Attack** | `Left Click` (Tap / Hold) | 3-hit light combo or Charged Heavy attack |
+| **Kick / Dodge / Parry** | `F` / `C` (`Left Alt`) / `V` (`Left Ctrl`) | Front kick, Dodge roll (300ms i-frames), Precision Parry |
+| **Inventory / Quest / Map / Journal** | `Tab` (`I`) / `Q` / `M` / `J` | Open Inventory, Quest Log, World Map, or Story Journal |
+| **Hotbar Slots** | `1` – `4` / `Scroll` | Select active handheld tool, weapon, seed, or food ration |
+| **Orbit Camera** | `Right Click` (Hold + Drag) | Rotate isometric camera around homestead |
+| **Skip / Close / Pause** | `Esc` | Hold to skip cutscene, tap to close modal or toggle Pause Menu |
 
 ---
 
 ## 🏗️ System Architecture
 
-The codebase follows **Clean Architecture**, **Inversion of Control (IoC)**, and a strict **Assembly Definition Graph (ASMDEF DAG)** to prevent circular dependencies:
+The codebase separates **Pure C# Logic (Zero-GC)** from **Thin MonoBehaviour Adapters**, wired via **Typed Contracts (`Core/Contracts/`)** and a **22-Runtime + 1-Editor ASMDEF DAG**:
 
 ```
 [Tier 0: Core & Data]
-├── FarmBeware.Core.Runtime        (Interfaces: IFarmingService, IWaterService, IWalletService, ServiceLocator)
-└── FarmBeware.Data.Runtime        (ItemData, RecipeData, SeedItemData, ScriptableObjects)
+├── FarmBeware.Core.Runtime          (ServiceLocator, ModalStackManager, SceneNames, MapProjectionMath, WoodenBoardStyle, Contracts)
+└── FarmBeware.Data.Runtime          (ItemData, CropData, SeedItemData, GameSaveData)
          ▲
-[Tier 1: Foundation Features]
-├── FarmBeware.Features.Time       (DayNightTimeManager, DayActivityTimelineManager, DuskBell)
-├── FarmBeware.Features.Economy    (PlayerWallet, DailyEconomyManager, Merchant)
-└── FarmBeware.Features.Inventory  (InventoryComponent, EquipmentSlots, Storage)
+[Tier 1: Foundation Modules]
+├── FarmBeware.Features.Common       (RefillStationStateMachine)
+├── FarmBeware.Features.Time         (DayNightTimeManager, DayActivityTimelineManager, DuskBell)
+├── FarmBeware.Features.Economy      (PlayerWallet, DailyEconomyManager, MerchantShopUI, OrderBoard)
+├── FarmBeware.Features.Inventory    (InventoryComponent, ItemDatabase, Storage)
+├── FarmBeware.Features.SaveSystem   (SaveSystemManager, SaveSystemUI)
+└── FarmBeware.Features.Interaction  (BedInteractable, PlayerInteractor, HoverLabelController)
          ▲
-[Tier 2: Interactive Modules]
-├── FarmBeware.Features.Farming    (FarmlandTile, CropGrowthEngine, WaterWell)
-├── FarmBeware.Features.Kitchen    (CookingStation, PlayerWaterBottle, RecipeDatabase)
-├── FarmBeware.Features.Combat     (NightBrawlManager, WaveProgressionEngine, AIEnemyController)
-├── FarmBeware.Features.Interaction(BedInteractable, BedSleepConfirmationUI, Highlighting)
-├── FarmBeware.Features.Workbench  (WeaponUpgradeStation)
-└── FarmBeware.Features.Wardrobe   (CustomizationController)
+[Tier 2: Domain Modules]
+├── Farming, Kitchen, Combat, Quest, Storyline, Camera, Environment, Trophy, Vehicles, Wardrobe, Workbench, MainMenu
          ▲
-[Tier 3: Presentation & Gameplay]
-├── FarmBeware.Gameplay.Runtime    (PlayerController, AnimationStateDrivers)
-└── FarmBeware.Rendering.Runtime   (URP Render Graph, Lighting Controllers)
+[Tier 3: Presentation, Rendering & CI Verification]
+├── FarmBeware.Gameplay.Runtime      (PlayerControl, PlayerStats, WorldMapUI)
+├── FarmBeware.Rendering.Runtime     (URP Deferred+ Lighting & Stress Validation)
+└── FarmBeware.Editor.Tests          (GameplayAndHUDTests: 117/117 Menu & NUnit EditMode CI)
 ```
 
-- **Zero-GC Hot Paths**: Combat damage calculation and wave updates use pre-allocated buffers and object pooling.
-- **Service Locator**: Decouples cross-module communication without rigid singleton dependencies.
+- **Zero-GC & Contract Hardening**: 0 runtime `SendMessage` calls, 0 empty `catch {}` blocks, object-pooled enemy HUD/combat paths.
+- **Automated Verification**: **117/117** passing via both `FarmBeware.EditorTests.GameplayAndHUDTests.RunAllTests()` and Unity Test Runner `EditMode`.
 
 ---
 
 ## 🚀 Quick Start
 
 ### Prerequisites
-- **Unity Editor**: `Unity 6000.3.20f1` (Unity 6 / 2023 LTS)
+- **Unity Editor**: `Unity 6000.3.20f1` (Unity 6)
 - **Target OS**: Windows 10/11 (64-bit)
 - **Graphics API**: DirectX 11 / 12 or Vulkan (Universal Render Pipeline compatible)
 
@@ -172,23 +174,19 @@ The codebase follows **Clean Architecture**, **Inversion of Control (IoC)**, and
    ```
 2. Open **Unity Hub** $\rightarrow$ **Add project from disk** $\rightarrow$ select the `Farm-Beware` folder.
 3. Allow Unity to import packages and compile shaders.
-4. Navigate to `Assets/Scenes/StagingScene.unity` and open it.
+4. Open `Assets/Scenes/MainMenuScene.unity` (or `Assets/Scenes/MainScene.unity` for direct sandbox testing).
 5. Press **Play (`Ctrl + P`)** in the Unity Editor.
 
 ---
 
 ## 🤝 Contribution & Branch Guidelines
 
-- **Active Development Branch**: `roi-branch` / `development`
-- **Strict Commit Convention**:
+- **Branching Topology**: Layer 1 (`main`, `staging`) $\leftarrow$ Layer 2 (`development`) $\leftarrow$ Layer 3 (`Rafi-branch`, `bas-branch`, `roi-branch`, `bhaskoro-branch`)
+- **Commit Convention**:
   ```
-  <type> : <description>
+  <type>(<scope>): <description>
   ```
-  - `feat : ...` (New features and mechanics)
-  - `fix : ...` (Bug and glitch fixes)
-  - `refactor : ...` (Code structure changes without behavior change)
-  - `chore : ...` (Config, toolings, meta, and ignore rules)
-  - `assets : ...` (Art, audio, textures, and 3D models)
+  - `feat(...)`, `fix(...)`, `test(...)`, `refactor(...)`, `chore(...)`, `docs(...)`, `assets(...)`
 
 ---
 

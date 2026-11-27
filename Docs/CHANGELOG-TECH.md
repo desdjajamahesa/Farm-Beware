@@ -12,6 +12,9 @@ Konsolidasi dokumentasi teknis dari seluruh kontributor tim pengembang (`Rafi`, 
 ---
 
 ## Daftar Isi Kronologis
+- [2026-11-27](#--2026-11-27)
+- [2026-11-22](#--2026-11-22)
+- [2026-11-15](#--2026-11-15)
 - [2026-11-08](#--2026-11-08)
 - [2026-10-26](#--2026-10-26)
 - [2026-10-25](#--2026-10-25)
@@ -31,12 +34,41 @@ Konsolidasi dokumentasi teknis dari seluruh kontributor tim pengembang (`Rafi`, 
 
 ---
 
+## - 2026-11-27
+
+### Ditambahkan, Diubah & Hardened (Added, Refactored & Hardened) `[Rafi, Bas]`
+- **Overhaul `PlayerModular` Rig & Combat Chains ([`PlayerControl.Combat.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Player/PlayerControl.Combat.cs), `Test 115`)**: Integrasi animasi serang `character_anim_attack.fbx`, chain heavy attack, cancel window deterministik, dan guard animator rig.
+- **Tema UI Wooden Board (`origin/bas-branch`, [`WoodenBoardStyle.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Core/UI/WoodenBoardStyle.cs), [`MerchantShopUI.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Economy/MerchantShopUI.cs), `Test 116`)**: Konsolidasi gaya panel papan kayu pada UI modal serta isolasi test harness HUD.
+- **Hardening Arsitektur, Kontrak & NUnit EditMode CI (`Assets/Scripts/Core/Contracts/`, [`GameplayAndHUDTests.NUnitAdapter.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Editor/GameplayAndHUDTests.NUnitAdapter.cs), `Test 117`)**:
+  - Eliminasi **15/15** blok `catch {}` kosong (migrasi Input System) dan **15/15** panggilan `SendMessage` runtime melalui kontrak bertipe (`ICutsceneSuppressibleHud`, `IPlayerVitalsAction`, `IStarterKitProvider`, `IStatsDisplayRefreshable`, `IDialogueDismissible`, `IFoodBuffApplier`).
+  - Penambahan 4 ASMDEF runtime (`Common`, `Environment`, `Vehicles`, `MainMenu`) sehingga seluruh 22 modul runtime tercakup dalam DAG, serta `FarmBeware.Editor.Tests` untuk **117/117** NUnit EditMode.
+  - Pemecahan 5 manajer UI prosedural besar (`MerchantShopUI`, `WorkbenchUI`, `StoveUIManager`, `StorylineUI`, `MainMenuController`) menjadi file parsial `*.Layout.cs`.
+  - Pembatasan 5 DLL `Assets/Plugins/Roslyn/*.dll` khusus Editor-only, penghapusan paket/aset legacy tak terpakai, serta standardisasi **100% komentar Bahasa Inggris** di seluruh `Assets/Scripts/`.
+
+---
+
+## - 2026-11-22
+
+### Diperbaiki & Diverifikasi (`d54add2f` / QA & Testing HUB) `[Rafi]`
+- **Resolusi Defek QA HUB (`BUG-009`..`BUG-024`) & Hardening (`Test 114`)**: Perbaikan harga seed toko, proteksi tool key item agar tidak bisa dijual, deteksi kolisi sudut pintu kabin, anti-duplikasi item/botol air saat save-load, sinkronisasi timer kompor/sink dan buff slot, reset status wave malam pasca-load, loot drop & intermission 30 detik, pencucian dirty corn, sinkronisasi HUD hari, serta batas refill sumur (**114/114 Passed**).
+
+---
+
+## - 2026-11-15
+
+### Ditambahkan & Dikalibrasi `[Rafi]`
+- **Outdoor Farm Order Board, Kalibrasi Ekonomi, Quest Log (`[Q]`) & Split Parsial (`Tests 111–113`)**:
+  - Papan pesanan bersih outdoor (`OrderBoard`, bonus **1.2×**) dan kalibrasi harga unit panen (`375–500G` Sweet Potato, `700–900G` Taro & Corn, diskon 50% dirty).
+  - Antarmuka Quest Log modal (`[Q]`), pembaruan HUD inkremental Zero-GC, dedup `Assets/Resources/`, `ProceduralUIAssetCache`, `SceneNames`, serta pemecahan parsial skrip gameplay besar (**113/113 Passed**).
+
+---
+
 ## - 2026-11-08
 
 ### Ditambahkan & Diintegrasikan (Added & Integrated)
 
 #### 1. Subsistem Peta Dunia Interaktif & Map Projection Math Engine `[Bhaskoro]`
-- **Antarmuka Peta & Proyeksi Matematis ([`WorldMapUI.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Map/UI/WorldMapUI.cs), [`MapProjectionMath.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Map/Core/MapProjectionMath.cs), [`WorldMapMarker.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Map/UI/WorldMapMarker.cs))**:
+- **Antarmuka Peta & Proyeksi Matematis ([`WorldMapUI.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Player/UI/WorldMapUI.cs), [`MapProjectionMath.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Core/UI/MapProjectionMath.cs))**:
   - Mengimplementasikan sistem peta modal bertekstur perkamen fantasi yang dapat dibuka/ditutup secara cepat menggunakan tombol pintas **`M`**.
   - Mengintegrasikan antarmuka dengan `ModalStackManager` untuk mengunci input pergerakan pemain secara aman selama peta aktif.
   - Membangun pure POCO mathematical algorithm `MapProjectionMath` yang memproyeksikan koordinat dunia 3D $(X, Z)$ ke bidang RectTransform 2D kanvas peta $(U, V)$ secara normalisasi dan Zero-GC.

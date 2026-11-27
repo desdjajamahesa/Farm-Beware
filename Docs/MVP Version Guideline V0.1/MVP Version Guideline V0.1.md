@@ -1,7 +1,7 @@
 # MVP Version Guideline V0.1
 
 Duration (sec): X seconds
-Status: Not started
+Status: Implemented (MVP V0.1 — Pending QA V0.3.0 Retest)
 Decorative Color Band: $\colorbox{fffde7}{~~}
 \colorbox{fff9c4}{~~}
 \colorbox{fff59d}{~~}
@@ -387,3 +387,14 @@ The Ranger: -preference
 ![1000274575.jpg](MVP%20Version%20Guideline%20V0%201/1000274575.jpg)
 
 # Storyline overview:
+
+**Campaign Title**: *NexaPhyto Bio-Hazard* (5-Day Survival Arc)
+
+Former soldier **Ucup** uses his military severance to purchase a cheap, isolated parcel of land (`Lot 417-B`) under an environmental waiver hiding a sealed 1989 chemical facility (*NexaPhyto Factory — Tank 04*). Across five escalating days and nights, tending the farm gradually exposes the buried contamination and awakens mutated flora:
+
+- **Day 0 (Prologue — "A Quiet Life")**: Ucup arrives at the homestead by pickup truck and rests inside the cabin before beginning farm work.
+- **Day 1 ("A Cheap Parcel of Land")**: Tilling the soil strikes a buried metal warning plaque (`Reagent 7`), cracking a sealed underground conduit. Crops mutate overnight, culminating in the Night 1 cinematic awakening and *Tuber Maw* incursion.
+- **Day 2 ("Corroded Runoff & Taro Hardening")**: Washing harvested Taro reveals steel-hardened mutated skin as glow-veined roots emerge. Surviving *Taro Brutes* exposes *Incident 042* (the 1989 buried tank dump).
+- **Day 3 ("The Toxic Node & Corn Crossfire")**: Ground tremors widen the leak beneath the well. Ucup reinforces his weapons at the Workbench with dried mutant fibers and defeats the first boss, **Cyclops Tuber Maw**, recovering the NexaPhyto combat dossier.
+- **Day 4 ("Groundwater Saturation & Colossus")**: Toxic vapor hisses through the soil while the **Taro Colossus** breaches the yard. Defeating it reveals the blueprint for subterranean **Emergency Neutralizing Valve #09**.
+- **Day 5 ("The Final Containment & Resolution")**: Red chemical gas fills the sky and the factory sirens sound. Ucup defeats **Taro Colossus** and the final root-entangled boss, **The Ranger**, freeing Valve #09 to purge the underground pipes and reclaim his farm in peace.

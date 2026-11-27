@@ -1,54 +1,43 @@
 # Testing.md
 
-Testing strategies, automated verification, regression prevention, and checklists for **Farm-Beware**.
+Testing strategies, automated verification, and checklists for **Farm-Beware**.
 
 ---
 
 ## 1. Quality Assurance Standards
 
-1. **Official Verification Suite**: Run via Unity MCP:
-   `FarmBeware.EditorTests.GameplayAndHUDTests.RunAllTests()`
-   **Target**: All audit tests must pass (**86/86 Passed**).
-2. **Clean Console Mandate**: 0 Errors, 0 Warnings, 0 Exceptions via `read_console`.
-3. **Native Assertion Safety**: Never call raw `SendMessage` on inactive objects or in EditMode to prevent `Assertion failed: ShouldRunBehaviour()`.
-4. **Anti-Regression Interaction Gate**:
-   Features must pass the **5 Interaction Edges**:
-   - *UI Interrupt*: ESC / Modal open mid-action must not leak input locks.
-   - *Phase Jump*: Day/Night transitions mid-feature must not cause NRE or state desync.
-   - *Save/Reload*: Hydration must preserve state integrity across sessions.
-   - *Combat Interrupt*: Damage/death during interaction must abort safely.
-   - *Cancel Rollback*: Aborted actions must restore camera, inputs, and resources.
-5. **Continuous Audit Expansion**: When adding milestones, append automated tests to `GameplayAndHUDTests.cs`.
+1. **Official Verification Channels (117/117)**:
+   - Menu / Roslyn runner: `FarmBeware.EditorTests.GameplayAndHUDTests.RunAllTests()`
+   - Unity Test Runner (`EditMode` / CI): assembly `FarmBeware.Editor.Tests` (`GameplayAndHUDTests.NUnitAdapter.cs`) via `run_tests`.
+   - **Target**: **117/117 Passed** (0 failures, 0 skipped).
+2. **Clean Console Mandate**: 0 compilation errors, 0 script warnings, 0 unhandled exceptions via `read_console`.
+3. **Zero-SendMessage & Contract Discipline**: Never invoke runtime `SendMessage`; enforce typed interfaces (`Core/Contracts/`) and explicit null/lifecycle guards (no empty `catch {}` blocks).
+4. **Anti-Regression 5 Interaction Edges**: Every feature must handle *UI Interrupt* (ESC/modal lock cleanup), *Phase Jump* (Day/Night/Sleep), *Save/Reload* hydration, *Combat Interrupt*, and *Cancel Rollback*.
+5. **Continuous Audit Expansion**: Append a new regression test to `GameplayAndHUDTests` for every milestone or bug fix.
 
 ---
 
-## 2. Core Automated Audit Coverage (86 Tests)
+## 2. Automated Audit Coverage (117 Tests)
 
-- **Combat & Night Brawl (Tests 1–27)**: Poise damage, knockdown invariants, attack tokens, perimeter fence, food buff purge on sleep, multi-source input lock, health bars, wave spawning, seed consumption, combat FSM.
-- **Narrative & Vehicles (Tests 28–50)**: Storyline FSM, 5-day Monte Carlo reachability, `OpeningCutsceneController` truck arrival and dismount, `VehicleDynamicsCore`, dual-channel vehicle entry/exit, `NarrativeFactBoard`, driver sync.
-- **Agriculture, UI & Quests (Tests 51–70)**: Farmland plot interact gating, crop growth countdown night suppression, fridge storage, pointer click input lock bypass, Journal UI `[J]`, side quest *First Steps*, zero-GC audit, player rig.
-- **Commercial Economy & Trading Post (Tests 71–79)**: Day-to-night cutscene deconfliction, cooking, `ShopInteractable` Day 0 gating & Day 1+ `MerchantShopUI`, `PlayerWallet`, `DailyEconomyManager` prices & discounts, Trading Post turnaround bay (Test 79).
-- **Weapon & Armor Upgrades (Tests 80–86)**: Weapon Lv 1–10, Armor Lv 1–10, single-path lock, Sweet Potato Set 2/4/5-pc, EquipmentSlotUI drag-and-drop, Save/Load hydration, and Contextual Combat Stance (Test 86).
-
----
-
-## 3. Manual Play Mode Verification Checklist
-
-1. **Vehicle & Arrival**: Truck arrives at gate; player dismounts cleanly with empty hands.
-2. **Agriculture Loop**: Till soil (`1`), plant seeds, water with `PlayerWaterBottle`. Crops grow across day transitions.
-3. **Western Corridor & Trading Post**: Travel West along 225m road to Trading Post at `(-175, 0, 70)`.
-4. **Trading Interaction**: Interact (`E`) with counter to open `MerchantShopUI` and trade produce.
-5. **Workbench Upgrades**: Interact (`E`) with Workbench in garage to upgrade weapon, armor, and craft Sweet Potato set pieces.
-6. **Night Combat**: Defend gate using light combos, charged attacks, parries (`V`), and dodges (`C`).
+- **Combat & Night Brawl (Tests 1–27)**: Poise damage, knockdown invariants, priority attack tokens, perimeter fence, food buff purge on sleep, multi-source input locks, health bars, wave spawning (6–10s), seed drops, combat FSM.
+- **Narrative & Vehicles (Tests 28–50)**: Storyline FSM, 5-day Monte Carlo reachability, `OpeningCutsceneController` truck arrival & dismount, `VehicleDynamicsCore`, dual-channel vehicle entry/exit, `NarrativeFactBoard`.
+- **Agriculture, UI & Quests (Tests 51–70)**: Farmland plot gating, crop growth night suppression, fridge storage, pointer click bypass, Journal UI (`J`), Quest *First Steps*, zero-GC audit, player rig.
+- **Economy, Trading Post & World Map (Tests 71–79, 98–107)**: Day/night cutscene deconfliction, cooking escrow, `MerchantShopUI`, `PlayerWallet`, `DailyEconomyManager`, Trading Post turnaround bay, `WorldMapUI` projection & markers.
+- **Upgrades, Cutscenes & Rig Stabilization (Tests 80–97, 108–110)**: Weapon/Armor Lv 1–10, Sweet Potato set bonuses, drag-and-drop equipment, Contextual Combat Stance, `Night1CutsceneController`, `VehicleDrivingHUD` suppression, Wardrobe & rig stability.
+- **Architecture, Order Board, Quests, QA Hub & Combat Overhaul (Tests 111–117)**:
+  - **Test 111**: Asset deduplication, `ProceduralUIAssetCache`, `IItemCatalog` unification, pure solar trajectory.
+  - **Test 112**: Calibrated economy pricing & Outdoor `OrderBoard` (`1.2x` clean-only multiplier).
+  - **Test 113**: Quest Log UI (`Q`), HUD incremental binding & Zero-GC updates.
+  - **Test 114**: QA & Testing HUB remediation regression (`BUG-009`..`BUG-024`, doorway corners, well refill cap, Day 1 dialogue timing).
+  - **Test 115**: `PlayerModular` heavy chains, action cancel windows, animator guards.
+  - **Test 116**: `WoodenBoardStyle` UI theme parity & panel isolation.
+  - **Test 117**: Architecture hardening (`0` runtime `SendMessage`, `0` empty `catch`, typed contracts, ASMDEF coverage).
 
 ---
 
-## 4. Troubleshooting Matrix
+## 3. Manual PlayMode Verification Checklist
 
-| Symptom | Root Cause | Resolution |
-|---|---|---|
-| `Assertion failed: ShouldRunBehaviour()` | Raw `SendMessage` on inactive object or in EditMode | Use direct type-safe method or reflection (`MethodInfo.Invoke`) |
-| Vehicle flips on road | Active mesh colliders on road ribbon or shoulders | Disable colliders; ride 100% on native `TerrainCollider` |
-| Trading post occluded | Facade facing North/East under SW isometric camera | Rotate building/counter so front facade faces South (`rot=[0,0,0]`) |
-| Turnaround bay obstacle | Colliders inside 8m radius of `TurnaroundBay_Marker` | Reposition marker to open yard center (`[-175, 0, 50]`) |
-| Parries spammable | Missing whiff recovery lockout | Enforce `CanInitiateParry` and 350ms lockout in `DefenseEvaluator` |
+1. **Vehicle & Opening**: `MainMenuScene` -> New Game -> truck arrives -> Ucup dismounts cleanly.
+2. **Farming & Economy**: Till (`1`), plant, water (`PlayerWaterBottle`), wash crops at sink, fulfill clean orders at Outdoor Order Board (`1.2x`) or trade at Trading Post.
+3. **UI & Modals**: Verify `Tab` (Inventory), `Q` (Quest Log), `M` (World Map), `J` (Journal), and `ESC` pause stack without input lock leaks.
+4. **Night Brawl**: Defend perimeter using `PlayerModular` combos, charged heavies, parries (`V`), and dodges (`C`).

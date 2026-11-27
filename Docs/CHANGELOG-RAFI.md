@@ -2,6 +2,21 @@
 
 Semua perubahan penting pada proyek ini oleh Rafi akan dicatat di halaman ini.
 
+## - 2026-11-27
+
+### Ditambahkan, Diubah & Hardened (Added, Refactored & Hardened)
+- **Combat `PlayerModular`, Integrasi `bas-branch`, & Hardening Arsitektur (Tests 115–117)**:
+  - Integrasi animasi serang `character_anim_attack.fbx`, overhaul heavy attack chain, cancel window, dan animator guard pada `PlayerControl.Combat.cs` (**Test 115**).
+  - Merge `origin/bas-branch` dengan tema `WoodenBoardStyle`, skinning modal toko `MerchantShopUI`, dan hardening isolasi UI **Test 116**.
+  - Eliminasi **15** `catch {}` kosong dan **15** runtime `SendMessage` menggunakan kontrak bertipe di `Assets/Scripts/Core/Contracts/`, pelengkapan **22 runtime ASMDEF** (`Common`, `Environment`, `Vehicles`, `MainMenu`), serta exposure NUnit EditMode CI lewat `FarmBeware.Editor.Tests` (**117/117 Passed**).
+  - Pemecahan 5 skrip UI besar menjadi `*.Layout.cs` (`MerchantShopUI`, `WorkbenchUI`, `StoveUIManager`, `StorylineUI`, `MainMenuController`), pembatasan `Assets/Plugins/Roslyn/*.dll` ke Editor-only, pembersihan paket & aset legacy tak terpakai, dan terjemahan **100% komentar Bahasa Inggris** di `Assets/Scripts/`.
+
+## - 2026-11-22
+
+### Diperbaiki (Fixed)
+- **Remediasi Defek QA & Testing HUB (`BUG-009`..`BUG-024`, Commit `d54add2f`)**:
+  - Memperbaiki harga seed, blokir penjualan item kunci (hoe & watering can), deteksi sudut pintu rumah untuk serangan melee, isolasi timer sink/kompor & buff antar slot save, restorasi wave malam saat load, loot & intermission 30 detik, pencucian dirty corn, sinkronisasi day counter HUD, timing dialog Day 1, serta batas isi sumur (**Test 114**, **114/114 Passed**).
+
 ## - 2026-11-15
 
 ### Diubah & Ditingkatkan (Changed & Upgraded)
