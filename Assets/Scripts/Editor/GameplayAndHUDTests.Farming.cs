@@ -37,7 +37,7 @@ namespace FarmBeware.EditorTests
     public static partial class GameplayAndHUDTests
     {
         // Test 8: FarmlandTile seed drop safety via WorldItemPickup.Spawn
-        private static bool Test_FarmlandTile_WorldItemPickup_SpawnOnFullInventory()
+        internal static bool Test_FarmlandTile_WorldItemPickup_SpawnOnFullInventory()
         {
             var item = ScriptableObject.CreateInstance<ItemData>();
             item.itemId = "seed_test";
@@ -70,7 +70,7 @@ namespace FarmBeware.EditorTests
         }
 
         // Test 9: FarmlandPlot 1 to 16 have no Mat_Highlight overrides on crop renderers
-        private static bool Test_FarmlandPlot_1_NoHighlightOverrides()
+        internal static bool Test_FarmlandPlot_1_NoHighlightOverrides()
         {
             var prefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/Compound/Farmland.prefab");
             if (prefab == null)
@@ -123,7 +123,7 @@ namespace FarmBeware.EditorTests
         }
 
         // Test 13: WorldItemPickup drop protection on full inventory
-        private static bool Test_WorldItemPickup_Protection_FullInventory()
+        internal static bool Test_WorldItemPickup_Protection_FullInventory()
         {
             var playerGO = new GameObject("Test_Player_Isolated");
             var item = ScriptableObject.CreateInstance<ItemData>();
@@ -194,7 +194,7 @@ namespace FarmBeware.EditorTests
         }
 
         // Test 25: Multi-stack seed consumption priority (Active Hotbar slot decremented before main inventory backpack)
-        private static bool Test_PlayerInventory_MultiStack_PlantSeedHotbarConsumptionPriorityAudit()
+        internal static bool Test_PlayerInventory_MultiStack_PlantSeedHotbarConsumptionPriorityAudit()
         {
             var cleanupList = new System.Collections.Generic.List<Object>();
             try
@@ -324,7 +324,7 @@ namespace FarmBeware.EditorTests
         }
 
         // Test 29: CropData_Corn ScriptableObject asset integrity, 3-day maturity, yields, and FarmGridManager dual-lookup alias
-        private static bool Test_CropDataCorn_AssetIntegrity_And_DualLookup_Audit()
+        internal static bool Test_CropDataCorn_AssetIntegrity_And_DualLookup_Audit()
         {
             var cleanupList = new List<Object>();
             try
@@ -388,7 +388,7 @@ namespace FarmBeware.EditorTests
         }
 
         // Test 52: FarmlandTile IInteractable.CanInteract Night & Growing State Gating
-        private static bool Test_FarmlandTile_NightAndGrowingSuppression_Audit()
+        internal static bool Test_FarmlandTile_NightAndGrowingSuppression_Audit()
         {
             var cleanupList = new List<GameObject>();
             var prevTimeInstance = FeaturesTime.DayNightTimeManager.Instance;
@@ -453,7 +453,7 @@ namespace FarmBeware.EditorTests
         }
 
         // Test 53: CropGrowthCountdownUI Night Indicator Suppression Audit
-        private static bool Test_CropGrowthCountdownUI_NightSuppression_Audit()
+        internal static bool Test_CropGrowthCountdownUI_NightSuppression_Audit()
         {
             var cleanupList = new List<GameObject>();
             var prevTimeInstance = FeaturesTime.DayNightTimeManager.Instance;
@@ -585,7 +585,7 @@ namespace FarmBeware.EditorTests
         }
 
         // Test 100: Verify Farmland Plot Day 1 restriction (6 active plots, 10 locked) and Workbench Land Expansion (+2 plots for 2,500 G up to 16)
-        private static bool Test_Farmland_Day1CapacityAndWorkbenchExpansion_Audit()
+        internal static bool Test_Farmland_Day1CapacityAndWorkbenchExpansion_Audit()
         {
             var mgrObj = new GameObject("Test100_FarmlandMgr");
             var playerObj = new GameObject("Test100_Player");

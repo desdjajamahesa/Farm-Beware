@@ -39,7 +39,7 @@ namespace FarmBeware.EditorTests
     public static partial class GameplayAndHUDTests
     {
         // Test 12: Merchant shop scroll position reset to top
-        private static bool Test_MerchantShopUI_ResetScrollPosition()
+        internal static bool Test_MerchantShopUI_ResetScrollPosition()
         {
             var go = new GameObject("Test_MerchantShop");
             try
@@ -87,7 +87,7 @@ namespace FarmBeware.EditorTests
         // =========================================================================
 
         // Test 75: ShopInteractable component instantiation, IInteractable implementation, and stock catalog
-        private static bool Test_ShopInteractable_ComponentInstantiation_And_StockInitialization()
+        internal static bool Test_ShopInteractable_ComponentInstantiation_And_StockInitialization()
         {
             var cleanupList = new List<Object>();
             try
@@ -183,7 +183,7 @@ namespace FarmBeware.EditorTests
         }
 
         // Test 76: ShopInteractable Day 0 gating (blocked) and Day 1+ activation (opens MerchantShopUI)
-        private static bool Test_ShopInteractable_DayProgressionGating_And_MerchantShopUI_Activation()
+        internal static bool Test_ShopInteractable_DayProgressionGating_And_MerchantShopUI_Activation()
         {
             var cleanupList = new List<Object>();
             FarmBeware.Core.Runtime.ServiceLocator.TryResolve<FarmBeware.Core.Runtime.ITimeService>(out var prevTime);
@@ -276,7 +276,7 @@ namespace FarmBeware.EditorTests
         }
 
         // Test 77: PlayerWallet transaction integrity: buy deduction, sell increment, and full inventory refund
-        private static bool Test_PlayerWallet_TransactionIntegrity_BuyDeduction_SellIncrement_And_FullInventoryRefund()
+        internal static bool Test_PlayerWallet_TransactionIntegrity_BuyDeduction_SellIncrement_And_FullInventoryRefund()
         {
             var cleanupList = new List<Object>();
             var walletField = typeof(PlayerWallet).GetField("instance", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
@@ -420,7 +420,7 @@ namespace FarmBeware.EditorTests
         }
 
         // Test 78: DailyEconomyManager daily price rolling, dirty produce discount, and morning report day snapshots
-        private static bool Test_DailyEconomyManager_DailyPriceRolling_DirtyDiscount_And_DayTransitionSnapshot()
+        internal static bool Test_DailyEconomyManager_DailyPriceRolling_DirtyDiscount_And_DayTransitionSnapshot()
         {
             var cleanupList = new List<Object>();
             var mgrField = typeof(DailyEconomyManager).GetField("_instance", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
@@ -663,7 +663,7 @@ namespace FarmBeware.EditorTests
         }
 
         // Test 91: Verify complete accessibility of all 3 weapons and 5 armor pieces via both Merchant Purchasing and Workbench Crafting
-        private static bool Test_WeaponsAndArmor_CompleteAccessibility_CraftingAndPurchasing_Audit()
+        internal static bool Test_WeaponsAndArmor_CompleteAccessibility_CraftingAndPurchasing_Audit()
         {
             var cleanupList = new List<Object>();
             var db = Resources.Load<ItemDatabase>("Database/ItemDatabase");
@@ -853,7 +853,7 @@ namespace FarmBeware.EditorTests
         }
 
         // Test 96: Verify Taro Corn Stew recipe opportunity cost does not exceed 4,000 G
-        private static bool Test_KitchenRecipe_TaroCornStew_CostCalibration_Audit()
+        internal static bool Test_KitchenRecipe_TaroCornStew_CostCalibration_Audit()
         {
             var recipe = AssetDatabase.LoadAssetAtPath<KitchenRecipe>("Assets/Data/Recipes/Cooking/Recipe_TaroCornStew.asset");
             if (recipe == null)
@@ -940,7 +940,7 @@ namespace FarmBeware.EditorTests
         }
 
         // Test 112: Board Orders (HayDay-style outside perimeter fence), 1.2x multiplier, GDD clean vs dirty crop value alignment, & atomic delivery
-        private static bool Test_BoardOrders_GDDDirtyCleanPricing_Multiplier12x_Delivery_And_ScenePlacement_Audit()
+        internal static bool Test_BoardOrders_GDDDirtyCleanPricing_Multiplier12x_Delivery_And_ScenePlacement_Audit()
         {
             var cleanupList = new List<Object>();
             var econField = typeof(DailyEconomyManager).GetField("_instance", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);

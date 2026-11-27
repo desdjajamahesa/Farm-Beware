@@ -1,0 +1,49 @@
+{
+    "name": "FarmBeware.Editor.Tests",
+    "rootNamespace": "FarmBeware.EditorTests",
+    "references": [
+        "UnityEngine.TestRunner",
+        "UnityEditor.TestRunner",
+        "Unity.InputSystem",
+        "Unity.TextMeshPro",
+        "Unity.RenderPipelines.Core.Runtime",
+        "Unity.RenderPipelines.Universal.Runtime",
+        "Unity.AI.Navigation",
+        "Unity.Timeline",
+        "FarmBeware.Core.Runtime",
+        "FarmBeware.Data.Runtime",
+        "FarmBeware.Rendering.Runtime",
+        "FarmBeware.Gameplay.Runtime",
+        "FarmBeware.Features.Camera",
+        "FarmBeware.Features.Combat",
+        "FarmBeware.Features.Common",
+        "FarmBeware.Features.Economy",
+        "FarmBeware.Features.Environment",
+        "FarmBeware.Features.Farming",
+        "FarmBeware.Features.Interaction",
+        "FarmBeware.Features.Inventory",
+        "FarmBeware.Features.Kitchen",
+        "FarmBeware.Features.MainMenu",
+        "FarmBeware.Features.Quest",
+        "FarmBeware.Features.SaveSystem",
+        "FarmBeware.Features.Storyline",
+        "FarmBeware.Features.Time",
+        "FarmBeware.Features.Trophy",
+        "FarmBeware.Features.Vehicles",
+        "FarmBeware.Features.Wardrobe",
+        "FarmBeware.Features.Workbench"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "nunit.framework.dll"
+    ],
+    "autoReferenced": false,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

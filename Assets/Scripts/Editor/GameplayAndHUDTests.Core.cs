@@ -37,7 +37,7 @@ namespace FarmBeware.EditorTests
     public static partial class GameplayAndHUDTests
     {
         // Test 1: Day/Night Phase progression & continuous simulation past 16:00 (Dusk)
-        private static bool Test_DayNight_PhaseProgression_DuskUntilNight()
+        internal static bool Test_DayNight_PhaseProgression_DuskUntilNight()
         {
             var go = new GameObject("Test_TimeManager");
             try
@@ -93,7 +93,7 @@ namespace FarmBeware.EditorTests
         // Test 2: Bed sleep logic - allows sleep during Dusk/Day and blocks only during Night with active monsters
 
 
-        private static bool Test_BedInteractable_Logic_AllowsDuskAndBlocksNightOnly()
+        internal static bool Test_BedInteractable_Logic_AllowsDuskAndBlocksNightOnly()
         {
             var mockTime = new MockTimeService();
             ServiceLocator.Register<ITimeService>(mockTime);
@@ -145,7 +145,7 @@ namespace FarmBeware.EditorTests
         }
 
         // Test 3: Water Bottle 4 charges (100L total, 25L per sip)
-        private static bool Test_PlayerWaterBottle_4Charges_FullToEmpty()
+        internal static bool Test_PlayerWaterBottle_4Charges_FullToEmpty()
         {
             var go = new GameObject("Test_WaterBottle");
             try
@@ -203,7 +203,7 @@ namespace FarmBeware.EditorTests
         }
 
         // Test 4: Water Bottle Capacity preservation (100L clamped properly on Save/Load)
-        private static bool Test_WaterBottle_CapacityPreservation_100L()
+        internal static bool Test_WaterBottle_CapacityPreservation_100L()
         {
             float savedBottleAmount = 100f;
             float loadedAmount = savedBottleAmount >= 0f ? Mathf.Clamp(savedBottleAmount, 0f, 100f) : 100f;
@@ -219,7 +219,7 @@ namespace FarmBeware.EditorTests
         }
 
         // Test 5: Kitchen station vertical progress bar geometry
-        private static bool Test_KitchenSinkProgressOverlay_VerticalGeometry()
+        internal static bool Test_KitchenSinkProgressOverlay_VerticalGeometry()
         {
             var stationGO = new GameObject("Test_Sink");
             try
@@ -271,7 +271,7 @@ namespace FarmBeware.EditorTests
         }
 
         // Test 6: Stove UI cooking progress bar permanently hidden
-        private static bool Test_StoveUI_CookingProgressBarPermanentlyHidden()
+        internal static bool Test_StoveUI_CookingProgressBarPermanentlyHidden()
         {
             var go = new GameObject("Test_StoveUI");
             try
@@ -312,7 +312,7 @@ namespace FarmBeware.EditorTests
         }
 
         // Test 7: CombatPhaseTrackerUI procedural day badge and clock layout
-        private static bool Test_CombatPhaseTrackerUI_ProceduralDayAndClock()
+        internal static bool Test_CombatPhaseTrackerUI_ProceduralDayAndClock()
         {
             var go = new GameObject("Test_HUD");
             try
@@ -391,7 +391,7 @@ namespace FarmBeware.EditorTests
         }
 
         // Test 10: Hotbar mouse click slot selection
-        private static bool Test_Hotbar_MouseClick_Selection()
+        internal static bool Test_Hotbar_MouseClick_Selection()
         {
             var go = new GameObject("Test_HotbarClick");
             try
@@ -429,7 +429,7 @@ namespace FarmBeware.EditorTests
         }
 
         // Test 14: Player inventory 16-slot auto-allocation
-        private static bool Test_PlayerInventory_16Slots_Allocation()
+        internal static bool Test_PlayerInventory_16Slots_Allocation()
         {
             var playerGO = new GameObject("Player");
             playerGO.tag = "Player";
@@ -467,7 +467,7 @@ namespace FarmBeware.EditorTests
         }
 
         // Test 15: Food buff duration and tick acceleration under x8 fast forward mode
-        private static bool Test_PlayerBuff_FastForward8x_DurationAndTickAcceleration()
+        internal static bool Test_PlayerBuff_FastForward8x_DurationAndTickAcceleration()
         {
             var go = new GameObject("Test_Player_BuffSpeed");
             try
@@ -535,7 +535,7 @@ namespace FarmBeware.EditorTests
         }
 
         // Test 20: Food buffs clear on sleep / day transition so morning starts completely fresh
-        private static bool Test_PlayerBuff_ClearsOnSleepAndDayTransition()
+        internal static bool Test_PlayerBuff_ClearsOnSleepAndDayTransition()
         {
             var go = new GameObject("Test_Player_BuffSleepPurge");
             try
@@ -615,7 +615,7 @@ namespace FarmBeware.EditorTests
         }
 
         // Test 21: DayTransitionUI Day and Night animated banner configuration, text styling, and cancel integrity
-        private static bool Test_DayTransitionUI_DayAndNightBannerAnimation()
+        internal static bool Test_DayTransitionUI_DayAndNightBannerAnimation()
         {
             var go = new GameObject("Test_DayTransitionUI_Obj");
             try
@@ -681,7 +681,7 @@ namespace FarmBeware.EditorTests
         }
 
         // Test 22: Multi-source input lock hierarchy, DayTransitionUI raycast absorption, and leak prevention
-        private static bool Test_MultiSourceInputLock_AndTransitionLeakPrevention()
+        internal static bool Test_MultiSourceInputLock_AndTransitionLeakPrevention()
         {
             var playerGo = new GameObject("Test_Player_LockAudit");
             var transitionGo = new GameObject("Test_DayTransition_LockAudit");
@@ -799,7 +799,7 @@ namespace FarmBeware.EditorTests
         }
 
         // Test 30: ModalStackManager centralized input gating into PlayerControl.isInputLocked
-        private static bool Test_ModalStack_CentralizedInputLock_PlayerControl_Audit()
+        internal static bool Test_ModalStack_CentralizedInputLock_PlayerControl_Audit()
         {
             var cleanupList = new List<Object>();
             try
@@ -871,7 +871,7 @@ namespace FarmBeware.EditorTests
             }
         }
 
-        private static bool Test_VehicleDrivingSystem_DynamicsAndLifecycleAudit()
+        internal static bool Test_VehicleDrivingSystem_DynamicsAndLifecycleAudit()
         {
             var cleanupList = new System.Collections.Generic.List<GameObject>();
             try
@@ -1059,7 +1059,7 @@ namespace FarmBeware.EditorTests
             }
         }
 
-        private static bool Test_VehicleEntry_DualChannel_InteractionTrigger_Audit()
+        internal static bool Test_VehicleEntry_DualChannel_InteractionTrigger_Audit()
         {
             var cleanupList = new System.Collections.Generic.List<GameObject>();
             try
@@ -1526,7 +1526,7 @@ namespace FarmBeware.EditorTests
         }
 
         // Test 48: Day 0 Empty Inventory & Day 1 Starter Kit Distribution Audit
-        private static bool Test_Day0_EmptyInventory_And_Day1_StarterKit_Award_Audit()
+        internal static bool Test_Day0_EmptyInventory_And_Day1_StarterKit_Award_Audit()
         {
             var cleanupList = new System.Collections.Generic.List<GameObject>();
             var prevTimeInstance = FeaturesTime.DayNightTimeManager.Instance;
@@ -1648,7 +1648,7 @@ namespace FarmBeware.EditorTests
         }
 
         // Test 50: Day 0 Dismount No Hoe Held & Empty Inventory Invariant
-        private static bool Test_Day0_NoHoeHeldAndEmptyInventory_Audit()
+        internal static bool Test_Day0_NoHoeHeldAndEmptyInventory_Audit()
         {
             var cleanupList = new List<GameObject>();
             var prevTimeInstance = FeaturesTime.DayNightTimeManager.Instance;
@@ -1706,7 +1706,7 @@ namespace FarmBeware.EditorTests
         }
 
         // Test 54: Fridge Permissive Crop & Food Storage (Sweet Potato, Taro, Corn) Audit
-        private static bool Test_Fridge_AcceptsSweetPotatoAndAllCrops_Audit()
+        internal static bool Test_Fridge_AcceptsSweetPotatoAndAllCrops_Audit()
         {
             var cleanupList = new List<GameObject>();
             try
@@ -1765,7 +1765,7 @@ namespace FarmBeware.EditorTests
         }
 
         // Test 55: InventorySlotUI Pointer Click InputLock Bypass & Transfer Dispatch Audit
-        private static bool Test_InventorySlotUI_InputLockBypassAndSingleClickTransfer_Audit()
+        internal static bool Test_InventorySlotUI_InputLockBypassAndSingleClickTransfer_Audit()
         {
             var cleanupList = new List<GameObject>();
             try
@@ -1810,7 +1810,7 @@ namespace FarmBeware.EditorTests
         }
 
         // Test 56: DayTransitionUI Procedural Vignette Sprite Generation Audit
-        private static bool Test_DayTransitionUI_ProceduralVignetteSprite_Audit()
+        internal static bool Test_DayTransitionUI_ProceduralVignetteSprite_Audit()
         {
             var cleanupList = new List<GameObject>();
             try
@@ -1871,7 +1871,7 @@ namespace FarmBeware.EditorTests
         }
 
         // Test 58: Day 0 to Day 1 Bed Sleep Transition, Inventory Zero-State Wipe, Starter Kit Population, & Slot 0 Selection Audit
-        private static bool Test_Day0_To_Day1_SleepFadeAndStarterKitTransition_Audit()
+        internal static bool Test_Day0_To_Day1_SleepFadeAndStarterKitTransition_Audit()
         {
             var cleanupList = new List<GameObject>();
             var prevTime = DayNightTimeManager.Instance;
@@ -1984,7 +1984,7 @@ namespace FarmBeware.EditorTests
         }
 
         // Test 59: Bed daytime sleep confirmation modal, cursor locking, and StartNightPhase transition
-        private static bool Test_DaytimeBedSleep_ConfirmationAndTransition_Audit()
+        internal static bool Test_DaytimeBedSleep_ConfirmationAndTransition_Audit()
         {
             var cleanupList = new List<GameObject>();
             var prevCursorVisible = Cursor.visible;
@@ -2135,7 +2135,7 @@ namespace FarmBeware.EditorTests
         }
 
         // Test 61: Inventory Tab toggle open and close, zero frame-bounce, and LastFrameUIPanelClosed synchronization
-        private static bool Test_Inventory_TabToggle_OpenAndClose_Audit()
+        internal static bool Test_Inventory_TabToggle_OpenAndClose_Audit()
         {
             var cleanupList = new List<GameObject>();
             var prevCursorVisible = Cursor.visible;
@@ -2210,7 +2210,7 @@ namespace FarmBeware.EditorTests
         }
 
         // Test 67: Player V2 Character Rig Avatar, Native Combat Animations, Loop Settings, and Controller State Audit
-        private static bool Test_PlayerV2_CharacterAsset_NativeAnimations_And_Avatar_Audit()
+        internal static bool Test_PlayerV2_CharacterAsset_NativeAnimations_And_Avatar_Audit()
         {
             try
             {
@@ -2317,7 +2317,7 @@ namespace FarmBeware.EditorTests
         }
 
         // Test 70: Vehicle Driving HUD Cutscene Suppression, Cross-Cutscene State Integrity, and Kinematic Enemy Safety Audit
-        private static bool Test_VehicleDrivingHUD_Suppression_And_KinematicEnemySafety_Audit()
+        internal static bool Test_VehicleDrivingHUD_Suppression_And_KinematicEnemySafety_Audit()
         {
             var cleanupList = new System.Collections.Generic.List<GameObject>();
             var oldCutscene = FarmBeware.Core.Runtime.ServiceLocator.Resolve<FarmBeware.Core.Runtime.ICutsceneService>();
@@ -2458,7 +2458,7 @@ namespace FarmBeware.EditorTests
         }
 
         // Test 92: Vehicle Interaction Range Calibration & Input Lock During Cutscene Audit
-        private static bool Test_Vehicle_InteractionRangeTuned_And_InputBlockedDuringCutscene_Audit()
+        internal static bool Test_Vehicle_InteractionRangeTuned_And_InputBlockedDuringCutscene_Audit()
         {
             var cleanupList = new System.Collections.Generic.List<GameObject>();
             ServiceLocator.TryResolve<IPlayerContext>(out var prevPlayer);
@@ -2573,7 +2573,7 @@ namespace FarmBeware.EditorTests
         }
 
         // Test 93: Verify Day 1 Starter Kit does NOT contain endgame combat armor or weapons (Hoe, Waterer, Bottle, 3 seeds only)
-        private static bool Test_StarterKit_DoesNotContainCombatArmor_Audit()
+        internal static bool Test_StarterKit_DoesNotContainCombatArmor_Audit()
         {
             var testPlayer = new GameObject("Test93_Player");
             var testChest = new GameObject("Test93_Chest");
@@ -2628,7 +2628,7 @@ namespace FarmBeware.EditorTests
         }
 
         // Test 97: Verify Water Bottle shop buyPrice is calibrated to 2,000 G
-        private static bool Test_WaterBottle_ShopRepurchasePrice_Audit()
+        internal static bool Test_WaterBottle_ShopRepurchasePrice_Audit()
         {
             var bottle = AssetDatabase.LoadAssetAtPath<ItemData>("Assets/Data/Items/Food/Food_BottleOfWater.asset");
             if (bottle == null || bottle.buyPrice != 2000)
@@ -2819,7 +2819,7 @@ namespace FarmBeware.EditorTests
         }
 
         // Test 106: MapProjectionMath Zero-GC coordinate normalization & Style C bounds
-        private static bool Test_WorldMap_ProjectionMath_ZeroGC_And_StyleCBoundaryCalculations()
+        internal static bool Test_WorldMap_ProjectionMath_ZeroGC_And_StyleCBoundaryCalculations()
         {
             try
             {
@@ -2894,7 +2894,7 @@ namespace FarmBeware.EditorTests
         }
 
         // Test 107: WorldMapUI ModalStack integration, player input lock gating, and marker tracking
-        private static bool Test_WorldMap_ModalStack_And_PlayerTracking_Audit()
+        internal static bool Test_WorldMap_ModalStack_And_PlayerTracking_Audit()
         {
             GameObject canvasGo = null;
             GameObject mapGo = null;
@@ -3080,7 +3080,7 @@ namespace FarmBeware.EditorTests
         }
 
         // Test 110: Explicit State Machines, Scoped Pause Lock Registry, RefillStationStateMachine, Sink Full-Inventory Protection, and Grapple Interrupt Hygiene
-        private static bool Test_ExplicitStateMachines_PauseLock_RefillFSM_And_ActionHygiene_Audit()
+        internal static bool Test_ExplicitStateMachines_PauseLock_RefillFSM_And_ActionHygiene_Audit()
         {
             GameObject playerGo = null;
             GameObject sinkGo = null;
@@ -3314,7 +3314,7 @@ namespace FarmBeware.EditorTests
         }
 
         // Test 111: System Architecture Upgrade Verification (Asset Deduplication, Shared Procedural Cache, Catalog Unification, Solar Parity)
-        private static bool Test_SystemArchitecture_AssetDeduplication_SharedProceduralCache_And_CatalogUnification_Audit()
+        internal static bool Test_SystemArchitecture_AssetDeduplication_SharedProceduralCache_And_CatalogUnification_Audit()
         {
             // 1. Deleted duplicate FBX assets must be absent while active scene-referenced assets remain intact
             if (AssetDatabase.LoadMainAssetAtPath("Assets/Resources/bedroom/bed.fbx") != null ||
@@ -3432,7 +3432,7 @@ namespace FarmBeware.EditorTests
         }
 
         // Test 117: Core Contracts (Zero-SendMessage), New Input System Migration (Zero Empty Catch), & 4-Module ASMDEF Completion
-        private static bool Test_ArchitectureHardening_ZeroSendMessage_ZeroEmptyCatch_And_Contracts_Audit()
+        internal static bool Test_ArchitectureHardening_ZeroSendMessage_ZeroEmptyCatch_And_Contracts_Audit()
         {
             var cleanup = new List<Object>();
             try

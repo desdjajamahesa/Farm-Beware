@@ -35,6 +35,28 @@ namespace FarmBeware.EditorTests
 {
     public static partial class GameplayAndHUDTests
     {
+        internal static void PrepareSingleTestHarness()
+        {
+            ResetTestAuditHarness();
+            CanvasHelper.ClearCache();
+        }
+
+        internal static void CleanupTransientFloatingText()
+        {
+            var fctManager = Object.FindFirstObjectByType<PlayerUI.FloatingCombatTextManager>();
+            if (fctManager != null)
+            {
+                var rt = fctManager.GetComponent<RectTransform>();
+                if (rt != null)
+                {
+                    while (rt.childCount > 10)
+                    {
+                        Object.DestroyImmediate(rt.GetChild(rt.childCount - 1).gameObject);
+                    }
+                }
+            }
+        }
+
         private static void ResetTestAuditHarness()
         {
             if (ModalStackManager.HasInstance && ModalStackManager.Instance != null)
@@ -229,18 +251,7 @@ namespace FarmBeware.EditorTests
             Debug.Log("[AUDIT-SUITE] ========================================================");
 
             // Post-run scene cleanup: trim transient floating combat texts spawned during testing
-            var fctManager = Object.FindFirstObjectByType<PlayerUI.FloatingCombatTextManager>();
-            if (fctManager != null)
-            {
-                var rt = fctManager.GetComponent<RectTransform>();
-                if (rt != null)
-                {
-                    while (rt.childCount > 10)
-                    {
-                        Object.DestroyImmediate(rt.GetChild(rt.childCount - 1).gameObject);
-                    }
-                }
-            }
+            CleanupTransientFloatingText();
         }
 
         #region Shared Test Mocks
@@ -322,7 +333,7 @@ namespace FarmBeware.EditorTests
         }
 
         // Test 116: WoodenBoard_TwoColumn sprite, normalized layout regions, and Tier 1 + Tier 2 panel theme contracts
-        private static bool Test_WoodenBoardPanels_TwoColumnThemeAndHierarchy_Audit()
+        internal static bool Test_WoodenBoardPanels_TwoColumnThemeAndHierarchy_Audit()
         {
             var cleanup = new List<GameObject>();
             var renamedOriginals = new List<(Transform tr, string origName)>();

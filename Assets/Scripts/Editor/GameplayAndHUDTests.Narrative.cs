@@ -37,7 +37,7 @@ namespace FarmBeware.EditorTests
     public static partial class GameplayAndHUDTests
     {
         // Test 28: Storyline Subsystem pure logic state machine, beat conditions, journal catalog, and save/load persistence
-        private static bool Test_Storyline_Subsystem_Engine_Progression_And_Persistence()
+        internal static bool Test_Storyline_Subsystem_Engine_Progression_And_Persistence()
         {
             var cleanupList = new List<Object>();
             try
@@ -275,7 +275,7 @@ namespace FarmBeware.EditorTests
         }
 
         // Test 31: Storyline Rule Specificity Determinism Audit
-        private static bool Test_Storyline_RuleSpecificity_Determinism_Audit()
+        internal static bool Test_Storyline_RuleSpecificity_Determinism_Audit()
         {
             try
             {
@@ -334,7 +334,7 @@ namespace FarmBeware.EditorTests
         }
 
         // Test 32: Storyline Zero-GC Allocation Invariant Audit
-        private static bool Test_Storyline_ZeroGC_Allocation_Invariant_Audit()
+        internal static bool Test_Storyline_ZeroGC_Allocation_Invariant_Audit()
         {
             try
             {
@@ -382,7 +382,7 @@ namespace FarmBeware.EditorTests
         }
 
         // Test 33: Modal Safety Gate during Night Brawl Audit
-        private static bool Test_Storyline_ModalSafetyGate_NightBrawl_Audit()
+        internal static bool Test_Storyline_ModalSafetyGate_NightBrawl_Audit()
         {
             try
             {
@@ -445,7 +445,7 @@ namespace FarmBeware.EditorTests
         }
 
         // Test 34: Non-Modal Banner Preserves Locomotion Audit
-        private static bool Test_Storyline_NonModalBanner_PreservesLocomotion_Audit()
+        internal static bool Test_Storyline_NonModalBanner_PreservesLocomotion_Audit()
         {
             var cleanupList = new List<Object>();
             try
@@ -501,7 +501,7 @@ namespace FarmBeware.EditorTests
         }
 
         // Test 35: SavePayload Fact & History Persistence Audit
-        private static bool Test_Storyline_SavePayload_Persistence_Audit()
+        internal static bool Test_Storyline_SavePayload_Persistence_Audit()
         {
             try
             {
@@ -565,7 +565,7 @@ namespace FarmBeware.EditorTests
         }
 
         // Test 36: Monte Carlo 5-Day Campaign Reachability Audit
-        private static bool Test_Storyline_MonteCarlo_Reachability_Audit()
+        internal static bool Test_Storyline_MonteCarlo_Reachability_Audit()
         {
             try
             {
@@ -653,7 +653,7 @@ namespace FarmBeware.EditorTests
         }
 
         // Test 37: Opening Timeline Cutscene, Day 0 Gate Arrival, Hold-to-Skip, and Day 1 Sleep Sync Audit
-        private static bool Test_OpeningCutscene_Day0_GateArrival_HoldToSkip_And_Day1Sync_Audit()
+        internal static bool Test_OpeningCutscene_Day0_GateArrival_HoldToSkip_And_Day1Sync_Audit()
         {
             var cleanupList = new List<Object>();
             FarmBeware.Core.Runtime.ServiceLocator.TryResolve<FarmBeware.Core.Runtime.ICameraService>(out var prevCam);
@@ -831,7 +831,7 @@ namespace FarmBeware.EditorTests
             }
         }
 
-        private static bool Test_CutsceneHoldToSkip_InstantTerminationAndCameraSnap_Audit()
+        internal static bool Test_CutsceneHoldToSkip_InstantTerminationAndCameraSnap_Audit()
         {
             var cleanupList = new System.Collections.Generic.List<GameObject>();
             try
@@ -929,7 +929,7 @@ namespace FarmBeware.EditorTests
         }
 
         // Test 41: Storyline Pending Modal Queue Serialization & Restore Audit
-        private static bool Test_Storyline_ModalQueue_SerializationAndRestore_Audit()
+        internal static bool Test_Storyline_ModalQueue_SerializationAndRestore_Audit()
         {
             try
             {
@@ -1002,7 +1002,7 @@ namespace FarmBeware.EditorTests
         }
 
         // Test 42: NarrativeFactBoard Reset and Token Interpolation Audit
-        private static bool Test_Storyline_NarrativeFactBoard_ResetAndTokenInterpolation_Audit()
+        internal static bool Test_Storyline_NarrativeFactBoard_ResetAndTokenInterpolation_Audit()
         {
             try
             {
@@ -1049,7 +1049,7 @@ namespace FarmBeware.EditorTests
         }
 
         // Test 43: Day 5 Victory and Epilogue Decoupled Modal Chain Audit
-        private static bool Test_Storyline_Day5VictoryAndEpilogue_DecoupledModalChain_Audit()
+        internal static bool Test_Storyline_Day5VictoryAndEpilogue_DecoupledModalChain_Audit()
         {
             var cleanupList = new List<Object>();
             try
@@ -1117,7 +1117,7 @@ namespace FarmBeware.EditorTests
         }
 
         // Test 44: Opening Cutscene Guaranteed Gameplay HUD Reactivation Audit
-        private static bool Test_OpeningCutscene_GameplayHUD_GuaranteedReactivation_Audit()
+        internal static bool Test_OpeningCutscene_GameplayHUD_GuaranteedReactivation_Audit()
         {
             var cleanupList = new List<Object>();
             try
@@ -1188,7 +1188,7 @@ namespace FarmBeware.EditorTests
         }
 
         // Test 47: Opening Cutscene AAA Vehicle Arrival, Engine Cutoff, Dismount & Epilogue Script Audit
-        private static bool Test_OpeningCutscene_VehicleArrival_And_Dismount_Audit()
+        internal static bool Test_OpeningCutscene_VehicleArrival_And_Dismount_Audit()
         {
             var cleanupList = new System.Collections.Generic.List<GameObject>();
             FarmBeware.Core.Runtime.ServiceLocator.TryResolve<FarmBeware.Core.Runtime.IPlayerContext>(out var prevPlayer);
@@ -1358,7 +1358,7 @@ namespace FarmBeware.EditorTests
         }
 
         // Test 49: StupidaZZle Intro Story Timeline Tracks, Zero-Jitter Seating, and Story Card Hierarchy Audit
-        private static bool Test_IntroStoryTimeline_And_ZeroJitterSeating_Audit()
+        internal static bool Test_IntroStoryTimeline_And_ZeroJitterSeating_Audit()
         {
             try
             {
@@ -1471,7 +1471,7 @@ namespace FarmBeware.EditorTests
         }
 
         // Test 51: StorylineUI Hierarchy Resolution, Sorting Order, and Anti-Overlap Geometry
-        private static bool Test_StorylineUI_DialogueSpeakerAndBodyResolution_Audit()
+        internal static bool Test_StorylineUI_DialogueSpeakerAndBodyResolution_Audit()
         {
             var cleanupList = new List<GameObject>();
             try
@@ -1527,7 +1527,7 @@ namespace FarmBeware.EditorTests
         }
 
         // Test 57: JournalUI Docs Panel Zero-HUD-Clutter & [J] Keyboard Toggle Modal Contract Audit
-        private static bool Test_JournalUI_DocsPanelPersistentButtonAndEntries_Audit()
+        internal static bool Test_JournalUI_DocsPanelPersistentButtonAndEntries_Audit()
         {
             var cleanupList = new List<GameObject>();
             try
@@ -1611,7 +1611,7 @@ namespace FarmBeware.EditorTests
         }
 
         // Test 62: Side Quest 'First Steps' progression & procedural HUD attachment verification
-        private static bool Test_SideQuest_FirstSteps_Progression_GatherAndPlant()
+        internal static bool Test_SideQuest_FirstSteps_Progression_GatherAndPlant()
         {
             // 1. Pure POCO logic validation
             var model = new QuestProgressModel();
@@ -1779,7 +1779,7 @@ namespace FarmBeware.EditorTests
         }
 
         // Test 64: Cutscene typography overhaul and Day 1 pipe discovery trigger realignment (FirstTill vs FirstPlant)
-        private static bool Test_CutsceneTypography_And_Day1PipeDiscoveryTrigger_Audit()
+        internal static bool Test_CutsceneTypography_And_Day1PipeDiscoveryTrigger_Audit()
         {
             var canvasGo = new GameObject("Test_Canvas_64", typeof(Canvas));
             var cutsceneGo = new GameObject("Test_CutsceneLetterboxUI");
@@ -2080,7 +2080,7 @@ namespace FarmBeware.EditorTests
         }
 
         // Test 71: Day 1 Day-to-Night Transition, Night 1 Cutscene, and Storyline Deconfliction Audit
-        private static bool Test_Day1_DayToNight_CutsceneAndStorylineDeconfliction_Audit()
+        internal static bool Test_Day1_DayToNight_CutsceneAndStorylineDeconfliction_Audit()
         {
             var cleanupList = new List<GameObject>();
             var origTimeService = ServiceLocator.Resolve<ITimeService>();
@@ -2522,7 +2522,7 @@ namespace FarmBeware.EditorTests
 
         
         // Test 72: Opening Cutscene Dialogue Suppression, Vehicle Driving HUD Suppression, and Night 1 Camera Clearance Audit
-        private static bool Test_OpeningCutscene_DialogueSuppression_And_Night1CamClearance_Audit()
+        internal static bool Test_OpeningCutscene_DialogueSuppression_And_Night1CamClearance_Audit()
         {
             var cleanupList = new List<GameObject>();
             ServiceLocator.TryResolve<ICutsceneService>(out var origCutscene);
@@ -2666,7 +2666,7 @@ namespace FarmBeware.EditorTests
             }
         }
 
-        private static bool Test_Day1_StorageChestStarterKit_And_SideQuestRetrieve_Audit()
+        internal static bool Test_Day1_StorageChestStarterKit_And_SideQuestRetrieve_Audit()
         {
             var cleanupList = new List<GameObject>();
             var prevTime = FeaturesTime.DayNightTimeManager.Instance;
@@ -2802,7 +2802,7 @@ namespace FarmBeware.EditorTests
         }
 
         // Test 71: Home Cooking Side Quest progression (Enter Kitchen -> Retrieve Taro & Coconut -> Cook at Stove -> Double-click to Consume) Audit
-        private static bool Test_CookingQuest_Progression_And_Double_Click_Audit()
+        internal static bool Test_CookingQuest_Progression_And_Double_Click_Audit()
         {
             var cleanupList = new List<GameObject>();
             try
@@ -2979,7 +2979,7 @@ namespace FarmBeware.EditorTests
         }
 
         // Test 105: Playtest Audit 11-Bug Aggressive Regression Suite
-        private static bool Test_PlaytestAudit_11Bugs_RegressionSuite()
+        internal static bool Test_PlaytestAudit_11Bugs_RegressionSuite()
         {
             GameObject testRoot = new GameObject("Test_PlaytestAudit_11Bugs_Root");
             try
@@ -3755,7 +3755,7 @@ namespace FarmBeware.EditorTests
         }
 
         // Test 114: Comprehensive QA & Testing HUB Regression Audit (BUG-009..BUG-024, TE-51, TE-141, TC-76, TC-80, Door, Dawn, Well)
-        private static bool Test_QAHub_ComprehensiveBugFixes_Audit()
+        internal static bool Test_QAHub_ComprehensiveBugFixes_Audit()
         {
             var cleanup = new List<Object>();
             var origTimeSvc = ServiceLocator.Resolve<ITimeService>();

@@ -37,7 +37,7 @@ namespace FarmBeware.EditorTests
     public static partial class GameplayAndHUDTests
     {
         // Test 11: Attack trail night-only emission gating
-        private static bool Test_AttackTrail_NightOnly()
+        internal static bool Test_AttackTrail_NightOnly()
         {
             var weaponGO = new GameObject("Test_Weapon");
             if (TimeManager.Instance != null)
@@ -85,7 +85,7 @@ namespace FarmBeware.EditorTests
         }
 
         // Test 16: Monster tactical evaluator encirclement ring, tangential kiting, and ambient wander
-        private static bool Test_MonsterTacticalEvaluator_EncirclementAndKiting()
+        internal static bool Test_MonsterTacticalEvaluator_EncirclementAndKiting()
         {
             var evaluator = new MonsterTacticalEvaluator(orbitMinRadius: 3.0f, orbitMaxRadius: 5.0f, kiteDistanceThreshold: 4.0f);
 
@@ -191,7 +191,7 @@ namespace FarmBeware.EditorTests
         }
 
         // Test 17: Attack token dispatcher anticipatory acquisition, capacity capping, priority eviction, and orbit-to-charge transition
-        private static bool Test_AttackTokenDispatcher_AnticipatoryAcquisitionAndEviction()
+        internal static bool Test_AttackTokenDispatcher_AnticipatoryAcquisitionAndEviction()
         {
             var dispatcher = new AttackTokenDispatcher(maxMeleeTokens: 3, maxRangedTokens: 2);
             float time = 100.0f;
@@ -284,7 +284,7 @@ namespace FarmBeware.EditorTests
         }
 
         // Test 18: Full 360-degree compound perimeter fence obstruction, gate clearance, and multi-directional routing
-        private static bool Test_NavMesh_ObstaclePathfinding_RoutesAroundFences()
+        internal static bool Test_NavMesh_ObstaclePathfinding_RoutesAroundFences()
         {
             // 1. Raycast across Fence_North_WestWing: must be blocked!
             Vector3 outsideNW = new Vector3(9.6f, 0.08f, 52.0f);
@@ -397,7 +397,7 @@ namespace FarmBeware.EditorTests
         }
 
         // Test 19: Build bugfixes: Telegraph decal Resources bundling, House floor sub-surface positioning, and door safety
-        private static bool Test_BuildFixes_TelegraphDecal_FloorCollider_AndDoorSafety()
+        internal static bool Test_BuildFixes_TelegraphDecal_FloorCollider_AndDoorSafety()
         {
             // 1. Verify CombatTelegraph material loads from Resources without null or missing shader
             var telegraphMat = Resources.Load<Material>("Materials/Combat/Mat_CombatTelegraph");
@@ -451,7 +451,7 @@ namespace FarmBeware.EditorTests
         }
 
         // Test 23: Enemy & Boss Health Bar Canvas Resolution, Zero-Alpha Misparenting Auto-Reparenting, and Anti-Clutter Visibility
-        private static bool Test_EnemyAndBossHealthBar_CanvasResolutionAndVisibilityAudit()
+        internal static bool Test_EnemyAndBossHealthBar_CanvasResolutionAndVisibilityAudit()
         {
             var cleanupList = new System.Collections.Generic.List<GameObject>();
             try
@@ -604,7 +604,7 @@ namespace FarmBeware.EditorTests
         }
 
         // Test 24: Night Brawl wave spawn leakage prevention, minion quota decoupling, and boss spawn order audit
-        private static bool Test_NightBrawl_WaveSpawnLeakPrevention_MinionDecoupling_AndBossOrderAudit()
+        internal static bool Test_NightBrawl_WaveSpawnLeakPrevention_MinionDecoupling_AndBossOrderAudit()
         {
             var cleanupList = new System.Collections.Generic.List<GameObject>();
             try
@@ -760,7 +760,7 @@ namespace FarmBeware.EditorTests
         }
 
         // Test 26: Monster attack consistency, distance-priority token allocation, TheRanger attack routing & ranged token release, and basic-vs-skill cooldown decoupling
-        private static bool Test_MonsterAttackConsistency_DistanceTokenPriority_TheRangerAndCooldownDecouplingAudit()
+        internal static bool Test_MonsterAttackConsistency_DistanceTokenPriority_TheRangerAndCooldownDecouplingAudit()
         {
             var cleanupList = new List<Object>();
             try
@@ -910,7 +910,7 @@ namespace FarmBeware.EditorTests
             }
         }
 
-        private static bool Test_PlantWatererVisualMount_AndMeleeCombatReachabilityAudit()
+        internal static bool Test_PlantWatererVisualMount_AndMeleeCombatReachabilityAudit()
         {
             var cleanupList = new List<Object>();
             try
@@ -1074,7 +1074,7 @@ namespace FarmBeware.EditorTests
         }
 
         // Test 60: HUD_NightBrawlWaveTracker active state and inclusion in SetGameplayHUDState
-        private static bool Test_HUD_NightBrawlWaveTracker_ActiveAndRestored_Audit()
+        internal static bool Test_HUD_NightBrawlWaveTracker_ActiveAndRestored_Audit()
         {
             var cleanupList = new List<GameObject>();
             try
@@ -1154,7 +1154,7 @@ namespace FarmBeware.EditorTests
         }
 
         // Test 63: Melee hit buffer capacity expansion (>=64) and QuestHUD multi-scene lifecycle resilience
-        private static bool Test_MeleeHitBuffer_Expansion_And_QuestHUD_Lifecycle_Audit()
+        internal static bool Test_MeleeHitBuffer_Expansion_And_QuestHUD_Lifecycle_Audit()
         {
             var playerGo = new GameObject("Test_PlayerEquipmentAudit");
             var trackerGo = new GameObject("Test_CombatPhaseTrackerUI");
@@ -1208,7 +1208,7 @@ namespace FarmBeware.EditorTests
         }
 
         // Test 68: Dummy Sword Modular Redesign Anatomy, Shader Integrity, and HandSocket Alignment Audit
-        private static bool Test_DummySword_Redesign_And_HandSocket_Alignment_Audit()
+        internal static bool Test_DummySword_Redesign_And_HandSocket_Alignment_Audit()
         {
             var cleanupList = new List<Object>();
             try
@@ -1322,7 +1322,7 @@ namespace FarmBeware.EditorTests
         }
 
         // Test 69: Attack Animation Pacing, Controller State Speeds, and Hitbox Timing Audit
-        private static bool Test_AttackAnimationPacing_ControllerSpeeds_And_HitboxTiming_Audit()
+        internal static bool Test_AttackAnimationPacing_ControllerSpeeds_And_HitboxTiming_Audit()
         {
             var cleanupList = new List<Object>();
             try
@@ -2073,7 +2073,7 @@ namespace FarmBeware.EditorTests
         }
 
         // Test 94: Verify Boss Core Drop Rate calibrated to 100% (guaranteed 1 core per defeat)
-        private static bool Test_BossCore_DropRate100Percent_Guaranteed_Audit()
+        internal static bool Test_BossCore_DropRate100Percent_Guaranteed_Audit()
         {
             var cyclops = AssetDatabase.LoadAssetAtPath<FeaturesCombat.Data.EnemyData>("Assets/Data/Enemies/EnemyData_CyclopsTuberMaw.asset");
             var colossus = AssetDatabase.LoadAssetAtPath<FeaturesCombat.Data.EnemyData>("Assets/Data/Enemies/EnemyData_TaroColossus.asset");
@@ -2138,7 +2138,7 @@ namespace FarmBeware.EditorTests
         }
 
         // Test 95: Verify Monster Loot Tables contain configured seed drop entries
-        private static bool Test_MonsterLootTables_ContainSeedDrops_Audit()
+        internal static bool Test_MonsterLootTables_ContainSeedDrops_Audit()
         {
             var tuberMaw = AssetDatabase.LoadAssetAtPath<FeaturesCombat.Data.EnemyData>("Assets/Data/Enemies/EnemyData_TuberMaw.asset");
             var taroBrute = AssetDatabase.LoadAssetAtPath<FeaturesCombat.Data.EnemyData>("Assets/Data/Enemies/EnemyData_TaroBrute.asset");
@@ -2185,7 +2185,7 @@ namespace FarmBeware.EditorTests
         }
 
         // Test 98: Verify strict equipment ownership gating (cannot upgrade armor or weapon without owning them)
-        private static bool Test_EquipmentOwnershipGating_BeforeUpgrade_Audit()
+        internal static bool Test_EquipmentOwnershipGating_BeforeUpgrade_Audit()
         {
             var testObj = new GameObject("Test98_Player");
             var prevArmorInst = PlayerArmorUpgradeState.Instance;
@@ -2281,7 +2281,7 @@ namespace FarmBeware.EditorTests
         }
 
         // Test 99: Verify Corn Path Node 1 awards Homestead Slingshot & Sweet Potato Set Bonus 6-piece synergy with 5s ICD
-        private static bool Test_CornSpecialization_Node1_AwardsHomesteadSlingshot_And_SetBonus6Piece_Audit()
+        internal static bool Test_CornSpecialization_Node1_AwardsHomesteadSlingshot_And_SetBonus6Piece_Audit()
         {
             var testObj = new GameObject("Test99_Player");
             var prevArmorInst = PlayerArmorUpgradeState.Instance;
@@ -2599,7 +2599,7 @@ namespace FarmBeware.EditorTests
         }
 
         // Test 115: PlayerModular Combat Overhaul, Per-Step Heavy Timing, End-Frame Hold, Action Cancels & Zero-Warning Guards
-        private static bool Test_PlayerModular_CombatOverhaul_HeavyChain_RecoveryHold_ActionCancels_And_ZeroWarnings_Audit()
+        internal static bool Test_PlayerModular_CombatOverhaul_HeavyChain_RecoveryHold_ActionCancels_And_ZeroWarnings_Audit()
         {
             var cleanup = new List<Object>();
             try
