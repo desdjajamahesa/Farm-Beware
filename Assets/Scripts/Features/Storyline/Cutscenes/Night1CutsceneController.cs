@@ -579,7 +579,15 @@ namespace FeaturesStoryline.Cutscenes
                     enteredCombatStance = true;
                     if (playerAnimator != null)
                     {
-                        playerAnimator.SetBool("HasWeapon", true);
+                        var animParams = playerAnimator.parameters;
+                        for (int pIdx = 0; pIdx < animParams.Length; pIdx++)
+                        {
+                            if (animParams[pIdx].type == AnimatorControllerParameterType.Bool && animParams[pIdx].name == "HasWeapon")
+                            {
+                                playerAnimator.SetBool("HasWeapon", true);
+                                break;
+                            }
+                        }
                         playerAnimator.SetTrigger("Parry");
                     }
                     if (CutsceneLetterboxUI.Instance != null)

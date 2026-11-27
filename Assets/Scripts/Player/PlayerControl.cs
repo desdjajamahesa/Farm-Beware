@@ -15,7 +15,9 @@ public partial class PlayerControl : MonoBehaviour, IPlayerContext
     [Header("Pengaturan Aksi")]
     public float jumpForce = 5f;
     [Tooltip("Durasi penguncian pergerakan saat menanam benih (detik).")]
-    public float plantDuration = 1.56f;
+    public float plantDuration = 2.90f;
+    [Tooltip("Durasi penguncian pergerakan saat menyiram tanaman (detik).")]
+    public float waterDuration = 3.95f;
     private bool isPlanting = false;
     private Coroutine farmActionRoutine = null;
 
@@ -38,7 +40,9 @@ public partial class PlayerControl : MonoBehaviour, IPlayerContext
     private bool isAttacking = false;
     private bool isSkillLeaping = false;
     private bool isLightAttacking = false;
+    private bool isInAttackRecovery = false;
     private bool hasBufferedAttack = false;
+    private bool hasBufferedHeavyAttack = false;
     private float bufferedAttackTime = 0f;
     private Coroutine attackCoroutine = null;
     private Coroutine dodgeCoroutine = null;
@@ -47,6 +51,7 @@ public partial class PlayerControl : MonoBehaviour, IPlayerContext
     public bool IsAttacking => isAttacking;
     public bool IsSkillLeaping => isSkillLeaping;
     public bool IsPlanting => isPlanting;
+    public bool IsInAttackRecovery => isInAttackRecovery;
 
     public PlayerActionState CurrentActionState
     {
@@ -80,11 +85,11 @@ public partial class PlayerControl : MonoBehaviour, IPlayerContext
 
     [Header("Pengaturan Menghindar & Tangkisan (Dodge & Deflect)")]
     [Tooltip("Kecepatan meluncur saat melakukan dodge roll.")]
-    public float dodgeSpeed = 10f;
+    public float dodgeSpeed = 6.0f;
     [Tooltip("Durasi gerakan dodge roll (detik).")]
-    public float dodgeDuration = 0.35f;
+    public float dodgeDuration = 0.85f;
     [Tooltip("Durasi frame kekebalan (i-frames) selama dodge roll (detik).")]
-    public float dodgeIFrameDuration = 0.30f;
+    public float dodgeIFrameDuration = 0.45f;
     [Tooltip("Durasi window tangkisan parry (detik). Standar 0.35s = 350ms agar timing terasa pas dan adil.")]
     public float parryWindow = 0.35f;
     [Tooltip("Konsumsi stamina saat dodge roll.")]
@@ -93,6 +98,7 @@ public partial class PlayerControl : MonoBehaviour, IPlayerContext
     public float parryStaminaCost = 10f;
     private bool isDodging = false;
     private Vector3 dodgeRollDirection = Vector3.forward;
+    private float dodgeElapsed = 0f;
     public bool IsDodging => isDodging;
 
     [Header("Pengaturan Tangga (Step-Up)")]
@@ -127,7 +133,6 @@ public partial class PlayerControl : MonoBehaviour, IPlayerContext
     private const float GroundBufferDuration = 0.12f;
     private float groundedGraceTimer = 0f;
     private bool isGroundedRecently => isGrounded || groundedGraceTimer > 0f;
-    private float attackHoldDuration = 0f;
     private bool isChargingAttack = false;
 
     // Wall slide helpers
@@ -159,6 +164,20 @@ public partial class PlayerControl : MonoBehaviour, IPlayerContext
     {
         if (animator != null && !string.IsNullOrEmpty(triggerName))
             animator.SetTrigger(triggerName);
+    }
+
+    internal static bool HasAnimatorParameter(Animator anim, string paramName, AnimatorControllerParameterType type)
+    {
+        if (anim == null || anim.runtimeAnimatorController == null || string.IsNullOrEmpty(paramName))
+            return false;
+
+        var parameters = anim.parameters;
+        for (int i = 0; i < parameters.Length; i++)
+        {
+            if (parameters[i].type == type && parameters[i].name == paramName)
+                return true;
+        }
+        return false;
     }
     public T GetPlayerComponent<T>() where T : class => GetComponent<T>();
     #endregion
@@ -393,6 +412,10 @@ public partial class PlayerControl : MonoBehaviour, IPlayerContext
             }
             else
             {
+                isInAttackRecovery = false;
+                if (HasAnimatorParameter(animator, "InAttackRecovery", AnimatorControllerParameterType.Bool))
+                    animator.SetBool("InAttackRecovery", false);
+
                 // Kecepatan horizontal fisik aktual agar langkah kaki sinkron (mencegah efek kaki selip)
                 Vector3 horizVel = rb != null ? new Vector3(rb.linearVelocity.x, 0f, rb.linearVelocity.z) : Vector3.zero;
                 float currentSpeed = horizVel.magnitude;
@@ -417,12 +440,15 @@ public partial class PlayerControl : MonoBehaviour, IPlayerContext
                 bool isIdleNow = !isMoving && currentSpeed < 0.25f;
                 animator.SetBool("Idle", isIdleNow);
 
-                // Sinkronisasi status memegang senjata
+                // Sinkronisasi status memegang senjata (opsional, hanya jika parameter ada di Animator Controller)
                 bool hasWeapon = (playerEquipment != null && playerEquipment.IsHoldingWeapon);
-                animator.SetBool("HasWeapon", hasWeapon);
+                if (HasAnimatorParameter(animator, "HasWeapon", AnimatorControllerParameterType.Bool))
+                {
+                    animator.SetBool("HasWeapon", hasWeapon);
+                }
 
                 // Idle fidget: HANYA jika sedang memegang senjata dan diam lebih dari 9 detik
-                if (isIdleNow && hasWeapon)
+                if (isIdleNow && hasWeapon && HasAnimatorParameter(animator, "LookAround", AnimatorControllerParameterType.Trigger))
                 {
                     idleFidgetTimer += Time.fixedDeltaTime;
                     if (idleFidgetTimer > 9.0f)
@@ -488,12 +514,14 @@ public partial class PlayerControl : MonoBehaviour, IPlayerContext
             return;
         }
 
-        // Saat dodge roll aktif, dorong rigidbody ke arah dodgeRollDirection secara konsisten
+        // Saat dodge roll aktif, dorong rigidbody ke arah dodgeRollDirection dengan pelambatan halus di 30% akhir animasi
         if (isDodging)
         {
             if (rb != null)
             {
-                rb.linearVelocity = new Vector3(dodgeRollDirection.x * dodgeSpeed, rb.linearVelocity.y, dodgeRollDirection.z * dodgeSpeed);
+                float progress = dodgeDuration > 0.01f ? Mathf.Clamp01(dodgeElapsed / dodgeDuration) : 1f;
+                float speedScale = progress < 0.70f ? 1f : Mathf.Lerp(1f, 0.25f, (progress - 0.70f) / 0.30f);
+                rb.linearVelocity = new Vector3(dodgeRollDirection.x * dodgeSpeed * speedScale, rb.linearVelocity.y, dodgeRollDirection.z * dodgeSpeed * speedScale);
             }
             return;
         }

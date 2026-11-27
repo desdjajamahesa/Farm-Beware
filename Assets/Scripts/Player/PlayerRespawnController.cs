@@ -127,6 +127,13 @@ public class PlayerRespawnController : MonoBehaviour
             playerControl = GetComponent<PlayerControl>() ?? FindFirstObjectByType<PlayerControl>();
             playerControl?.RemoveInputLock("Respawn");
         }
+
+        var anim = GetComponentInChildren<Animator>();
+        if (PlayerControl.HasAnimatorParameter(anim, "IsDead", AnimatorControllerParameterType.Bool))
+        {
+            anim.updateMode = AnimatorUpdateMode.Normal;
+            anim.SetBool("IsDead", false);
+        }
     }
 
     private void HandlePlayerDied()
@@ -234,6 +241,13 @@ public class PlayerRespawnController : MonoBehaviour
                 playerStats.maxStamina,
                 playerStats.maxHunger,
                 playerStats.maxThirst);
+        }
+
+        var anim = GetComponentInChildren<Animator>();
+        if (PlayerControl.HasAnimatorParameter(anim, "IsDead", AnimatorControllerParameterType.Bool))
+        {
+            anim.updateMode = AnimatorUpdateMode.Normal;
+            anim.SetBool("IsDead", false);
         }
 
         // Bersihkan seluruh food buff aktif agar pemain terbangun di pagi hari tanpa sisa buff

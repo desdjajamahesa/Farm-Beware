@@ -142,7 +142,15 @@ namespace FeaturesWardrobe
                     var anim = player.GetComponentInChildren<Animator>();
                     if (anim != null)
                     {
-                        anim.SetBool("HasWeapon", false);
+                        var animParams = anim.parameters;
+                        for (int pIdx = 0; pIdx < animParams.Length; pIdx++)
+                        {
+                            if (animParams[pIdx].type == AnimatorControllerParameterType.Bool && animParams[pIdx].name == "HasWeapon")
+                            {
+                                anim.SetBool("HasWeapon", false);
+                                break;
+                            }
+                        }
                         anim.SetBool("Idle", true);
                         anim.SetBool("Sprinting", false);
                         anim.SetFloat("Vel", 0f);

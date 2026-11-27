@@ -8,19 +8,19 @@ namespace FeaturesCombat.Core.PureLogic
     {
         private CombatActionID _currentAction = CombatActionID.Idle;
         private float _lastActionTimestamp = -999f;
-        private float _comboResetWindow = 1.5f;
+        private float _comboResetWindow = 1.8f;
 
         public CombatActionID CurrentAction => _currentAction;
         public float LastActionTimestamp => _lastActionTimestamp;
         public float ComboResetWindow
         {
             get => _comboResetWindow;
-            set => _comboResetWindow = value > 0f ? value : 1.5f;
+            set => _comboResetWindow = value > 0f ? value : 1.8f;
         }
 
         public AttackDefinition CurrentDefinition => GetDefinitionForAction(_currentAction);
 
-        public CombatStateEvaluator(float comboResetWindow = 1.5f)
+        public CombatStateEvaluator(float comboResetWindow = 1.8f)
         {
             _comboResetWindow = comboResetWindow;
             _currentAction = CombatActionID.Idle;
@@ -113,9 +113,93 @@ namespace FeaturesCombat.Core.PureLogic
                     break;
 
                 case CombatActionID.Light3:
+                    switch (command)
+                    {
+                        case CombatCommand.LightAttack:
+                            nextAction = CombatActionID.Light1; // 3-Hit cycle: L1 -> L2 -> L3 -> L1
+                            break;
+                        case CombatCommand.HeavyAttack:
+                            nextAction = CombatActionID.HeavyChain4; // L -> L -> L -> H
+                            break;
+                        case CombatCommand.ChargedThrust:
+                            nextAction = CombatActionID.ChargedThrust;
+                            break;
+                        case CombatCommand.FrontKick:
+                            nextAction = CombatActionID.FrontKick;
+                            break;
+                        case CombatCommand.DashSweep:
+                            nextAction = CombatActionID.DashSweep;
+                            break;
+                    }
+                    break;
+
+                case CombatActionID.ChargedThrust:
+                    switch (command)
+                    {
+                        case CombatCommand.HeavyAttack:
+                            nextAction = CombatActionID.HeavyChain2; // H -> H
+                            break;
+                        case CombatCommand.ChargedThrust:
+                            nextAction = CombatActionID.ChargedThrust;
+                            break;
+                        case CombatCommand.LightAttack:
+                            nextAction = CombatActionID.Light1;
+                            break;
+                        case CombatCommand.FrontKick:
+                            nextAction = CombatActionID.FrontKick;
+                            break;
+                        case CombatCommand.DashSweep:
+                            nextAction = CombatActionID.DashSweep;
+                            break;
+                    }
+                    break;
+
+                case CombatActionID.HeavyChain2:
+                    switch (command)
+                    {
+                        case CombatCommand.HeavyAttack:
+                            nextAction = CombatActionID.HeavyChain3; // H -> H -> H
+                            break;
+                        case CombatCommand.ChargedThrust:
+                            nextAction = CombatActionID.ChargedThrust;
+                            break;
+                        case CombatCommand.LightAttack:
+                            nextAction = CombatActionID.Light1;
+                            break;
+                        case CombatCommand.FrontKick:
+                            nextAction = CombatActionID.FrontKick;
+                            break;
+                        case CombatCommand.DashSweep:
+                            nextAction = CombatActionID.DashSweep;
+                            break;
+                    }
+                    break;
+
+                case CombatActionID.HeavyChain3:
+                    switch (command)
+                    {
+                        case CombatCommand.HeavyAttack:
+                            nextAction = CombatActionID.HeavyChain4; // H -> H -> H -> H
+                            break;
+                        case CombatCommand.ChargedThrust:
+                            nextAction = CombatActionID.ChargedThrust;
+                            break;
+                        case CombatCommand.LightAttack:
+                            nextAction = CombatActionID.Light1;
+                            break;
+                        case CombatCommand.FrontKick:
+                            nextAction = CombatActionID.FrontKick;
+                            break;
+                        case CombatCommand.DashSweep:
+                            nextAction = CombatActionID.DashSweep;
+                            break;
+                    }
+                    break;
+
+                case CombatActionID.Light4:
                 case CombatActionID.HeavyFinisher1:
                 case CombatActionID.HeavyFinisher2:
-                case CombatActionID.ChargedThrust:
+                case CombatActionID.HeavyChain4:
                 case CombatActionID.DashSweep:
                 case CombatActionID.FrontKick:
                     // Branch into a fresh sequence once early cancel threshold is satisfied
@@ -192,6 +276,10 @@ namespace FeaturesCombat.Core.PureLogic
                 case CombatActionID.ChargedThrust: return AttackDefinition.DefaultChargedThrust;
                 case CombatActionID.DashSweep: return AttackDefinition.DefaultDashSweep;
                 case CombatActionID.FrontKick: return AttackDefinition.DefaultFrontKick;
+                case CombatActionID.Light4: return AttackDefinition.DefaultLight4;
+                case CombatActionID.HeavyChain2: return AttackDefinition.DefaultHeavyChain2;
+                case CombatActionID.HeavyChain3: return AttackDefinition.DefaultHeavyChain3;
+                case CombatActionID.HeavyChain4: return AttackDefinition.DefaultHeavyChain4;
                 default: return AttackDefinition.DefaultIdle;
             }
         }

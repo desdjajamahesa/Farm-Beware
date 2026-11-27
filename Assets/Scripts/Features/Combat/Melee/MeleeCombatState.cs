@@ -16,6 +16,10 @@ namespace FeaturesCombat.Melee
         DashAttack,
         HeavyFinisher1, // L -> H
         HeavyFinisher2, // L -> L -> H
-        FrontKick
+        FrontKick,
+        Light4_Finisher,
+        HeavyChain2,
+        HeavyChain3,
+        HeavyChain4
     }
 }

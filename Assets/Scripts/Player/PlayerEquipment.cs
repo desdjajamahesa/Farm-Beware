@@ -26,7 +26,7 @@ public partial class PlayerEquipment : MonoBehaviour
 
     [Header("Pengaturan Kombo Serangan (Mixamo)")]
     [Tooltip("Waktu maksimal (detik) antar klik untuk melanjutkan ke pukulan kombo berikutnya sebelum reset.")]
-    [SerializeField] private float comboResetWindow = 1.5f;
+    [SerializeField] private float comboResetWindow = 1.8f;
     public float ComboResetWindow
     {
         get => comboResetWindow;
@@ -44,25 +44,50 @@ public partial class PlayerEquipment : MonoBehaviour
     [SerializeField] private float[] comboStaminaCosts = new float[] { 10f, 10f, 15f };
 
     [Header("Pengaturan Timing Ayunan & Trail Kombo")]
-    [Tooltip("Delay windup (detik) untuk ayunan Hit 1 (Horizontal Slash) pada base speed.")]
-    [SerializeField] private float combo1SwingDelay = 0.10f;
+    [Tooltip("Delay windup (detik) untuk ayunan Hit 1 (attack1, 0.30s) pada base speed.")]
+    [SerializeField] private float combo1SwingDelay = 0.14f;
     [Tooltip("Durasi aktif ayunan (detik) untuk Hit 1.")]
-    [SerializeField] private float combo1SwingDuration = 0.20f;
+    [SerializeField] private float combo1SwingDuration = 0.16f;
 
-    [Tooltip("Delay windup (detik) untuk ayunan Hit 2 (Downward Chop) pada base speed.")]
-    [SerializeField] private float combo2SwingDelay = 0.20f;
+    [Tooltip("Delay windup (detik) untuk ayunan Hit 2 (attack3, 0.70s) pada base speed.")]
+    [SerializeField] private float combo2SwingDelay = 0.24f;
     [Tooltip("Durasi aktif ayunan (detik) untuk Hit 2.")]
-    [SerializeField] private float combo2SwingDuration = 0.24f;
+    [SerializeField] private float combo2SwingDuration = 0.26f;
 
-    [Tooltip("Delay windup (detik) untuk putaran Hit 3 (360 Low Finisher) pada base speed.")]
+    [Tooltip("Delay windup (detik) untuk putaran Hit 3 (attack4, 1.00s) pada base speed.")]
     [SerializeField] private float combo3SwingDelay = 0.18f;
     [Tooltip("Durasi aktif putaran (detik) untuk Hit 3.")]
     [SerializeField] private float combo3SwingDuration = 0.55f;
 
-    [Tooltip("Windup delay (seconds) for Heavy Attack (Charged Combo Attack ver. 1) at base speed.")]
+    [Tooltip("Delay windup (detik) untuk ayunan Hit 4 (4-Hit Finisher) pada base speed.")]
+    [SerializeField] private float combo4SwingDelay = 0.22f;
+    [Tooltip("Durasi aktif ayunan (detik) untuk Hit 4.")]
+    [SerializeField] private float combo4SwingDuration = 0.45f;
+
+    [Tooltip("Windup delay (seconds) for Heavy Attack baseline at base speed.")]
     [SerializeField] private float heavySwingDelay = 0.25f;
-    [Tooltip("Active strike sweep duration (seconds) for Heavy Attack.")]
+    [Tooltip("Active strike sweep duration (seconds) for Heavy Attack baseline.")]
     [SerializeField] private float heavySwingDuration = 0.70f;
+
+    [Tooltip("Per-step windup delays (seconds) matching Heavy_Attack1..4 kinematic peaks.")]
+    [SerializeField] private float[] heavyStepSwingDelays = new float[] { 0.28f, 0.12f, 0.42f, 0.42f };
+    [Tooltip("Per-step active strike durations (seconds) matching Heavy_Attack1..4 clips.")]
+    [SerializeField] private float[] heavyStepSwingDurations = new float[] { 0.30f, 0.26f, 0.28f, 0.28f };
+
+    /// <summary>
+    /// Resolves windup delay and active swing duration for the given heavy combo step (0..3),
+    /// matching each heavy clip's kinematic apex.
+    /// </summary>
+    public void ResolveHeavyStepTiming(int heavyStepIndex, out float delay, out float duration)
+    {
+        delay = (heavyStepSwingDelays != null && heavyStepSwingDelays.Length > 0)
+            ? heavyStepSwingDelays[Mathf.Clamp(heavyStepIndex, 0, heavyStepSwingDelays.Length - 1)]
+            : heavySwingDelay;
+
+        duration = (heavyStepSwingDurations != null && heavyStepSwingDurations.Length > 0)
+            ? heavyStepSwingDurations[Mathf.Clamp(heavyStepIndex, 0, heavyStepSwingDurations.Length - 1)]
+            : heavySwingDuration;
+    }
 
     [Header("Pengaturan Jurus Spesial (Leap Strike)")]
     [Tooltip("Nama Trigger parameter di Animator untuk jurus spesial.")]
@@ -93,6 +118,7 @@ public partial class PlayerEquipment : MonoBehaviour
     [SerializeField] private float swingAudioVolume = 0.85f;
 
     private int currentComboIndex = 0;
+    private int currentHeavyComboIndex = 0;
     private float lastAttackTime = -999f;
     private bool isExecutingSkill = false;
 
@@ -122,6 +148,7 @@ public partial class PlayerEquipment : MonoBehaviour
     }
 
     public int CurrentComboIndex => currentComboIndex;
+    public int CurrentHeavyComboIndex => currentHeavyComboIndex;
     public bool IsExecutingSkill => isExecutingSkill;
     public bool IsHoldingWeapon => currentWeaponModel != null;
 
@@ -337,8 +364,88 @@ public partial class PlayerEquipment : MonoBehaviour
                state.IsName("Attack_Combo1") ||
                state.IsName("Attack_Combo2") ||
                state.IsName("Attack_Combo3") ||
+               state.IsName("Attack_Combo4") ||
                state.IsName("Attack_Heavy") ||
+               state.IsName("Heavy_Attack1") ||
+               state.IsName("Heavy_Attack2") ||
+               state.IsName("Heavy_Attack3") ||
+               state.IsName("Heavy_Attack4") ||
                state.IsName("Attack_Skill");
+    }
+
+    public bool IsAnimatorInExpectedCombatState(AnimatorStateInfo state)
+    {
+        switch (combatStateMachine.CurrentState)
+        {
+            case FeaturesCombat.Melee.MeleeCombatState.Light1:
+                return state.IsName("Attack_Combo1");
+            case FeaturesCombat.Melee.MeleeCombatState.Light2:
+                return state.IsName("Attack_Combo2");
+            case FeaturesCombat.Melee.MeleeCombatState.Light3_Finisher:
+                return state.IsName("Attack_Combo3");
+            case FeaturesCombat.Melee.MeleeCombatState.Light4_Finisher:
+                return state.IsName("Attack_Combo4");
+            case FeaturesCombat.Melee.MeleeCombatState.DashAttack:
+                return state.IsName("Attack_Combo2");
+            case FeaturesCombat.Melee.MeleeCombatState.HeavyRelease:
+                return state.IsName("Heavy_Attack1") || state.IsName("Attack_Heavy");
+            case FeaturesCombat.Melee.MeleeCombatState.HeavyFinisher1:
+            case FeaturesCombat.Melee.MeleeCombatState.HeavyChain2:
+                return state.IsName("Heavy_Attack2") || state.IsName("Attack_Heavy");
+            case FeaturesCombat.Melee.MeleeCombatState.HeavyFinisher2:
+            case FeaturesCombat.Melee.MeleeCombatState.HeavyChain3:
+                return state.IsName("Heavy_Attack3") || state.IsName("Attack_Heavy");
+            case FeaturesCombat.Melee.MeleeCombatState.HeavyChain4:
+                return state.IsName("Heavy_Attack4") || state.IsName("Attack_Heavy");
+            default:
+                return true;
+        }
+    }
+
+    private bool ResolveCombatStateProgress(out float normTime)
+    {
+        normTime = 1.0f;
+        if (animator == null || animator.runtimeAnimatorController == null)
+            return true;
+
+        var curr = animator.GetCurrentAnimatorStateInfo(0);
+        if (animator.IsInTransition(0))
+        {
+            var next = animator.GetNextAnimatorStateInfo(0);
+            if (combatStateMachine.CurrentState != FeaturesCombat.Melee.MeleeCombatState.Idle)
+            {
+                if (IsAnimatorInExpectedCombatState(next))
+                {
+                    normTime = next.normalizedTime;
+                    return true;
+                }
+                if (IsAnimatorInExpectedCombatState(curr))
+                {
+                    normTime = curr.normalizedTime;
+                    return true;
+                }
+                if (IsAttackState(curr) || IsAttackState(next))
+                    return false;
+            }
+            if (IsAttackState(next)) normTime = next.normalizedTime;
+            return true;
+        }
+
+        if (combatStateMachine.CurrentState != FeaturesCombat.Melee.MeleeCombatState.Idle)
+        {
+            if (IsAnimatorInExpectedCombatState(curr))
+            {
+                normTime = curr.normalizedTime;
+                return true;
+            }
+            if (IsAttackState(curr))
+                return false;
+        }
+        else if (IsAttackState(curr))
+        {
+            normTime = curr.normalizedTime;
+        }
+        return true;
     }
 
     public bool TryPerformAttack()
@@ -346,14 +453,9 @@ public partial class PlayerEquipment : MonoBehaviour
         if (animator == null) animator = GetComponentInChildren<Animator>();
         if (isExecutingSkill) return false;
 
-        float normTime = 1.0f;
-        if (animator != null)
+        if (!ResolveCombatStateProgress(out float normTime))
         {
-            var state = animator.IsInTransition(0) ? animator.GetNextAnimatorStateInfo(0) : animator.GetCurrentAnimatorStateInfo(0);
-            if (IsAttackState(state))
-            {
-                normTime = state.normalizedTime;
-            }
+            return false;
         }
 
         if (!combatStateMachine.TryTriggerLight(Time.time, normTime, out var nextState, out int comboStep))
@@ -452,7 +554,7 @@ public partial class PlayerEquipment : MonoBehaviour
             var statMods = playerStats != null ? playerStats.GetCombatStatModifiers() : FeaturesCombat.Core.PureLogic.CombatStatModifiers.Default;
             float comboMul = combatStateMachine.GetCurrentDamageMultiplier();
             float dmgMultiplier = (buffManager != null ? buffManager.GetAttackDamageMultiplier() : 1f) * comboMul * statMods.DamageMultiplier;
-            if (currentComboIndex == 2)
+            if (currentComboIndex >= 2)
             {
                 dmgMultiplier *= statMods.FinisherDamageMultiplier;
             }
@@ -469,8 +571,8 @@ public partial class PlayerEquipment : MonoBehaviour
             }
             int finalDamage = Mathf.RoundToInt(baseDmg * dmgMultiplier);
 
-            // Combo ke-3 (Finisher) atau Riposte adalah putaran/sapuan lebar
-            bool is360 = (currentComboIndex == 2) || isRiposte;
+            // Combo ke-3/4 (Finisher) atau Riposte adalah putaran/sapuan lebar
+            bool is360 = (currentComboIndex >= 2) || isRiposte;
             float activeRange = is360 ? attackHitRange * 1.15f : attackHitRange;
             float finalKnockback = knockback * combatStateMachine.GetCurrentKnockbackMultiplier() * statMods.KnockbackMultiplier * (isRiposte ? 2.0f : 1.0f);
 
@@ -489,11 +591,10 @@ public partial class PlayerEquipment : MonoBehaviour
     }
 
     /// <summary>
-    /// Immediately cancels any active melee swing or skill coroutine, deactivates weapon hitboxes and trails,
-    /// restores animator playback speed, and resets the underlying combat state machine.
-    /// Ensures zero ghost hitboxes when an attack is interrupted by dodge, parry, damage, or modal input locks.
+    /// Stops any active swing coroutine, weapon trail, and hitbox and restores animator speed without resetting combo state.
+    /// Used when movement cancels post-attack recovery hold while keeping the combo window open.
     /// </summary>
-    public void CancelActiveAttackSwing()
+    public void EndActiveSwingTrailAndHitbox()
     {
         if (currentSwingCoroutine != null)
         {
@@ -526,7 +627,16 @@ public partial class PlayerEquipment : MonoBehaviour
         {
             animator.speed = 1f;
         }
+    }
 
+    /// <summary>
+    /// Immediately cancels any active melee swing or skill coroutine, deactivates weapon hitboxes and trails,
+    /// restores animator playback speed, and resets the underlying combat state machine.
+    /// Ensures zero ghost hitboxes when an attack is interrupted by dodge, parry, damage, or modal input locks.
+    /// </summary>
+    public void CancelActiveAttackSwing()
+    {
+        EndActiveSwingTrailAndHitbox();
         combatStateMachine?.InterruptCombatSequence();
     }
 
@@ -535,14 +645,9 @@ public partial class PlayerEquipment : MonoBehaviour
         if (animator == null) animator = GetComponentInChildren<Animator>();
         if (isExecutingSkill) return false;
 
-        float normTime = 1.0f;
-        if (animator != null)
+        if (!ResolveCombatStateProgress(out float normTime))
         {
-            var state = animator.IsInTransition(0) ? animator.GetNextAnimatorStateInfo(0) : animator.GetCurrentAnimatorStateInfo(0);
-            if (IsAttackState(state))
-            {
-                normTime = state.normalizedTime;
-            }
+            return false;
         }
 
         if (!combatStateMachine.TryTriggerHeavyFinisher(Time.time, normTime, out var nextState))
@@ -572,6 +677,7 @@ public partial class PlayerEquipment : MonoBehaviour
         atkSpdMultiplier *= attackAnimationSpeed;
 
         currentComboIndex = 3;
+        currentHeavyComboIndex = combatStateMachine.HeavyComboIndex;
 
         if (animator != null)
         {
@@ -579,6 +685,7 @@ public partial class PlayerEquipment : MonoBehaviour
             animator.ResetTrigger(attackTriggerName);
             animator.ResetTrigger("HeavyAttack");
             animator.SetInteger("ComboIndex", 3);
+            animator.SetInteger("HeavyComboIndex", currentHeavyComboIndex);
             animator.SetTrigger("HeavyAttack");
         }
 
@@ -643,7 +750,8 @@ public partial class PlayerEquipment : MonoBehaviour
                 animator.ResetTrigger(attackTriggerName);
             }
             animator.ResetTrigger("HeavyAttack");
-            if (!string.IsNullOrEmpty(skillTriggerName))
+            if (!string.IsNullOrEmpty(skillTriggerName) &&
+                PlayerControl.HasAnimatorParameter(animator, skillTriggerName, AnimatorControllerParameterType.Trigger))
             {
                 animator.ResetTrigger(skillTriggerName);
             }
@@ -775,6 +883,7 @@ public partial class PlayerEquipment : MonoBehaviour
         atkSpdMultiplier *= attackAnimationSpeed;
 
         currentComboIndex = 3;
+        currentHeavyComboIndex = combatStateMachine.HeavyComboIndex;
 
         if (animator != null)
         {
@@ -782,6 +891,7 @@ public partial class PlayerEquipment : MonoBehaviour
             animator.ResetTrigger(attackTriggerName);
             animator.ResetTrigger("HeavyAttack");
             animator.SetInteger("ComboIndex", 3);
+            animator.SetInteger("HeavyComboIndex", currentHeavyComboIndex);
             animator.SetTrigger("HeavyAttack");
         }
 
@@ -807,6 +917,94 @@ public partial class PlayerEquipment : MonoBehaviour
         }
 
         currentSwingCoroutine = StartCoroutine(RoutineSwingHitbox(finalDamage, finalKnockback, atkSpdMultiplier, is360: true, rangeOverride: attackHitRange * 1.3f, isHeavy: true));
+        return true;
+    }
+
+    /// <summary>
+    /// Advances the 4-hit heavy attack chain (Heavy_Attack1 -> Heavy_Attack2 -> Heavy_Attack3 -> Heavy_Attack4).
+    /// </summary>
+    public bool TryPerformHeavyChainAttack()
+    {
+        if (animator == null) animator = GetComponentInChildren<Animator>();
+        if (isExecutingSkill) return false;
+
+        if (!ResolveCombatStateProgress(out float normTime))
+        {
+            return false;
+        }
+
+        if (!combatStateMachine.TryTriggerHeavyChain(Time.time, normTime, out _, out int heavyStep))
+        {
+            return false;
+        }
+
+        float staminaCost = attackStaminaCost * 1.4f;
+        if (playerStats == null) playerStats = GetComponent<PlayerStats>();
+        if (playerStats != null && (playerStats.currentStamina < staminaCost || playerStats.IsExhausted))
+        {
+            combatStateMachine.ResetToIdle();
+            return false;
+        }
+
+        ItemData item = CurrentEquippedItem;
+        if (item == null && !allowBareHandsAttack)
+        {
+            combatStateMachine.ResetToIdle();
+            return false;
+        }
+        if (item != null && !(item is ToolItemData tool && tool.isWeapon) && !allowBareHandsAttack)
+        {
+            combatStateMachine.ResetToIdle();
+            return false;
+        }
+        if (item is ToolItemData rangedTool && rangedTool.isRangedWeapon)
+        {
+            if (playerStats != null) playerStats.UseStamina(staminaCost);
+            ExecuteRangedWeaponVolley(rangedTool, isHeavyVolley: true, isSkillBarrage: false, isRiposte: false);
+            return true;
+        }
+
+        float atkSpdMultiplier = buffManager != null ? buffManager.GetAttackSpeedMultiplier() : 1f;
+        var upgradeState = FeaturesWorkbench.PlayerWeaponUpgradeState.Instance ?? GetComponent<FeaturesWorkbench.PlayerWeaponUpgradeState>();
+        if (upgradeState != null && upgradeState.sweetPotatoPathUnlocked) atkSpdMultiplier *= 1.20f;
+        atkSpdMultiplier *= attackAnimationSpeed;
+
+        currentComboIndex = 3;
+        currentHeavyComboIndex = heavyStep;
+
+        if (animator != null)
+        {
+            animator.speed = atkSpdMultiplier;
+            animator.ResetTrigger(attackTriggerName);
+            animator.ResetTrigger("HeavyAttack");
+            animator.SetInteger("ComboIndex", 3);
+            animator.SetInteger("HeavyComboIndex", currentHeavyComboIndex);
+            animator.SetTrigger("HeavyAttack");
+        }
+
+        lastAttackTime = Time.time;
+        if (playerStats != null) playerStats.UseStamina(staminaCost);
+
+        int baseDmg = 8;
+        float knockback = 4.0f;
+        if (item is ToolItemData toolData)
+        {
+            baseDmg = (upgradeState != null) ? upgradeState.baseDamage : toolData.baseDamage;
+            knockback = (upgradeState != null) ? upgradeState.baseKnockback : toolData.knockbackForce;
+        }
+
+        var statMods = playerStats != null ? playerStats.GetCombatStatModifiers() : FeaturesCombat.Core.PureLogic.CombatStatModifiers.Default;
+        float dmgMult = (buffManager != null ? buffManager.GetAttackDamageMultiplier() : 1f) * combatStateMachine.GetCurrentDamageMultiplier() * statMods.DamageMultiplier;
+        int finalDamage = Mathf.RoundToInt(baseDmg * dmgMult);
+        float finalKnockback = knockback * combatStateMachine.GetCurrentKnockbackMultiplier() * statMods.KnockbackMultiplier;
+
+        if (currentSwingCoroutine != null)
+        {
+            StopCoroutine(currentSwingCoroutine);
+            currentSwingCoroutine = null;
+        }
+
+        currentSwingCoroutine = StartCoroutine(RoutineSwingHitbox(finalDamage, finalKnockback, atkSpdMultiplier, is360: true, rangeOverride: attackHitRange * 1.3f, isFinisher: currentHeavyComboIndex >= 3, isHeavy: true));
         return true;
     }
 
@@ -846,7 +1044,7 @@ public partial class PlayerEquipment : MonoBehaviour
 
         if (animator != null)
         {
-            animator.speed = atkSpdMultiplier * 1.25f;
+            animator.speed = atkSpdMultiplier;
             animator.SetInteger("ComboIndex", 1);
             animator.SetTrigger(attackTriggerName);
         }
@@ -938,7 +1136,10 @@ public partial class PlayerEquipment : MonoBehaviour
             atkSpdMultiplier *= attackAnimationSpeed;
 
             animator.speed = atkSpdMultiplier;
-            animator.SetTrigger(skillTriggerName);
+            if (PlayerControl.HasAnimatorParameter(animator, skillTriggerName, AnimatorControllerParameterType.Trigger))
+            {
+                animator.SetTrigger(skillTriggerName);
+            }
 
             lastAttackTime = Time.time;
             currentComboIndex = 0; // Reset combo setelah skill
@@ -988,8 +1189,14 @@ public partial class PlayerEquipment : MonoBehaviour
         }
         else if (isHeavy)
         {
-            delay = heavySwingDelay / speedRatio;
-            duration = heavySwingDuration / speedRatio;
+            ResolveHeavyStepTiming(currentHeavyComboIndex, out float baseHeavyDelay, out float baseHeavyDur);
+            delay = baseHeavyDelay / speedRatio;
+            duration = baseHeavyDur / speedRatio;
+        }
+        else if (currentComboIndex == 3)
+        {
+            delay = combo4SwingDelay / speedRatio;
+            duration = combo4SwingDuration / speedRatio;
         }
         else if (is360 || isFinisher || currentComboIndex == 2)
         {
@@ -1008,6 +1215,23 @@ public partial class PlayerEquipment : MonoBehaviour
         }
 
         TriggerRangeIndicatorPulse(delay + duration + 0.1f);
+
+        // Wait until direct state-to-state combo transition enters the expected state so hitbox/trail align with the clip
+        if (animator != null && animator.runtimeAnimatorController != null && !isDash && combatStateMachine.CurrentState != FeaturesCombat.Melee.MeleeCombatState.Idle)
+        {
+            float syncWait = 0f;
+            while (syncWait < 0.45f)
+            {
+                var curr = animator.GetCurrentAnimatorStateInfo(0);
+                var next = animator.GetNextAnimatorStateInfo(0);
+                if (IsAnimatorInExpectedCombatState(curr) || IsAnimatorInExpectedCombatState(next))
+                {
+                    break;
+                }
+                syncWait += Time.deltaTime;
+                yield return null;
+            }
+        }
 
         yield return new WaitForSeconds(delay);
 

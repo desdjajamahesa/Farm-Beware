@@ -95,7 +95,7 @@ namespace FarmBeware.EditorTests
             ResetTestAuditHarness();
 
             int passed = 0;
-            int total = 114;
+            int total = 115;
 
             if (Test_DayNight_PhaseProgression_DuskUntilNight()) passed++;
             if (Test_BedInteractable_Logic_AllowsDuskAndBlocksNightOnly()) passed++;
@@ -212,6 +212,7 @@ namespace FarmBeware.EditorTests
             if (Test_BoardOrders_GDDDirtyCleanPricing_Multiplier12x_Delivery_And_ScenePlacement_Audit()) passed++;
             if (Test_QuestLogUI_Aggregation_Progress_FinishUnfinishFilters_And_ZeroGC_Audit()) passed++;
             if (Test_QAHub_ComprehensiveBugFixes_Audit()) passed++;
+            if (Test_PlayerModular_CombatOverhaul_HeavyChain_RecoveryHold_ActionCancels_And_ZeroWarnings_Audit()) passed++;
 
             Debug.Log("[AUDIT-SUITE] ========================================================");
             Debug.Log($"[AUDIT-SUITE] Complete! Passed: {passed}/{total}");

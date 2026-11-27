@@ -383,6 +383,11 @@ public class PlayerStats : MonoBehaviour, FeaturesCombat.IDamageable, IPlayerDam
         if (currentHealth <= 0 && !isDeadHandled)
         {
             isDeadHandled = true;
+            if (PlayerControl.HasAnimatorParameter(playerAnimator, "IsDead", AnimatorControllerParameterType.Bool))
+            {
+                playerAnimator.updateMode = AnimatorUpdateMode.UnscaledTime;
+                playerAnimator.SetBool("IsDead", true);
+            }
             OnPlayerDied?.Invoke();
         }
 

@@ -139,7 +139,7 @@ public partial class PlayerControl
         yield return null;
 
         float timer = 0f;
-        while (timer < 0.7f)
+        while (timer < waterDuration)
         {
             timer += Time.deltaTime;
 
@@ -245,7 +245,19 @@ public partial class PlayerControl
 
     private void ExecuteJump()
     {
-        if (isInputLocked || isPlanting || isAttacking) return;
+        if (isInputLocked || isPlanting) return;
+
+        if (isAttacking)
+        {
+            if (isInAttackRecovery)
+            {
+                CancelActiveCombatAction();
+            }
+            else
+            {
+                return;
+            }
+        }
 
         // Hanya bisa lompat jika menginjak tanah
         if (isGrounded)
@@ -326,13 +338,13 @@ public partial class PlayerControl
     {
         if (isDodging || isPlanting || isInputLocked) return;
 
-        // Allow dodge-canceling if attacking and reached cancelable window (normalizedTime >= 0.25f)
+        // Allow dodge-canceling if attacking and reached cancelable window or in end-frame recovery hold
         if (isAttacking)
         {
             if (animator != null)
             {
                 var state = animator.GetCurrentAnimatorStateInfo(0);
-                if (state.normalizedTime >= 0.25f)
+                if (isInAttackRecovery || state.normalizedTime >= 0.25f)
                 {
                     CancelActiveCombatAction();
                 }
@@ -388,6 +400,7 @@ public partial class PlayerControl
     private IEnumerator RoutineDodgeRoll(Vector3 rollDir)
     {
         isDodging = true;
+        dodgeElapsed = 0f;
         dodgeRollDirection = rollDir;
 
         // Instantly align character rotation with roll direction
@@ -416,6 +429,7 @@ public partial class PlayerControl
         while (elapsed < dodgeDuration)
         {
             elapsed += Time.deltaTime;
+            dodgeElapsed = elapsed;
             yield return null;
         }
 
@@ -424,6 +438,7 @@ public partial class PlayerControl
             animator.SetBool("Sliding", false);
         }
 
+        dodgeElapsed = 0f;
         isDodging = false;
         dodgeCoroutine = null;
     }
@@ -432,13 +447,13 @@ public partial class PlayerControl
     {
         if (isDodging || isPlanting || isInputLocked) return;
 
-        // Allow parry-canceling if attacking and reached cancelable window
+        // Allow parry-canceling if attacking and reached cancelable window or in end-frame recovery hold
         if (isAttacking)
         {
             if (animator != null)
             {
                 var state = animator.GetCurrentAnimatorStateInfo(0);
-                if (state.normalizedTime >= 0.20f)
+                if (isInAttackRecovery || state.normalizedTime >= 0.20f)
                 {
                     CancelActiveCombatAction();
                 }
@@ -651,6 +666,12 @@ public partial class PlayerControl
             direction.y = 0.2f;
             rb.AddForce(direction.normalized * force, ForceMode.Impulse);
         }
+
+        if (animator != null && force >= 3f && PlayerControl.HasAnimatorParameter(animator, "HitKnockback", AnimatorControllerParameterType.Trigger))
+        {
+            animator.ResetTrigger("HitKnockback");
+            animator.SetTrigger("HitKnockback");
+        }
     }
 
     /// <summary>
@@ -728,6 +749,7 @@ public partial class PlayerControl
                 StopCoroutine(dodgeCoroutine);
                 dodgeCoroutine = null;
             }
+            dodgeElapsed = 0f;
             isDodging = false;
             CheckGrounded();
             if (animator != null && !animator.GetBool("Driving"))

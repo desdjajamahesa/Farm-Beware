@@ -31,8 +31,12 @@ namespace FeaturesCombat.Melee
         public float Light1DamageMultiplier { get; set; } = 1.0f;
         public float Light2DamageMultiplier { get; set; } = 1.2f;
         public float Light3DamageMultiplier { get; set; } = 1.6f;
+        public float Light4DamageMultiplier { get; set; } = 1.85f;
         public float HeavyFinisher1DamageMultiplier { get; set; } = 1.9f;
         public float HeavyFinisher2DamageMultiplier { get; set; } = 2.4f;
+        public float HeavyChain2DamageMultiplier { get; set; } = 2.2f;
+        public float HeavyChain3DamageMultiplier { get; set; } = 2.5f;
+        public float HeavyChain4DamageMultiplier { get; set; } = 3.0f;
         public float DashAttackDamageMultiplier { get; set; } = 1.4f;
         public float FrontKickDamageMultiplier { get; set; } = 0.8f;
         public float MinHeavyDamageMultiplier { get; set; } = 1.8f;
@@ -41,8 +45,12 @@ namespace FeaturesCombat.Melee
         public float Light1KnockbackMultiplier { get; set; } = 1.0f;
         public float Light2KnockbackMultiplier { get; set; } = 1.15f;
         public float Light3KnockbackMultiplier { get; set; } = 1.6f;
+        public float Light4KnockbackMultiplier { get; set; } = 2.1f;
         public float HeavyFinisher1KnockbackMultiplier { get; set; } = 2.2f;
         public float HeavyFinisher2KnockbackMultiplier { get; set; } = 2.8f;
+        public float HeavyChain2KnockbackMultiplier { get; set; } = 2.4f;
+        public float HeavyChain3KnockbackMultiplier { get; set; } = 2.7f;
+        public float HeavyChain4KnockbackMultiplier { get; set; } = 3.2f;
         public float DashAttackKnockbackMultiplier { get; set; } = 1.5f;
         public float FrontKickKnockbackMultiplier { get; set; } = 3.0f;
         public float MinHeavyKnockbackMultiplier { get; set; } = 1.8f;
@@ -51,6 +59,7 @@ namespace FeaturesCombat.Melee
         // State Properties
         public MeleeCombatState CurrentState => _currentState;
         public int ComboIndex => _comboIndex;
+        public int HeavyComboIndex { get; private set; } = 0;
         public float LastAttackTime => _lastAttackTime;
         public bool IsCharging => _currentState == MeleeCombatState.HeavyCharging;
         public float CurrentChargeDuration => _currentChargeDuration;
@@ -77,7 +86,7 @@ namespace FeaturesCombat.Melee
 
         public MeleeCombatStateMachine()
         {
-            _evaluator = new CombatStateEvaluator(1.5f);
+            _evaluator = new CombatStateEvaluator(1.8f);
             ResetToIdle();
         }
 
@@ -127,6 +136,7 @@ namespace FeaturesCombat.Melee
             {
                 _currentState = MapActionToState(nextAction);
                 _comboIndex = MapStateToComboIndex(_currentState);
+                HeavyComboIndex = MapStateToHeavyComboIndex(_currentState);
                 _lastAttackTime = currentTime;
 
                 newState = _currentState;
@@ -135,6 +145,36 @@ namespace FeaturesCombat.Melee
             }
 
             newState = _currentState;
+            return false;
+        }
+
+        /// <summary>
+        /// Attempts to advance a 4-hit heavy attack chain (H1 -> H2 -> H3 -> H4).
+        /// </summary>
+        public bool TryTriggerHeavyChain(float currentTime, float normalizedAnimTime, out MeleeCombatState newState, out int heavyStep)
+        {
+            if (_currentState == MeleeCombatState.HeavyCharging)
+            {
+                newState = _currentState;
+                heavyStep = HeavyComboIndex;
+                return false;
+            }
+
+            if (_evaluator.TryEvaluateNextAction(CombatCommand.HeavyAttack, normalizedAnimTime, currentTime, out CombatActionID nextAction))
+            {
+                _currentState = MapActionToState(nextAction);
+                _comboIndex = MapStateToComboIndex(_currentState);
+                HeavyComboIndex = MapStateToHeavyComboIndex(_currentState);
+                _lastAttackTime = currentTime;
+
+                newState = _currentState;
+                heavyStep = HeavyComboIndex;
+                OnStateChanged?.Invoke(_currentState);
+                return true;
+            }
+
+            newState = _currentState;
+            heavyStep = HeavyComboIndex;
             return false;
         }
 
@@ -209,6 +249,7 @@ namespace FeaturesCombat.Melee
             _currentState = MeleeCombatState.HeavyRelease;
             _lastAttackTime = currentTime;
             _comboIndex = 0;
+            HeavyComboIndex = 0;
             _evaluator.ForceSetAction(CombatActionID.ChargedThrust, currentTime);
 
             OnStateChanged?.Invoke(_currentState);
@@ -238,6 +279,7 @@ namespace FeaturesCombat.Melee
         public void ResetToIdle()
         {
             _comboIndex = 0;
+            HeavyComboIndex = 0;
             _currentState = MeleeCombatState.Idle;
             _currentChargeDuration = 0f;
             _evaluator.ResetToIdle();
@@ -281,10 +323,18 @@ namespace FeaturesCombat.Melee
                     return Light2DamageMultiplier;
                 case MeleeCombatState.Light3_Finisher:
                     return Light3DamageMultiplier;
+                case MeleeCombatState.Light4_Finisher:
+                    return Light4DamageMultiplier;
                 case MeleeCombatState.HeavyFinisher1:
                     return HeavyFinisher1DamageMultiplier;
                 case MeleeCombatState.HeavyFinisher2:
                     return HeavyFinisher2DamageMultiplier;
+                case MeleeCombatState.HeavyChain2:
+                    return HeavyChain2DamageMultiplier;
+                case MeleeCombatState.HeavyChain3:
+                    return HeavyChain3DamageMultiplier;
+                case MeleeCombatState.HeavyChain4:
+                    return HeavyChain4DamageMultiplier;
                 case MeleeCombatState.DashAttack:
                     return DashAttackDamageMultiplier;
                 case MeleeCombatState.FrontKick:
@@ -309,10 +359,18 @@ namespace FeaturesCombat.Melee
                     return Light2KnockbackMultiplier;
                 case MeleeCombatState.Light3_Finisher:
                     return Light3KnockbackMultiplier;
+                case MeleeCombatState.Light4_Finisher:
+                    return Light4KnockbackMultiplier;
                 case MeleeCombatState.HeavyFinisher1:
                     return HeavyFinisher1KnockbackMultiplier;
                 case MeleeCombatState.HeavyFinisher2:
                     return HeavyFinisher2KnockbackMultiplier;
+                case MeleeCombatState.HeavyChain2:
+                    return HeavyChain2KnockbackMultiplier;
+                case MeleeCombatState.HeavyChain3:
+                    return HeavyChain3KnockbackMultiplier;
+                case MeleeCombatState.HeavyChain4:
+                    return HeavyChain4KnockbackMultiplier;
                 case MeleeCombatState.DashAttack:
                     return DashAttackKnockbackMultiplier;
                 case MeleeCombatState.FrontKick:
@@ -331,8 +389,12 @@ namespace FeaturesCombat.Melee
                 case CombatActionID.Light1: return MeleeCombatState.Light1;
                 case CombatActionID.Light2: return MeleeCombatState.Light2;
                 case CombatActionID.Light3: return MeleeCombatState.Light3_Finisher;
+                case CombatActionID.Light4: return MeleeCombatState.Light4_Finisher;
                 case CombatActionID.HeavyFinisher1: return MeleeCombatState.HeavyFinisher1;
                 case CombatActionID.HeavyFinisher2: return MeleeCombatState.HeavyFinisher2;
+                case CombatActionID.HeavyChain2: return MeleeCombatState.HeavyChain2;
+                case CombatActionID.HeavyChain3: return MeleeCombatState.HeavyChain3;
+                case CombatActionID.HeavyChain4: return MeleeCombatState.HeavyChain4;
                 case CombatActionID.ChargedThrust: return MeleeCombatState.HeavyRelease;
                 case CombatActionID.DashSweep: return MeleeCombatState.DashAttack;
                 case CombatActionID.FrontKick: return MeleeCombatState.FrontKick;
@@ -347,8 +409,23 @@ namespace FeaturesCombat.Melee
                 case MeleeCombatState.Light1: return 0;
                 case MeleeCombatState.Light2: return 1;
                 case MeleeCombatState.Light3_Finisher: return 2;
+                case MeleeCombatState.Light4_Finisher: return 3;
                 case MeleeCombatState.HeavyFinisher1: return 1;
                 case MeleeCombatState.HeavyFinisher2: return 2;
+                default: return 0;
+            }
+        }
+
+        private static int MapStateToHeavyComboIndex(MeleeCombatState state)
+        {
+            switch (state)
+            {
+                case MeleeCombatState.HeavyRelease: return 0;
+                case MeleeCombatState.HeavyFinisher1:
+                case MeleeCombatState.HeavyChain2: return 1;
+                case MeleeCombatState.HeavyFinisher2:
+                case MeleeCombatState.HeavyChain3: return 2;
+                case MeleeCombatState.HeavyChain4: return 3;
                 default: return 0;
             }
         }

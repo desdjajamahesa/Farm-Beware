@@ -8,93 +8,131 @@ public partial class PlayerControl
 {
     // --- LOGIKA AKSI ---
 
-    // Klik Kiri Mouse / Tombol F: Serangan Kombo Biasa (3-Hit Combo) / Dash Attack saat berlari / Heavy Strike jika ditahan
-    // Klik Kanan Mouse / Tombol R: Jurus Spesial (Leap Strike)
+    // Klik Kiri Mouse / Tombol F: Light Combo 3-Hit (1-3-4) / Dash Attack saat berlari
+    // Klik Kanan Mouse: Heavy Attack (Chain 1-2-3-4 & Branching Heavy Finisher L->H / L->L->H / L->L->L->H)
     private void HandleAttackInput()
     {
         if (isInputLocked || isPlanting)
         {
             isChargingAttack = false;
-            attackHoldDuration = 0f;
             hasBufferedAttack = false;
+            hasBufferedHeavyAttack = false;
             return;
         }
 
         bool isPointerOverUI = UnityEngine.EventSystems.EventSystem.current != null &&
                                UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject();
 
-        // 1. Serangan Normal / Dash / Heavy
+        // 1. Light Attack (Klik Kiri / F) & Heavy Attack (Klik Kanan)
         bool leftPressed = Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame && !isPointerOverUI;
         bool fPressed = Keyboard.current != null && Keyboard.current.fKey.wasPressedThisFrame;
-        bool attackPressed = leftPressed || fPressed;
+        bool lightPressed = leftPressed || fPressed;
 
-        bool leftHeld = Mouse.current != null && Mouse.current.leftButton.isPressed && !isPointerOverUI;
-        bool fHeld = Keyboard.current != null && Keyboard.current.fKey.isPressed;
-        bool attackHeld = leftHeld || fHeld;
-
-        bool leftReleased = Mouse.current != null && Mouse.current.leftButton.wasReleasedThisFrame;
-        bool fReleased = Keyboard.current != null && Keyboard.current.fKey.wasReleasedThisFrame;
-        bool attackReleased = leftReleased || fReleased;
-
-        // 2. Jurus Spesial (Leap Strike): Right Click atau Tombol R
-        bool rightClick = Mouse.current != null && Mouse.current.rightButton.wasPressedThisFrame && !isPointerOverUI;
-        bool rKey = Keyboard.current != null && Keyboard.current.rKey.wasPressedThisFrame;
+        bool heavyPressed = Mouse.current != null && Mouse.current.rightButton.wasPressedThisFrame && !isPointerOverUI;
 
         if (playerEquipment == null)
             playerEquipment = GetComponent<PlayerEquipment>() ?? gameObject.AddComponent<PlayerEquipment>();
 
         if (playerEquipment != null && playerEquipment.IsRangedWeaponEquipped)
         {
-            HandleRangedSlingshotInput(attackPressed, attackHeld, attackReleased, rightClick || rKey);
+            HandleRangedSlingshotInput(lightPressed, heavyPressed);
             return;
         }
 
-        // Priority Special Actions (Leap Strike)
-        if ((rightClick || rKey) && !isSkillLeaping)
-        {
-            isChargingAttack = false;
-            attackHoldDuration = 0f;
-            hasBufferedAttack = false;
-            if (playerEquipment != null && playerEquipment.TryPerformSkillAttack())
-            {
-                if (attackCoroutine != null) { StopCoroutine(attackCoroutine); attackCoroutine = null; }
-                attackCoroutine = StartCoroutine(RoutineSkillAttack());
-            }
-            return;
-        }
-
-        // If performing heavy attack, kick, skill leap, or dash attack, block light attacks
+        // Allow chaining Heavy_Attack1 -> Heavy_Attack2 -> Heavy_Attack3 -> Heavy_Attack4 via Right-Click
         if (isAttacking && !isLightAttacking)
         {
             isChargingAttack = false;
-            attackHoldDuration = 0f;
+
+            if (_currentCombatSubState == PlayerActionState.HeavyAttack && playerEquipment != null)
+            {
+                if (playerEquipment.CurrentHeavyComboIndex >= 3)
+                {
+                    hasBufferedHeavyAttack = false;
+                    hasBufferedAttack = false;
+                    return;
+                }
+
+                if (heavyPressed)
+                {
+                    if (playerEquipment.TryPerformHeavyChainAttack())
+                    {
+                        if (attackCoroutine != null) { StopCoroutine(attackCoroutine); }
+                        attackCoroutine = StartCoroutine(RoutineHeavyAttack());
+                        hasBufferedHeavyAttack = false;
+                        hasBufferedAttack = false;
+                    }
+                    else
+                    {
+                        hasBufferedHeavyAttack = true;
+                        bufferedAttackTime = Time.time;
+                    }
+                }
+                else if (hasBufferedHeavyAttack)
+                {
+                    if (Time.time - bufferedAttackTime > 0.60f)
+                    {
+                        hasBufferedHeavyAttack = false;
+                    }
+                    else if (playerEquipment.TryPerformHeavyChainAttack())
+                    {
+                        if (attackCoroutine != null) { StopCoroutine(attackCoroutine); }
+                        attackCoroutine = StartCoroutine(RoutineHeavyAttack());
+                        hasBufferedHeavyAttack = false;
+                        hasBufferedAttack = false;
+                    }
+                }
+                return;
+            }
+
             hasBufferedAttack = false;
+            hasBufferedHeavyAttack = false;
             return;
         }
 
         // --- COMBO ADVANCEMENT / BUFFERING / BRANCHING HEAVY FINISHER DURING LIGHT ATTACK ---
         if (isLightAttacking)
         {
-            if (attackHeld)
+            if (heavyPressed)
             {
-                attackHoldDuration += Time.deltaTime;
-            }
-
-            if (attackReleased && attackHoldDuration >= 0.30f)
-            {
-                attackHoldDuration = 0f;
                 hasBufferedAttack = false;
                 if (playerEquipment != null && playerEquipment.TryPerformBranchingHeavyFinisher())
                 {
                     if (attackCoroutine != null) { StopCoroutine(attackCoroutine); }
                     attackCoroutine = StartCoroutine(RoutineHeavyAttack());
+                    hasBufferedHeavyAttack = false;
+                    return;
+                }
+                hasBufferedHeavyAttack = true;
+                bufferedAttackTime = Time.time;
+                return;
+            }
+
+            if (hasBufferedHeavyAttack)
+            {
+                if (Time.time - bufferedAttackTime > 0.60f)
+                {
+                    hasBufferedHeavyAttack = false;
+                }
+                else if (playerEquipment != null && playerEquipment.TryPerformBranchingHeavyFinisher())
+                {
+                    if (attackCoroutine != null) { StopCoroutine(attackCoroutine); }
+                    attackCoroutine = StartCoroutine(RoutineHeavyAttack());
+                    hasBufferedHeavyAttack = false;
+                    hasBufferedAttack = false;
                     return;
                 }
             }
 
-            if (attackPressed)
+            // Do not wrap or buffer an extra hit 1 while the 3rd light finisher (attack4) is playing
+            if (playerEquipment != null && playerEquipment.CurrentComboIndex >= 2)
             {
-                attackHoldDuration = 0f;
+                hasBufferedAttack = false;
+                return;
+            }
+
+            if (lightPressed)
+            {
                 if (playerEquipment != null && playerEquipment.TryPerformAttack())
                 {
                     StartLightAttack();
@@ -108,7 +146,7 @@ public partial class PlayerControl
             }
             else if (hasBufferedAttack)
             {
-                if (Time.time - bufferedAttackTime > 0.45f)
+                if (Time.time - bufferedAttackTime > 0.60f)
                 {
                     hasBufferedAttack = false;
                 }
@@ -121,19 +159,25 @@ public partial class PlayerControl
             return;
         }
 
-        // Consume buffered attack right after returning to Idle
-        if (hasBufferedAttack)
+        // Clear any leftover buffers once returned to Idle so combo never fires an extra hit unprompted
+        hasBufferedAttack = false;
+        hasBufferedHeavyAttack = false;
+
+        // --- Standard Melee Attack Processing (Right-Click Heavy / Sprint Dash Attack / Left-Click Light Combo) ---
+        if (heavyPressed)
         {
+            isChargingAttack = false;
             hasBufferedAttack = false;
-            if (Time.time - bufferedAttackTime <= 0.45f && playerEquipment != null && playerEquipment.TryPerformAttack())
+            hasBufferedHeavyAttack = false;
+            if (playerEquipment != null && playerEquipment.TryPerformHeavyChainAttack())
             {
-                StartLightAttack();
-                return;
+                if (attackCoroutine != null) { StopCoroutine(attackCoroutine); }
+                attackCoroutine = StartCoroutine(RoutineHeavyAttack());
             }
+            return;
         }
 
-        // --- Standard Melee Attack Processing (Light Combo / Dash Attack / Charged Heavy) ---
-        if (attackPressed)
+        if (lightPressed)
         {
             // If running/sprinting at high speed, trigger instantaneous Dash Attack!
             if (isRunning && inputVector.sqrMagnitude >= 0.01f)
@@ -143,80 +187,45 @@ public partial class PlayerControl
                     if (attackCoroutine != null) { StopCoroutine(attackCoroutine); attackCoroutine = null; }
                     attackCoroutine = StartCoroutine(RoutineDashAttack());
                     isChargingAttack = false;
-                    attackHoldDuration = 0f;
                     hasBufferedAttack = false;
+                    hasBufferedHeavyAttack = false;
                     return;
                 }
             }
 
-            isChargingAttack = true;
-            attackHoldDuration = 0f;
-        }
-
-        if (isChargingAttack)
-        {
-            if (attackHeld)
+            if (playerEquipment != null && playerEquipment.TryPerformAttack())
             {
-                attackHoldDuration += Time.deltaTime;
-                if (attackHoldDuration >= 0.35f && playerEquipment != null)
-                {
-                    playerEquipment.CombatStateMachine.StartHeavyCharge(Time.time);
-                    playerEquipment.CombatStateMachine.UpdateCharge(Time.deltaTime);
-                }
-            }
-
-            if (attackReleased)
-            {
-                isChargingAttack = false;
-                if (attackHoldDuration >= 0.35f)
-                {
-                    // Released after charging -> Heavy Attack!
-                    if (playerEquipment != null && playerEquipment.TryPerformHeavyAttack(playerEquipment.CombatStateMachine.ChargeRatio))
-                    {
-                        if (attackCoroutine != null) { StopCoroutine(attackCoroutine); }
-                        attackCoroutine = StartCoroutine(RoutineHeavyAttack());
-                    }
-                }
-                else
-                {
-                    // Released quickly -> Standard 3-Hit Combo Light Attack!
-                    if (playerEquipment != null && playerEquipment.TryPerformAttack())
-                    {
-                        StartLightAttack();
-                    }
-                }
-                attackHoldDuration = 0f;
+                StartLightAttack();
             }
         }
     }
 
-    private void HandleRangedSlingshotInput(bool attackPressed, bool attackHeld, bool attackReleased, bool skillPressed)
+    private void HandleRangedSlingshotInput(bool lightPressed, bool heavyPressed)
     {
-        if (skillPressed && !isSkillLeaping && !isAttacking)
-        {
-            isChargingAttack = false;
-            attackHoldDuration = 0f;
-            hasBufferedAttack = false;
-            if (playerEquipment != null && playerEquipment.TryPerformSkillAttack())
-            {
-                if (attackCoroutine != null)
-                {
-                    StopCoroutine(attackCoroutine);
-                    attackCoroutine = null;
-                }
-                attackCoroutine = StartCoroutine(RoutineRangedShotRecovery(0.20f));
-            }
-            return;
-        }
-
         if (isAttacking)
         {
-            if (attackPressed)
+            if (heavyPressed)
+            {
+                hasBufferedHeavyAttack = true;
+                bufferedAttackTime = Time.time;
+            }
+            else if (lightPressed)
             {
                 hasBufferedAttack = true;
                 bufferedAttackTime = Time.time;
             }
             return;
+        }
+
+        if (hasBufferedHeavyAttack)
+        {
+            hasBufferedHeavyAttack = false;
+            if (Time.time - bufferedAttackTime <= 0.35f && playerEquipment != null && playerEquipment.TryPerformHeavyAttack(1.0f))
+            {
+                if (attackCoroutine != null) StopCoroutine(attackCoroutine);
+                attackCoroutine = StartCoroutine(RoutineRangedShotRecovery(0.18f));
+                return;
+            }
         }
 
         if (hasBufferedAttack)
@@ -230,46 +239,24 @@ public partial class PlayerControl
             }
         }
 
-        if (attackPressed)
+        if (heavyPressed && playerEquipment != null)
         {
-            isChargingAttack = true;
-            attackHoldDuration = 0f;
             playerEquipment.ResolveCursorAimDirection(out _);
+            if (playerEquipment.TryPerformHeavyAttack(1.0f))
+            {
+                if (attackCoroutine != null) StopCoroutine(attackCoroutine);
+                attackCoroutine = StartCoroutine(RoutineRangedShotRecovery(0.18f));
+            }
+            return;
         }
 
-        if (isChargingAttack)
+        if (lightPressed && playerEquipment != null)
         {
-            if (attackHeld)
+            playerEquipment.ResolveCursorAimDirection(out _);
+            if (playerEquipment.TryPerformAttack())
             {
-                attackHoldDuration += Time.deltaTime;
-                playerEquipment.ResolveCursorAimDirection(out _);
-                if (attackHoldDuration >= 0.35f)
-                {
-                    playerEquipment.CombatStateMachine.StartHeavyCharge(Time.time);
-                    playerEquipment.CombatStateMachine.UpdateCharge(Time.deltaTime);
-                }
-            }
-
-            if (attackReleased)
-            {
-                isChargingAttack = false;
-                if (attackHoldDuration >= 0.35f)
-                {
-                    if (playerEquipment.TryPerformHeavyAttack(playerEquipment.CombatStateMachine.ChargeRatio))
-                    {
-                        if (attackCoroutine != null) StopCoroutine(attackCoroutine);
-                        attackCoroutine = StartCoroutine(RoutineRangedShotRecovery(0.18f));
-                    }
-                }
-                else
-                {
-                    if (playerEquipment.TryPerformAttack())
-                    {
-                        if (attackCoroutine != null) StopCoroutine(attackCoroutine);
-                        attackCoroutine = StartCoroutine(RoutineRangedShotRecovery(0.14f));
-                    }
-                }
-                attackHoldDuration = 0f;
+                if (attackCoroutine != null) StopCoroutine(attackCoroutine);
+                attackCoroutine = StartCoroutine(RoutineRangedShotRecovery(0.14f));
             }
         }
     }
@@ -301,14 +288,119 @@ public partial class PlayerControl
         attackCoroutine = null;
     }
 
+    private void SetAnimatorRecoveryBool(bool value)
+    {
+        isInAttackRecovery = value;
+        if (animator != null && HasAnimatorParameter(animator, "InAttackRecovery", AnimatorControllerParameterType.Bool))
+        {
+            animator.SetBool("InAttackRecovery", value);
+        }
+    }
+
+    private void SyncAttackRecoveryState(ref bool enteredExpectedState, out bool inRecoveryHold)
+    {
+        inRecoveryHold = false;
+        if (animator == null) return;
+
+        var curr = animator.GetCurrentAnimatorStateInfo(0);
+        bool inTrans = animator.IsInTransition(0);
+        var next = inTrans ? animator.GetNextAnimatorStateInfo(0) : default;
+
+        bool expectedNow = playerEquipment != null && playerEquipment.IsAnimatorInExpectedCombatState(curr);
+        bool expectedNext = inTrans && playerEquipment != null && playerEquipment.IsAnimatorInExpectedCombatState(next);
+
+        if (!enteredExpectedState)
+        {
+            if (expectedNow || expectedNext)
+            {
+                enteredExpectedState = true;
+                if (expectedNow && !inTrans && curr.normalizedTime >= 0.94f)
+                {
+                    SetAnimatorRecoveryBool(true);
+                    inRecoveryHold = true;
+                }
+                else
+                {
+                    SetAnimatorRecoveryBool(false);
+                }
+            }
+            else if (IsAttackState(curr) && curr.normalizedTime >= 0.92f)
+            {
+                SetAnimatorRecoveryBool(true);
+            }
+            else if (!IsAttackState(curr))
+            {
+                SetAnimatorRecoveryBool(false);
+            }
+            return;
+        }
+
+        if (expectedNow)
+        {
+            if (curr.normalizedTime >= 0.94f || (inTrans && !IsAttackState(next)))
+            {
+                SetAnimatorRecoveryBool(true);
+                inRecoveryHold = true;
+            }
+            else
+            {
+                SetAnimatorRecoveryBool(false);
+            }
+        }
+        else if (expectedNext)
+        {
+            SetAnimatorRecoveryBool(false);
+        }
+        else if (!IsAttackState(curr) && !IsAttackState(next))
+        {
+            SetAnimatorRecoveryBool(false);
+        }
+    }
+
+    private bool TryCancelRecoveryIntoMovement(bool inRecoveryHold)
+    {
+        if (!inRecoveryHold || inputVector.magnitude < 0.1f || hasBufferedAttack || hasBufferedHeavyAttack)
+        {
+            return false;
+        }
+
+        playerEquipment?.EndActiveSwingTrailAndHitbox();
+        if (animator != null)
+        {
+            animator.ResetTrigger("Attack");
+            animator.ResetTrigger("HeavyAttack");
+            SetAnimatorRecoveryBool(false);
+            animator.SetBool("IsAttacking", false);
+            animator.SetBool("Idle", false);
+
+            bool wantsSprint = Keyboard.current != null && (Keyboard.current.leftShiftKey.isPressed || Keyboard.current.rightShiftKey.isPressed);
+            bool hasStamina = playerStats == null || (!playerStats.IsExhausted && playerStats.currentStamina > 0.5f);
+            animator.SetBool("Sprinting", wantsSprint && hasStamina && isGroundedRecently);
+        }
+        else
+        {
+            isInAttackRecovery = false;
+        }
+        return true;
+    }
+
     private IEnumerator RoutineDashAttack()
     {
         isAttacking = true;
         isLightAttacking = false;
         hasBufferedAttack = false;
         _currentCombatSubState = PlayerActionState.DashAttack;
+        bool enteredExpectedState = false;
         if (animator != null)
+        {
             animator.SetBool("IsAttacking", true);
+            if (!IsAttackState(animator.GetCurrentAnimatorStateInfo(0)))
+                SetAnimatorRecoveryBool(false);
+        }
+        else
+        {
+            isInAttackRecovery = false;
+        }
 
         if (rb != null)
         {
@@ -319,14 +411,41 @@ public partial class PlayerControl
         yield return null;
 
         float atkSpeed = (playerEquipment != null) ? Mathf.Max(0.5f, playerEquipment.AttackAnimationSpeed) : 1.6f;
-        float lockDuration = 0.36f / atkSpeed;
-        yield return new WaitForSeconds(lockDuration);
+        float minLock = 0.25f / atkSpeed;
+        float maxLock = 1.40f / atkSpeed;
+        float timer = 0f;
+        while (timer < maxLock)
+        {
+            timer += Time.deltaTime;
+            SyncAttackRecoveryState(ref enteredExpectedState, out bool inRecoveryHold);
+            if (TryCancelRecoveryIntoMovement(inRecoveryHold))
+            {
+                break;
+            }
+
+            if ((enteredExpectedState || timer > minLock) && animator != null)
+            {
+                var curr = animator.GetCurrentAnimatorStateInfo(0);
+                var next = animator.GetNextAnimatorStateInfo(0);
+                if (!IsAttackState(curr) && !IsAttackState(next))
+                {
+                    break;
+                }
+            }
+            yield return null;
+        }
 
         isAttacking = false;
+        SetAnimatorRecoveryBool(false);
         _currentCombatSubState = PlayerActionState.Locomotion;
         attackCoroutine = null;
+        playerEquipment?.CombatStateMachine?.ResetToIdle();
         if (animator != null)
+        {
+            animator.ResetTrigger("Attack");
+            animator.ResetTrigger("HeavyAttack");
             animator.SetBool("IsAttacking", false);
+        }
     }
 
     private IEnumerator RoutineHeavyAttack()
@@ -335,39 +454,87 @@ public partial class PlayerControl
         isLightAttacking = false;
         hasBufferedAttack = false;
         _currentCombatSubState = PlayerActionState.HeavyAttack;
+        bool enteredExpectedState = false;
         if (animator != null)
+        {
             animator.SetBool("IsAttacking", true);
+            if (!IsAttackState(animator.GetCurrentAnimatorStateInfo(0)))
+                SetAnimatorRecoveryBool(false);
+        }
+        else
+        {
+            isInAttackRecovery = false;
+        }
 
         float atkSpeed = (playerEquipment != null) ? Mathf.Max(0.5f, playerEquipment.AttackAnimationSpeed) : 1f;
 
-        // Windup anticipation delay matching the initial combo strike
-        float windupWait = 0.38f / atkSpeed;
+        // Windup anticipation delay matching the active heavy step's kinematic apex
+        int heavyIdx = playerEquipment != null ? playerEquipment.CurrentHeavyComboIndex : 0;
+        float baseWindup = heavyIdx == 1 ? 0.14f : (heavyIdx >= 2 ? 0.40f : 0.28f);
+        float windupWait = baseWindup / atkSpeed;
         float elapsedWindup = 0f;
+        bool canceledByMovement = false;
         while (elapsedWindup < windupWait)
         {
             elapsedWindup += Time.deltaTime;
+            SyncAttackRecoveryState(ref enteredExpectedState, out bool inRecoveryHold);
+            if (TryCancelRecoveryIntoMovement(inRecoveryHold))
+            {
+                canceledByMovement = true;
+                break;
+            }
             yield return null;
         }
 
-        // Forward impulse burst synchronized with active combo blade release
-        if (rb != null)
+        if (!canceledByMovement)
         {
-            rb.linearVelocity = transform.forward * 4.2f + Vector3.up * 0.1f;
-        }
+            // Forward impulse burst synchronized with active combo blade release
+            if (rb != null)
+            {
+                rb.linearVelocity = transform.forward * 4.2f + Vector3.up * 0.1f;
+            }
 
-        float maxLock = 1.5f / atkSpeed;
-        float timer = elapsedWindup;
-        while (timer < maxLock)
-        {
-            timer += Time.deltaTime;
-            yield return null;
+            float maxLock = 2.00f / atkSpeed;
+            float minLock = 0.25f / atkSpeed;
+            float timer = elapsedWindup;
+            while (timer < maxLock)
+            {
+                timer += Time.deltaTime;
+                SyncAttackRecoveryState(ref enteredExpectedState, out bool inRecoveryHold);
+                if (TryCancelRecoveryIntoMovement(inRecoveryHold))
+                {
+                    break;
+                }
+
+                if ((enteredExpectedState || timer > minLock) && animator != null)
+                {
+                    var curr = animator.GetCurrentAnimatorStateInfo(0);
+                    var next = animator.GetNextAnimatorStateInfo(0);
+                    if (!IsAttackState(curr) && !IsAttackState(next))
+                    {
+                        break;
+                    }
+                }
+                yield return null;
+            }
         }
 
         isAttacking = false;
+        SetAnimatorRecoveryBool(false);
+        hasBufferedAttack = false;
+        hasBufferedHeavyAttack = false;
         _currentCombatSubState = PlayerActionState.Locomotion;
         attackCoroutine = null;
+        if (playerEquipment != null && playerEquipment.CurrentHeavyComboIndex >= 3)
+        {
+            playerEquipment.CombatStateMachine.ResetToIdle();
+        }
         if (animator != null)
+        {
+            animator.ResetTrigger("Attack");
+            animator.ResetTrigger("HeavyAttack");
             animator.SetBool("IsAttacking", false);
+        }
     }
 
     private void StartLightAttack()
@@ -384,36 +551,36 @@ public partial class PlayerControl
     {
         isAttacking = true;
         isLightAttacking = true;
+        bool enteredExpectedState = false;
         if (animator != null)
+        {
             animator.SetBool("IsAttacking", true);
+            if (!IsAttackState(animator.GetCurrentAnimatorStateInfo(0)))
+                SetAnimatorRecoveryBool(false);
+        }
+        else
+        {
+            isInAttackRecovery = false;
+        }
 
         // Tunggu satu frame agar transisi animator ke state attack dimulai
         yield return null;
 
         float atkSpeed = (playerEquipment != null) ? Mathf.Max(0.5f, playerEquipment.AttackAnimationSpeed) : 1f;
-        float maxLock = attackLockDuration / atkSpeed;
+        float maxLock = Mathf.Max(attackLockDuration, 2.10f) / atkSpeed;
         float minLock = 0.20f / atkSpeed;
 
         float timer = 0f;
         while (timer < maxLock)
         {
             timer += Time.deltaTime;
-
-            if (hasBufferedAttack && playerEquipment != null)
+            SyncAttackRecoveryState(ref enteredExpectedState, out bool inRecoveryHold);
+            if (TryCancelRecoveryIntoMovement(inRecoveryHold))
             {
-                if (Time.time - bufferedAttackTime > 0.45f)
-                {
-                    hasBufferedAttack = false;
-                }
-                else if (playerEquipment.TryPerformAttack())
-                {
-                    hasBufferedAttack = false;
-                    StartLightAttack();
-                    yield break;
-                }
+                break;
             }
 
-            if (timer > minLock && animator != null)
+            if ((enteredExpectedState || timer > minLock) && animator != null)
             {
                 var curr = animator.GetCurrentAnimatorStateInfo(0);
                 var next = animator.GetNextAnimatorStateInfo(0);
@@ -428,9 +595,20 @@ public partial class PlayerControl
 
         isAttacking = false;
         isLightAttacking = false;
+        SetAnimatorRecoveryBool(false);
+        hasBufferedAttack = false;
+        hasBufferedHeavyAttack = false;
         attackCoroutine = null;
+        if (playerEquipment != null && playerEquipment.CurrentComboIndex >= 2)
+        {
+            playerEquipment.CombatStateMachine.ResetToIdle();
+        }
         if (animator != null)
+        {
+            animator.ResetTrigger("Attack");
+            animator.ResetTrigger("HeavyAttack");
             animator.SetBool("IsAttacking", false);
+        }
     }
 
 
@@ -521,13 +699,19 @@ public partial class PlayerControl
         isLightAttacking = false;
         isSkillLeaping = false;
         isChargingAttack = false;
-        attackHoldDuration = 0f;
+        SetAnimatorRecoveryBool(false);
         hasBufferedAttack = false;
+        hasBufferedHeavyAttack = false;
         _currentCombatSubState = PlayerActionState.Locomotion;
         playerEquipment?.CancelActiveAttackSwing();
-        if (animator != null && !animator.GetBool("Driving"))
+        if (animator != null)
         {
-            animator.SetBool("IsAttacking", false);
+            animator.ResetTrigger("Attack");
+            animator.ResetTrigger("HeavyAttack");
+            if (!animator.GetBool("Driving"))
+            {
+                animator.SetBool("IsAttacking", false);
+            }
         }
     }
 
@@ -537,7 +721,12 @@ public partial class PlayerControl
                info.IsName("Attack_Combo1") ||
                info.IsName("Attack_Combo2") ||
                info.IsName("Attack_Combo3") ||
+               info.IsName("Attack_Combo4") ||
                info.IsName("Attack_Heavy") ||
+               info.IsName("Heavy_Attack1") ||
+               info.IsName("Heavy_Attack2") ||
+               info.IsName("Heavy_Attack3") ||
+               info.IsName("Heavy_Attack4") ||
                info.IsName("Attack_Skill");
     }
 }

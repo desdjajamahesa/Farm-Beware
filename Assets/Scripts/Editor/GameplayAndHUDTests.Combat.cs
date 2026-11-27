@@ -2597,5 +2597,199 @@ namespace FarmBeware.EditorTests
                 if (targetInOpenGo != null) Object.DestroyImmediate(targetInOpenGo);
             }
         }
+
+        // Test 115: PlayerModular Combat Overhaul, Per-Step Heavy Timing, End-Frame Hold, Action Cancels & Zero-Warning Guards
+        private static bool Test_PlayerModular_CombatOverhaul_HeavyChain_RecoveryHold_ActionCancels_And_ZeroWarnings_Audit()
+        {
+            var cleanup = new List<Object>();
+            try
+            {
+                // 1. Pure-Logic FSM: 1.8s default reset, 3-hit light cycle, 4-hit heavy chain, and branching finishers
+                var fsm = new FeaturesCombat.Melee.MeleeCombatStateMachine();
+                if (Mathf.Abs(fsm.ComboResetWindow - 1.8f) > 0.01f)
+                {
+                    Debug.LogError($"[Test 115] Expected default ComboResetWindow 1.8f, got {fsm.ComboResetWindow}");
+                    return false;
+                }
+
+                var l1 = FeaturesCombat.Melee.MeleeCombatState.Idle;
+                var l2 = FeaturesCombat.Melee.MeleeCombatState.Idle;
+                var l3 = FeaturesCombat.Melee.MeleeCombatState.Idle;
+                var l4 = FeaturesCombat.Melee.MeleeCombatState.Idle;
+                if (!fsm.TryTriggerLight(1.0f, 1.0f, out l1, out _) || l1 != FeaturesCombat.Melee.MeleeCombatState.Light1 ||
+                    !fsm.TryTriggerLight(1.2f, 0.90f, out l2, out _) || l2 != FeaturesCombat.Melee.MeleeCombatState.Light2 ||
+                    !fsm.TryTriggerLight(1.5f, 0.90f, out l3, out _) || l3 != FeaturesCombat.Melee.MeleeCombatState.Light3_Finisher ||
+                    !fsm.TryTriggerLight(1.9f, 0.90f, out l4, out _) || l4 != FeaturesCombat.Melee.MeleeCombatState.Light1)
+                {
+                    Debug.LogError($"[Test 115] Light 3-hit cycle failed: {l1} -> {l2} -> {l3} -> {l4}");
+                    return false;
+                }
+
+                fsm.ResetToIdle();
+                var h1 = FeaturesCombat.Melee.MeleeCombatState.Idle;
+                var h2 = FeaturesCombat.Melee.MeleeCombatState.Idle;
+                var h3 = FeaturesCombat.Melee.MeleeCombatState.Idle;
+                var h4 = FeaturesCombat.Melee.MeleeCombatState.Idle;
+                if (!fsm.TryTriggerHeavyChain(10.0f, 1.0f, out h1, out _) || h1 != FeaturesCombat.Melee.MeleeCombatState.HeavyRelease ||
+                    !fsm.TryTriggerHeavyChain(10.4f, 0.90f, out h2, out _) || h2 != FeaturesCombat.Melee.MeleeCombatState.HeavyChain2 ||
+                    !fsm.TryTriggerHeavyChain(10.8f, 0.90f, out h3, out _) || h3 != FeaturesCombat.Melee.MeleeCombatState.HeavyChain3 ||
+                    !fsm.TryTriggerHeavyChain(11.3f, 0.90f, out h4, out _) || h4 != FeaturesCombat.Melee.MeleeCombatState.HeavyChain4)
+                {
+                    Debug.LogError($"[Test 115] Heavy 4-hit chain failed: {h1} -> {h2} -> {h3} -> {h4}");
+                    return false;
+                }
+
+                fsm.ResetToIdle();
+                fsm.TryTriggerLight(20.0f, 1.0f, out _, out _);
+                fsm.TryTriggerLight(20.2f, 0.90f, out _, out _);
+                fsm.TryTriggerLight(20.5f, 0.90f, out _, out _);
+                if (!fsm.TryTriggerHeavyFinisher(20.9f, 0.90f, out var bh3) || bh3 != FeaturesCombat.Melee.MeleeCombatState.HeavyChain4)
+                {
+                    Debug.LogError($"[Test 115] L->L->L->H branching failed: {bh3}");
+                    return false;
+                }
+
+                // 2. PlayerEquipment: Per-step Heavy timing + EndActiveSwingTrailAndHitbox vs CancelActiveAttackSwing
+                var equipGo = new GameObject("Test115_PlayerEquip");
+                cleanup.Add(equipGo);
+                var equip = equipGo.AddComponent<PlayerEquipment>();
+                equip.ResolveHeavyStepTiming(1, out float h2Delay, out float h2Dur);
+                if (h2Delay + h2Dur > 0.405f)
+                {
+                    Debug.LogError($"[Test 115] Heavy_Attack2 swing window ({h2Delay}+{h2Dur}={h2Delay + h2Dur:F2}s) exceeds 0.40s clip!");
+                    return false;
+                }
+
+                equip.CombatStateMachine.TryTriggerLight(1.0f, 1.0f, out _, out _);
+                equip.EndActiveSwingTrailAndHitbox();
+                if (equip.CombatStateMachine.CurrentState != FeaturesCombat.Melee.MeleeCombatState.Light1)
+                {
+                    Debug.LogError("[Test 115] EndActiveSwingTrailAndHitbox reset combo state when it should preserve it!");
+                    return false;
+                }
+                equip.CancelActiveAttackSwing();
+                if (equip.CombatStateMachine.CurrentState != FeaturesCombat.Melee.MeleeCombatState.Idle)
+                {
+                    Debug.LogError("[Test 115] CancelActiveAttackSwing did not reset combo state to Idle!");
+                    return false;
+                }
+
+                // 3. PlayerModular_Animator.controller topology & Sliding sync
+                var ac = AssetDatabase.LoadAssetAtPath<UnityEditor.Animations.AnimatorController>("Assets/Art/Characters/PlayerModular/PlayerModular_Animator.controller");
+                if (ac == null)
+                {
+                    Debug.LogError("[Test 115] PlayerModular_Animator.controller not found!");
+                    return false;
+                }
+                if (!ac.parameters.Any(p => p.name == "InAttackRecovery" && p.type == AnimatorControllerParameterType.Bool))
+                {
+                    Debug.LogError("[Test 115] InAttackRecovery Bool parameter missing on PlayerModular_Animator.controller!");
+                    return false;
+                }
+
+                var sm = ac.layers[0].stateMachine;
+                var stateMap = sm.states.ToDictionary(s => s.state.name, s => s.state);
+                foreach (var kv in stateMap)
+                {
+                    if (!Mathf.Approximately(kv.Value.speed, 1.0f))
+                    {
+                        Debug.LogError($"[Test 115] State {kv.Key} speed={kv.Value.speed}, expected 1.00!");
+                        return false;
+                    }
+                }
+
+                foreach (var entry in new[] { "Idle", "Moving", "Moving_Fast", "Parry_Guard" })
+                {
+                    var dests = new HashSet<string>(stateMap[entry].transitions.Where(t => t.destinationState != null).Select(t => t.destinationState.name));
+                    foreach (var req in new[] { "Attack_Combo1", "Attack_Combo2", "Attack_Combo3", "Heavy_Attack1", "Heavy_Attack2", "Heavy_Attack3", "Heavy_Attack4" })
+                    {
+                        if (!dests.Contains(req))
+                        {
+                            Debug.LogError($"[Test 115] Entry state {entry} missing transition to {req}!");
+                            return false;
+                        }
+                    }
+                }
+
+                foreach (var atk in new[] { "Attack_Combo1", "Attack_Combo2", "Attack_Combo3", "Heavy_Attack1", "Heavy_Attack2", "Heavy_Attack3", "Heavy_Attack4" })
+                {
+                    var trans = stateMap[atk].transitions;
+                    if (trans.Length == 0 || trans[trans.Length - 1].destinationState == null || trans[trans.Length - 1].destinationState.name != "Idle")
+                    {
+                        Debug.LogError($"[Test 115] Attack state {atk} must end with -> Idle exit transition!");
+                        return false;
+                    }
+                    if (!trans.Any(t => t.destinationState?.name == "Moving") || !trans.Any(t => t.destinationState?.name == "Moving_Fast"))
+                    {
+                        Debug.LogError($"[Test 115] Attack state {atk} missing Walk/Sprint recovery cancel transitions!");
+                        return false;
+                    }
+                }
+
+                if (!stateMap["Sliding"].transitions.Any(t => t.destinationState?.name == "Idle" && t.exitTime <= 0.85f))
+                {
+                    Debug.LogError("[Test 115] Sliding -> Idle exitTime must be synced <= 0.85f!");
+                    return false;
+                }
+
+                // 4. Live Animator simulation on modular prefab: hold + 1-frame chain + cancels
+                var prefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/Player/character_player_modular.prefab");
+                if (prefab == null)
+                {
+                    Debug.LogError("[Test 115] character_player_modular.prefab not found!");
+                    return false;
+                }
+
+                var simGo = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
+                cleanup.Add(simGo);
+                var simAnim = simGo.GetComponentInChildren<Animator>();
+                simAnim.applyRootMotion = false;
+                simAnim.Rebind();
+                simAnim.SetBool("Grounded", true);
+                simAnim.SetBool("Idle", true);
+                simAnim.Update(0f);
+                for (int s = 0; s < 5; s++) simAnim.Update(0.02f);
+
+                simAnim.SetInteger("ComboIndex", 0);
+                simAnim.SetBool("IsAttacking", true);
+                simAnim.SetTrigger("Attack");
+                float maxNorm = 0f;
+                bool chainedImmediate = false;
+                for (int i = 0; i < 45; i++)
+                {
+                    simAnim.Update(0.02f);
+                    if (i == 0) simAnim.ResetTrigger("Attack");
+                    var st = simAnim.GetCurrentAnimatorStateInfo(0);
+                    if (st.IsName("Attack_Combo1"))
+                    {
+                        if (st.normalizedTime > maxNorm) maxNorm = st.normalizedTime;
+                        if (st.normalizedTime >= 0.94f) simAnim.SetBool("InAttackRecovery", true);
+                        if (st.normalizedTime >= 1.25f && !chainedImmediate)
+                        {
+                            simAnim.SetInteger("ComboIndex", 1);
+                            simAnim.SetTrigger("Attack");
+                            simAnim.Update(0.02f);
+                            chainedImmediate = simAnim.IsInTransition(0) && simAnim.GetNextAnimatorStateInfo(0).IsName("Attack_Combo2");
+                            break;
+                        }
+                    }
+                }
+                if (maxNorm < 1.0f || !chainedImmediate)
+                {
+                    Debug.LogError($"[Test 115] Modular Animator simulation failed: maxNorm={maxNorm:F2}, chainedImmediate={chainedImmediate}");
+                    return false;
+                }
+
+                Debug.Log("✅ Test 115: PlayerModular combat overhaul, Heavy timing calibration, end-frame hold, immediate combo/cancels, and Dodge sync verified.");
+                return true;
+            }
+            finally
+            {
+                for (int i = cleanup.Count - 1; i >= 0; i--)
+                {
+                    if (cleanup[i] != null) Object.DestroyImmediate(cleanup[i]);
+                }
+            }
+        }
     }
 }

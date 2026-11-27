@@ -385,11 +385,13 @@ namespace FarmBeware.Features.Vehicles
                 anim.SetBool("Idle", false);
                 anim.SetBool("Sprinting", false);
                 anim.ResetTrigger("Attack");
-                anim.ResetTrigger("SkillAttack");
+                if (HasAnimatorParameter(anim, "SkillAttack", AnimatorControllerParameterType.Trigger))
+                    anim.ResetTrigger("SkillAttack");
                 anim.ResetTrigger("PlantSeed");
                 anim.ResetTrigger("Parry");
                 anim.ResetTrigger("HitReact");
-                anim.ResetTrigger("LookAround");
+                if (HasAnimatorParameter(anim, "LookAround", AnimatorControllerParameterType.Trigger))
+                    anim.ResetTrigger("LookAround");
                 anim.ResetTrigger("HeavyAttack");
                 anim.Play("Driving", 0, 0f);
                 anim.Update(0f);
@@ -1181,6 +1183,20 @@ namespace FarmBeware.Features.Vehicles
                     }
                 }
             }
+        }
+
+        private static bool HasAnimatorParameter(Animator anim, string paramName, AnimatorControllerParameterType type)
+        {
+            if (anim == null || anim.runtimeAnimatorController == null || string.IsNullOrEmpty(paramName))
+                return false;
+
+            var parameters = anim.parameters;
+            for (int i = 0; i < parameters.Length; i++)
+            {
+                if (parameters[i].type == type && parameters[i].name == paramName)
+                    return true;
+            }
+            return false;
         }
         #endregion
     }
