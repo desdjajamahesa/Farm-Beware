@@ -769,5 +769,11 @@ namespace FarmBeware.EditorTests
         {
             Assert.IsTrue(GameplayAndHUDTests.Test_KitchenRecipe_MVPCookingDurations_Audit(), "Test_KitchenRecipe_MVPCookingDurations_Audit failed. Check Unity Console logs for details.");
         }
+
+        [Test]
+        public void NUnit_124_Test_DayNightTransition_BlocksPauseMenu_And_ReleasesCleanly_Audit()
+        {
+            Assert.IsTrue(GameplayAndHUDTests.Test_DayNightTransition_BlocksPauseMenu_And_ReleasesCleanly_Audit(), "Test_DayNightTransition_BlocksPauseMenu_And_ReleasesCleanly_Audit failed. Check Unity Console logs for details.");
+        }
     }
 }

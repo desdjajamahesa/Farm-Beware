@@ -195,6 +195,7 @@ public partial class MainMenuController : MonoBehaviour
             isReturningToMainMenu = false;
             hasStartedGame = false;
             FarmBeware.Core.Runtime.UIModalHelper.ClearAllPauseLocks();
+            FarmBeware.Core.Runtime.UIModalHelper.ClearAllPauseMenuBlocks();
             LockPlayerInput(false);
             Cursor.visible = true;
             Cursor.lockState = CursorLockMode.None;
@@ -313,6 +314,12 @@ public partial class MainMenuController : MonoBehaviour
                 return;
             }
 
+            // 1a-2. Do not open Pause Menu or strip panels during Day/Night transitions or bed sleep fades
+            if (!CanOpenPauseMenu())
+            {
+                return;
+            }
+
             // 1b. If ModalStackManager has active modal windows, let ModalStackManager handle dismissal
             if (FarmBeware.Core.Runtime.ModalStackManager.Instance != null && FarmBeware.Core.Runtime.ModalStackManager.Instance.HasActiveModal)
             {
@@ -328,6 +335,25 @@ public partial class MainMenuController : MonoBehaviour
 
             ShowMenu(isPause: true);
         }
+    }
+
+    /// <summary>
+    /// Returns false when a Day/Night transition, sleep fade, or cloud scene transition
+    /// prohibits opening the Pause Menu mid-transition.
+    /// </summary>
+    public bool CanOpenPauseMenu()
+    {
+        if (FarmBeware.Core.Runtime.UIModalHelper.IsPauseMenuBlocked)
+            return false;
+
+        if (FadeManager.Instance != null && FadeManager.Instance.IsFading)
+            return false;
+
+        if (FeaturesCommon.CloudTransitionManager.Instance != null &&
+            FeaturesCommon.CloudTransitionManager.Instance.IsTransitioning)
+            return false;
+
+        return true;
     }
 
     private bool TrySkipActiveCutscene()
@@ -460,6 +486,11 @@ public partial class MainMenuController : MonoBehaviour
 
     public void ShowMenu(bool isPause = false)
     {
+        if (isPause && !CanOpenPauseMenu())
+        {
+            return;
+        }
+
         menuActive = true;
         gameObject.SetActive(true);
         transform.SetAsLastSibling();
@@ -828,6 +859,7 @@ public partial class MainMenuController : MonoBehaviour
     private void ExecuteNewGame()
     {
         FarmBeware.Core.Runtime.UIModalHelper.ClearAllPauseLocks();
+        FarmBeware.Core.Runtime.UIModalHelper.ClearAllPauseMenuBlocks();
         LockPlayerInput(false);
         menuActive = false;
         currentState = MenuState.Hidden;
@@ -867,6 +899,7 @@ public partial class MainMenuController : MonoBehaviour
         isReturningToMainMenu = true;
 
         FarmBeware.Core.Runtime.UIModalHelper.ClearAllPauseLocks();
+        FarmBeware.Core.Runtime.UIModalHelper.ClearAllPauseMenuBlocks();
         LockPlayerInput(false);
         Cursor.visible = true;
         Cursor.lockState = CursorLockMode.None;

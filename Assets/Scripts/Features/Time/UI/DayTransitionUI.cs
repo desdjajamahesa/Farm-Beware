@@ -201,6 +201,21 @@ public partial class DayTransitionUI : MonoBehaviour
             DayNightTimeManager.Instance.OnTimePhaseChanged -= HandleTimePhaseChanged;
             DayNightTimeManager.Instance.OnDayChanged -= HandleDayChanged;
         }
+
+        if (transitionCoroutine != null)
+        {
+            StopCoroutine(transitionCoroutine);
+            transitionCoroutine = null;
+            ResetVisualElementsToRest();
+        }
+
+        if (cameraShakeCoroutine != null)
+        {
+            StopCoroutine(cameraShakeCoroutine);
+            cameraShakeCoroutine = null;
+        }
+
+        UnlockPlayer();
     }
 
     private void OnApplicationQuit()
@@ -210,6 +225,14 @@ public partial class DayTransitionUI : MonoBehaviour
 
     private void OnDestroy()
     {
+        if (transitionCoroutine != null)
+        {
+            StopCoroutine(transitionCoroutine);
+            transitionCoroutine = null;
+        }
+
+        UIModalHelper.RemovePauseMenuBlock("DayTransition");
+
         if (_instance == this)
         {
             _instance = null;
@@ -339,6 +362,8 @@ public partial class DayTransitionUI : MonoBehaviour
 
     private void LockPlayer()
     {
+        UIModalHelper.AddPauseMenuBlock("DayTransition");
+
         var player = ServiceLocator.Resolve<IPlayerContext>();
         if (player == null)
         {
@@ -360,6 +385,8 @@ public partial class DayTransitionUI : MonoBehaviour
 
     private void UnlockPlayer()
     {
+        UIModalHelper.RemovePauseMenuBlock("DayTransition");
+
         var player = ServiceLocator.Resolve<IPlayerContext>();
         if (player == null)
         {
@@ -399,6 +426,7 @@ public partial class DayTransitionUI : MonoBehaviour
         lastPlayedRealTime = Time.unscaledTime;
 
         DismissActiveStoryDialogue();
+        UIModalHelper.AddPauseMenuBlock("DayTransition");
 
         EnsureUIHierarchy();
         if (transitionCoroutine != null)
@@ -427,6 +455,7 @@ public partial class DayTransitionUI : MonoBehaviour
         lastPlayedRealTime = Time.unscaledTime;
 
         DismissActiveStoryDialogue();
+        UIModalHelper.AddPauseMenuBlock("DayTransition");
 
         EnsureUIHierarchy();
         if (transitionCoroutine != null)

@@ -37,6 +37,7 @@ namespace FeaturesInteraction
             {
                 timeService.OnPhaseChanged -= HandlePhaseChanged;
             }
+            UIModalHelper.RemovePauseMenuBlock("BedSleep");
         }
 
         private void HandlePhaseChanged(int day, DayPhase newPhase)
@@ -173,57 +174,64 @@ namespace FeaturesInteraction
         private System.Collections.IEnumerator RoutineNightSleep(ITimeService timeService, GameObject interactor)
         {
             var pc = interactor != null ? interactor.GetComponent<IPlayerContext>() : ServiceLocator.Resolve<IPlayerContext>();
+            UIModalHelper.AddPauseMenuBlock("BedSleep");
             if (pc != null)
             {
                 pc.AddInputLock("BedSleep");
                 pc.StopMovement();
             }
 
-            OnBedSleepExecuted?.Invoke();
-
-            // 1. Smooth Fade In to black screen
-            var fadeService = ServiceLocator.Resolve<IFadeService>();
-            float fadeDuration = 0.5f;
-            if (fadeService != null)
+            try
             {
-                fadeService.FadeIn(fadeDuration);
-                yield return new WaitForSecondsRealtime(fadeDuration + 0.05f);
-            }
-            else
-            {
-                yield return null;
-            }
+                OnBedSleepExecuted?.Invoke();
 
-            // 2. Perform day advance behind the black curtain
-            if (interactor != null)
-            {
-                SafeClearBuffs(interactor);
-                SafeHeal(interactor, sleepHealAmount);
-            }
+                // 1. Smooth Fade In to black screen
+                var fadeService = ServiceLocator.Resolve<IFadeService>();
+                float fadeDuration = 0.5f;
+                if (fadeService != null)
+                {
+                    fadeService.FadeIn(fadeDuration);
+                    yield return new WaitForSecondsRealtime(fadeDuration + 0.05f);
+                }
+                else
+                {
+                    yield return null;
+                }
 
-            timeService.AdvanceToNextDay();
+                // 2. Perform day advance behind the black curtain
+                if (interactor != null)
+                {
+                    SafeClearBuffs(interactor);
+                    SafeHeal(interactor, sleepHealAmount);
+                }
 
-            // Optional: Daily report if available
-            var dailyReport = ServiceLocator.Resolve<IDailyReportService>();
-            if (dailyReport != null)
-            {
-                bool reportClosed = false;
-                dailyReport.ShowReport(timeService.CurrentDay - 1, () => reportClosed = true);
-                while (!reportClosed) yield return null;
-            }
+                timeService.AdvanceToNextDay();
 
-            // 3. Smooth Fade Out from black screen back to morning
-            if (fadeService != null)
-            {
-                fadeService.FadeOut(fadeDuration);
-                yield return new WaitForSecondsRealtime(fadeDuration);
-            }
+                // Optional: Daily report if available
+                var dailyReport = ServiceLocator.Resolve<IDailyReportService>();
+                if (dailyReport != null)
+                {
+                    bool reportClosed = false;
+                    dailyReport.ShowReport(timeService.CurrentDay - 1, () => reportClosed = true);
+                    while (!reportClosed) yield return null;
+                }
 
-            if (pc != null)
-            {
-                pc.RemoveInputLock("BedSleep");
+                // 3. Smooth Fade Out from black screen back to morning
+                if (fadeService != null)
+                {
+                    fadeService.FadeOut(fadeDuration);
+                    yield return new WaitForSecondsRealtime(fadeDuration);
+                }
             }
-            UpdateLabel();
+            finally
+            {
+                UIModalHelper.RemovePauseMenuBlock("BedSleep");
+                if (pc != null)
+                {
+                    pc.RemoveInputLock("BedSleep");
+                }
+                UpdateLabel();
+            }
         }
 
         private void ExecuteDay0Sleep(ITimeService timeService, GameObject interactor)
@@ -274,129 +282,143 @@ namespace FeaturesInteraction
         private System.Collections.IEnumerator RoutineDay0Sleep(ITimeService timeService, GameObject interactor)
         {
             var pc = interactor != null ? interactor.GetComponent<IPlayerContext>() : ServiceLocator.Resolve<IPlayerContext>();
+            UIModalHelper.AddPauseMenuBlock("BedSleep");
             if (pc != null)
             {
                 pc.AddInputLock("BedSleep");
                 pc.StopMovement();
             }
 
-            OnBedSleepExecuted?.Invoke();
-
-            // 1. Smooth Fade Out to solid black screen
-            var fadeService = ServiceLocator.Resolve<IFadeService>();
-            float fadeDuration = 0.5f;
-            if (fadeService != null)
+            try
             {
-                fadeService.FadeIn(fadeDuration);
-                yield return new WaitForSecondsRealtime(fadeDuration + 0.05f);
+                OnBedSleepExecuted?.Invoke();
+
+                // 1. Smooth Fade Out to solid black screen
+                var fadeService = ServiceLocator.Resolve<IFadeService>();
+                float fadeDuration = 0.5f;
+                if (fadeService != null)
+                {
+                    fadeService.FadeIn(fadeDuration);
+                    yield return new WaitForSecondsRealtime(fadeDuration + 0.05f);
+                }
+                else
+                {
+                    yield return null;
+                }
+
+                // 2. Perform day advance and health/buff updates behind the black curtain
+                if (interactor != null)
+                {
+                    SafeClearBuffs(interactor);
+                    SafeHeal(interactor, sleepHealAmount);
+                }
+
+                if (ServiceLocator.TryResolve<INarrativeFactBoard>(out var facts) && facts != null)
+                {
+                    facts.SetFact(NarrativeFactKey.IntroCutsceneCompleted, 1);
+                }
+                if (ServiceLocator.TryResolve<IStorylineService>(out var storySvc) && storySvc != null)
+                {
+                    storySvc.RecordBeatTriggered("PROLOGUE");
+                }
+
+                timeService.AdvanceToNextDay();
+
+                // 3. Guarantee Starter Kit on Day 1
+                var targetPlayer = interactor != null ? interactor : GameObject.FindWithTag("Player");
+                if (targetPlayer != null)
+                {
+                    SafeEnsureStarterKit(targetPlayer, 1);
+                }
+
+                // Small pause behind black screen allowing atmosphere and shadow maps to settle
+                yield return new WaitForSecondsRealtime(0.25f);
+
+                // 5. Smooth Fade In from black to reveal the sunlit homestead
+                if (fadeService != null)
+                {
+                    fadeService.FadeOut(fadeDuration);
+                    yield return new WaitForSecondsRealtime(fadeDuration + 0.05f);
+                }
             }
-            else
+            finally
             {
-                yield return null;
+                // 6. Release input lock & pause block and update bed interaction label
+                UIModalHelper.RemovePauseMenuBlock("BedSleep");
+                if (pc != null)
+                {
+                    pc.RemoveInputLock("BedSleep");
+                }
+
+                UpdateLabel();
             }
-
-            // 2. Perform day advance and health/buff updates behind the black curtain
-            if (interactor != null)
-            {
-                SafeClearBuffs(interactor);
-                SafeHeal(interactor, sleepHealAmount);
-            }
-
-            if (ServiceLocator.TryResolve<INarrativeFactBoard>(out var facts) && facts != null)
-            {
-                facts.SetFact(NarrativeFactKey.IntroCutsceneCompleted, 1);
-            }
-            if (ServiceLocator.TryResolve<IStorylineService>(out var storySvc) && storySvc != null)
-            {
-                storySvc.RecordBeatTriggered("PROLOGUE");
-            }
-
-            timeService.AdvanceToNextDay();
-
-            // 3. Guarantee Starter Kit on Day 1
-            var targetPlayer = interactor != null ? interactor : GameObject.FindWithTag("Player");
-            if (targetPlayer != null)
-            {
-                SafeEnsureStarterKit(targetPlayer, 1);
-            }
-
-            // Small pause behind black screen allowing atmosphere and shadow maps to settle
-            yield return new WaitForSecondsRealtime(0.25f);
-
-            // 5. Smooth Fade In from black to reveal the sunlit homestead
-            if (fadeService != null)
-            {
-                fadeService.FadeOut(fadeDuration);
-                yield return new WaitForSecondsRealtime(fadeDuration + 0.05f);
-            }
-
-            // 6. Release input lock and update bed interaction label
-            if (pc != null)
-            {
-                pc.RemoveInputLock("BedSleep");
-            }
-
-            UpdateLabel();
         }
 
         private System.Collections.IEnumerator RoutineDaytimeSleep(ITimeService timeService, GameObject interactor)
         {
             var pc = interactor != null ? interactor.GetComponent<IPlayerContext>() : ServiceLocator.Resolve<IPlayerContext>();
+            UIModalHelper.AddPauseMenuBlock("BedSleep");
             if (pc != null)
             {
                 pc.AddInputLock("BedSleep");
                 pc.StopMovement();
             }
 
-            OnBedSleepExecuted?.Invoke();
-
-            // 1. Smooth Fade Out to solid black screen
-            var fadeService = ServiceLocator.Resolve<IFadeService>();
-            float fadeDuration = 0.5f;
-            if (fadeService != null)
+            try
             {
-                fadeService.FadeIn(fadeDuration);
-                yield return new WaitForSecondsRealtime(fadeDuration + 0.05f);
+                OnBedSleepExecuted?.Invoke();
+
+                // 1. Smooth Fade Out to solid black screen
+                var fadeService = ServiceLocator.Resolve<IFadeService>();
+                float fadeDuration = 0.5f;
+                if (fadeService != null)
+                {
+                    fadeService.FadeIn(fadeDuration);
+                    yield return new WaitForSecondsRealtime(fadeDuration + 0.05f);
+                }
+                else
+                {
+                    yield return null;
+                }
+
+                // 2. Clear buffs and transition to Night phase behind the black screen
+                if (interactor != null)
+                {
+                    SafeClearBuffs(interactor);
+                }
+
+                timeService.StartNightPhase();
+
+                // Small pause behind black screen allowing lighting and atmosphere to settle
+                yield return new WaitForSecondsRealtime(0.25f);
+
+                // 3. Smooth Fade In from black to night
+                if (fadeService != null)
+                {
+                    fadeService.FadeOut(fadeDuration);
+                    yield return new WaitForSecondsRealtime(fadeDuration + 0.05f);
+                }
+
+                var floatingText = ServiceLocator.Resolve<IFloatingTextService>();
+                if (floatingText != null && interactor != null)
+                {
+                    floatingText.SpawnText(
+                        transform.position + Vector3.up * 1.2f,
+                        "Nightfall begins! Prepare for battle!",
+                        new Color(1f, 0.45f, 0.45f));
+                }
             }
-            else
+            finally
             {
-                yield return null;
+                // 4. Release input lock & pause block and update bed interaction label
+                UIModalHelper.RemovePauseMenuBlock("BedSleep");
+                if (pc != null)
+                {
+                    pc.RemoveInputLock("BedSleep");
+                }
+
+                UpdateLabel();
             }
-
-            // 2. Clear buffs and transition to Night phase behind the black screen
-            if (interactor != null)
-            {
-                SafeClearBuffs(interactor);
-            }
-
-            timeService.StartNightPhase();
-
-            // Small pause behind black screen allowing lighting and atmosphere to settle
-            yield return new WaitForSecondsRealtime(0.25f);
-
-            // 3. Smooth Fade In from black to night
-            if (fadeService != null)
-            {
-                fadeService.FadeOut(fadeDuration);
-                yield return new WaitForSecondsRealtime(fadeDuration + 0.05f);
-            }
-
-            // 4. Release input lock and update bed interaction label
-            if (pc != null)
-            {
-                pc.RemoveInputLock("BedSleep");
-            }
-
-            var floatingText = ServiceLocator.Resolve<IFloatingTextService>();
-            if (floatingText != null && interactor != null)
-            {
-                floatingText.SpawnText(
-                    transform.position + Vector3.up * 1.2f,
-                    "Nightfall begins! Prepare for battle!",
-                    new Color(1f, 0.45f, 0.45f));
-            }
-
-            UpdateLabel();
         }
 
         private static void SafeClearBuffs(GameObject target)

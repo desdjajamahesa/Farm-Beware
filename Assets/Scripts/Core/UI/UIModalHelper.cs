@@ -13,6 +13,7 @@ namespace FarmBeware.Core.Runtime
         public static bool IsSaveUIOpen = false;
 
         private static readonly HashSet<string> _pauseLockSources = new HashSet<string>();
+        private static readonly HashSet<string> _pauseMenuBlockSources = new HashSet<string>();
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void ResetStaticState()
@@ -20,6 +21,7 @@ namespace FarmBeware.Core.Runtime
             LastFrameUIPanelClosed = -1;
             IsSaveUIOpen = false;
             _pauseLockSources.Clear();
+            _pauseMenuBlockSources.Clear();
         }
 
         /// <summary>
@@ -31,6 +33,16 @@ namespace FarmBeware.Core.Runtime
         /// Number of distinct systems currently holding a pause lock.
         /// </summary>
         public static int ActivePauseLockCount => _pauseLockSources.Count;
+
+        /// <summary>
+        /// True when at least one system currently blocks opening the Pause Menu (e.g. Day/Night transitions or bed sleep fades).
+        /// </summary>
+        public static bool IsPauseMenuBlocked => _pauseMenuBlockSources.Count > 0;
+
+        /// <summary>
+        /// Number of distinct systems currently blocking the Pause Menu.
+        /// </summary>
+        public static int ActivePauseMenuBlockCount => _pauseMenuBlockSources.Count;
 
         /// <summary>
         /// Acquires a named pause lock and sets Time.timeScale = 0f.
@@ -75,6 +87,42 @@ namespace FarmBeware.Core.Runtime
         {
             _pauseLockSources.Clear();
             Time.timeScale = 1f;
+        }
+
+        /// <summary>
+        /// Acquires a named pause-menu block preventing the player from opening the Pause Menu
+        /// (e.g. during Day/Night transitions or bed sleep fades) without altering Time.timeScale.
+        /// </summary>
+        public static void AddPauseMenuBlock(string source)
+        {
+            if (string.IsNullOrEmpty(source)) source = "GenericPauseBlock";
+            _pauseMenuBlockSources.Add(source);
+        }
+
+        /// <summary>
+        /// Releases a named pause-menu block token.
+        /// </summary>
+        public static void RemovePauseMenuBlock(string source)
+        {
+            if (string.IsNullOrEmpty(source)) source = "GenericPauseBlock";
+            _pauseMenuBlockSources.Remove(source);
+        }
+
+        /// <summary>
+        /// Checks whether a specific source currently blocks opening the Pause Menu.
+        /// </summary>
+        public static bool HasPauseMenuBlock(string source)
+        {
+            if (string.IsNullOrEmpty(source)) return _pauseMenuBlockSources.Count > 0;
+            return _pauseMenuBlockSources.Contains(source);
+        }
+
+        /// <summary>
+        /// Clears all active pause-menu block tokens (e.g. on returning to Main Menu or starting New Game).
+        /// </summary>
+        public static void ClearAllPauseMenuBlocks()
+        {
+            _pauseMenuBlockSources.Clear();
         }
     }
 }

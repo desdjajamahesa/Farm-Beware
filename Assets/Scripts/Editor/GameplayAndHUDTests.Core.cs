@@ -3681,5 +3681,127 @@ namespace FarmBeware.EditorTests
                 return false;
             }
         }
+
+        // Test 124: Verify Day/Night transition and bed sleep fade pause-menu blocking
+        // prevents Pause Menu from opening mid-transition and releases tokens cleanly on completion/cancel.
+        internal static bool Test_DayNightTransition_BlocksPauseMenu_And_ReleasesCleanly_Audit()
+        {
+            GameObject menuGo = null;
+            GameObject dayTransGo = null;
+            float origTimeScale = Time.timeScale;
+            bool origPaused = UIModalHelper.HasActivePauseLock;
+
+            try
+            {
+                UIModalHelper.ClearAllPauseLocks();
+                UIModalHelper.ClearAllPauseMenuBlocks();
+                Time.timeScale = 1f;
+
+                // 1. Scoped pause-menu block token stacking does not leak or alter Time.timeScale
+                UIModalHelper.AddPauseMenuBlock("DayTransition");
+                UIModalHelper.AddPauseMenuBlock("BedSleep");
+                if (!UIModalHelper.IsPauseMenuBlocked || UIModalHelper.ActivePauseMenuBlockCount != 2 || !Mathf.Approximately(Time.timeScale, 1f))
+                {
+                    Debug.LogError($"[Test 124] PauseMenuBlock stacking failed: blocked={UIModalHelper.IsPauseMenuBlocked}, count={UIModalHelper.ActivePauseMenuBlockCount}, timeScale={Time.timeScale}");
+                    return false;
+                }
+
+                UIModalHelper.RemovePauseMenuBlock("DayTransition");
+                if (!UIModalHelper.IsPauseMenuBlocked || UIModalHelper.ActivePauseMenuBlockCount != 1)
+                {
+                    Debug.LogError("[Test 124] Removing DayTransition while BedSleep remains held should keep pause menu blocked!");
+                    return false;
+                }
+
+                UIModalHelper.RemovePauseMenuBlock("BedSleep");
+                if (UIModalHelper.IsPauseMenuBlocked || UIModalHelper.ActivePauseMenuBlockCount != 0)
+                {
+                    Debug.LogError("[Test 124] Releasing last pause-menu block failed to unblock Pause Menu!");
+                    return false;
+                }
+
+                // 2. MainMenuController rejects ShowMenu(isPause: true) whenever any transition block is active
+                menuGo = new GameObject("Test124_MainMenu", typeof(MainMenuController));
+                var menuCtrl = menuGo.GetComponent<MainMenuController>();
+
+                UIModalHelper.AddPauseMenuBlock("DayTransition");
+                if (menuCtrl.CanOpenPauseMenu())
+                {
+                    Debug.LogError("[Test 124] CanOpenPauseMenu() must return false when DayTransition block is active!");
+                    return false;
+                }
+
+                menuCtrl.ShowMenu(isPause: true);
+                if (menuCtrl.IsMenuActive || UIModalHelper.HasPauseLock("PauseMenu"))
+                {
+                    Debug.LogError("[Test 124] ShowMenu(isPause: true) opened Pause Menu during active DayTransition block!");
+                    return false;
+                }
+
+                UIModalHelper.RemovePauseMenuBlock("DayTransition");
+                UIModalHelper.AddPauseMenuBlock("BedSleep");
+                menuCtrl.ShowMenu(isPause: true);
+                if (menuCtrl.CanOpenPauseMenu() || menuCtrl.IsMenuActive || UIModalHelper.HasPauseLock("PauseMenu"))
+                {
+                    Debug.LogError("[Test 124] ShowMenu(isPause: true) opened Pause Menu during active BedSleep block!");
+                    return false;
+                }
+
+                UIModalHelper.RemovePauseMenuBlock("BedSleep");
+
+                // 3. DayTransitionUI LockPlayer / UnlockPlayer + CancelTransition acquire & release DayTransition cleanly
+                dayTransGo = new GameObject("Test124_DayTransition", typeof(DayTransitionUI));
+                var prevDayTrans = DayTransitionUI.Instance;
+                DayTransitionUI.Instance = dayTransGo.GetComponent<DayTransitionUI>();
+
+                var lockMethod = typeof(DayTransitionUI).GetMethod("LockPlayer", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                lockMethod?.Invoke(DayTransitionUI.Instance, null);
+                if (!UIModalHelper.HasPauseMenuBlock("DayTransition") || menuCtrl.CanOpenPauseMenu())
+                {
+                    Debug.LogError("[Test 124] DayTransitionUI.LockPlayer did not acquire 'DayTransition' pause block!");
+                    return false;
+                }
+
+                DayTransitionUI.Instance.CancelTransition();
+                if (UIModalHelper.HasPauseMenuBlock("DayTransition") || !menuCtrl.CanOpenPauseMenu())
+                {
+                    Debug.LogError("[Test 124] DayTransitionUI.CancelTransition did not release 'DayTransition' pause block!");
+                    return false;
+                }
+
+                // 4. Pause Menu opens and resumes cleanly after transitions end
+                menuCtrl.ShowMenu(isPause: true);
+                if (!menuCtrl.IsMenuActive || !UIModalHelper.HasPauseLock("PauseMenu"))
+                {
+                    Debug.LogError("[Test 124] Pause Menu failed to open after transition blocks cleared!");
+                    return false;
+                }
+
+                menuCtrl.ResumeGame();
+                if (menuCtrl.IsMenuActive || UIModalHelper.HasPauseLock("PauseMenu") || !Mathf.Approximately(Time.timeScale, 1f))
+                {
+                    Debug.LogError("[Test 124] ResumeGame failed to restore clean state after pause!");
+                    return false;
+                }
+
+                DayTransitionUI.Instance = prevDayTrans;
+
+                Debug.Log("✅ Test 124: Scoped Day/Night transition & bed sleep pause-menu blocking and clean release verified.");
+                return true;
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogError($"[Test 124] Exception: {ex.Message}\n{ex.StackTrace}");
+                return false;
+            }
+            finally
+            {
+                UIModalHelper.ClearAllPauseMenuBlocks();
+                UIModalHelper.ClearAllPauseLocks();
+                Time.timeScale = origPaused ? 0f : origTimeScale;
+                if (dayTransGo != null) Object.DestroyImmediate(dayTransGo);
+                if (menuGo != null) Object.DestroyImmediate(menuGo);
+            }
+        }
     }
 }
