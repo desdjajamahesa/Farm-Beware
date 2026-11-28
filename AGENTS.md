@@ -67,7 +67,7 @@
         - Execute project test suite via Unity MCP:
           `FarmBeware.EditorTests.GameplayAndHUDTests.RunAllTests()`
         - Or run tests via `run_tests` MCP tool.
-        - All 117 comprehensive audit tests must pass (117/117 Passed) via `RunAllTests()` and Unity Test Runner (`EditMode` / `FarmBeware.Editor.Tests`).
+        - All 123 comprehensive audit tests must pass (123/123 Passed) via `RunAllTests()` and Unity Test Runner (`EditMode` / `FarmBeware.Editor.Tests`).
      3. **Autonomous Auto-Healing:**
         - If any compilation error or test failure occurs, autonomously diagnose and resolve it immediately before concluding the turn.
 

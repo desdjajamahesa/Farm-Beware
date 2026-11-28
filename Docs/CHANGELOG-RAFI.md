@@ -2,6 +2,23 @@
 
 Semua perubahan penting pada proyek ini oleh Rafi akan dicatat di halaman ini.
 
+## - 2026-11-28
+
+### Ditambahkan, Diubah & Diverifikasi (Tests 118–123)
+- **Referensi Statistik & Dokumentasi V0.3.0 ([`GAME_STATS_REFERENCE.md`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Docs/GAME_STATS_REFERENCE.md))**:
+  - Menyusun referensi lengkap seluruh statistik game (vitals, damage senjata & slingshot, frame-data 60 FPS, sistem armor + tabel perbandingan sebelum vs sesudah hit monster, 3 seed doctrines, 6 monster/boss & waves, ekonomi, 9 resep memasak, dan siklus waktu).
+- **Kalibrasi Durasi Memasak MVP (`d71af01`, Test 123)**:
+  - Menyesuaikan `processTime` seluruh **9 aset resep kompor** (`Assets/Data/Recipes/Cooking/*.asset`) ke tabel MVP Food Buff (`90s`, `120s`, `180s`, `300s`, `420s`) serta memverifikasi tampilan `StoveUIManager.FormatDuration` via **Test 123**.
+- **Audit Armor System, Full Stat Wiring & Telemetri Informatif (`e7db355`, Test 122)**:
+  - Mengaktifkan seluruh 5 stat `EquipmentItemData` (`HP`, `DEF`, `MoveSpd`, `AtkSpd`, `Crit`) ke runtime [`PlayerStats.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Player/PlayerStats.cs), [`PlayerControl.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Player/PlayerControl.cs), dan [`PlayerEquipment.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Player/PlayerEquipment.cs) lengkap dengan formula mitigasi gabungan `Gear DR (D/(D+40)) + Workbench Plating` (hard cap `75%`) di [`EquipmentUpgradeEvaluator.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Workbench/Core/EquipmentUpgradeEvaluator.cs) dan telemetri EHP/DR di [`EquipmentLoadoutPanelUI.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Player/UI/EquipmentLoadoutPanelUI.cs), [`PlayerStatsDisplayUI.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Player/UI/PlayerStatsDisplayUI.cs), serta [`WorkbenchUI.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Workbench/UI/WorkbenchUI.cs) (**Test 122**).
+- **Layout Wooden Board `MerchantShopUI` & `SinkManager` (`859bbc1`, Test 121)**:
+  - Memperbaiki clipping dan tata letak kompartemen dua kolom pada [`MerchantShopUI.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Economy/MerchantShopUI.cs) serta menerapkan tema `WoodenBoard_TwoColumn` ke [`SinkManager.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Kitchen/SinkManager.cs) (`Panel_Sink`) pada `MainScene.unity` (**Test 121**).
+- **Ground-Safe Monster Spawn & Perbaikan Attack Trail (`c0dc049`, `3607096`, Tests 119–120)**:
+  - Memindahkan `SpawnPoint_FrontGate_Right` keluar dari kanopi pohon pinus dan menerapkan resolver NavMesh anti-pohon Zero-GC pada [`NightBrawlManager.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Combat/NightBrawlManager.cs) & [`BossSummonAbility.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Combat/Enemy/BossAbilities/BossSummonAbility.cs) (**Test 120**).
+  - Menyelaraskan grip `HandSocket`, lebar trail, dan `BareHandsTrailAnchor` pada rig `PlayerModular` serta [`WeaponTrailController.cs`](file:///c:/Users/HP/Rafi/MyProject/Farm-Beware/Assets/Scripts/Features/Combat/Adapters/WeaponTrailController.cs) (**Test 119**).
+- **Combat Polish 60 FPS SSOT & Fairness (`21d59e3`, Test 118)**:
+  - Menerapkan Single Source of Truth frame data 60 FPS, 2D cancel priority matrix, tracking lock-off musuh agar sidestep terbaca adil, eviksi attack token saat stagger, serta deferred knockback pada `CombatFrameDataSheet.cs`, `EnemyCombatProfile.cs`, dan `AttackTokenDispatcher.cs` (**Test 118**, total **123/123 Passed**).
+
 ## - 2026-11-27
 
 ### Ditambahkan, Diubah & Hardened (Added, Refactored & Hardened)

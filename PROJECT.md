@@ -14,11 +14,12 @@
   - Oversized UI managers (`MerchantShopUI`, `WorkbenchUI`, `StoveUIManager`, `StorylineUI`, `MainMenuController`) cleanly separated into behavior + `*.Layout.cs` partial files.
 
 ## Key Implemented Features (V0.3.0)
-- **5-Day Diurnal Loop & Economy**: 18-minute day cycle, 16+ expandable farmland plots (up to 32 via Land Expansion Deeds), indoor stove/sink, Outdoor Order Board (1.2x clean-only bonus), Trading Post (`MerchantShopUI`), calibrated crop pricing (`375–500G` SP, `700–900G` Taro & Corn per unit, 50% dirty discount).
-- **Combat, Upgrades & Rig**: `PlayerModular` combat chains, cancel windows, parries (`V`), dodge rolls (`C`), 10-level Weapon/Armor Workbench upgrades, sweet potato armor set bonuses, night horde waves + `CyclopsTuberMaw`, `TaroColossus`, `TheRanger` bosses.
+- **5-Day Diurnal Loop & Economy**: 18-minute day cycle, 6 starting farmland plots expandable up to 16 via Land Expansion Deeds (`2,500 G` per +2 plots), indoor 3-burner stove & `WoodenBoard_TwoColumn` kitchen sink, Outdoor Order Board (`1.2×` clean-only bonus), Trading Post (`MerchantShopUI`), calibrated crop pricing (`375–500G` SP, `700–900G` Taro & Corn per unit, 50% dirty discount), and all 9 cooking recipes aligned to the MVP Food Buff table (`90s–420s`).
+- **Combat Polish SSOT, Armor Stats & Rig**: `PlayerModular` combat chains driven by a 60 FPS Single Source of Truth (`CombatFrameDataSheet`, 2D cancel priority matrix, `ImpactKinematicsProfile`, `EnemyCombatProfile` tracking lock-off & token eviction), aligned weapon/bare-hands attack trails, ground-safe NavMesh enemy spawning, full wiring of all 5 Sweet Potato armor gear stats (`HP`, `DEF`, `MoveSpd`, `AtkSpd`, `Crit`) combined with Lv 1–10 Workbench plating mitigation + UI telemetry, parries (`V`), dodge rolls (`C`), 10-level Weapon/Armor upgrades, and night horde waves + `CyclopsTuberMaw`, `TaroColossus`, `TheRanger` bosses.
 - **Narrative, HUD & Persistence**: 5-day NexaPhyto storyline (`StoryDatabase`), Opening & Night 1 cutscenes, Journal (`J`), Quest Log (`Q`), World Map (`M`), Wardrobe (`WardrobeUI`), 3-slot JSON Save System (`SaveSystemManager`).
+- **Stats Reference**: See [Docs/GAME_STATS_REFERENCE.md](Docs/GAME_STATS_REFERENCE.md) for the complete numerical reference (damage, defense, armor mitigation vs monster hits, 60 FPS frame data, enemies, cooking, and economy).
 
 ## Automated Verification & CI Status
-- **Official Suite**: `FarmBeware.EditorTests.GameplayAndHUDTests.RunAllTests()` — **117/117 Passed**.
-- **Unity Test Runner (`EditMode`)**: `FarmBeware.Editor.Tests` (`GameplayAndHUDTests.NUnitAdapter.cs`) — **117/117 Passed**.
+- **Official Suite**: `FarmBeware.EditorTests.GameplayAndHUDTests.RunAllTests()` — **123/123 Passed**.
+- **Unity Test Runner (`EditMode`)**: `FarmBeware.Editor.Tests` (`GameplayAndHUDTests.NUnitAdapter.cs`) — **123/123 Passed**.
 - **Compiler & Assets**: 0 compilation errors/warnings; Roslyn analyzer DLLs scoped to Editor-only; 100% English codebase comments and identifiers.

@@ -10,7 +10,7 @@
 | Range | CSV Status (2026-11-22 Export) | Developer State (`V0.3.0`) | Evidence / Notes |
 |---|---|---|---|
 | `BUG-001` .. `BUG-008` | `Closed` | Verified Fixed | Regression-covered in existing audit tests |
-| `BUG-009` .. `BUG-024` | `Open` | **Fixed — Pending QA Retest** | Remediated in `d54add2` & verified via **Test 114** (`114/114` -> `117/117`) |
+| `BUG-009` .. `BUG-024` | `Open` | **Fixed — Pending QA Retest** | Remediated in `d54add2` & verified via **Test 114** (`114/114`; current suite `123/123`) |
 | `BUG 025` .. `BUG 027` | `Not started` | Unfilled QA Placeholders | Empty reproduction steps in Notion export (`- 1st step : ...`) |
 
 > **CSV Numbering Note**: The 2026-11-22 Notion export omits `BUG 019` and contains two rows numbered `BUG 021` (`Cooking process continues with every save game load` and `Enemy Tuber maw drop has got both of gold and mutated root`). Both are fixed.
@@ -21,7 +21,7 @@
 
 | Notion ID | Issue Summary | Root Fix Scope | Automated Verification |
 |---|---|---|---|
-| `BUG-009` | Night save/load resets enemy count to 1 | Night wave count & active enemy state restored on load (`SaveSystemManager` / `NightBrawlManager`) | Test 114 + Save/Load regression (`117/117`) |
+| `BUG-009` | Night save/load resets enemy count to 1 | Night wave count & active enemy state restored on load (`SaveSystemManager` / `NightBrawlManager`) | Test 114 + Save/Load regression (`123/123`) |
 | `BUG 010` | Seed sell vs. buy price exploit at merchant | Calibrated shop buy/sell pricing parity in `DailyEconomyManager` & `MerchantShopUI` | Test 112 + Test 114 |
 | `BUG 011` | Initial/wake-up day display offset (`Day 1`) | Morning HUD & `DayNightTimeManager` day counter sync | Test 114 |
 | `BUG 012` | Player can melee-attack enemies through cabin walls/doorways | Wall/doorway corner line-of-sight geometry checks in player & enemy combat | Test 114 |
@@ -41,5 +41,6 @@
 ---
 
 ## 3. Ready for QA Verification
-- All **117/117** EditMode audit tests pass on `Rafi-branch` via both `FarmBeware.EditorTests.GameplayAndHUDTests.RunAllTests()` and Unity Test Runner (`FarmBeware.Editor.Tests`).
+- All **123/123** EditMode audit tests pass on `Rafi-branch` via both `FarmBeware.EditorTests.GameplayAndHUDTests.RunAllTests()` and Unity Test Runner (`FarmBeware.Editor.Tests`).
+- Post-remediation polish & QA fixes (**Tests 118–123**) verified: 60 FPS combat frame-data SSOT & enemy tracking lock-off, `PlayerModular` attack trail & `HandSocket` alignment, ground-safe NavMesh monster spawn clearance off pine canopies, `MerchantShopUI` & `SinkManager` `WoodenBoard_TwoColumn` layout parity, full 5-stat Sweet Potato armor wiring & mitigation math (`EquipmentUpgradeEvaluator`), and MVP Food Buff cooking durations (`90s–420s`).
 - QA can begin the `Alpha 0.3.0` PlayMode retest pass to transition `BUG-009`..`BUG-024` from `Open` to `Closed` inside Notion.

@@ -12,7 +12,7 @@
 
 *An isometric 3D farming survival, culinary alchemy, and tactical night-brawl combat game built on Unity 6 URP.*
 
-[Key Features](#-key-features) • [Gameplay Loop](#-core-gameplay-loop) • [Timeline & Schedule](#-18-minute-daytime-timeline) • [Controls](#-controls--input) • [Architecture](#-system-architecture) • [Getting Started](#-quick-start)
+[Key Features](#-key-features) • [Gameplay Loop](#-core-gameplay-loop) • [Timeline & Schedule](#-18-minute-daytime-timeline) • [Controls](#-controls--input) • [Game Stats](Docs/GAME_STATS_REFERENCE.md) • [Architecture](#-system-architecture) • [Getting Started](#-quick-start)
 
 </div>
 
@@ -54,26 +54,30 @@ graph TD
   - **Sweet Potato** *(Fast: 6 min growth)* — **375 – 500G / unit** *(Clean; 50% dirty discount)*. Drops from *Tuber Maw*.
   - **Taro** *(Medium: 15 min growth)* — **700 – 900G / unit** *(Clean; 50% dirty discount)*. Drops from *Taro Brute*.
   - **Corn** *(Medium: 15 min growth)* — **700 – 900G / unit** *(Clean; 50% dirty discount)*. Drops from *Corn Musketeer*.
-- **Outdoor Order Board & Land Deeds**: Fulfill clean-only produce orders outdoors for a **1.2× payout bonus**, or buy Land Expansion Deeds at the Trading Post to expand from 16 up to **32 plots**.
+- **Outdoor Order Board & Land Deeds**: Fulfill clean-only produce orders outdoors for a **1.2× payout bonus**, or buy Land Expansion Deeds (`2,500 G` per `+2` plots) at the Trading Post to expand from 6 up to **16 plots**.
 - **Realistic Farming Pipeline**: Till dirt with hoes $\rightarrow$ Plant seeds $\rightarrow$ Irrigate with watering cans $\rightarrow$ Harvest dirty crops $\rightarrow$ Wash at the kitchen sink before selling or cooking.
 - **Diurnal Crop Growth**: Crops only grow while the sun shines. When night falls, growth progress freezes and resumes at dawn.
 
 ### 🍳 2. Kitchen Culinary Alchemy
-- **Transactional Escrow Cooking**: Craft meals in your indoor kitchen using produce and water. Aborting mid-cooking safely rolls back ingredients without loss.
-- **3 Tactical Food Archetypes**:
-  - **Recovery Foods** *(20s cook time, 10L water)*: Instantly restore health (+10%, +25%, or +50% max HP).
-  - **Stamina Foods** *(30s cook time, 15L water)*: 4-minute sustained stamina buff for sprinting and heavy attacks.
-  - **Battle Foods** *(45s cook time, 20L water)*: 3-minute combat buff granting **+25% Attack Damage**.
-- **Water Logistics**: Portable 100L water bottle for field hydration and cooking, refillable at the homestead well.
+- **Transactional Escrow Cooking (3 Concurrent Burners)**: Craft meals in your indoor kitchen using produce and water. Aborting mid-cooking safely rolls back ingredients without loss.
+- **9 MVP-Calibrated Recipes Across 3 Tiers**:
+  - **Small Meals** *(1m 30s – 2m cook time, 0–15L water)*: Quick stamina, move speed, and HP regen rations (*Taro Chip*, *Roasted Sweet Potato Slice*, *Corn Porridge*, *Taro Dumpling*).
+  - **Medium Meals** *(3m cook time, 10–15L water)*: Sustained max HP & stamina buffers (*Purple Taro Cake*, *Sweet Potato Porridge Bowl*).
+  - **Large Battle Meals** *(5m – 7m cook time, 0–20L water)*: High-impact offense & mobility buffs up to `+12% ATK & +12% ATK SPD` (*Taro Coconut Stew*, *Taro Corn Stew*, *Whole Roasted Sweet Potato Feast*).
+- **Water Logistics**: Portable 100L water bottle (`50` Hydration per `25L` sip) for field hydration and cooking, refillable at the Kitchen Sink (`30s`, max 2×/day).
 - **Tactical Night Rationing**: Carry up to **3 active food slots** into the night brawl.
 
-### ⚔️ 3. Night Brawl Siege & Monster Evolutions
+### 🛡️ 3. Armor, Weapons & Progression
+- **Sweet Potato 5-Piece Combat Set**: Equip *Burrow Hood*, *Swift Root Armor*, *Fang Grips*, *Underground Striders*, and *Sweet Potato Heart* (`+100 Max HP`, `+16 DEF`, `+17% Move Spd`, `+23% Atk Spd` w/ 2-pc bonus, `+12% Crit`) plus 4-piece dodge empowerment and 5-piece Shadow Dash cooldown reset.
+- **Workbench Upgrading & Mitigation**: Upgrade weapons (`Lv 1–10`, up to `+150%` base damage), specialize across **3 Seed Doctrines** (*Sweet Potato*, *Taro*, *Corn*), and reinforce armor plating (`Lv 1–10`, `0%–32%` DR combined multiplicatively with diminishing-returns Gear Defense `D/(D+40)`). Full numbers are cataloged in [GAME_STATS_REFERENCE.md](Docs/GAME_STATS_REFERENCE.md).
+
+### ⚔️ 4. Night Brawl Siege & Monster Evolutions
 - **5-Day Escalating Wave Progression**:
   - **Day 1**: 1 Wave (5 Scouts)
   - **Day 2**: 2 Waves (4 + 5 Monsters)
-  - **Day 3**: 3 Waves (4 + 5 + 6 Heavy Monsters)
+  - **Day 3**: 3 Waves (4 + 5 + 6 Heavy Monsters + **Cyclops Tuber Maw Boss**)
   - **Day 4**: 4 Waves (3 Normal Waves + Wave 4 **Taro Colossus Boss** + 4 Minions)
-  - **Day 5**: 5 Waves (3 Normal Waves + Wave 4 **Taro Colossus** + Wave 5 **The Ranger Boss** + Minions)
+  - **Day 5**: 5 Waves (3 Normal Waves + Wave 4 **Taro Colossus** + Wave 5 **The Ranger Boss** + 3 Minions)
 - **30-Second Tactical Intermission**: Prep windows between waves to reposition, drink water, and consume food buffs.
 - **Evolving Flora Species**:
   | Crop Archetype | Normal Form | Boss Evolution | Attribute Focus |
@@ -82,14 +86,14 @@ graph TD
   | **Taro** | Taro Brute | Taro Colossus | Heavy Armor & Ground Slams |
   | **Corn** | Corn Musketeer | The Ranger | Long-Range Artillery |
 
-### ⏰ 4. Diurnal Time Engine & Smart Sleep
+### ⏰ 5. Diurnal Time Engine & Smart Sleep
 - **18-Minute Daytime Pace**: 1 real minute = 40 in-game minutes.
 - **Persistent Activity HUD**: Dynamic banner guides you through 10 optimized farm activities without clutter.
 - **Dusk Bell Alert**: Resonates at **15:00 real time (16:00 in-game)**, warning that only 3 minutes remain before dark.
 - **Auto-Sleep**: Enforced bedtime at **18:00** transitions the world to night combat.
 - **Ripening Crop Warning Modal**: Attempting to sleep early triggers an intelligent confirmation dialog if crops are $\le$ 3 minutes away from harvest, preventing accidental crop neglect.
 
-### 🏡 5. Living Homestead Compound
+### 🏡 6. Living Homestead Compound
 - **Modular Compound Architecture**: Perimeter fences, north main gate, stone walkways, and outdoor campfire zone.
 - **Interactive Stations**: Bed, Indoor Stove, Kitchen Sink, Water Well, Forge Workbench, Wardrobe Mirror, and Merchant Stall.
 
@@ -152,11 +156,11 @@ The codebase separates **Pure C# Logic (Zero-GC)** from **Thin MonoBehaviour Ada
 [Tier 3: Presentation, Rendering & CI Verification]
 ├── FarmBeware.Gameplay.Runtime      (PlayerControl, PlayerStats, WorldMapUI)
 ├── FarmBeware.Rendering.Runtime     (URP Deferred+ Lighting & Stress Validation)
-└── FarmBeware.Editor.Tests          (GameplayAndHUDTests: 117/117 Menu & NUnit EditMode CI)
+└── FarmBeware.Editor.Tests          (GameplayAndHUDTests: 123/123 Menu & NUnit EditMode CI)
 ```
 
 - **Zero-GC & Contract Hardening**: 0 runtime `SendMessage` calls, 0 empty `catch {}` blocks, object-pooled enemy HUD/combat paths.
-- **Automated Verification**: **117/117** passing via both `FarmBeware.EditorTests.GameplayAndHUDTests.RunAllTests()` and Unity Test Runner `EditMode`.
+- **Automated Verification**: **123/123** passing via both `FarmBeware.EditorTests.GameplayAndHUDTests.RunAllTests()` and Unity Test Runner `EditMode`.
 
 ---
 

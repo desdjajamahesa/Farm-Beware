@@ -4,6 +4,25 @@ Welcome to the **Farm-Beware** patch notes! Here you'll find the latest updates,
 
 ---
 
+## 2026-11-28
+
+### Added
+* **Complete Game Stats & Armor Defense Reference**: Published [GAME_STATS_REFERENCE.md](GAME_STATS_REFERENCE.md) documenting all combat, weapon, armor mitigation, monster, wave, farming, economy, and cooking parameters.
+* **Informative Armor Telemetry**: Equipment loadout, Player Stats HUD, and Workbench panels now display live Gear Defense DR (`D / (D + 40)`), Workbench Plating DR, Combined Mitigation %, Effective HP (EHP), Attack Speed, Move Speed, and Critical Chance.
+* **Wooden Board Kitchen Sink**: Applied the `WoodenBoard_TwoColumn` aesthetic to the Kitchen Sink modal (`Panel_Sink`) for visual parity across kitchen and shop interfaces.
+
+### Changed
+* **60 FPS Combat Polish & Fair Monster Telegraphing**: Unified player move frame data (`CombatFrameDataSheet`), prioritized 2D cancel/buffer matrix, archetype-specific enemy tracking lock-off windows for sidestepping, stagger token eviction, and deferred knockback sequencing.
+* **Full Armor Gear Stat Wiring**: Connected all 5 Sweet Potato armor piece stats (`HP`, `DEF`, `MoveSpd`, `AtkSpd`, `Crit`) directly into gameplay alongside diminishing-returns Gear Defense + Workbench Plating (`Lv 1–10`) mitigation.
+* **MVP Cooking Duration Calibration**: Aligned all 9 stove recipes (`Taro Chip`, `Roasted Sweet Potato Slice`, `Corn Porridge`, `Taro Dumpling`, `Purple Taro Cake`, `Sweet Potato Porridge Bowl`, `Taro Coconut Stew Bowl`, `Taro Corn Stew`, and `Whole Roasted Sweet Potato Feast`) to the MVP Food Buff schedule (`1m 30s` – `7m`).
+
+### Fixed
+* Fixed `PlayerModular` weapon attack trail alignment/scale and bare-hands trail lifecycle (`HandSocket` & `BareHandsTrailAnchor`).
+* Fixed monsters occasionally spawning atop roadside pine tree canopies by relocating `SpawnPoint_FrontGate_Right` and enforcing ground-safe NavMesh clearance during wave and summon spawns.
+* Fixed Merchant Shop card clipping and compartment alignment inside `WoodenBoard_TwoColumn`.
+
+---
+
 ## 2026-11-27
 
 ### Added
