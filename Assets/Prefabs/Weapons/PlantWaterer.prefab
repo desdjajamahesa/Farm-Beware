@@ -346,6 +346,9 @@ MonoBehaviour:
   sweepForwardOffset: 0.75
   sweepRadius: 0.97499996
   minForwardDot: 0.2
+  obstacleLayerMask:
+    serializedVersion: 2
+    m_Bits: 0
 --- !u!54 &1976258916578508810
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -388,9 +391,9 @@ MonoBehaviour:
   trailRenderer: {fileID: 0}
   tipAnchor: {fileID: 0}
   trailMaterial: {fileID: 0}
-  trailTime: 0.18
-  baseWidth: 0.55
-  minVertexDistance: 0.04
+  trailTime: 0.13
+  baseWidth: 0.2
+  minVertexDistance: 0.025
   combo1And2GradientOverride:
     serializedVersion: 2
     key0: {r: 1, g: 1, b: 1, a: 1}

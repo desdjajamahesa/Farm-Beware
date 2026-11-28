@@ -3026,5 +3026,187 @@ namespace FarmBeware.EditorTests
                 }
             }
         }
+
+        // Test 119: PlayerModular HandSocket palm alignment, calibrated trail widths, blade-arc bounds, and bare-hands trail isolation/lifecycle
+        internal static bool Test_PlayerModular_AttackTrail_Alignment_Scale_And_BareHands_Lifecycle_Audit()
+        {
+            var cleanup = new List<Object>();
+            try
+            {
+                // 1. Verify PlayerModular HandSocket anatomical palm alignment and swing arc clearance
+                var modPrefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/Player/character_player_modular.prefab");
+                if (modPrefab == null)
+                {
+                    Debug.LogError("[Test 119] character_player_modular.prefab not found!");
+                    return false;
+                }
+
+                var simChar = Object.Instantiate(modPrefab);
+                cleanup.Add(simChar);
+                Transform simSocket = null;
+                foreach (var t in simChar.GetComponentsInChildren<Transform>(true))
+                {
+                    if (t.name == "HandSocket")
+                    {
+                        simSocket = t;
+                        break;
+                    }
+                }
+                if (simSocket == null)
+                {
+                    Debug.LogError("[Test 119] HandSocket missing on character_player_modular.prefab!");
+                    return false;
+                }
+
+                if (Vector3.Distance(simSocket.localPosition, new Vector3(-0.01f, 0.08f, 0.02f)) > 0.01f)
+                {
+                    Debug.LogError($"[Test 119] PlayerModular HandSocket localPosition expected ~(-0.01, 0.08, 0.02), got {simSocket.localPosition:F3}!");
+                    return false;
+                }
+
+                float rotDelta = Quaternion.Angle(simSocket.localRotation, Quaternion.Euler(0f, 0f, 75f));
+                if (rotDelta > 1.0f)
+                {
+                    Debug.LogError($"[Test 119] PlayerModular HandSocket localRotation expected ~(0, 0, 75), got {simSocket.localEulerAngles:F1} (delta={rotDelta:F2})!");
+                    return false;
+                }
+
+                var animAssets = AssetDatabase.LoadAllAssetsAtPath("Assets/Art/Characters/PlayerModular/character_anim_attack.fbx");
+                var clipCheckedCount = 0;
+                foreach (var asset in animAssets)
+                {
+                    if (asset is not AnimationClip clip || clip.name.StartsWith("__preview__")) continue;
+                    bool isTarget = clip.name.Equals("attack1", System.StringComparison.OrdinalIgnoreCase)
+                        || clip.name.Equals("attack3", System.StringComparison.OrdinalIgnoreCase)
+                        || clip.name.Equals("heavy_attack3", System.StringComparison.OrdinalIgnoreCase);
+                    if (!isTarget) continue;
+
+                    clipCheckedCount++;
+                    float minY = float.MaxValue;
+                    float maxFwdZ = float.MinValue;
+                    for (int i = 0; i <= 20; i++)
+                    {
+                        clip.SampleAnimation(simChar, clip.length * (i / 20f));
+                        Vector3 tipWorld = simSocket.TransformPoint(new Vector3(0f, 0.95f, 0f));
+                        if (tipWorld.y < minY) minY = tipWorld.y;
+                        if (tipWorld.z > maxFwdZ) maxFwdZ = tipWorld.z;
+                    }
+
+                    float minAllowedY = clip.name.Equals("attack1", System.StringComparison.OrdinalIgnoreCase) ? 0.10f : 0.30f;
+                    if (minY < minAllowedY || maxFwdZ < 1.35f)
+                    {
+                        Debug.LogError($"[Test 119] Clip '{clip.name}' sword arc misaligned: minY={minY:F3} (expected>={minAllowedY:F2}), maxFwdZ={maxFwdZ:F3} (expected>=1.35)!");
+                        return false;
+                    }
+                }
+                if (clipCheckedCount < 3)
+                {
+                    Debug.LogError($"[Test 119] Expected 3 sampled attack clips, found {clipCheckedCount}!");
+                    return false;
+                }
+
+                // 2. Verify DummySword & DummyHoe trail calibration for PlayerModular scale
+                var swordPrefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/Weapons/DummySword.prefab");
+                var swordTrail = swordPrefab != null ? swordPrefab.transform.Find("WeaponSlashTrail")?.GetComponent<TrailRenderer>() : null;
+                var swordTipAnchor = swordPrefab != null ? swordPrefab.transform.Find("TipAnchor") : null;
+                var swordWt = swordPrefab != null ? swordPrefab.GetComponent<FeaturesCombat.Adapters.WeaponTrailController>() : null;
+                if (swordTrail == null || swordTipAnchor == null || swordWt == null)
+                {
+                    Debug.LogError("[Test 119] DummySword trail components missing!");
+                    return false;
+                }
+
+                if (swordTrail.transform.localPosition.y < 0.50f || swordTrail.transform.localPosition.y > 0.70f)
+                {
+                    Debug.LogError($"[Test 119] DummySword trail Y expected in [0.50, 0.70], got {swordTrail.transform.localPosition.y:F3}!");
+                    return false;
+                }
+                if (swordWt.BaseWidth < 0.24f || swordWt.BaseWidth > 0.38f)
+                {
+                    Debug.LogError($"[Test 119] DummySword BaseWidth expected in [0.24, 0.38], got {swordWt.BaseWidth:F3}!");
+                    return false;
+                }
+                float heavyRibbonTop = swordTrail.transform.localPosition.y + (swordWt.BaseWidth * 1.35f * 0.5f);
+                if (heavyRibbonTop > swordTipAnchor.localPosition.y)
+                {
+                    Debug.LogError($"[Test 119] DummySword heavy trail ribbon top ({heavyRibbonTop:F3}) overshoots TipAnchor ({swordTipAnchor.localPosition.y:F3})!");
+                    return false;
+                }
+                if (swordTrail.shadowCastingMode != UnityEngine.Rendering.ShadowCastingMode.Off)
+                {
+                    Debug.LogError("[Test 119] DummySword TrailRenderer must disable shadow casting!");
+                    return false;
+                }
+
+                var hoePrefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/Weapons/DummyHoe.prefab");
+                var hoeTrail = hoePrefab != null ? hoePrefab.transform.Find("WeaponSlashTrail")?.GetComponent<TrailRenderer>() : null;
+                var hoeWt = hoePrefab != null ? hoePrefab.GetComponent<FeaturesCombat.Adapters.WeaponTrailController>() : null;
+                if (hoeTrail == null || hoeWt == null || hoeWt.BaseWidth < 0.18f || hoeWt.BaseWidth > 0.30f || hoeTrail.shadowCastingMode != UnityEngine.Rendering.ShadowCastingMode.Off)
+                {
+                    Debug.LogError($"[Test 119] DummyHoe trail settings out of calibrated bounds! baseWidth={(hoeWt != null ? hoeWt.BaseWidth : -1f):F3}");
+                    return false;
+                }
+
+                // 3. Verify bare-hands trail stays intact across DestroyCurrentWeapon() and sits on the fist (never +0.85m offset)
+                var testPlayerGo = new GameObject("Test119_Player");
+                cleanup.Add(testPlayerGo);
+                var playerChar = Object.Instantiate(modPrefab, testPlayerGo.transform);
+                playerChar.name = "character";
+                var pe = testPlayerGo.AddComponent<PlayerEquipment>();
+                var awakeMethod = typeof(PlayerEquipment).GetMethod("Awake", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+                awakeMethod?.Invoke(pe, null);
+
+                Transform rHandBone = null;
+                Transform bareAnchor = null;
+                foreach (var t in testPlayerGo.GetComponentsInChildren<Transform>(true))
+                {
+                    if (t.name == "mixamorig:RightHand") rHandBone = t;
+                    if (t.name == "BareHandsTrailAnchor") bareAnchor = t;
+                }
+
+                var bareWt = bareAnchor != null ? bareAnchor.GetComponent<FeaturesCombat.Adapters.WeaponTrailController>() : null;
+                var bareTr = bareAnchor != null ? bareAnchor.GetComponentInChildren<TrailRenderer>(true) : null;
+                if (rHandBone == null || bareAnchor == null || bareWt == null || bareTr == null)
+                {
+                    Debug.LogError("[Test 119] BareHandsTrailAnchor or its TrailRenderer missing after PlayerEquipment initialization!");
+                    return false;
+                }
+
+                float bareDistFromHand = Vector3.Distance(bareTr.transform.position, rHandBone.position);
+                if (bareDistFromHand > 0.18f)
+                {
+                    Debug.LogError($"[Test 119] BareHands trail is too far from RightHand bone ({bareDistFromHand:F3}m > 0.18m)!");
+                    return false;
+                }
+                if (bareWt.BaseWidth < 0.10f || bareWt.BaseWidth > 0.20f)
+                {
+                    Debug.LogError($"[Test 119] BareHands BaseWidth expected in [0.10, 0.20], got {bareWt.BaseWidth:F3}!");
+                    return false;
+                }
+
+                pe.SpawnWeaponPrefab(swordPrefab);
+                pe.DestroyCurrentWeapon();
+                if (bareAnchor == null || bareTr == null)
+                {
+                    Debug.LogError("[Test 119] DestroyCurrentWeapon() destroyed BareHandsTrailAnchor or its TrailRenderer!");
+                    return false;
+                }
+
+                Debug.Log("✅ Test 119: PlayerModular HandSocket palm alignment, calibrated trail scales, blade-arc clearance, and bare-hands trail lifecycle verified.");
+                return true;
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogError($"[Test 119] Exception: {ex.Message}\n{ex.StackTrace}");
+                return false;
+            }
+            finally
+            {
+                for (int i = cleanup.Count - 1; i >= 0; i--)
+                {
+                    if (cleanup[i] != null) Object.DestroyImmediate(cleanup[i]);
+                }
+            }
+        }
     }
 }

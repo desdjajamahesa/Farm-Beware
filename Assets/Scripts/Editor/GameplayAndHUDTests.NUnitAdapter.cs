@@ -739,5 +739,11 @@ namespace FarmBeware.EditorTests
         {
             Assert.IsTrue(GameplayAndHUDTests.Test_CombatPolish_FrameData_CancelMatrix_TrackingLockOff_TokenFairness_And_ZeroGC_Audit(), "Test_CombatPolish_FrameData_CancelMatrix_TrackingLockOff_TokenFairness_And_ZeroGC_Audit failed. Check Unity Console logs for details.");
         }
+
+        [Test]
+        public void NUnit_119_Test_PlayerModular_AttackTrail_Alignment_Scale_And_BareHands_Lifecycle_Audit()
+        {
+            Assert.IsTrue(GameplayAndHUDTests.Test_PlayerModular_AttackTrail_Alignment_Scale_And_BareHands_Lifecycle_Audit(), "Test_PlayerModular_AttackTrail_Alignment_Scale_And_BareHands_Lifecycle_Audit failed. Check Unity Console logs for details.");
+        }
     }
 }

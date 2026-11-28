@@ -23,13 +23,16 @@ namespace FeaturesCombat.Adapters
 
         [Header("Timing & Geometry")]
         [Tooltip("Duration in seconds that trail segments remain visible (short ribbon for snappy combat).")]
-        [SerializeField] private float trailTime = 0.18f;
+        [SerializeField] private float trailTime = 0.15f;
 
         [Tooltip("Base ribbon width at the leading blade tip.")]
-        [SerializeField] private float baseWidth = 0.55f;
+        [SerializeField] private float baseWidth = 0.30f;
 
         [Tooltip("Minimum distance between vertices along the trail ribbon arc.")]
-        [SerializeField] private float minVertexDistance = 0.04f;
+        [SerializeField] private float minVertexDistance = 0.025f;
+
+        public TrailRenderer ActiveTrailRenderer => trailRenderer;
+        public float BaseWidth => baseWidth;
 
         [Header("Custom Gradient Overrides (Optional)")]
         [SerializeField] private Gradient combo1And2GradientOverride;
@@ -92,9 +95,10 @@ namespace FeaturesCombat.Adapters
             if (_defaultWidthCurve == null)
             {
                 _defaultWidthCurve = new AnimationCurve(
-                    new Keyframe(0.0f, 1.0f, -0.3f, -0.3f),
-                    new Keyframe(0.65f, 0.45f, -1.2f, -1.2f),
-                    new Keyframe(1.0f, 0.0f, -1.5f, 0.0f)
+                    new Keyframe(0.0f, 1.0f, -0.4f, -0.4f),
+                    new Keyframe(0.35f, 0.68f, -1.0f, -1.0f),
+                    new Keyframe(0.75f, 0.22f, -1.1f, -1.1f),
+                    new Keyframe(1.0f, 0.0f, -0.8f, 0.0f)
                 );
             }
 
@@ -125,22 +129,92 @@ namespace FeaturesCombat.Adapters
                 {
                     var trailObj = new GameObject("WeaponSlashTrail");
                     trailObj.transform.SetParent(transform, false);
-
-                    // Locate weapon blade or tip anchor
-                    var bladeChild = transform.Find("Blade");
-                    if (bladeChild != null)
-                    {
-                        trailObj.transform.position = bladeChild.position;
-                    }
-                    else
-                    {
-                        // Sane tip offset along Y axis for sword/tool models
-                        trailObj.transform.localPosition = new Vector3(0f, 0.85f, 0f);
-                    }
-
+                    trailObj.transform.localPosition = ResolveWeaponTrailLocalPosition(weaponRoot);
                     trailRenderer = trailObj.AddComponent<TrailRenderer>();
                 }
             }
+
+            ConfigureTrailRenderer();
+        }
+
+        /// <summary>
+        /// Configures this controller as a compact fist trail for bare-hands melee attacks.
+        /// </summary>
+        public void InitializeForBareHands(float fistWidth = 0.14f, float fistTrailTime = 0.12f)
+        {
+            EnsureStaticResources();
+            baseWidth = fistWidth;
+            trailTime = fistTrailTime;
+            minVertexDistance = 0.025f;
+
+            if (trailRenderer == null)
+            {
+                var existing = GetComponentInChildren<TrailRenderer>();
+                if (existing != null)
+                {
+                    trailRenderer = existing;
+                }
+                else
+                {
+                    var trailObj = new GameObject("WeaponSlashTrail");
+                    trailObj.transform.SetParent(transform, false);
+                    trailObj.transform.localPosition = Vector3.zero;
+                    trailRenderer = trailObj.AddComponent<TrailRenderer>();
+                }
+            }
+
+            ConfigureTrailRenderer();
+        }
+
+        private Vector3 ResolveWeaponTrailLocalPosition(GameObject weaponRoot)
+        {
+            if (tipAnchor != null)
+            {
+                return transform.InverseTransformPoint(tipAnchor.position) * 0.65f;
+            }
+
+            Transform bladeChild = transform.Find("BladeMain") ?? transform.Find("Blade");
+            if (bladeChild != null)
+            {
+                return transform.InverseTransformPoint(bladeChild.position);
+            }
+
+            if (weaponRoot != null)
+            {
+                var renderers = weaponRoot.GetComponentsInChildren<MeshRenderer>(true);
+                if (renderers.Length > 0)
+                {
+                    float minY = float.MaxValue;
+                    float maxY = float.MinValue;
+                    bool found = false;
+                    for (int i = 0; i < renderers.Length; i++)
+                    {
+                        var mr = renderers[i];
+                        if (mr == null) continue;
+                        Bounds b = mr.bounds;
+                        Vector3 localMin = transform.InverseTransformPoint(b.min);
+                        Vector3 localMax = transform.InverseTransformPoint(b.max);
+                        float low = Mathf.Min(localMin.y, localMax.y);
+                        float high = Mathf.Max(localMin.y, localMax.y);
+                        if (low < minY) minY = low;
+                        if (high > maxY) maxY = high;
+                        found = true;
+                    }
+
+                    if (found && maxY > minY)
+                    {
+                        float targetY = Mathf.Clamp(Mathf.Lerp(minY, maxY, 0.68f), 0f, 0.75f);
+                        return new Vector3(0f, targetY, 0f);
+                    }
+                }
+            }
+
+            return Vector3.zero;
+        }
+
+        private void ConfigureTrailRenderer()
+        {
+            if (trailRenderer == null) return;
 
             trailRenderer.time = trailTime;
             trailRenderer.minVertexDistance = minVertexDistance;
@@ -148,6 +222,11 @@ namespace FeaturesCombat.Adapters
             trailRenderer.widthMultiplier = baseWidth;
             trailRenderer.emitting = false;
             trailRenderer.autodestruct = false;
+            trailRenderer.alignment = LineAlignment.View;
+            trailRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            trailRenderer.receiveShadows = false;
+            trailRenderer.numCornerVertices = 2;
+            trailRenderer.numCapVertices = 2;
 
             if (trailMaterial != null)
             {
@@ -160,7 +239,7 @@ namespace FeaturesCombat.Adapters
         }
 
         [Header("Time Gate Configuration")]
-        [Tooltip("Bila true, trail diizinkan muncul di siang hari (mis. keperluan debug/test). Default false (hanya malam hari).")]
+        [Tooltip("When true, allows the trail to emit during daytime (e.g., for debug or tests). Defaults to false (night only).")]
         [SerializeField] private bool allowDaytimeTrail = false;
 
         public bool AllowDaytimeTrail
@@ -214,8 +293,8 @@ namespace FeaturesCombat.Adapters
                 trailRenderer.colorGradient = finisherGradientOverride != null
                     ? finisherGradientOverride
                     : _defaultCrimsonFlameGradient;
-                trailRenderer.widthMultiplier = isHeavy ? baseWidth * 1.55f : baseWidth * 1.35f;
-                trailRenderer.time = isHeavy ? trailTime * 1.45f : trailTime * 1.25f;
+                trailRenderer.widthMultiplier = isHeavy ? baseWidth * 1.35f : baseWidth * 1.20f;
+                trailRenderer.time = isHeavy ? trailTime * 1.30f : trailTime * 1.15f;
             }
             else
             {

@@ -76,6 +76,9 @@ MonoBehaviour:
   sweepForwardOffset: 1
   sweepRadius: 1.6
   minForwardDot: 0.2
+  obstacleLayerMask:
+    serializedVersion: 2
+    m_Bits: 0
 --- !u!54 &5370820176521641145
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -118,9 +121,9 @@ MonoBehaviour:
   trailRenderer: {fileID: 1823198831583315680}
   tipAnchor: {fileID: 0}
   trailMaterial: {fileID: 2100000, guid: 27cfb4f247937c044afcf5361b3d8538, type: 2}
-  trailTime: 0.18
-  baseWidth: 0.55
-  minVertexDistance: 0.04
+  trailTime: 0.14
+  baseWidth: 0.24
+  minVertexDistance: 0.025
   combo1And2GradientOverride:
     serializedVersion: 2
     key0: {r: 1, g: 1, b: 1, a: 1}
@@ -181,6 +184,7 @@ MonoBehaviour:
     m_ColorSpace: -1
     m_NumColorKeys: 2
     m_NumAlphaKeys: 2
+  allowDaytimeTrail: 0
 --- !u!1 &3491498822818630654
 GameObject:
   m_ObjectHideFlags: 0
@@ -402,8 +406,8 @@ TrailRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 7187091830618480049}
   m_Enabled: 1
-  m_CastShadows: 1
-  m_ReceiveShadows: 1
+  m_CastShadows: 0
+  m_ReceiveShadows: 0
   m_DynamicOccludee: 1
   m_StaticShadowCaster: 0
   m_MotionVectors: 0
@@ -442,23 +446,50 @@ TrailRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 0
   m_MaskInteraction: 0
-  m_Time: 0.18
+  m_Time: 0.14
   m_PreviewTimeScale: 1
   m_Parameters:
     serializedVersion: 3
-    widthMultiplier: 1
+    widthMultiplier: 0.24
     widthCurve:
       serializedVersion: 2
       m_Curve:
       - serializedVersion: 3
         time: 0
         value: 1
-        inSlope: 0
+        inSlope: -0.4
+        outSlope: -0.4
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      - serializedVersion: 3
+        time: 0.35
+        value: 0.68
+        inSlope: -1
+        outSlope: -1
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      - serializedVersion: 3
+        time: 0.75
+        value: 0.22
+        inSlope: -1.1
+        outSlope: -1.1
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      - serializedVersion: 3
+        time: 1
+        value: 0
+        inSlope: -0.8
         outSlope: 0
         tangentMode: 0
         weightedMode: 0
-        inWeight: 0.33333334
-        outWeight: 0.33333334
+        inWeight: 0
+        outWeight: 0
       m_PreInfinity: 2
       m_PostInfinity: 2
       m_RotationOrder: 4
@@ -492,14 +523,14 @@ TrailRenderer:
       m_ColorSpace: -1
       m_NumColorKeys: 2
       m_NumAlphaKeys: 2
-    numCornerVertices: 0
-    numCapVertices: 0
+    numCornerVertices: 2
+    numCapVertices: 2
     alignment: 0
     textureMode: 0
     textureScale: {x: 1, y: 1}
     shadowBias: 0.5
     generateLightingData: 0
-  m_MinVertexDistance: 0.04
+  m_MinVertexDistance: 0.025
   m_Autodestruct: 0
   m_Emitting: 0
   m_ApplyActiveColorSpace: 1

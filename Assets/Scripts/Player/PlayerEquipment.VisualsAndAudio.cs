@@ -591,18 +591,45 @@ public partial class PlayerEquipment
         }
     }
 
+    private const string BareHandsTrailAnchorName = "BareHandsTrailAnchor";
+
     private void EnsureBareHandsTrail()
     {
         FindHandSocketIfNeeded();
-        if (handSocket != null && bareHandsTrail == null)
+        if (handSocket == null) return;
+        if (bareHandsTrail != null && bareHandsTrail.ActiveTrailRenderer != null) return;
+
+        Transform anchorParent = handSocket.parent != null ? handSocket.parent : handSocket;
+        Transform anchorTransform = anchorParent.Find(BareHandsTrailAnchorName);
+        if (anchorTransform == null)
         {
-            bareHandsTrail = handSocket.GetComponent<FeaturesCombat.Adapters.WeaponTrailController>();
-            if (bareHandsTrail == null)
-            {
-                bareHandsTrail = handSocket.gameObject.AddComponent<FeaturesCombat.Adapters.WeaponTrailController>();
-            }
-            bareHandsTrail.InitializeForWeapon(handSocket.gameObject);
+            var anchorGo = new GameObject(BareHandsTrailAnchorName);
+            anchorTransform = anchorGo.transform;
+            anchorTransform.SetParent(anchorParent, false);
         }
+
+        if (handSocket.parent != null)
+        {
+            Vector3 fistLocalPos = new Vector3(-0.015f, 0.11f, 0.01f);
+            if (Mathf.Abs(anchorParent.lossyScale.x) > 10f)
+            {
+                fistLocalPos *= 0.01f;
+            }
+            anchorTransform.localPosition = fistLocalPos;
+        }
+        else
+        {
+            anchorTransform.localPosition = Vector3.zero;
+        }
+        anchorTransform.localRotation = Quaternion.identity;
+        anchorTransform.localScale = Vector3.one;
+
+        bareHandsTrail = anchorTransform.GetComponent<FeaturesCombat.Adapters.WeaponTrailController>();
+        if (bareHandsTrail == null)
+        {
+            bareHandsTrail = anchorTransform.gameObject.AddComponent<FeaturesCombat.Adapters.WeaponTrailController>();
+        }
+        bareHandsTrail.InitializeForBareHands();
     }
 
     private FeaturesCombat.Adapters.WeaponTrailController GetActiveTrail()
@@ -647,6 +674,8 @@ public partial class PlayerEquipment
             for (int i = handSocket.childCount - 1; i >= 0; i--)
             {
                 var child = handSocket.GetChild(i).gameObject;
+                if (child.name == BareHandsTrailAnchorName) continue;
+
                 var hitbox = child.GetComponentInChildren<FeaturesCombat.WeaponHitbox>();
                 if (hitbox != null)
                 {
