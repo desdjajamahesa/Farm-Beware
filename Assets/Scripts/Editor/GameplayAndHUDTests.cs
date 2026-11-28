@@ -117,7 +117,7 @@ namespace FarmBeware.EditorTests
             ResetTestAuditHarness();
 
             int passed = 0;
-            int total = 120;
+            int total = 121;
 
             if (Test_DayNight_PhaseProgression_DuskUntilNight()) passed++;
             if (Test_BedInteractable_Logic_AllowsDuskAndBlocksNightOnly()) passed++;
@@ -240,6 +240,7 @@ namespace FarmBeware.EditorTests
             if (Test_CombatPolish_FrameData_CancelMatrix_TrackingLockOff_TokenFairness_And_ZeroGC_Audit()) passed++;
             if (Test_PlayerModular_AttackTrail_Alignment_Scale_And_BareHands_Lifecycle_Audit()) passed++;
             if (Test_MonsterSpawn_NoTreeTopOrCanopySpawn_And_GroundClearance_Audit()) passed++;
+            if (Test_MerchantShop_And_KitchenSink_WoodenBoard_SceneLayout_NoOverlap_Audit()) passed++;
 
             Debug.Log("[AUDIT-SUITE] ========================================================");
             Debug.Log($"[AUDIT-SUITE] Complete! Passed: {passed}/{total}");
@@ -500,7 +501,19 @@ namespace FarmBeware.EditorTests
                     return false;
                 }
 
-                Debug.Log("✅ Test 116: WoodenBoard_TwoColumn sprite, normalized layout regions, and all 7 UI panel themes verified.");
+                // H. SinkManager.ApplyWoodenBoardTheme()
+                var sinkHost = new GameObject("Test_SinkPanel_116", typeof(RectTransform), typeof(Image));
+                cleanup.Add(sinkHost);
+                sinkHost.transform.SetParent(uiCanvasGO.transform, false);
+                var sinkUI = sinkHost.AddComponent<SinkManager>();
+                sinkUI.ApplyWoodenBoardTheme();
+                if (sinkHost.GetComponent<Image>().sprite != boardSprite || sinkHost.transform.Find("PlaqueTitleText") == null)
+                {
+                    Debug.LogError("[Test 116] SinkManager did not apply WoodenBoard_TwoColumn sprite & PlaqueTitleText!");
+                    return false;
+                }
+
+                Debug.Log("✅ Test 116: WoodenBoard_TwoColumn sprite, normalized layout regions, and all 8 UI panel themes verified.");
                 return true;
             }
             catch (System.Exception ex)

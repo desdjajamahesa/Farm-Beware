@@ -751,5 +751,11 @@ namespace FarmBeware.EditorTests
         {
             Assert.IsTrue(GameplayAndHUDTests.Test_MonsterSpawn_NoTreeTopOrCanopySpawn_And_GroundClearance_Audit(), "Test_MonsterSpawn_NoTreeTopOrCanopySpawn_And_GroundClearance_Audit failed. Check Unity Console logs for details.");
         }
+
+        [Test]
+        public void NUnit_121_Test_MerchantShop_And_KitchenSink_WoodenBoard_SceneLayout_NoOverlap_Audit()
+        {
+            Assert.IsTrue(GameplayAndHUDTests.Test_MerchantShop_And_KitchenSink_WoodenBoard_SceneLayout_NoOverlap_Audit(), "Test_MerchantShop_And_KitchenSink_WoodenBoard_SceneLayout_NoOverlap_Audit failed. Check Unity Console logs for details.");
+        }
     }
 }

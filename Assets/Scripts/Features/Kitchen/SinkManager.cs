@@ -51,6 +51,7 @@ public class SinkManager : MonoBehaviour
 
     private void Awake()
     {
+        ApplyWoodenBoardTheme();
         if (closeButton != null)
         {
             closeButton.onClick.RemoveAllListeners();
@@ -60,6 +61,8 @@ public class SinkManager : MonoBehaviour
 
     private void Start()
     {
+        ApplyWoodenBoardTheme();
+
         // Auto-resolve processor if not assigned
         if (processor == null)
             processor = FindFirstObjectByType<KitchenSinkInteractable>();
@@ -153,6 +156,7 @@ public class SinkManager : MonoBehaviour
 
     private void OnEnable()
     {
+        ApplyWoodenBoardTheme();
         EnsurePlayerInventoryRef();
 
         if (playerInventory != null)
@@ -226,11 +230,14 @@ public class SinkManager : MonoBehaviour
     {
         if (refillWaterButton != null) return;
 
-        var existing = transform.Find("Btn_RefillWater") ?? transform.Find("LeftContent/Btn_RefillWater") ?? transform.Find("TopBar/Btn_RefillWater");
+        var existing = transform.Find("LeftContent/Btn_RefillWater")
+            ?? transform.Find("Btn_RefillWater")
+            ?? transform.Find("TopBar/Btn_RefillWater");
         if (existing != null)
         {
             refillWaterButton = existing.GetComponent<Button>();
             refillWaterButtonText = existing.GetComponentInChildren<TextMeshProUGUI>();
+            StyleRefillWaterButtonRect();
             if (refillWaterButton != null)
             {
                 refillWaterButton.onClick.RemoveAllListeners();
@@ -244,16 +251,6 @@ public class SinkManager : MonoBehaviour
         GameObject btnGO = new GameObject("Btn_RefillWater", typeof(RectTransform), typeof(Image), typeof(Button));
         btnGO.transform.SetParent(targetParent, false);
 
-        var rt = btnGO.GetComponent<RectTransform>();
-        rt.anchorMin = new Vector2(0.5f, 0f);
-        rt.anchorMax = new Vector2(0.5f, 0f);
-        rt.pivot = new Vector2(0.5f, 0f);
-        rt.anchoredPosition = new Vector2(0f, 16f);
-        rt.sizeDelta = new Vector2(210f, 36f);
-
-        var img = btnGO.GetComponent<Image>();
-        img.color = new Color(0.12f, 0.42f, 0.65f, 1f);
-
         refillWaterButton = btnGO.GetComponent<Button>();
         refillWaterButton.onClick.AddListener(OnRefillWaterClicked);
 
@@ -262,16 +259,346 @@ public class SinkManager : MonoBehaviour
         var textRT = textGO.GetComponent<RectTransform>();
         textRT.anchorMin = Vector2.zero;
         textRT.anchorMax = Vector2.one;
-        textRT.sizeDelta = Vector2.zero;
+        textRT.offsetMin = new Vector2(6f, 2f);
+        textRT.offsetMax = new Vector2(-6f, -2f);
 
         refillWaterButtonText = textGO.GetComponent<TextMeshProUGUI>();
         refillWaterButtonText.text = "💧 Refill Water (100L)";
-        refillWaterButtonText.fontSize = 13;
         refillWaterButtonText.fontStyle = FontStyles.Bold;
         refillWaterButtonText.alignment = TextAlignmentOptions.Center;
         refillWaterButtonText.color = Color.white;
+        refillWaterButtonText.raycastTarget = false;
 
+        StyleRefillWaterButtonRect();
         UpdateRefillButtonState();
+    }
+
+    private void StyleRefillWaterButtonRect()
+    {
+        if (refillWaterButton == null) return;
+        var rt = refillWaterButton.GetComponent<RectTransform>();
+        if (rt != null)
+        {
+            Transform leftParent = transform.Find("LeftContent");
+            if (leftParent != null && rt.parent != leftParent)
+            {
+                rt.SetParent(leftParent, false);
+            }
+            rt.anchorMin = new Vector2(0f, 0f);
+            rt.anchorMax = new Vector2(1f, 0f);
+            rt.pivot = new Vector2(0.5f, 0f);
+            rt.anchoredPosition = new Vector2(0f, 10f);
+            rt.sizeDelta = new Vector2(-16f, 42f);
+        }
+
+        if (refillWaterButton.TryGetComponent<Image>(out var img))
+        {
+            img.sprite = ProceduralUIAssetCache.GetRoundedBarSprite();
+            img.type = Image.Type.Sliced;
+            img.color = new Color(0.12f, 0.42f, 0.65f, 1f);
+        }
+
+        if (refillWaterButtonText != null)
+        {
+            refillWaterButtonText.fontSize = 11.5f;
+            refillWaterButtonText.enableAutoSizing = true;
+            refillWaterButtonText.fontSizeMin = 9.5f;
+            refillWaterButtonText.fontSizeMax = 12f;
+            refillWaterButtonText.textWrappingMode = TextWrappingModes.Normal;
+            refillWaterButtonText.color = Color.white;
+            refillWaterButtonText.raycastTarget = false;
+        }
+    }
+
+    /// <summary>
+    /// Applies the shared WoodenBoard_TwoColumn theme, English headers, and clean left/right
+    /// column alignment onto Panel_Sink while preserving serialized processor/slot bindings.
+    /// </summary>
+    public void ApplyWoodenBoardTheme()
+    {
+        var boardRt = GetComponent<RectTransform>();
+        if (boardRt != null)
+        {
+            boardRt.anchorMin = new Vector2(0.5f, 0.5f);
+            boardRt.anchorMax = new Vector2(0.5f, 0.5f);
+            boardRt.pivot = new Vector2(0.5f, 0.5f);
+            boardRt.anchoredPosition = Vector2.zero;
+            boardRt.sizeDelta = new Vector2(1240f, 694f);
+        }
+
+        var bgImg = GetComponent<Image>() ?? gameObject.AddComponent<Image>();
+        WoodenBoardStyle.ApplyBoardBackground(bgImg);
+        bgImg.raycastTarget = true;
+
+        var plaqueTmp = WoodenBoardStyle.EnsurePlaqueTitle<TextMeshProUGUI>(transform);
+        if (plaqueTmp != null)
+        {
+            plaqueTmp.text = "KITCHEN SINK";
+            plaqueTmp.fontSize = 21f;
+            plaqueTmp.fontStyle = FontStyles.Bold;
+            plaqueTmp.alignment = TextAlignmentOptions.Center;
+        }
+
+        if (closeButton == null)
+        {
+            var cbTr = transform.Find("CloseButton") ?? transform.Find("TopBar/CloseButton");
+            if (cbTr != null) closeButton = cbTr.GetComponent<Button>();
+        }
+        if (closeButton != null)
+        {
+            var cRt = closeButton.GetComponent<RectTransform>();
+            if (cRt != null)
+            {
+                if (cRt.parent != transform) cRt.SetParent(transform, false);
+                cRt.anchorMin = WoodenBoardStyle.CloseButtonAnchor;
+                cRt.anchorMax = WoodenBoardStyle.CloseButtonAnchor;
+                cRt.pivot = new Vector2(0.5f, 0.5f);
+                cRt.anchoredPosition = Vector2.zero;
+                cRt.sizeDelta = new Vector2(36f, 36f);
+            }
+            if (closeButton.TryGetComponent<Image>(out var cImg))
+            {
+                cImg.sprite = ProceduralUIAssetCache.GetRoundedBarSprite();
+                cImg.type = Image.Type.Sliced;
+                cImg.color = WoodenBoardStyle.BtnDanger;
+            }
+            var cTmp = closeButton.GetComponentInChildren<TextMeshProUGUI>(true);
+            if (cTmp != null)
+            {
+                cTmp.text = "X";
+                cTmp.fontSize = 18f;
+                cTmp.fontStyle = FontStyles.Bold;
+                cTmp.alignment = TextAlignmentOptions.Center;
+                cTmp.color = Color.white;
+                cTmp.raycastTarget = false;
+            }
+        }
+
+        var topBarTr = transform.Find("TopBar");
+        if (topBarTr != null) topBarTr.gameObject.SetActive(false);
+
+        // Left Pane: Inventory + Description + Refill Button
+        var leftTr = transform.Find("LeftContent");
+        if (leftTr != null)
+        {
+            WoodenBoardStyle.SetAnchorRegion(leftTr.GetComponent<RectTransform>(),
+                WoodenBoardStyle.LeftPaneMin, WoodenBoardStyle.LeftPaneMax, 8f, 8f, 8f, 8f);
+            if (leftTr.TryGetComponent<Image>(out var lImg))
+            {
+                lImg.sprite = ProceduralUIAssetCache.GetRoundedBarSprite();
+                lImg.type = Image.Type.Sliced;
+                lImg.color = WoodenBoardStyle.DarkOakOverlay;
+            }
+
+            var invLabelTr = leftTr.Find("PlayerInventoryLabel");
+            if (invLabelTr != null)
+            {
+                var ilRt = invLabelTr.GetComponent<RectTransform>();
+                if (ilRt != null)
+                {
+                    ilRt.anchorMin = new Vector2(0f, 1f);
+                    ilRt.anchorMax = new Vector2(1f, 1f);
+                    ilRt.pivot = new Vector2(0.5f, 1f);
+                    ilRt.anchoredPosition = new Vector2(0f, -6f);
+                    ilRt.sizeDelta = new Vector2(-16f, 26f);
+                }
+                if (invLabelTr.TryGetComponent<TextMeshProUGUI>(out var ilTmp))
+                {
+                    ilTmp.text = "PLAYER INVENTORY";
+                    ilTmp.fontSize = 14f;
+                    ilTmp.fontStyle = FontStyles.Bold;
+                    ilTmp.alignment = TextAlignmentOptions.Center;
+                    ilTmp.color = WoodenBoardStyle.TextGoldAccent;
+                    ilTmp.raycastTarget = false;
+                }
+            }
+
+            var gridTr = leftTr.Find("PlayerInventoryGrid");
+            if (gridTr != null)
+            {
+                var gRt = gridTr.GetComponent<RectTransform>();
+                if (gRt != null)
+                {
+                    gRt.anchorMin = new Vector2(0.5f, 1f);
+                    gRt.anchorMax = new Vector2(0.5f, 1f);
+                    gRt.pivot = new Vector2(0.5f, 1f);
+                    gRt.anchoredPosition = new Vector2(0f, -36f);
+                    gRt.sizeDelta = new Vector2(252f, 252f);
+                }
+                if (gridTr.TryGetComponent<GridLayoutGroup>(out var glg))
+                {
+                    glg.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
+                    glg.constraintCount = 4;
+                    glg.cellSize = new Vector2(56f, 56f);
+                    glg.spacing = new Vector2(6f, 6f);
+                    glg.padding = new RectOffset(4, 4, 4, 4);
+                    glg.childAlignment = TextAnchor.UpperCenter;
+                }
+            }
+
+            var descPanelTr = leftTr.Find("ItemDescriptionPanel");
+            if (descPanelTr != null)
+            {
+                var dpRt = descPanelTr.GetComponent<RectTransform>();
+                if (dpRt != null)
+                {
+                    dpRt.anchorMin = new Vector2(0f, 0f);
+                    dpRt.anchorMax = new Vector2(1f, 0f);
+                    dpRt.pivot = new Vector2(0.5f, 0f);
+                    dpRt.anchoredPosition = new Vector2(0f, 58f);
+                    dpRt.sizeDelta = new Vector2(-16f, 150f);
+                }
+                if (descPanelTr.TryGetComponent<Image>(out var dpImg))
+                {
+                    dpImg.sprite = ProceduralUIAssetCache.GetRoundedBarSprite();
+                    dpImg.type = Image.Type.Sliced;
+                    dpImg.color = WoodenBoardStyle.DarkOakSubtle;
+                }
+                if (descPanelTr.TryGetComponent<VerticalLayoutGroup>(out var dVlg))
+                {
+                    dVlg.padding = new RectOffset(10, 10, 8, 8);
+                    dVlg.spacing = 4f;
+                    dVlg.childControlWidth = true;
+                    dVlg.childControlHeight = true;
+                    dVlg.childForceExpandWidth = true;
+                    dVlg.childForceExpandHeight = false;
+                }
+                var nameTr = descPanelTr.Find("ItemNameText");
+                if (nameTr != null)
+                {
+                    if (nameTr.TryGetComponent<TextMeshProUGUI>(out var nTmp))
+                    {
+                        nTmp.fontSize = 13f;
+                        nTmp.fontStyle = FontStyles.Bold;
+                        nTmp.color = WoodenBoardStyle.TextGoldAccent;
+                        nTmp.raycastTarget = false;
+                    }
+                    var nLe = nameTr.GetComponent<LayoutElement>() ?? nameTr.gameObject.AddComponent<LayoutElement>();
+                    nLe.preferredHeight = 22f;
+                }
+                var dTextTr = descPanelTr.Find("DescriptionText");
+                if (dTextTr != null)
+                {
+                    if (dTextTr.TryGetComponent<TextMeshProUGUI>(out var dTmp))
+                    {
+                        dTmp.fontSize = 11.5f;
+                        dTmp.color = WoodenBoardStyle.TextCream;
+                        dTmp.textWrappingMode = TextWrappingModes.Normal;
+                        dTmp.overflowMode = TextOverflowModes.Ellipsis;
+                        dTmp.raycastTarget = false;
+                    }
+                    var dLe = dTextTr.GetComponent<LayoutElement>() ?? dTextTr.gameObject.AddComponent<LayoutElement>();
+                    dLe.minHeight = 72f;
+                    dLe.flexibleHeight = 1f;
+                }
+            }
+        }
+
+        // Right Pane: Washing Station Process
+        var rightTr = transform.Find("RightContent");
+        if (rightTr != null)
+        {
+            WoodenBoardStyle.SetAnchorRegion(rightTr.GetComponent<RectTransform>(),
+                WoodenBoardStyle.RightPaneMin, WoodenBoardStyle.RightPaneMax, 10f, 8f, 10f, 8f);
+            if (rightTr.TryGetComponent<Image>(out var rImg))
+            {
+                rImg.sprite = ProceduralUIAssetCache.GetRoundedBarSprite();
+                rImg.type = Image.Type.Sliced;
+                rImg.color = WoodenBoardStyle.DarkOakOverlay;
+            }
+            if (rightTr.TryGetComponent<VerticalLayoutGroup>(out var rVlg))
+            {
+                rVlg.padding = new RectOffset(16, 16, 14, 14);
+                rVlg.childAlignment = TextAnchor.MiddleCenter;
+                rVlg.childControlWidth = true;
+                rVlg.childControlHeight = true;
+                rVlg.childForceExpandWidth = true;
+                rVlg.childForceExpandHeight = true;
+            }
+
+            var procTr = rightTr.Find("ProcessContainer");
+            if (procTr != null)
+            {
+                if (procTr.TryGetComponent<Image>(out var pImg))
+                {
+                    pImg.sprite = ProceduralUIAssetCache.GetRoundedBarSprite();
+                    pImg.type = Image.Type.Sliced;
+                    pImg.color = WoodenBoardStyle.DarkOakSubtle;
+                }
+                if (procTr.TryGetComponent<VerticalLayoutGroup>(out var pVlg))
+                {
+                    pVlg.padding = new RectOffset(20, 20, 14, 14);
+                    pVlg.spacing = 10f;
+                    pVlg.childControlWidth = true;
+                    pVlg.childControlHeight = true;
+                    pVlg.childForceExpandWidth = true;
+                    pVlg.childForceExpandHeight = false;
+                }
+
+                var secTitle = procTr.Find("SectionTitle")?.GetComponent<TextMeshProUGUI>();
+                if (secTitle != null)
+                {
+                    secTitle.text = "WASHING PROCESS";
+                    secTitle.color = WoodenBoardStyle.TextGoldAccent;
+                }
+
+                StyleSinkSlotColumn(procTr.Find("SlotRow/InputColumn"), "InputSlot", "InputLabel", "Dirty", WoodenBoardStyle.TextMutedWarm);
+                StyleSinkSlotColumn(procTr.Find("SlotRow/OutputColumn"), "OutputSlot", "OutputLabel", "Clean", WoodenBoardStyle.TextGoldAccent);
+
+                var arrowTmp = procTr.Find("FlowIndicator/ArrowDown")?.GetComponent<TextMeshProUGUI>();
+                if (arrowTmp != null) arrowTmp.color = WoodenBoardStyle.TextGoldAccent;
+
+                var flowTmp = procTr.Find("FlowIndicator/FlowLabel")?.GetComponent<TextMeshProUGUI>();
+                if (flowTmp != null)
+                {
+                    flowTmp.text = "Wash Process";
+                    flowTmp.color = WoodenBoardStyle.TextMutedWarm;
+                }
+
+                var progBg = procTr.Find("ProgressSection/ProgressBg")?.GetComponent<Image>();
+                if (progBg != null)
+                {
+                    progBg.sprite = ProceduralUIAssetCache.GetRoundedBarSprite();
+                    progBg.type = Image.Type.Sliced;
+                    progBg.color = WoodenBoardStyle.DarkOakInput;
+                }
+
+                var pct = procTr.Find("ProgressSection/ProgressInfo/PercentText")?.GetComponent<TextMeshProUGUI>();
+                if (pct != null) pct.color = WoodenBoardStyle.TextCream;
+
+                var tTxt = procTr.Find("ProgressSection/ProgressInfo/TimeText")?.GetComponent<TextMeshProUGUI>();
+                if (tTxt != null) tTxt.color = WoodenBoardStyle.TextMutedWarm;
+
+                var stTxt = procTr.Find("ProgressSection/StatusText")?.GetComponent<TextMeshProUGUI>();
+                if (stTxt != null) stTxt.color = WoodenBoardStyle.TextCream;
+            }
+        }
+
+        StyleRefillWaterButtonRect();
+    }
+
+    private static void StyleSinkSlotColumn(Transform colTr, string slotName, string innerLabelName, string englishLabel, Color labelColor)
+    {
+        if (colTr == null) return;
+        var slotTr = colTr.Find(slotName);
+        if (slotTr != null && slotTr.TryGetComponent<Image>(out var sImg))
+        {
+            sImg.sprite = ProceduralUIAssetCache.GetRoundedBarSprite();
+            sImg.type = Image.Type.Sliced;
+            sImg.color = WoodenBoardStyle.DarkOakInput;
+        }
+        var innerTmp = slotTr?.Find(innerLabelName)?.GetComponent<TextMeshProUGUI>();
+        if (innerTmp != null)
+        {
+            innerTmp.text = englishLabel;
+            innerTmp.color = labelColor;
+        }
+        var outerTmp = colTr.Find("SlotLabel")?.GetComponent<TextMeshProUGUI>();
+        if (outerTmp != null)
+        {
+            outerTmp.text = englishLabel;
+            outerTmp.color = labelColor;
+        }
     }
 
     public void OnRefillWaterClicked()
@@ -489,9 +816,11 @@ public class SinkManager : MonoBehaviour
         var slotGO = new GameObject($"Slot_{index}", typeof(RectTransform), typeof(Image), typeof(Button));
         slotGO.transform.SetParent(playerInventoryGrid, false);
         var slotRT = slotGO.GetComponent<RectTransform>();
-        slotRT.sizeDelta = new Vector2(80, 80);
+        slotRT.sizeDelta = new Vector2(56, 56);
         var slotImg = slotGO.GetComponent<Image>();
-        slotImg.color = new Color(0.2f, 0.2f, 0.25f, 0.9f);
+        slotImg.sprite = ProceduralUIAssetCache.GetRoundedBarSprite();
+        slotImg.type = Image.Type.Sliced;
+        slotImg.color = WoodenBoardStyle.DarkOakInput;
 
         // Icon — render for ALL items (dirty or not)
         var iconGO = new GameObject("Icon", typeof(RectTransform), typeof(Image));

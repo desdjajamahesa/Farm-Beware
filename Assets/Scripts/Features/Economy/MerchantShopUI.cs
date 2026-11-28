@@ -474,17 +474,17 @@ namespace FeaturesEconomy
             rowImg.raycastTarget = false;
 
             var rowLayout = rowGO.AddComponent<HorizontalLayoutGroup>();
-            rowLayout.padding = new RectOffset(12, 12, 8, 8);
-            rowLayout.spacing = 14;
+            rowLayout.padding = new RectOffset(10, 10, 8, 8);
+            rowLayout.spacing = 10;
             rowLayout.childAlignment = TextAnchor.MiddleLeft;
-            rowLayout.childControlWidth = false;
+            rowLayout.childControlWidth = true;
             rowLayout.childControlHeight = true;
             rowLayout.childForceExpandWidth = false;
-            rowLayout.childForceExpandHeight = true;
+            rowLayout.childForceExpandHeight = false;
 
             var rowElem = rowGO.AddComponent<LayoutElement>();
-            rowElem.minHeight = 56;
-            rowElem.preferredHeight = 56;
+            rowElem.minHeight = 64;
+            rowElem.preferredHeight = 64;
             rowElem.flexibleWidth = 1;
 
             // 1. Icon
@@ -546,17 +546,22 @@ namespace FeaturesEconomy
                 infoTmp.text = $"<b>{item.itemName}</b>{ownedBadge}\n<color=#FFD700>{item.buyPrice:N0} G</color>  <size=12><color=#8B949E>{item.description}</color></size>";
             }
 
-            infoTmp.fontSize = 15;
+            infoTmp.fontSize = 14;
             infoTmp.color = Color.white;
             infoTmp.alignment = TextAlignmentOptions.MidlineLeft;
+            infoTmp.textWrappingMode = TextWrappingModes.Normal;
+            infoTmp.overflowMode = TextOverflowModes.Ellipsis;
             infoTmp.raycastTarget = false;
             var infoElem = infoGO.AddComponent<LayoutElement>();
-            infoElem.minWidth = 330;
-            infoElem.preferredWidth = 330;
+            infoElem.minWidth = 140;
+            infoElem.preferredWidth = -1;
+            infoElem.flexibleWidth = 1;
+            infoElem.minHeight = 44;
+            infoElem.preferredHeight = 48;
 
             // 3. Buy 1 Button
             bool canAfford1 = (playerGold >= item.buyPrice);
-            var b1 = CreateResponsiveButton(rowGO.transform, canAfford1 ? "Buy 1" : "No Gold", 85,
+            var b1 = CreateResponsiveButton(rowGO.transform, canAfford1 ? "Buy 1" : "No Gold", 82,
                 canAfford1 ? new Color(0.14f, 0.58f, 0.32f, 1f) : new Color(0.24f, 0.26f, 0.3f, 0.5f),
                 canAfford1,
                 () => TryBuyItem(item, 1));
@@ -567,7 +572,7 @@ namespace FeaturesEconomy
             {
                 int cost5 = item.buyPrice * 5;
                 bool canAfford5 = (playerGold >= cost5);
-                b5 = CreateResponsiveButton(rowGO.transform, canAfford5 ? "Buy 5" : $"Buy 5 ({cost5}G)", 105,
+                b5 = CreateResponsiveButton(rowGO.transform, canAfford5 ? "Buy 5" : $"Buy 5 ({cost5}G)", 108,
                     canAfford5 ? new Color(0.12f, 0.48f, 0.28f, 1f) : new Color(0.24f, 0.26f, 0.3f, 0.5f),
                     canAfford5,
                     () => TryBuyItem(item, 5));
@@ -600,34 +605,55 @@ namespace FeaturesEconomy
             RectTransform rowRT = rowGO.GetComponent<RectTransform>();
             rowRT.sizeDelta = new Vector2(0f, 68f);
 
+            var rowElem = rowGO.AddComponent<LayoutElement>();
+            rowElem.minHeight = 68f;
+            rowElem.preferredHeight = 68f;
+            rowElem.flexibleWidth = 1f;
+
             Image rowBg = rowGO.GetComponent<Image>();
+            rowBg.sprite = ProceduralUIAssetCache.GetRoundedBarSprite();
+            rowBg.type = Image.Type.Sliced;
             rowBg.color = new Color(0.12f, 0.18f, 0.14f, 0.90f);
 
             var layout = rowGO.AddComponent<HorizontalLayoutGroup>();
-            layout.childControlWidth = false;
+            layout.childAlignment = TextAnchor.MiddleLeft;
+            layout.childControlWidth = true;
             layout.childControlHeight = true;
             layout.childForceExpandWidth = false;
-            layout.childForceExpandHeight = true;
-            layout.spacing = 16f;
-            layout.padding = new RectOffset(14, 14, 8, 8);
+            layout.childForceExpandHeight = false;
+            layout.spacing = 10f;
+            layout.padding = new RectOffset(10, 10, 8, 8);
 
             // Icon
             GameObject iconGO = new GameObject("Icon", typeof(RectTransform), typeof(Image));
             iconGO.transform.SetParent(rowGO.transform, false);
-            var iconRT = iconGO.GetComponent<RectTransform>();
-            iconRT.sizeDelta = new Vector2(52f, 52f);
+            var iconElem = iconGO.AddComponent<LayoutElement>();
+            iconElem.minWidth = 44f;
+            iconElem.preferredWidth = 44f;
+            iconElem.flexibleWidth = 0f;
+            iconElem.minHeight = 44f;
+            iconElem.preferredHeight = 44f;
             var iconImg = iconGO.GetComponent<Image>();
+            iconImg.sprite = ProceduralUIAssetCache.GetRoundedBarSprite();
+            iconImg.type = Image.Type.Sliced;
             iconImg.color = new Color(0.35f, 0.85f, 0.45f, 1f);
 
             // Info text
             GameObject infoGO = new GameObject("Info", typeof(RectTransform), typeof(TextMeshProUGUI));
             infoGO.transform.SetParent(rowGO.transform, false);
-            var infoRT = infoGO.GetComponent<RectTransform>();
-            infoRT.sizeDelta = new Vector2(360f, 52f);
+            var infoElem = infoGO.AddComponent<LayoutElement>();
+            infoElem.minWidth = 140f;
+            infoElem.preferredWidth = -1f;
+            infoElem.flexibleWidth = 1f;
+            infoElem.minHeight = 48f;
+            infoElem.preferredHeight = 52f;
             var infoTmp = infoGO.GetComponent<TextMeshProUGUI>();
             infoTmp.fontSize = 14;
             infoTmp.color = Color.white;
             infoTmp.alignment = TextAlignmentOptions.MidlineLeft;
+            infoTmp.textWrappingMode = TextWrappingModes.Normal;
+            infoTmp.overflowMode = TextOverflowModes.Ellipsis;
+            infoTmp.raycastTarget = false;
 
             string statusBadge = isMax 
                 ? "<color=#38C773>[MAX EXPANSION]</color>" 
@@ -638,9 +664,15 @@ namespace FeaturesEconomy
             // CTA Button
             GameObject btnGO = new GameObject("BtnBuyDeed", typeof(RectTransform), typeof(Image), typeof(Button));
             btnGO.transform.SetParent(rowGO.transform, false);
-            var btnRT = btnGO.GetComponent<RectTransform>();
-            btnRT.sizeDelta = new Vector2(160f, 44f);
+            var btnElem = btnGO.AddComponent<LayoutElement>();
+            btnElem.minWidth = 144f;
+            btnElem.preferredWidth = 144f;
+            btnElem.flexibleWidth = 0f;
+            btnElem.minHeight = 38f;
+            btnElem.preferredHeight = 38f;
             var btnImg = btnGO.GetComponent<Image>();
+            btnImg.sprite = ProceduralUIAssetCache.GetRoundedBarSprite();
+            btnImg.type = Image.Type.Sliced;
             var btn = btnGO.GetComponent<Button>();
 
             GameObject btnTxtGO = new GameObject("Text", typeof(RectTransform), typeof(TextMeshProUGUI));
@@ -651,8 +683,13 @@ namespace FeaturesEconomy
             btnTxtRT.sizeDelta = Vector2.zero;
             var btnTmp = btnTxtGO.GetComponent<TextMeshProUGUI>();
             btnTmp.fontSize = 13;
+            btnTmp.enableAutoSizing = true;
+            btnTmp.fontSizeMin = 10f;
+            btnTmp.fontSizeMax = 13f;
             btnTmp.fontStyle = FontStyles.Bold;
             btnTmp.alignment = TextAlignmentOptions.Center;
+            btnTmp.textWrappingMode = TextWrappingModes.NoWrap;
+            btnTmp.raycastTarget = false;
 
             bool canAfford = playerGold >= cost && !isMax;
             btn.interactable = canAfford;
@@ -749,13 +786,17 @@ namespace FeaturesEconomy
             GameObject emptyGO = new GameObject("EmptyState", typeof(RectTransform), typeof(TextMeshProUGUI));
             emptyGO.transform.SetParent(parent, false);
             var rect = emptyGO.GetComponent<RectTransform>();
-            rect.sizeDelta = new Vector2(620, 100);
+            rect.sizeDelta = new Vector2(520, 100);
+            var emptyElem = emptyGO.AddComponent<LayoutElement>();
+            emptyElem.minHeight = 100f;
+            emptyElem.preferredHeight = 100f;
+            emptyElem.flexibleWidth = 1f;
 
             var tmp = emptyGO.GetComponent<TextMeshProUGUI>();
             tmp.text = message;
             tmp.fontSize = 16;
             tmp.alignment = TextAlignmentOptions.Center;
-            tmp.color = new Color(0.6f, 0.68f, 0.78f, 0.8f);
+            tmp.color = WoodenBoardStyle.TextMutedWarm;
             tmp.raycastTarget = false;
         }
 
@@ -771,17 +812,17 @@ namespace FeaturesEconomy
             rowImg.raycastTarget = false;
 
             var rowLayout = rowGO.AddComponent<HorizontalLayoutGroup>();
-            rowLayout.padding = new RectOffset(12, 12, 8, 8);
-            rowLayout.spacing = 14;
+            rowLayout.padding = new RectOffset(10, 10, 8, 8);
+            rowLayout.spacing = 10;
             rowLayout.childAlignment = TextAnchor.MiddleLeft;
-            rowLayout.childControlWidth = false;
+            rowLayout.childControlWidth = true;
             rowLayout.childControlHeight = true;
             rowLayout.childForceExpandWidth = false;
-            rowLayout.childForceExpandHeight = true;
+            rowLayout.childForceExpandHeight = false;
 
             var rowElem = rowGO.AddComponent<LayoutElement>();
-            rowElem.minHeight = 56;
-            rowElem.preferredHeight = 56;
+            rowElem.minHeight = 64;
+            rowElem.preferredHeight = 64;
             rowElem.flexibleWidth = 1;
 
             // 1. Icon
@@ -793,23 +834,28 @@ namespace FeaturesEconomy
             infoGO.transform.SetParent(rowGO.transform, false);
             var infoTmp = infoGO.GetComponent<TextMeshProUGUI>();
             infoTmp.text = $"<b>{item.itemName}</b>  <color=#00E5FF>(x{ownedCount} in bag)</color>\n<color=#98FB98>+{unitPrice:N0} G (Market Rate)</color>";
-            infoTmp.fontSize = 15;
+            infoTmp.fontSize = 14;
             infoTmp.color = Color.white;
             infoTmp.alignment = TextAlignmentOptions.MidlineLeft;
+            infoTmp.textWrappingMode = TextWrappingModes.Normal;
+            infoTmp.overflowMode = TextOverflowModes.Ellipsis;
             infoTmp.raycastTarget = false;
             var infoElem = infoGO.AddComponent<LayoutElement>();
-            infoElem.minWidth = 300;
-            infoElem.preferredWidth = 300;
+            infoElem.minWidth = 140;
+            infoElem.preferredWidth = -1;
+            infoElem.flexibleWidth = 1;
+            infoElem.minHeight = 44;
+            infoElem.preferredHeight = 48;
 
             // 3. Sell 1 Button
-            CreateResponsiveButton(rowGO.transform, "Sell 1", 90, new Color(0.75f, 0.45f, 0.15f, 1f), true, () =>
+            CreateResponsiveButton(rowGO.transform, "Sell 1", 80, new Color(0.75f, 0.45f, 0.15f, 1f), true, () =>
             {
                 TrySellItem(item, 1);
             });
 
             // 4. Sell All Button
             int totalGain = unitPrice * ownedCount;
-            CreateResponsiveButton(rowGO.transform, $"Sell All (+{totalGain:N0}G)", 150, new Color(0.85f, 0.38f, 0.15f, 1f), true, () =>
+            CreateResponsiveButton(rowGO.transform, $"Sell All (+{totalGain:N0}G)", 138, new Color(0.85f, 0.38f, 0.15f, 1f), true, () =>
             {
                 TrySellItem(item, ownedCount);
             });
@@ -828,10 +874,11 @@ namespace FeaturesEconomy
                 img.color = new Color(0.2f, 0.25f, 0.35f, 0.8f);
             }
             var elem = iconGO.AddComponent<LayoutElement>();
-            elem.minWidth = 42;
-            elem.preferredWidth = 42;
-            elem.minHeight = 42;
-            elem.preferredHeight = 42;
+            elem.minWidth = 44;
+            elem.preferredWidth = 44;
+            elem.flexibleWidth = 0;
+            elem.minHeight = 44;
+            elem.preferredHeight = 44;
         }
 
         private struct ButtonResult
@@ -846,6 +893,8 @@ namespace FeaturesEconomy
             GameObject btnGO = new GameObject($"Btn_{label}", typeof(RectTransform), typeof(Image), typeof(Button));
             btnGO.transform.SetParent(parent, false);
             var img = btnGO.GetComponent<Image>();
+            img.sprite = ProceduralUIAssetCache.GetRoundedBarSprite();
+            img.type = Image.Type.Sliced;
             img.color = bgColor;
             img.raycastTarget = true;
 
@@ -869,6 +918,7 @@ namespace FeaturesEconomy
             var elem = btnGO.AddComponent<LayoutElement>();
             elem.minWidth = width;
             elem.preferredWidth = width;
+            elem.flexibleWidth = 0;
             elem.minHeight = 36;
             elem.preferredHeight = 36;
 
@@ -881,9 +931,13 @@ namespace FeaturesEconomy
 
             var tmp = textGO.GetComponent<TextMeshProUGUI>();
             tmp.text = label;
-            tmp.fontSize = 14;
+            tmp.fontSize = 13;
+            tmp.enableAutoSizing = true;
+            tmp.fontSizeMin = 10f;
+            tmp.fontSizeMax = 13f;
             tmp.fontStyle = FontStyles.Bold;
             tmp.alignment = TextAlignmentOptions.Center;
+            tmp.textWrappingMode = TextWrappingModes.NoWrap;
             tmp.color = interactable ? Color.white : new Color(0.7f, 0.7f, 0.7f, 0.6f);
             tmp.raycastTarget = false;
 

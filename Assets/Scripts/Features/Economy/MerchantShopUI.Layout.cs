@@ -38,12 +38,7 @@ namespace FeaturesEconomy
             var cardTr = shopPanel.transform.Find("ShopModalCard");
             if (cardTr == null) return;
 
-            var cardImg = cardTr.GetComponent<Image>();
-            if (cardImg != null && cardImg.sprite == null)
-            {
-                WoodenBoardStyle.ApplyBoardBackground(cardImg);
-                WoodenBoardStyle.EnsurePlaqueTitle<TextMeshProUGUI>(cardTr);
-            }
+            ApplyWoodenBoardLayout();
 
             // 1. Close [X] Button
             if (closeButton == null)
@@ -144,8 +139,8 @@ namespace FeaturesEconomy
 
                 var fbRect = filterBarGO.GetComponent<RectTransform>();
                 WoodenBoardStyle.SetAnchorRegion(fbRect,
-                    new Vector2(WoodenBoardStyle.LeftPaneMin.x, 0.240f),
-                    new Vector2(WoodenBoardStyle.LeftPaneMax.x, 0.615f),
+                    new Vector2(WoodenBoardStyle.LeftPaneMin.x, 0.245f),
+                    new Vector2(WoodenBoardStyle.LeftPaneMax.x, 0.612f),
                     10f, 4f, 10f, 4f);
 
                 var fLayout = filterBarGO.GetComponent<VerticalLayoutGroup>();
@@ -252,8 +247,8 @@ namespace FeaturesEconomy
                 toastGO.transform.SetParent(cardTr, false);
                 var tRect = toastGO.GetComponent<RectTransform>();
                 WoodenBoardStyle.SetAnchorRegion(tRect,
-                    new Vector2(WoodenBoardStyle.LeftPaneMin.x, 0.145f),
-                    new Vector2(WoodenBoardStyle.LeftPaneMax.x, 0.230f),
+                    new Vector2(WoodenBoardStyle.LeftPaneMin.x, 0.152f),
+                    new Vector2(WoodenBoardStyle.LeftPaneMax.x, 0.236f),
                     10f, 2f, 10f, 2f);
 
                 toastBannerText = toastGO.GetComponent<TextMeshProUGUI>();
@@ -263,6 +258,308 @@ namespace FeaturesEconomy
                 toastBannerText.textWrappingMode = TextWrappingModes.Normal;
                 toastBannerText.raycastTarget = false;
                 toastBannerText.text = "";
+            }
+
+            ApplyWoodenBoardLayout();
+        }
+
+        /// <summary>
+        /// Aligns both procedural and pre-existing scene ShopModalCard hierarchies strictly inside the
+        /// two-column WoodenBoard_TwoColumn plaque and left/right plank compartments.
+        /// </summary>
+        public void ApplyWoodenBoardLayout()
+        {
+            if (shopPanel == null) return;
+            var cardTr = shopPanel.transform.Find("ShopModalCard");
+            if (cardTr == null) return;
+
+            var cardRect = cardTr.GetComponent<RectTransform>();
+            if (cardRect != null)
+            {
+                cardRect.anchorMin = new Vector2(0.5f, 0.5f);
+                cardRect.anchorMax = new Vector2(0.5f, 0.5f);
+                cardRect.pivot = new Vector2(0.5f, 0.5f);
+                cardRect.anchoredPosition = Vector2.zero;
+                cardRect.sizeDelta = new Vector2(1180f, 659f);
+            }
+
+            var cardImg = cardTr.GetComponent<Image>() ?? cardTr.gameObject.AddComponent<Image>();
+            WoodenBoardStyle.ApplyBoardBackground(cardImg);
+            cardImg.raycastTarget = true;
+
+            var plaqueTmp = WoodenBoardStyle.EnsurePlaqueTitle<TextMeshProUGUI>(cardTr);
+            if (plaqueTmp != null)
+            {
+                plaqueTmp.text = "MERCHANT SHOP";
+                plaqueTmp.fontSize = 22f;
+                plaqueTmp.fontStyle = FontStyles.Bold;
+                plaqueTmp.alignment = TextAlignmentOptions.Center;
+            }
+
+            var headerTr = cardTr.Find("HeaderBar");
+            if (headerTr != null)
+            {
+                var hRt = headerTr.GetComponent<RectTransform>();
+                if (hRt != null)
+                {
+                    hRt.anchorMin = Vector2.zero;
+                    hRt.anchorMax = Vector2.one;
+                    hRt.pivot = new Vector2(0.5f, 0.5f);
+                    hRt.anchoredPosition = Vector2.zero;
+                    hRt.offsetMin = Vector2.zero;
+                    hRt.offsetMax = Vector2.zero;
+                }
+                if (headerTr.TryGetComponent<Image>(out var hImg)) hImg.enabled = false;
+
+                var legacyTitle = headerTr.Find("TitleText");
+                if (legacyTitle != null) legacyTitle.gameObject.SetActive(false);
+
+                var subTr = headerTr.Find("SubtitleText");
+                if (subTr != null)
+                {
+                    WoodenBoardStyle.SetAnchorRegion(subTr.GetComponent<RectTransform>(),
+                        new Vector2(WoodenBoardStyle.LeftPaneMin.x, 0.798f),
+                        new Vector2(WoodenBoardStyle.LeftPaneMax.x, 0.862f),
+                        10f, 2f, 10f, 2f);
+                    var subTmp = subTr.GetComponent<TextMeshProUGUI>();
+                    if (subTmp != null)
+                    {
+                        subTmp.text = "Purchase seeds, gear, or sell crops";
+                        subTmp.fontSize = 12f;
+                        subTmp.color = WoodenBoardStyle.TextMutedWarm;
+                        subTmp.alignment = TextAlignmentOptions.Center;
+                        subTmp.textWrappingMode = TextWrappingModes.Normal;
+                        subTmp.raycastTarget = false;
+                    }
+                }
+
+                var xBtnTr = headerTr.Find("Btn_XClose");
+                if (xBtnTr != null)
+                {
+                    var xRt = xBtnTr.GetComponent<RectTransform>();
+                    if (xRt != null)
+                    {
+                        xRt.anchorMin = WoodenBoardStyle.CloseButtonAnchor;
+                        xRt.anchorMax = WoodenBoardStyle.CloseButtonAnchor;
+                        xRt.pivot = new Vector2(0.5f, 0.5f);
+                        xRt.anchoredPosition = Vector2.zero;
+                        xRt.sizeDelta = new Vector2(36f, 36f);
+                    }
+                    if (xBtnTr.TryGetComponent<Image>(out var xImg))
+                    {
+                        xImg.sprite = ProceduralUIAssetCache.GetRoundedBarSprite();
+                        xImg.type = Image.Type.Sliced;
+                        xImg.color = WoodenBoardStyle.BtnDanger;
+                    }
+                }
+            }
+
+            var goldPillTr = cardTr.Find("GoldPill");
+            if (goldPillTr != null)
+            {
+                WoodenBoardStyle.SetAnchorRegion(goldPillTr.GetComponent<RectTransform>(),
+                    new Vector2(WoodenBoardStyle.LeftPaneMin.x, 0.718f),
+                    new Vector2(WoodenBoardStyle.LeftPaneMax.x, 0.790f),
+                    10f, 2f, 10f, 2f);
+                if (goldPillTr.TryGetComponent<Image>(out var gpImg))
+                {
+                    gpImg.sprite = ProceduralUIAssetCache.GetRoundedBarSprite();
+                    gpImg.type = Image.Type.Sliced;
+                    gpImg.color = WoodenBoardStyle.DarkOakHeader;
+                }
+                var goldTmp = goldPillTr.Find("GoldText")?.GetComponent<TextMeshProUGUI>();
+                if (goldTmp != null)
+                {
+                    var gRt = goldTmp.GetComponent<RectTransform>();
+                    if (gRt != null)
+                    {
+                        gRt.anchorMin = Vector2.zero;
+                        gRt.anchorMax = Vector2.one;
+                        gRt.offsetMin = new Vector2(8f, 0f);
+                        gRt.offsetMax = new Vector2(-8f, 0f);
+                    }
+                    goldTmp.fontSize = 16f;
+                    goldTmp.fontStyle = FontStyles.Bold;
+                    goldTmp.alignment = TextAlignmentOptions.Center;
+                    goldTmp.color = WoodenBoardStyle.TextCream;
+                    goldTmp.raycastTarget = false;
+                }
+            }
+
+            var tabsBarTr = cardTr.Find("TabsBar");
+            if (tabsBarTr != null)
+            {
+                WoodenBoardStyle.SetAnchorRegion(tabsBarTr.GetComponent<RectTransform>(),
+                    new Vector2(WoodenBoardStyle.LeftPaneMin.x, 0.628f),
+                    new Vector2(WoodenBoardStyle.LeftPaneMax.x, 0.706f),
+                    10f, 2f, 10f, 2f);
+                if (tabsBarTr.TryGetComponent<Image>(out var tbImg)) tbImg.enabled = false;
+
+                ConfigureShopTab(tabsBarTr.Find("Tab_Buy"), 0f, 0.485f, "BUY ITEMS");
+                ConfigureShopTab(tabsBarTr.Find("Tab_Sell"), 0.515f, 1f, "SELL CROPS");
+            }
+
+            var filterTr = cardTr.Find("CategoryFilterBar");
+            if (filterTr != null)
+            {
+                WoodenBoardStyle.SetAnchorRegion(filterTr.GetComponent<RectTransform>(),
+                    new Vector2(WoodenBoardStyle.LeftPaneMin.x, 0.245f),
+                    new Vector2(WoodenBoardStyle.LeftPaneMax.x, 0.612f),
+                    10f, 4f, 10f, 4f);
+                if (filterTr.TryGetComponent<Image>(out var fbBgImg)) fbBgImg.enabled = false;
+
+                bool useManualBands = false;
+                if (filterTr.TryGetComponent<HorizontalLayoutGroup>(out var oldHlg))
+                {
+                    if (!Application.isPlaying)
+                    {
+                        DestroyImmediate(oldHlg);
+                    }
+                    else
+                    {
+                        oldHlg.enabled = false;
+                        useManualBands = true;
+                    }
+                }
+
+                if (!useManualBands)
+                {
+                    var vlg = filterTr.GetComponent<VerticalLayoutGroup>() ?? filterTr.gameObject.AddComponent<VerticalLayoutGroup>();
+                    vlg.padding = new RectOffset(0, 0, 0, 0);
+                    vlg.spacing = 8f;
+                    vlg.childAlignment = TextAnchor.UpperCenter;
+                    vlg.childControlWidth = true;
+                    vlg.childControlHeight = true;
+                    vlg.childForceExpandWidth = true;
+                    vlg.childForceExpandHeight = true;
+                }
+
+                int childCount = filterTr.childCount;
+                for (int i = 0; i < childCount; i++)
+                {
+                    var child = filterTr.GetChild(i);
+                    if (child.TryGetComponent<Image>(out var cImg))
+                    {
+                        cImg.sprite = ProceduralUIAssetCache.GetRoundedBarSprite();
+                        cImg.type = Image.Type.Sliced;
+                    }
+                    var cTmp = child.GetComponentInChildren<TextMeshProUGUI>(true);
+                    if (cTmp != null)
+                    {
+                        cTmp.fontSize = 12.5f;
+                        cTmp.alignment = TextAlignmentOptions.Center;
+                        cTmp.raycastTarget = false;
+                    }
+                    if (useManualBands && childCount == 4)
+                    {
+                        float maxY = 1f - i * 0.255f;
+                        float minY = Mathf.Max(0f, maxY - 0.225f);
+                        WoodenBoardStyle.SetAnchorRegion(child.GetComponent<RectTransform>(),
+                            new Vector2(0f, minY), new Vector2(1f, maxY));
+                    }
+                }
+            }
+
+            var toastBannerTr = cardTr.Find("ToastBannerText");
+            if (toastBannerTr != null)
+            {
+                WoodenBoardStyle.SetAnchorRegion(toastBannerTr.GetComponent<RectTransform>(),
+                    new Vector2(WoodenBoardStyle.LeftPaneMin.x, 0.152f),
+                    new Vector2(WoodenBoardStyle.LeftPaneMax.x, 0.236f),
+                    10f, 2f, 10f, 2f);
+            }
+
+            var bottomBarTr = cardTr.Find("BottomBar");
+            if (bottomBarTr != null)
+            {
+                WoodenBoardStyle.SetAnchorRegion(bottomBarTr.GetComponent<RectTransform>(),
+                    new Vector2(WoodenBoardStyle.LeftPaneMin.x, WoodenBoardStyle.LeftPaneMin.y),
+                    new Vector2(WoodenBoardStyle.LeftPaneMax.x, 0.144f),
+                    10f, 4f, 10f, 2f);
+                if (bottomBarTr.TryGetComponent<Image>(out var bbImg)) bbImg.enabled = false;
+
+                var closeShopTr = bottomBarTr.Find("Btn_CloseShop");
+                if (closeShopTr != null)
+                {
+                    var cRt = closeShopTr.GetComponent<RectTransform>();
+                    if (cRt != null)
+                    {
+                        cRt.anchorMin = Vector2.zero;
+                        cRt.anchorMax = Vector2.one;
+                        cRt.pivot = new Vector2(0.5f, 0.5f);
+                        cRt.anchoredPosition = Vector2.zero;
+                        cRt.offsetMin = Vector2.zero;
+                        cRt.offsetMax = Vector2.zero;
+                    }
+                    if (closeShopTr.TryGetComponent<Image>(out var csImg))
+                    {
+                        csImg.sprite = ProceduralUIAssetCache.GetRoundedBarSprite();
+                        csImg.type = Image.Type.Sliced;
+                        csImg.color = WoodenBoardStyle.BtnSecondary;
+                    }
+                    var csTmp = closeShopTr.Find("Text")?.GetComponent<TextMeshProUGUI>();
+                    if (csTmp != null)
+                    {
+                        csTmp.fontSize = 13.5f;
+                        csTmp.fontStyle = FontStyles.Bold;
+                        csTmp.alignment = TextAlignmentOptions.Center;
+                        csTmp.color = Color.white;
+                        csTmp.raycastTarget = false;
+                    }
+                }
+            }
+
+            var itemScrollTr = cardTr.Find("ItemScrollView");
+            if (itemScrollTr != null)
+            {
+                WoodenBoardStyle.SetAnchorRegion(itemScrollTr.GetComponent<RectTransform>(),
+                    WoodenBoardStyle.RightPaneMin,
+                    WoodenBoardStyle.RightPaneMax,
+                    10f, 8f, 10f, 8f);
+                if (itemScrollTr.TryGetComponent<Image>(out var svImg))
+                {
+                    svImg.sprite = ProceduralUIAssetCache.GetRoundedBarSprite();
+                    svImg.type = Image.Type.Sliced;
+                    svImg.color = WoodenBoardStyle.DarkOakOverlay;
+                }
+                var vp = itemScrollTr.Find("Viewport")?.GetComponent<RectTransform>();
+                if (vp != null)
+                {
+                    vp.anchorMin = Vector2.zero;
+                    vp.anchorMax = Vector2.one;
+                    vp.offsetMin = Vector2.zero;
+                    vp.offsetMax = Vector2.zero;
+                }
+            }
+        }
+
+        private static void ConfigureShopTab(Transform tabTr, float minX, float maxX, string label)
+        {
+            if (tabTr == null) return;
+            var rt = tabTr.GetComponent<RectTransform>();
+            if (rt != null)
+            {
+                rt.anchorMin = new Vector2(minX, 0f);
+                rt.anchorMax = new Vector2(maxX, 1f);
+                rt.pivot = new Vector2(0.5f, 0.5f);
+                rt.anchoredPosition = Vector2.zero;
+                rt.offsetMin = Vector2.zero;
+                rt.offsetMax = Vector2.zero;
+            }
+            if (tabTr.TryGetComponent<Image>(out var img))
+            {
+                img.sprite = ProceduralUIAssetCache.GetRoundedBarSprite();
+                img.type = Image.Type.Sliced;
+            }
+            var tmp = tabTr.Find("Text")?.GetComponent<TextMeshProUGUI>();
+            if (tmp != null)
+            {
+                tmp.text = label;
+                tmp.fontSize = 12.5f;
+                tmp.fontStyle = FontStyles.Bold;
+                tmp.alignment = TextAlignmentOptions.Center;
+                tmp.color = Color.white;
+                tmp.raycastTarget = false;
             }
         }
 

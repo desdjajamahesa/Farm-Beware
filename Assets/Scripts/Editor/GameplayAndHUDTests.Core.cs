@@ -3521,5 +3521,165 @@ namespace FarmBeware.EditorTests
                 }
             }
         }
+
+        // Test 121: Live MainScene Panel_MerchantShop and Panel_Sink two-column WoodenBoard layout, non-overlap, and row width audit
+        internal static bool Test_MerchantShop_And_KitchenSink_WoodenBoard_SceneLayout_NoOverlap_Audit()
+        {
+            try
+            {
+                Sprite boardSprite = WoodenBoardStyle.GetTwoColumnBoardSprite();
+                if (boardSprite == null)
+                {
+                    Debug.LogError("[Test 121] WoodenBoard_TwoColumn sprite not found!");
+                    return false;
+                }
+
+                // 1. Validate live MainScene Panel_MerchantShop layout
+                var shopUI = Object.FindFirstObjectByType<FeaturesEconomy.MerchantShopUI>(FindObjectsInactive.Include);
+                if (shopUI == null)
+                {
+                    Debug.LogError("[Test 121] MerchantShopUI not found in active MainScene!");
+                    return false;
+                }
+
+                var shopCard = GameObject.Find("UI_Canvas")?.transform.Find("Panel_MerchantShop/ShopModalCard") as RectTransform;
+                if (shopCard == null)
+                {
+                    Debug.LogError("[Test 121] Panel_MerchantShop/ShopModalCard not found under UI_Canvas!");
+                    return false;
+                }
+
+                if (Vector2.Distance(shopCard.sizeDelta, new Vector2(1180f, 659f)) > 2f)
+                {
+                    Debug.LogError($"[Test 121] ShopModalCard sizeDelta expected (1180, 659), got {shopCard.sizeDelta}!");
+                    return false;
+                }
+
+                var shopCardImg = shopCard.GetComponent<Image>();
+                if (shopCardImg == null || shopCardImg.sprite != boardSprite)
+                {
+                    Debug.LogError("[Test 121] ShopModalCard missing WoodenBoard_TwoColumn sprite!");
+                    return false;
+                }
+
+                var shopPlaque = shopCard.Find("PlaqueTitleText")?.GetComponent<TextMeshProUGUI>();
+                if (shopPlaque == null || shopPlaque.text != "MERCHANT SHOP")
+                {
+                    Debug.LogError($"[Test 121] ShopModalCard PlaqueTitleText invalid: '{shopPlaque?.text}'");
+                    return false;
+                }
+
+                var legacyShopTitle = shopCard.Find("HeaderBar/TitleText");
+                if (legacyShopTitle != null && legacyShopTitle.gameObject.activeSelf)
+                {
+                    Debug.LogError("[Test 121] Legacy HeaderBar/TitleText must be deactivated on ShopModalCard!");
+                    return false;
+                }
+
+                string[] shopLeftChildren = { "GoldPill", "TabsBar", "CategoryFilterBar", "BottomBar" };
+                foreach (var childName in shopLeftChildren)
+                {
+                    var rt = shopCard.Find(childName) as RectTransform;
+                    if (rt == null)
+                    {
+                        Debug.LogError($"[Test 121] ShopModalCard missing '{childName}'!");
+                        return false;
+                    }
+                    if (rt.anchorMin.x < WoodenBoardStyle.LeftPaneMin.x - 0.005f || rt.anchorMax.x > WoodenBoardStyle.LeftPaneMax.x + 0.005f)
+                    {
+                        Debug.LogError($"[Test 121] Shop '{childName}' overflows LeftPane bounds: anchors [{rt.anchorMin.x:F3}, {rt.anchorMax.x:F3}]!");
+                        return false;
+                    }
+                }
+
+                var filterBar = shopCard.Find("CategoryFilterBar");
+                if (filterBar.GetComponent<HorizontalLayoutGroup>() != null || filterBar.GetComponent<VerticalLayoutGroup>() == null)
+                {
+                    Debug.LogError("[Test 121] CategoryFilterBar must use VerticalLayoutGroup (not HorizontalLayoutGroup) in LeftPane!");
+                    return false;
+                }
+
+                var itemScrollRt = shopCard.Find("ItemScrollView") as RectTransform;
+                if (itemScrollRt == null || itemScrollRt.anchorMin.x < WoodenBoardStyle.RightPaneMin.x - 0.005f || itemScrollRt.anchorMax.x > WoodenBoardStyle.RightPaneMax.x + 0.005f)
+                {
+                    Debug.LogError("[Test 121] ItemScrollView must sit strictly inside RightPane!");
+                    return false;
+                }
+
+                var buyContent = shopCard.Find("ItemScrollView/Viewport/BuyContent");
+                if (buyContent != null && buyContent.childCount > 0)
+                {
+                    var firstRowLayout = buyContent.GetChild(0).GetComponent<HorizontalLayoutGroup>();
+                    if (firstRowLayout != null && !firstRowLayout.childControlWidth)
+                    {
+                        Debug.LogError("[Test 121] Buy rows must enable childControlWidth=true so action buttons never overflow viewport!");
+                        return false;
+                    }
+                }
+
+                // 2. Validate live MainScene Panel_Sink WoodenBoard theme & layout
+                var sinkMgr = Object.FindFirstObjectByType<SinkManager>(FindObjectsInactive.Include);
+                if (sinkMgr == null)
+                {
+                    Debug.LogError("[Test 121] SinkManager (Panel_Sink) not found in active MainScene!");
+                    return false;
+                }
+
+                var sinkRt = sinkMgr.GetComponent<RectTransform>();
+                var sinkImg = sinkMgr.GetComponent<Image>();
+                if (sinkRt == null || Vector2.Distance(sinkRt.sizeDelta, new Vector2(1240f, 694f)) > 2f || sinkImg == null || sinkImg.sprite != boardSprite)
+                {
+                    Debug.LogError($"[Test 121] Panel_Sink failed WoodenBoard theme! size={sinkRt?.sizeDelta}, sprite={sinkImg?.sprite?.name}");
+                    return false;
+                }
+
+                var sinkPlaque = sinkMgr.transform.Find("PlaqueTitleText")?.GetComponent<TextMeshProUGUI>();
+                if (sinkPlaque == null || sinkPlaque.text != "KITCHEN SINK")
+                {
+                    Debug.LogError($"[Test 121] Panel_Sink PlaqueTitleText invalid: '{sinkPlaque?.text}'");
+                    return false;
+                }
+
+                var sinkTopBar = sinkMgr.transform.Find("TopBar");
+                if (sinkTopBar != null && sinkTopBar.gameObject.activeSelf)
+                {
+                    Debug.LogError("[Test 121] Panel_Sink legacy TopBar must be deactivated!");
+                    return false;
+                }
+
+                var sinkLeft = sinkMgr.transform.Find("LeftContent") as RectTransform;
+                var sinkRight = sinkMgr.transform.Find("RightContent") as RectTransform;
+                if (sinkLeft == null || sinkRight == null ||
+                    sinkLeft.anchorMax.x > WoodenBoardStyle.LeftPaneMax.x + 0.005f ||
+                    sinkRight.anchorMin.x < WoodenBoardStyle.RightPaneMin.x - 0.005f)
+                {
+                    Debug.LogError("[Test 121] Panel_Sink LeftContent / RightContent must align to WoodenBoardStyle panes without overlap!");
+                    return false;
+                }
+
+                var grid = sinkLeft.Find("PlayerInventoryGrid")?.GetComponent<GridLayoutGroup>();
+                if (grid == null || grid.constraintCount != 4 || grid.cellSize.x > 60f)
+                {
+                    Debug.LogError($"[Test 121] Panel_Sink PlayerInventoryGrid expected 4 columns & <=60px cells for LeftPane, got cols={grid?.constraintCount}, cell={grid?.cellSize}!");
+                    return false;
+                }
+
+                var invLabel = sinkLeft.Find("PlayerInventoryLabel")?.GetComponent<TextMeshProUGUI>();
+                var secTitle = sinkRight.Find("ProcessContainer/SectionTitle")?.GetComponent<TextMeshProUGUI>();
+                if (invLabel == null || invLabel.text != "PLAYER INVENTORY" || secTitle == null || secTitle.text != "WASHING PROCESS")
+                {
+                    Debug.LogError($"[Test 121] Panel_Sink labels must be English: inv='{invLabel?.text}', section='{secTitle?.text}'");
+                    return false;
+                }
+
+                Debug.Log("✅ Test 121: Live MainScene Panel_MerchantShop & Panel_Sink WoodenBoard_TwoColumn layouts, non-overlap, and English headers verified.");
+                return true;
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogError($"[Test 121] Exception: {ex.Message}\n{ex.StackTrace}");
+                return false;
+            }
+        }
     }
 }
