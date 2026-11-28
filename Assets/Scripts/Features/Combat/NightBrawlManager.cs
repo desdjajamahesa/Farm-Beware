@@ -50,7 +50,7 @@ namespace FeaturesCombat
         {
             new Vector3(37.4f, 0.08f, 64.2f), // Point 1: Left
             new Vector3(21.9f, 0.08f, 64.6f), // Point 2: Center
-            new Vector3(9.6f, 0.08f, 64.5f)   // Point 3: Right
+            new Vector3(14.5f, 0.08f, 64.5f)  // Point 3: Right (clear of Roadside_Tree_01_Pine)
         };
 
         [Tooltip("Optional transform anchors in the scene. If assigned or found under MonsterSpawnPoints, their positions will override frontGateSpawnPoints.")]
@@ -125,7 +125,7 @@ namespace FeaturesCombat
                 {
                     points.Add(new Vector3(37.4f, 0.08f, 64.2f));
                     points.Add(new Vector3(21.9f, 0.08f, 64.6f));
-                    points.Add(new Vector3(9.6f, 0.08f, 64.5f));
+                    points.Add(new Vector3(14.5f, 0.08f, 64.5f));
                 }
             }
 
@@ -875,9 +875,111 @@ namespace FeaturesCombat
             return pos.x >= 0.0f && pos.x <= 42.0f && pos.z >= -17.0f && pos.z <= 48.0f;
         }
 
+        private static readonly RaycastHit[] _spawnRayHits = new RaycastHit[16];
+        private static readonly Collider[] _spawnObstacleHits = new Collider[16];
+
         /// <summary>
-        /// Menghasilkan posisi spawn acak dari salah satu spawn point yang ditentukan (MonsterSpawnPoints dan children-nya).
-        /// Menerapkan scatter radius ringan dan memastikan posisi berada di atas permukaan tanah (ground raycast & NavMesh).
+        /// Resolves a ground-level spawn position near candidate using NavMesh-first sampling anchored
+        /// at referenceGroundY, falling back to non-alloc raycasts that ignore tree/wall colliders.
+        /// </summary>
+        public static Vector3 ResolveGroundSafeSpawnPoint(Vector3 candidate, float referenceGroundY, float maxElevationDelta = 1.25f)
+        {
+            Vector3 groundQuery = new Vector3(candidate.x, referenceGroundY, candidate.z);
+
+            if (NavMesh.SamplePosition(groundQuery, out NavMeshHit navHit, 3.5f, NavMesh.AllAreas) &&
+                Mathf.Abs(navHit.position.y - referenceGroundY) <= maxElevationDelta)
+            {
+                return navHit.position;
+            }
+
+            int wallLayer = LayerMask.NameToLayer("Wall");
+            int ignoreRaycastLayer = LayerMask.NameToLayer("Ignore Raycast");
+            int excludeMask = 0;
+            if (ignoreRaycastLayer >= 0) excludeMask |= (1 << ignoreRaycastLayer);
+            if (wallLayer >= 0) excludeMask |= (1 << wallLayer);
+            int groundMask = ~excludeMask;
+
+            Vector3 rayOrigin = new Vector3(candidate.x, referenceGroundY + 1.8f, candidate.z);
+            int hitCount = Physics.RaycastNonAlloc(rayOrigin, Vector3.down, _spawnRayHits, 6.0f, groundMask, QueryTriggerInteraction.Ignore);
+
+            float bestTerrainScore = float.MaxValue;
+            float bestOtherScore = float.MaxValue;
+            Vector3 bestTerrainPoint = Vector3.zero;
+            Vector3 bestOtherPoint = Vector3.zero;
+            bool foundTerrain = false;
+            bool foundOther = false;
+
+            float minAllowedY = referenceGroundY - 2.0f;
+            float maxAllowedY = referenceGroundY + maxElevationDelta;
+
+            for (int i = 0; i < hitCount; i++)
+            {
+                var hit = _spawnRayHits[i];
+                if (hit.collider == null) continue;
+                float hitY = hit.point.y;
+                if (hitY < minAllowedY || hitY > maxAllowedY) continue;
+
+                float score = Mathf.Abs(hitY - referenceGroundY);
+                if (hit.collider is TerrainCollider)
+                {
+                    if (score < bestTerrainScore)
+                    {
+                        bestTerrainScore = score;
+                        bestTerrainPoint = hit.point;
+                        foundTerrain = true;
+                    }
+                }
+                else if (score < bestOtherScore)
+                {
+                    bestOtherScore = score;
+                    bestOtherPoint = hit.point;
+                    foundOther = true;
+                }
+            }
+
+            if (foundTerrain) return bestTerrainPoint + Vector3.up * 0.05f;
+            if (foundOther) return bestOtherPoint + Vector3.up * 0.05f;
+
+            return new Vector3(candidate.x, referenceGroundY + 0.05f, candidate.z);
+        }
+
+        /// <summary>
+        /// Checks that pos has capsule clearance against Wall colliders (tree trunks/fences) and no overhead tree canopies.
+        /// </summary>
+        public static bool IsSpawnPositionClearOfTreesAndWalls(Vector3 pos)
+        {
+            int wallLayer = LayerMask.NameToLayer("Wall");
+            if (wallLayer < 0) return true;
+            int wallMask = 1 << wallLayer;
+
+            int overlapCount = Physics.OverlapCapsuleNonAlloc(
+                pos + Vector3.up * 0.45f,
+                pos + Vector3.up * 1.85f,
+                0.65f,
+                _spawnObstacleHits,
+                wallMask,
+                QueryTriggerInteraction.Ignore);
+            if (overlapCount > 0) return false;
+
+            int upHits = Physics.RaycastNonAlloc(pos + Vector3.up * 0.5f, Vector3.up, _spawnRayHits, 8.5f, wallMask, QueryTriggerInteraction.Ignore);
+            for (int i = 0; i < upHits; i++)
+            {
+                var col = _spawnRayHits[i].collider;
+                if (col == null) continue;
+                string colName = col.name;
+                if (colName.IndexOf("Canopy", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    colName.IndexOf("Tree", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    colName.IndexOf("Trunk", System.StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// Selects a randomized ground-safe spawn position from active scene spawn points, avoiding trees and walls.
         /// </summary>
         public Vector3 CalculateRandomSpawnPoint()
         {
@@ -887,39 +989,43 @@ namespace FeaturesCombat
                 return new Vector3(21.9f, 0.08f, 64.6f);
             }
 
-            int pointIndex = UnityEngine.Random.Range(0, points.Count);
-            Vector3 basePoint = points[pointIndex];
+            int startIndex = UnityEngine.Random.Range(0, points.Count);
+            Vector3 primaryBase = points[startIndex];
+            Vector3 bestGroundFallback = ResolveGroundSafeSpawnPoint(primaryBase, primaryBase.y);
 
-            // Sedikit scatter offset agar monster yang spawn serempak tidak menumpuk di titik yang sama persis
-            Vector2 scatter = UnityEngine.Random.insideUnitCircle * spawnScatterRadius;
-            Vector3 candidate = basePoint + new Vector3(scatter.x, 0f, scatter.y);
-            candidate.y += 10f; // Elevate for ground raycast
-
-            Vector3 finalPos = candidate;
-            if (Physics.Raycast(candidate, Vector3.down, out RaycastHit hit, 30f, ~LayerMask.GetMask("Ignore Raycast"), QueryTriggerInteraction.Ignore))
+            for (int offset = 0; offset < points.Count; offset++)
             {
-                finalPos = hit.point + Vector3.up * 0.05f;
-            }
-            else
-            {
-                finalPos.y = basePoint.y;
+                Vector3 basePoint = points[(startIndex + offset) % points.Count];
+
+                for (int attempt = 0; attempt < 9; attempt++)
+                {
+                    Vector2 scatter = attempt < 8
+                        ? UnityEngine.Random.insideUnitCircle * spawnScatterRadius
+                        : Vector2.zero;
+                    Vector3 candidate = basePoint + new Vector3(scatter.x, 0f, scatter.y);
+                    Vector3 resolved = ResolveGroundSafeSpawnPoint(candidate, basePoint.y);
+
+                    // Keep scatter/NavMesh snapping within 2.5m horizontally of the configured spawn point
+                    float distFromBase = Vector2.Distance(new Vector2(resolved.x, resolved.z), new Vector2(basePoint.x, basePoint.z));
+                    if (distFromBase > 2.5f)
+                    {
+                        Vector3 clamped = new Vector3(basePoint.x + scatter.x, basePoint.y, basePoint.z + scatter.y);
+                        resolved = ResolveGroundSafeSpawnPoint(clamped, basePoint.y);
+                    }
+
+                    if (offset == 0 && attempt == 0)
+                    {
+                        bestGroundFallback = resolved;
+                    }
+
+                    if (IsSpawnPositionClearOfTreesAndWalls(resolved))
+                    {
+                        return resolved;
+                    }
+                }
             }
 
-            // Snap ke NavMesh walkable terdekat di sekitar titik spawn
-            if (NavMesh.SamplePosition(finalPos, out NavMeshHit navHit, 3.5f, NavMesh.AllAreas))
-            {
-                finalPos = navHit.position;
-            }
-
-            // Jaga agar scatter/navmesh tidak memindahkan monster lebih dari 2.5m dari titik spawn yang ditentukan user
-            float distFromBase = Vector2.Distance(new Vector2(finalPos.x, finalPos.z), new Vector2(basePoint.x, basePoint.z));
-            if (distFromBase > 2.5f)
-            {
-                finalPos.x = basePoint.x + scatter.x;
-                finalPos.z = basePoint.z + scatter.y;
-            }
-
-            return finalPos;
+            return bestGroundFallback;
         }
 
         private void HandleEnemyDied(EnemyBase enemy)

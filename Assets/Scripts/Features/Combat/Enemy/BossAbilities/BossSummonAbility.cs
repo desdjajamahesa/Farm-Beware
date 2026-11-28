@@ -249,25 +249,30 @@ namespace FeaturesCombat
                 return NightBrawlManager.Instance.CalculateRandomSpawnPoint();
             }
 
-            float angle = (index * (360f / Mathf.Max(1, total))) * Mathf.Deg2Rad;
-            float dist = UnityEngine.Random.Range(2.5f, 4.0f);
-            Vector3 offset = new Vector3(Mathf.Cos(angle) * dist, 0f, Mathf.Sin(angle) * dist);
-            Vector3 candidate = transform.position + offset;
-
-            // Validate outdoor bounds (prevent spawning inside the house)
-            if (NightBrawlManager.IsInsideHouse(candidate))
+            Vector3 fallbackPos = NightBrawlManager.ResolveGroundSafeSpawnPoint(transform.position, transform.position.y);
+            for (int attempt = 0; attempt < 5; attempt++)
             {
-                candidate = NightBrawlManager.GetNearestOutdoorPosition(candidate, 2.0f);
+                float angle = ((index + attempt * 0.65f) * (360f / Mathf.Max(1, total))) * Mathf.Deg2Rad;
+                float dist = UnityEngine.Random.Range(2.5f, 4.0f);
+                Vector3 offset = new Vector3(Mathf.Cos(angle) * dist, 0f, Mathf.Sin(angle) * dist);
+                Vector3 candidate = transform.position + offset;
+
+                // Validate outdoor bounds (prevent spawning inside the house)
+                if (NightBrawlManager.IsInsideHouse(candidate))
+                {
+                    candidate = NightBrawlManager.GetNearestOutdoorPosition(candidate, 2.0f);
+                }
+
+                Vector3 resolved = NightBrawlManager.ResolveGroundSafeSpawnPoint(candidate, transform.position.y);
+                if (attempt == 0) fallbackPos = resolved;
+
+                if (NightBrawlManager.IsSpawnPositionClearOfTreesAndWalls(resolved))
+                {
+                    return resolved;
+                }
             }
 
-            // Snap to NavMesh
-            if (NavMesh.SamplePosition(candidate, out NavMeshHit hit, 4.0f, NavMesh.AllAreas))
-            {
-                return hit.position;
-            }
-
-            candidate.y = Mathf.Max(0.5f, candidate.y);
-            return candidate;
+            return fallbackPos;
         }
 
         private void OnDisable()

@@ -745,5 +745,11 @@ namespace FarmBeware.EditorTests
         {
             Assert.IsTrue(GameplayAndHUDTests.Test_PlayerModular_AttackTrail_Alignment_Scale_And_BareHands_Lifecycle_Audit(), "Test_PlayerModular_AttackTrail_Alignment_Scale_And_BareHands_Lifecycle_Audit failed. Check Unity Console logs for details.");
         }
+
+        [Test]
+        public void NUnit_120_Test_MonsterSpawn_NoTreeTopOrCanopySpawn_And_GroundClearance_Audit()
+        {
+            Assert.IsTrue(GameplayAndHUDTests.Test_MonsterSpawn_NoTreeTopOrCanopySpawn_And_GroundClearance_Audit(), "Test_MonsterSpawn_NoTreeTopOrCanopySpawn_And_GroundClearance_Audit failed. Check Unity Console logs for details.");
+        }
     }
 }

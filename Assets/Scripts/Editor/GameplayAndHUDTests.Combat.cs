@@ -3208,5 +3208,89 @@ namespace FarmBeware.EditorTests
                 }
             }
         }
+
+        // Test 120: Monster spawn points, tree-top raycast immunity, NavMesh ground elevation, and canopy clearance audit
+        internal static bool Test_MonsterSpawn_NoTreeTopOrCanopySpawn_And_GroundClearance_Audit()
+        {
+            var cleanup = new List<Object>();
+            try
+            {
+                var nbm = Object.FindFirstObjectByType<FeaturesCombat.NightBrawlManager>(FindObjectsInactive.Include);
+                if (nbm == null)
+                {
+                    var nbmGo = new GameObject("Test120_NightBrawlManager", typeof(FeaturesCombat.NightBrawlManager));
+                    cleanup.Add(nbmGo);
+                    nbm = nbmGo.GetComponent<FeaturesCombat.NightBrawlManager>();
+                }
+
+                // 1. Validate every active spawn point has ground-level NavMesh and clear overhead canopy/walls
+                var spawnPoints = nbm.GetAllActiveSpawnPoints();
+                if (spawnPoints == null || spawnPoints.Count == 0)
+                {
+                    Debug.LogError("[Test 120] NightBrawlManager.GetAllActiveSpawnPoints() returned empty!");
+                    return false;
+                }
+
+                for (int i = 0; i < spawnPoints.Count; i++)
+                {
+                    Vector3 sp = spawnPoints[i];
+                    if (sp.y > 0.5f)
+                    {
+                        Debug.LogError($"[Test 120] Spawn point[{i}] is elevated above ground: {sp:F2}!");
+                        return false;
+                    }
+                    if (!FeaturesCombat.NightBrawlManager.IsSpawnPositionClearOfTreesAndWalls(sp))
+                    {
+                        Debug.LogError($"[Test 120] Spawn point[{i}] at {sp:F2} overlaps a tree canopy/trunk or wall!");
+                        return false;
+                    }
+                }
+
+                // 2. Verify 100 randomized spawns all stay at ground level and clear of trees/walls
+                for (int i = 0; i < 100; i++)
+                {
+                    Vector3 pos = nbm.CalculateRandomSpawnPoint();
+                    if (pos.y < -0.1f || pos.y > 0.6f)
+                    {
+                        Debug.LogError($"[Test 120] CalculateRandomSpawnPoint()[{i}] spawned at abnormal elevation Y={pos.y:F2} ({pos:F2})!");
+                        return false;
+                    }
+                    if (!FeaturesCombat.NightBrawlManager.IsSpawnPositionClearOfTreesAndWalls(pos))
+                    {
+                        Debug.LogError($"[Test 120] CalculateRandomSpawnPoint()[{i}] overlapped tree/wall at {pos:F2}!");
+                        return false;
+                    }
+                }
+
+                // 3. Adversarial test directly under Roadside_Tree_01_Pine canopy (where old +10m raycast hit Canopy_Tier_2 at Y=7.65m)
+                Vector3 underPineTree = new Vector3(9.8f, 0.0f, 64.0f);
+                Vector3 resolvedUnderTree = FeaturesCombat.NightBrawlManager.ResolveGroundSafeSpawnPoint(underPineTree, 0.0f);
+                if (resolvedUnderTree.y > 0.6f)
+                {
+                    Debug.LogError($"[Test 120] ResolveGroundSafeSpawnPoint snapped onto elevated tree/canopy surface at Y={resolvedUnderTree.y:F2}!");
+                    return false;
+                }
+                if (FeaturesCombat.NightBrawlManager.IsSpawnPositionClearOfTreesAndWalls(underPineTree))
+                {
+                    Debug.LogError("[Test 120] IsSpawnPositionClearOfTreesAndWalls failed to detect Roadside_Tree_01_Pine obstruction at (9.8, 0, 64.0)!");
+                    return false;
+                }
+
+                Debug.Log($"✅ Test 120: Monster spawn points ({spawnPoints.Count}), 100x randomized ground-safe spawns, and tree-canopy exclusion verified.");
+                return true;
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogError($"[Test 120] Exception: {ex.Message}\n{ex.StackTrace}");
+                return false;
+            }
+            finally
+            {
+                for (int i = cleanup.Count - 1; i >= 0; i--)
+                {
+                    if (cleanup[i] != null) Object.DestroyImmediate(cleanup[i]);
+                }
+            }
+        }
     }
 }
