@@ -3292,5 +3292,177 @@ namespace FarmBeware.EditorTests
                 }
             }
         }
+
+        // Test 122: Armor stat wiring (HP/DEF/Move/AtkSpd/Crit), naked vs armored mitigation math, Zero-GC snapshot, and informative paperdoll telemetry
+        internal static bool Test_ArmorSystem_FullStatWiring_MitigationMath_And_InformativeUI_Audit()
+        {
+            var cleanup = new List<Object>();
+            var prevArmorInst = PlayerArmorUpgradeState.Instance;
+            var prevDamageNotifier = ServiceLocator.Resolve<IPlayerDamageNotifier>();
+            var prevPlayerCtx = ServiceLocator.Resolve<IPlayerContext>();
+            try
+            {
+                // 1. Pure math verification: naked Lv.10 stays 0% DR, Lv.1 5-pc (16 DEF) = 28.57%, Lv.10 5-pc = 51.43%
+                float drNakedLv10 = EquipmentUpgradeEvaluator.EvaluateCombinedMitigationRatio(0, 10, hasEquippedArmor: false);
+                float drFullLv1 = EquipmentUpgradeEvaluator.EvaluateCombinedMitigationRatio(16, 1, hasEquippedArmor: true);
+                float drFullLv5 = EquipmentUpgradeEvaluator.EvaluateCombinedMitigationRatio(16, 5, hasEquippedArmor: true);
+                float drFullLv10 = EquipmentUpgradeEvaluator.EvaluateCombinedMitigationRatio(16, 10, hasEquippedArmor: true);
+
+                if (drNakedLv10 != 0f || Mathf.Abs(drFullLv1 - (16f / 56f)) > 0.001f ||
+                    Mathf.Abs(drFullLv5 - (1f - (40f / 56f) * 0.94f)) > 0.001f ||
+                    Mathf.Abs(drFullLv10 - (1f - (40f / 56f) * 0.68f)) > 0.001f)
+                {
+                    Debug.LogError($"[Test 122] Mitigation math mismatch: nakedLv10={drNakedLv10:F3}, lv1={drFullLv1:F3}, lv5={drFullLv5:F3}, lv10={drFullLv10:F3}");
+                    return false;
+                }
+
+                // 2. Live PlayerStats + PlayerControl + PlayerEquipment + PlayerArmorUpgradeState stat wiring
+                typeof(PlayerArmorUpgradeState).GetProperty("Instance")?.SetValue(null, null);
+
+                var playerGo = new GameObject("Test122_Player", typeof(Rigidbody), typeof(CapsuleCollider));
+                cleanup.Add(playerGo);
+                var stats = playerGo.AddComponent<PlayerStats>();
+                var armorState = playerGo.AddComponent<PlayerArmorUpgradeState>();
+                var equip = playerGo.AddComponent<PlayerEquipment>();
+                var control = playerGo.AddComponent<PlayerControl>();
+
+                var statsAwake = typeof(PlayerStats).GetMethod("Awake", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+                var statsEnable = typeof(PlayerStats).GetMethod("OnEnable", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+                var armorAwake = typeof(PlayerArmorUpgradeState).GetMethod("Awake", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+
+                armorAwake?.Invoke(armorState, null);
+                stats.maxHealth = 100;
+                stats.currentHealth = 100;
+                statsAwake?.Invoke(stats, null);
+                statsEnable?.Invoke(stats, null);
+                stats.RefreshArmorDerivedStats(adjustCurrentHealth: false);
+
+                // Verify naked baseline even if armorLevel = 10
+                armorState.armorLevel = 10;
+                var nakedSnap = armorState.GetAggregatedArmorStats();
+                if (nakedSnap.TotalMitigationRatio != 0f || stats.maxHealth != 100 ||
+                    Mathf.Abs(control.EffectiveWalkSpeed - 5.0f) > 0.01f ||
+                    Mathf.Abs(equip.GetArmorAttackSpeedMultiplier() - 1.0f) > 0.001f ||
+                    equip.GetArmorCriticalChance() != 0f)
+                {
+                    Debug.LogError($"[Test 122] Naked baseline contaminated: totalDR={nakedSnap.TotalMitigationRatio}, maxHP={stats.maxHealth}, spd={control.EffectiveWalkSpeed}");
+                    return false;
+                }
+
+                stats.currentHealth = 100;
+                stats.TakeDamage(50);
+                if (stats.currentHealth != 50)
+                {
+                    Debug.LogError($"[Test 122] Naked player with Lv.10 plating took {100 - stats.currentHealth} dmg from 50 (expected full 50)!");
+                    return false;
+                }
+
+                // Equip all 5 Sweet Potato armor pieces
+                var hood = AssetDatabase.LoadAssetAtPath<ItemData>("Assets/Data/Items/Equipment/item_burrow_hood.asset");
+                var chest = AssetDatabase.LoadAssetAtPath<ItemData>("Assets/Data/Items/Equipment/item_swift_root_armor.asset");
+                var gloves = AssetDatabase.LoadAssetAtPath<ItemData>("Assets/Data/Items/Equipment/item_fang_grips.asset");
+                var boots = AssetDatabase.LoadAssetAtPath<ItemData>("Assets/Data/Items/Equipment/item_underground_striders.asset");
+                var heart = AssetDatabase.LoadAssetAtPath<ItemData>("Assets/Data/Items/Equipment/item_sweet_potato_heart.asset");
+
+                armorState.armorLevel = 1;
+                armorState.EquipItem(EquipmentSlotType.Helmet, hood, out _);
+                armorState.EquipItem(EquipmentSlotType.Chest, chest, out _);
+                armorState.EquipItem(EquipmentSlotType.Gloves, gloves, out _);
+                armorState.EquipItem(EquipmentSlotType.Boots, boots, out _);
+                armorState.EquipItem(EquipmentSlotType.Necklace, heart, out _);
+
+                var fullSnapLv1 = armorState.GetAggregatedArmorStats();
+                if (fullSnapLv1.EquippedArmorPieceCount != 5 || fullSnapLv1.BonusHealth != 100 || fullSnapLv1.BonusDefense != 16 ||
+                    Mathf.Abs(fullSnapLv1.BonusMoveSpeed - 0.17f) > 0.001f ||
+                    Mathf.Abs(fullSnapLv1.TotalAttackSpeed - 0.23f) > 0.001f ||
+                    Mathf.Abs(fullSnapLv1.BonusCriticalChance - 0.12f) > 0.001f)
+                {
+                    Debug.LogError($"[Test 122] Full 5-pc snapshot mismatch: pcs={fullSnapLv1.EquippedArmorPieceCount}, hp={fullSnapLv1.BonusHealth}, def={fullSnapLv1.BonusDefense}, move={fullSnapLv1.BonusMoveSpeed}, atk={fullSnapLv1.TotalAttackSpeed}, crit={fullSnapLv1.BonusCriticalChance}");
+                    return false;
+                }
+
+                if (stats.maxHealth != 200 ||
+                    Mathf.Abs(control.EffectiveWalkSpeed - 5.85f) > 0.01f ||
+                    Mathf.Abs(equip.GetArmorAttackSpeedMultiplier() - 1.23f) > 0.001f ||
+                    Mathf.Abs(equip.GetArmorCriticalChance() - 0.12f) > 0.001f)
+                {
+                    Debug.LogError($"[Test 122] Wired runtime stats mismatch: maxHP={stats.maxHealth}, walkSpd={control.EffectiveWalkSpeed}, atkMult={equip.GetArmorAttackSpeedMultiplier()}, crit={equip.GetArmorCriticalChance()}");
+                    return false;
+                }
+
+                // Damage taken at Lv.1 Full Set (28.57% DR -> 100 raw becomes 71) vs Lv.10 Full Set (51.43% DR -> 100 raw becomes 49)
+                stats.currentHealth = stats.maxHealth;
+                stats.TakeDamage(100);
+                int lv1DmgTaken = stats.maxHealth - stats.currentHealth;
+
+                armorState.armorLevel = 10;
+                stats.currentHealth = stats.maxHealth;
+                stats.TakeDamage(100);
+                int lv10DmgTaken = stats.maxHealth - stats.currentHealth;
+
+                if (lv1DmgTaken != 71 || lv10DmgTaken != 49)
+                {
+                    Debug.LogError($"[Test 122] Armor damage reduction mismatch on TakeDamage(100): Lv.1={lv1DmgTaken} (expected 71), Lv.10={lv10DmgTaken} (expected 49)!");
+                    return false;
+                }
+
+                // Unequipping chest must reduce maxHealth cleanly from 200 back to 165
+                armorState.UnequipItem(EquipmentSlotType.Chest, out _);
+                if (stats.maxHealth != 165)
+                {
+                    Debug.LogError($"[Test 122] Unequipping Chest should drop maxHealth from 200 to 165, got {stats.maxHealth}!");
+                    return false;
+                }
+
+                // 3. Informative UI verification on EquipmentLoadoutPanelUI
+                var eqPanelHost = new GameObject("Test122_LoadoutPanel", typeof(RectTransform));
+                cleanup.Add(eqPanelHost);
+                var vpGo = new GameObject("CharacterPreview_Viewport", typeof(RectTransform));
+                vpGo.transform.SetParent(eqPanelHost.transform, false);
+                var panelUi = eqPanelHost.AddComponent<PlayerUI.EquipmentLoadoutPanelUI>();
+                panelUi.RefreshLoadoutDisplay();
+                var summaryTxt = vpGo.transform.Find("LoadoutTelemetryContainer/GearBonusBar/GearStatsText")?.GetComponent<UnityEngine.UI.Text>();
+                if (summaryTxt == null || !summaryTxt.text.Contains("ATK SPD:") || !summaryTxt.text.Contains("MOVE:") || !summaryTxt.text.Contains("% DR"))
+                {
+                    Debug.LogError($"[Test 122] EquipmentLoadoutPanelUI summary text uninformative: '{summaryTxt?.text}'");
+                    return false;
+                }
+
+                // 4. Zero-GC check on 5,000 GetAggregatedArmorStats calls
+                armorState.GetAggregatedArmorStats();
+                long memBefore = System.GC.GetAllocatedBytesForCurrentThread();
+                for (int i = 0; i < 5000; i++)
+                {
+                    var s = armorState.GetAggregatedArmorStats();
+                    if (s.BonusDefense < 0) return false;
+                }
+                long memAfter = System.GC.GetAllocatedBytesForCurrentThread();
+                if (memAfter - memBefore > 0)
+                {
+                    Debug.LogError($"[Test 122] Zero-GC violation in GetAggregatedArmorStats: allocated {memAfter - memBefore} bytes!");
+                    return false;
+                }
+
+                Debug.Log("✅ Test 122: Armor 5-stat wiring (HP/DEF/Move/AtkSpd/Crit), DR math, Zero-GC snapshot, and informative paperdoll UI verified.");
+                return true;
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogError($"[Test 122] Exception: {ex.Message}\n{ex.StackTrace}");
+                return false;
+            }
+            finally
+            {
+                for (int i = cleanup.Count - 1; i >= 0; i--)
+                {
+                    if (cleanup[i] != null) Object.DestroyImmediate(cleanup[i]);
+                }
+                typeof(PlayerArmorUpgradeState).GetProperty("Instance")?.SetValue(null, prevArmorInst);
+                if (prevDamageNotifier != null) ServiceLocator.Register<IPlayerDamageNotifier>(prevDamageNotifier);
+                else ServiceLocator.Unregister<IPlayerDamageNotifier>();
+                if (prevPlayerCtx != null) ServiceLocator.Register<IPlayerContext>(prevPlayerCtx);
+                else ServiceLocator.Unregister<IPlayerContext>();
+            }
+        }
     }
 }

@@ -62,6 +62,54 @@ namespace FeaturesWorkbench.Core
     }
 
     /// <summary>
+    /// Immutable value-type snapshot of aggregated armor gear bonuses, plating mitigation,
+    /// set bonuses, and effective defensive totals (Zero-GC).
+    /// </summary>
+    public readonly struct ArmorStatSnapshot
+    {
+        public readonly int EquippedArmorPieceCount;
+        public readonly int BonusHealth;
+        public readonly int BonusDefense;
+        public readonly float GearDefenseMitigationRatio;
+        public readonly float PlatingMitigationRatio;
+        public readonly float TotalMitigationRatio;
+        public readonly float BonusMoveSpeed;
+        public readonly float GearAttackSpeed;
+        public readonly float SetAttackSpeed;
+        public readonly float TotalAttackSpeed;
+        public readonly float BonusCriticalChance;
+        public readonly SetBonusState SetBonus;
+
+        public ArmorStatSnapshot(
+            int equippedArmorPieceCount,
+            int bonusHealth,
+            int bonusDefense,
+            float gearDefenseMitigationRatio,
+            float platingMitigationRatio,
+            float totalMitigationRatio,
+            float bonusMoveSpeed,
+            float gearAttackSpeed,
+            float setAttackSpeed,
+            float totalAttackSpeed,
+            float bonusCriticalChance,
+            SetBonusState setBonus)
+        {
+            EquippedArmorPieceCount = equippedArmorPieceCount;
+            BonusHealth = bonusHealth;
+            BonusDefense = bonusDefense;
+            GearDefenseMitigationRatio = gearDefenseMitigationRatio;
+            PlatingMitigationRatio = platingMitigationRatio;
+            TotalMitigationRatio = totalMitigationRatio;
+            BonusMoveSpeed = bonusMoveSpeed;
+            GearAttackSpeed = gearAttackSpeed;
+            SetAttackSpeed = setAttackSpeed;
+            TotalAttackSpeed = totalAttackSpeed;
+            BonusCriticalChance = bonusCriticalChance;
+            SetBonus = setBonus;
+        }
+    }
+
+    /// <summary>
     /// Pure C# POCO class governing equipment upgrade formulas, specialization progression trees,
     /// costs, and set bonus calculations with zero heap allocation in loops (Zero-GC).
     /// </summary>
@@ -71,6 +119,8 @@ namespace FeaturesWorkbench.Core
         public const int MaxArmorLevel = 10;
         public const int MaxSpecializationNodeLevel = 6; // 1 to 5 + 6 (Ultimate)
         public const float ShadowDashResetICD = 5.0f; // 5.0s internal cooldown on Shadow Dash reset on kill
+        public const float DefenseMitigationScale = 40f;
+        public const float MaxCombinedMitigationRatio = 0.75f;
 
         public static bool CanTriggerShadowDashReset(float lastTriggerTime, float currentTime, float icd = ShadowDashResetICD)
         {
@@ -132,6 +182,47 @@ namespace FeaturesWorkbench.Core
         {
             int clampedLevel = Math.Clamp(level, 1, MaxArmorLevel);
             return ArmorMitigationRatios[clampedLevel - 1];
+        }
+
+        /// <summary>
+        /// Converts flat gear defense points into damage reduction ratio using diminishing returns: D / (D + 40).
+        /// </summary>
+        public static float EvaluateDefenseMitigationRatio(int defensePoints)
+        {
+            if (defensePoints <= 0) return 0f;
+            return defensePoints / (defensePoints + DefenseMitigationScale);
+        }
+
+        /// <summary>
+        /// Combines multiplicative gear defense mitigation and workbench plating mitigation.
+        /// Requires at least one equipped armor piece for plating mitigation to take effect.
+        /// </summary>
+        public static float EvaluateCombinedMitigationRatio(int defensePoints, int armorLevel, bool hasEquippedArmor)
+        {
+            float gearMit = EvaluateDefenseMitigationRatio(defensePoints);
+            float platingMit = hasEquippedArmor ? GetArmorMitigationRatio(armorLevel) : 0f;
+            float combined = 1f - (1f - gearMit) * (1f - platingMit);
+            return Math.Clamp(combined, 0f, MaxCombinedMitigationRatio);
+        }
+
+        /// <summary>
+        /// Applies combined armor mitigation to incoming damage, preserving a minimum of 1 damage when incomingDamage > 0.
+        /// </summary>
+        public static int CalculateMitigatedDamage(int incomingDamage, float combinedMitigationRatio)
+        {
+            if (incomingDamage <= 0) return 0;
+            float clamped = Math.Clamp(combinedMitigationRatio, 0f, MaxCombinedMitigationRatio);
+            return Math.Max(1, (int)MathF.Round(incomingDamage * (1f - clamped)));
+        }
+
+        /// <summary>
+        /// Computes Effective HP (EHP = totalMaxHp / (1 - DR)), clamped at MaxCombinedMitigationRatio.
+        /// </summary>
+        public static float CalculateEffectiveHP(int totalMaxHp, float combinedMitigationRatio)
+        {
+            if (totalMaxHp <= 0) return 0f;
+            float clamped = Math.Clamp(combinedMitigationRatio, 0f, MaxCombinedMitigationRatio);
+            return totalMaxHp / MathF.Max(1f - MaxCombinedMitigationRatio, 1f - clamped);
         }
 
         public static int GetArmorUpgradeCost(int currentLevel)

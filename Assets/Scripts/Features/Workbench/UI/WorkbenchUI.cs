@@ -825,17 +825,27 @@ namespace FeaturesWorkbench.UI
 
             if (armorStatsText != null)
             {
+                var snap = armorState.GetAggregatedArmorStats();
                 float curMit = armorState.DamageMitigationRatio * 100f;
                 float nextMit = EquipmentUpgradeEvaluator.GetArmorMitigationRatio(nextLv) * 100f;
+                bool hasGear = snap.EquippedArmorPieceCount > 0;
+
+                float curTotalDr = EquipmentUpgradeEvaluator.EvaluateCombinedMitigationRatio(snap.BonusDefense, curLv, hasGear) * 100f;
+                float nextTotalDr = EquipmentUpgradeEvaluator.EvaluateCombinedMitigationRatio(snap.BonusDefense, nextLv, hasGear) * 100f;
+                int ehp = Mathf.RoundToInt(EquipmentUpgradeEvaluator.CalculateEffectiveHP(100 + snap.BonusHealth, snap.TotalMitigationRatio));
 
                 string mitDelta = isMax
                     ? $"<b>{curMit:F0}%</b> <color=#38C773>(MAX PLATING)</color>"
                     : $"<b>{curMit:F0}%</b> <color=#8A94A6>➔</color> <color=#3DD5F3><b>{nextMit:F0}%</b></color>";
 
+                string effectiveLine = hasGear
+                    ? $"<color=#38C773>EQUIPPED ({snap.EquippedArmorPieceCount}/5):</color> +{snap.BonusHealth} HP | +{snap.BonusDefense} DEF | Total DR: <b>{curTotalDr:0.0}%</b> ➔ <color=#3DD5F3><b>{nextTotalDr:0.0}%</b></color> | EHP: <b>{ehp}</b>"
+                    : "<color=#FF8A80>NO ARMOR EQUIPPED:</color> Plating & Gear Defense stay inactive (0% DR) until you equip at least 1 piece.";
+
                 armorStatsText.text =
                     $"<size=17><b>Reinforced Homestead Plating</b></size>\n" +
-                    $"<color=#8A94A6>DAMAGE MITIGATION:</color> {mitDelta}   <color=#8A94A6>(MAX CAP: 32% AT LV.10)</color>\n" +
-                    $"<color=#B0B8C4>Reduces all incoming physical & projectile damage during Night Brawl waves.</color>";
+                    $"<color=#8A94A6>PLATING BONUS:</color> {mitDelta}   <color=#8A94A6>(MAX CAP: 32% AT LV.10)</color>\n" +
+                    $"{effectiveLine}";
             }
 
             bool hasArmor = armorState.HasAnyArmorPiece(playerInventory);

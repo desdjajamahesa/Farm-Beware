@@ -50,6 +50,10 @@ public class PlayerStats : MonoBehaviour, FeaturesCombat.IDamageable, IPlayerDam
     private int baseMaxHealth;
     private float baseMaxStamina;
     private float baseStaminaRegenRate;
+    private float _lastBuffHealthModPercent = 0f;
+    private int _appliedArmorBonusHealth = 0;
+
+    public int BaseMaxHealth => baseMaxHealth > 0 ? baseMaxHealth : maxHealth;
 
     public bool IsExhausted => currentStamina <= 0.1f;
     public bool IsStarving => currentHunger <= 0.01f;
@@ -99,8 +103,35 @@ public class PlayerStats : MonoBehaviour, FeaturesCombat.IDamageable, IPlayerDam
     private bool isStatsRestored = false;
     private bool isDeadHandled = false;
 
+    private void OnEnable()
+    {
+        var armorState = GetComponent<FeaturesWorkbench.PlayerArmorUpgradeState>() ?? FeaturesWorkbench.PlayerArmorUpgradeState.Instance;
+        if (armorState != null)
+        {
+            armorState.OnEquipmentChanged -= HandleArmorStateChanged;
+            armorState.OnEquipmentChanged += HandleArmorStateChanged;
+            armorState.OnArmorUpgraded -= HandleArmorUpgradedChanged;
+            armorState.OnArmorUpgraded += HandleArmorUpgradedChanged;
+        }
+    }
+
+    private void OnDisable()
+    {
+        var armorState = GetComponent<FeaturesWorkbench.PlayerArmorUpgradeState>() ?? FeaturesWorkbench.PlayerArmorUpgradeState.Instance;
+        if (armorState != null)
+        {
+            armorState.OnEquipmentChanged -= HandleArmorStateChanged;
+            armorState.OnArmorUpgraded -= HandleArmorUpgradedChanged;
+        }
+    }
+
+    private void HandleArmorStateChanged(EquipmentSlotType slot, ItemData item) => RefreshArmorDerivedStats();
+    private void HandleArmorUpgradedChanged() => RefreshArmorDerivedStats();
+
     void Start()
     {
+        RefreshArmorDerivedStats(adjustCurrentHealth: false);
+
         if (!isStatsRestored)
         {
             currentHealth = maxHealth;
@@ -115,13 +146,47 @@ public class PlayerStats : MonoBehaviour, FeaturesCombat.IDamageable, IPlayerDam
         OnThirstChanged?.Invoke(currentThirst, maxThirst);
     }
 
+    /// <summary>
+    /// Recomputes maxHealth from baseMaxHealth + food buff modifier + equipped armor bonusHealth.
+    /// </summary>
+    public void RefreshArmorDerivedStats(bool adjustCurrentHealth = true)
+    {
+        if (baseMaxHealth <= 0) baseMaxHealth = maxHealth > 0 ? maxHealth : 100;
+
+        var armorState = GetComponent<FeaturesWorkbench.PlayerArmorUpgradeState>() ?? FeaturesWorkbench.PlayerArmorUpgradeState.Instance;
+        int armorBonusHp = armorState != null ? armorState.GetAggregatedArmorStats().BonusHealth : 0;
+        int prevBonusHp = _appliedArmorBonusHealth;
+        _appliedArmorBonusHealth = armorBonusHp;
+
+        int newMaxHealth = Mathf.Max(1, Mathf.RoundToInt(baseMaxHealth * (1f + _lastBuffHealthModPercent)) + armorBonusHp);
+        if (newMaxHealth != maxHealth || armorBonusHp != prevBonusHp)
+        {
+            int hpDelta = armorBonusHp - prevBonusHp;
+            maxHealth = newMaxHealth;
+            if (adjustCurrentHealth && hpDelta > 0 && currentHealth > 0)
+            {
+                currentHealth = Mathf.Clamp(currentHealth + hpDelta, 0, maxHealth);
+            }
+            else
+            {
+                currentHealth = Mathf.Clamp(currentHealth, 0, maxHealth);
+            }
+            OnHealthChanged?.Invoke(currentHealth, maxHealth);
+        }
+    }
+
     public void ApplyBuffModifiers(float healthModPercent, float staminaModPercent, float staminaRegenModPercent)
     {
         if (baseMaxHealth <= 0) baseMaxHealth = maxHealth > 0 ? maxHealth : 100;
         if (baseMaxStamina <= 0f) baseMaxStamina = maxStamina > 0f ? maxStamina : 120f;
         if (baseStaminaRegenRate <= 0f) baseStaminaRegenRate = staminaRegenRate > 0f ? staminaRegenRate : 20f;
 
-        int newMaxHealth = Mathf.Max(1, Mathf.RoundToInt(baseMaxHealth * (1f + healthModPercent)));
+        _lastBuffHealthModPercent = healthModPercent;
+        var armorState = GetComponent<FeaturesWorkbench.PlayerArmorUpgradeState>() ?? FeaturesWorkbench.PlayerArmorUpgradeState.Instance;
+        int armorBonusHp = armorState != null ? armorState.GetAggregatedArmorStats().BonusHealth : 0;
+        _appliedArmorBonusHealth = armorBonusHp;
+
+        int newMaxHealth = Mathf.Max(1, Mathf.RoundToInt(baseMaxHealth * (1f + healthModPercent)) + armorBonusHp);
         float newMaxStamina = Mathf.Max(1f, baseMaxStamina * (1f + staminaModPercent));
         staminaRegenRate = baseStaminaRegenRate * (1f + staminaRegenModPercent);
 
@@ -355,11 +420,15 @@ public class PlayerStats : MonoBehaviour, FeaturesCombat.IDamageable, IPlayerDam
             amount = Mathf.Max(1, Mathf.RoundToInt(amount * (1f - mods.DamageMitigationRatio)));
         }
 
-        // Apply Armor Upgrade mitigation ratio (Lv 1 to 10: 0% up to 32%)
-        var armorUpgrade = FeaturesWorkbench.PlayerArmorUpgradeState.Instance;
-        if (armorUpgrade != null && armorUpgrade.DamageMitigationRatio > 0f)
+        // Apply combined Gear Defense + Workbench Armor Plating mitigation ratio (requires equipped armor)
+        var armorUpgrade = GetComponent<FeaturesWorkbench.PlayerArmorUpgradeState>() ?? FeaturesWorkbench.PlayerArmorUpgradeState.Instance;
+        if (armorUpgrade != null)
         {
-            amount = Mathf.Max(1, Mathf.RoundToInt(amount * (1f - armorUpgrade.DamageMitigationRatio)));
+            var armorSnap = armorUpgrade.GetAggregatedArmorStats();
+            if (armorSnap.TotalMitigationRatio > 0f)
+            {
+                amount = FeaturesWorkbench.Core.EquipmentUpgradeEvaluator.CalculateMitigatedDamage(amount, armorSnap.TotalMitigationRatio);
+            }
         }
 
         var weaponUpgrade = FeaturesWorkbench.PlayerWeaponUpgradeState.Instance;
@@ -511,6 +580,7 @@ public class PlayerStats : MonoBehaviour, FeaturesCombat.IDamageable, IPlayerDam
     public void RestoreStats(int hp, float stamina, float hunger, float thirst)
     {
         isStatsRestored = true;
+        RefreshArmorDerivedStats(adjustCurrentHealth: false);
         currentHealth = Mathf.Clamp(hp, 1, maxHealth);
         if (currentHealth > 0) isDeadHandled = false;
         currentStamina = Mathf.Clamp(stamina, 0f, maxStamina);

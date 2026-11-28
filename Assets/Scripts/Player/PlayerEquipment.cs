@@ -252,6 +252,42 @@ public partial class PlayerEquipment : MonoBehaviour
     public float AttackSpeedMultiplier => buffManager != null ? buffManager.GetAttackSpeedMultiplier() : 1f;
     public float AttackHitRange => attackHitRange;
 
+    public float GetArmorAttackSpeedMultiplier()
+    {
+        var armorState = GetComponent<FeaturesWorkbench.PlayerArmorUpgradeState>() ?? FeaturesWorkbench.PlayerArmorUpgradeState.Instance;
+        return armorState != null ? (1f + armorState.GetAggregatedArmorStats().TotalAttackSpeed) : 1f;
+    }
+
+    public float GetArmorCriticalChance()
+    {
+        var armorState = GetComponent<FeaturesWorkbench.PlayerArmorUpgradeState>() ?? FeaturesWorkbench.PlayerArmorUpgradeState.Instance;
+        return armorState != null ? armorState.GetAggregatedArmorStats().BonusCriticalChance : 0f;
+    }
+
+    private float ResolveAttackSpeedMultiplier(FeaturesWorkbench.PlayerWeaponUpgradeState upgradeState)
+    {
+        float atkSpdMultiplier = buffManager != null ? buffManager.GetAttackSpeedMultiplier() : 1f;
+        if (upgradeState != null && upgradeState.sweetPotatoPathUnlocked)
+        {
+            atkSpdMultiplier *= 1.20f;
+        }
+        atkSpdMultiplier *= GetArmorAttackSpeedMultiplier();
+        atkSpdMultiplier *= attackAnimationSpeed;
+        return atkSpdMultiplier;
+    }
+
+    private bool ApplyArmorCritIfTriggered(ref float dmgMultiplier, bool alreadyGuaranteedCrit = false)
+    {
+        if (alreadyGuaranteedCrit) return true;
+        float critChance = GetArmorCriticalChance();
+        if (critChance > 0f && UnityEngine.Random.value < critChance)
+        {
+            dmgMultiplier *= 1.5f;
+            return true;
+        }
+        return false;
+    }
+
     public bool IsRangedWeaponEquipped => CurrentEquippedItem is ToolItemData t && t.isWeapon && t.isRangedWeapon;
 
     public ItemData CurrentEquippedItem
@@ -545,14 +581,8 @@ public partial class PlayerEquipment : MonoBehaviour
 
         if (animator != null && !string.IsNullOrEmpty(attackTriggerName))
         {
-            float atkSpdMultiplier = buffManager != null ? buffManager.GetAttackSpeedMultiplier() : 1f;
             var upgradeState = FeaturesWorkbench.PlayerWeaponUpgradeState.Instance ?? GetComponent<FeaturesWorkbench.PlayerWeaponUpgradeState>();
-            if (upgradeState != null && upgradeState.sweetPotatoPathUnlocked)
-            {
-                atkSpdMultiplier *= 1.20f;
-            }
-
-            atkSpdMultiplier *= attackAnimationSpeed;
+            float atkSpdMultiplier = ResolveAttackSpeedMultiplier(upgradeState);
 
             animator.speed = atkSpdMultiplier;
             animator.ResetTrigger(attackTriggerName);
@@ -598,6 +628,7 @@ public partial class PlayerEquipment : MonoBehaviour
                         new Color(1f, 0.9f, 0.2f));
                 }
             }
+            ApplyArmorCritIfTriggered(ref dmgMultiplier, isRiposte);
             int finalDamage = Mathf.RoundToInt(baseDmg * dmgMultiplier);
 
             // 3rd/4th combo hit (Finisher) or Riposte performs a wide 360-degree sweep
@@ -702,10 +733,8 @@ public partial class PlayerEquipment : MonoBehaviour
             return true;
         }
 
-        float atkSpdMultiplier = buffManager != null ? buffManager.GetAttackSpeedMultiplier() : 1f;
         var upgradeState = FeaturesWorkbench.PlayerWeaponUpgradeState.Instance ?? GetComponent<FeaturesWorkbench.PlayerWeaponUpgradeState>();
-        if (upgradeState != null && upgradeState.sweetPotatoPathUnlocked) atkSpdMultiplier *= 1.20f;
-        atkSpdMultiplier *= attackAnimationSpeed;
+        float atkSpdMultiplier = ResolveAttackSpeedMultiplier(upgradeState);
 
         currentComboIndex = 3;
         currentHeavyComboIndex = combatStateMachine.HeavyComboIndex;
@@ -733,6 +762,7 @@ public partial class PlayerEquipment : MonoBehaviour
 
         var statMods = playerStats != null ? playerStats.GetCombatStatModifiers() : FeaturesCombat.Core.PureLogic.CombatStatModifiers.Default;
         float dmgMult = (buffManager != null ? buffManager.GetAttackDamageMultiplier() : 1f) * combatStateMachine.GetCurrentDamageMultiplier() * statMods.DamageMultiplier * statMods.FinisherDamageMultiplier;
+        ApplyArmorCritIfTriggered(ref dmgMult);
         int finalDamage = Mathf.RoundToInt(baseDmg * dmgMult);
         float finalKnockback = knockback * combatStateMachine.GetCurrentKnockbackMultiplier() * statMods.KnockbackMultiplier;
 
@@ -826,7 +856,8 @@ public partial class PlayerEquipment : MonoBehaviour
             }
 
             Vector3 shotDir = Quaternion.Euler(0f, angleOffset, 0f) * baseForward;
-            bool isCrit = isRiposte || (Random.value <= profile.CritChance);
+            float effectiveCritChance = Mathf.Clamp01(profile.CritChance + GetArmorCriticalChance());
+            bool isCrit = isRiposte || (Random.value <= effectiveCritChance);
             int projDmg = isCrit ? Mathf.RoundToInt(profile.DamagePerProjectile * 1.5f) : profile.DamagePerProjectile;
 
             var proj = FeaturesCombat.Projectiles.CombatProjectile.Spawn(
@@ -908,10 +939,8 @@ public partial class PlayerEquipment : MonoBehaviour
             return true;
         }
 
-        float atkSpdMultiplier = buffManager != null ? buffManager.GetAttackSpeedMultiplier() : 1f;
         var upgradeState = FeaturesWorkbench.PlayerWeaponUpgradeState.Instance ?? GetComponent<FeaturesWorkbench.PlayerWeaponUpgradeState>();
-        if (upgradeState != null && upgradeState.sweetPotatoPathUnlocked) atkSpdMultiplier *= 1.20f;
-        atkSpdMultiplier *= attackAnimationSpeed;
+        float atkSpdMultiplier = ResolveAttackSpeedMultiplier(upgradeState);
 
         currentComboIndex = 3;
         currentHeavyComboIndex = combatStateMachine.HeavyComboIndex;
@@ -938,6 +967,7 @@ public partial class PlayerEquipment : MonoBehaviour
         }
 
         float dmgMult = (buffManager != null ? buffManager.GetAttackDamageMultiplier() : 1f) * combatStateMachine.GetCurrentDamageMultiplier();
+        ApplyArmorCritIfTriggered(ref dmgMult);
         int finalDamage = Mathf.RoundToInt(baseDmg * dmgMult);
         float finalKnockback = knockback * combatStateMachine.GetCurrentKnockbackMultiplier();
 
@@ -995,10 +1025,8 @@ public partial class PlayerEquipment : MonoBehaviour
             return true;
         }
 
-        float atkSpdMultiplier = buffManager != null ? buffManager.GetAttackSpeedMultiplier() : 1f;
         var upgradeState = FeaturesWorkbench.PlayerWeaponUpgradeState.Instance ?? GetComponent<FeaturesWorkbench.PlayerWeaponUpgradeState>();
-        if (upgradeState != null && upgradeState.sweetPotatoPathUnlocked) atkSpdMultiplier *= 1.20f;
-        atkSpdMultiplier *= attackAnimationSpeed;
+        float atkSpdMultiplier = ResolveAttackSpeedMultiplier(upgradeState);
 
         currentComboIndex = 3;
         currentHeavyComboIndex = heavyStep;
@@ -1026,6 +1054,7 @@ public partial class PlayerEquipment : MonoBehaviour
 
         var statMods = playerStats != null ? playerStats.GetCombatStatModifiers() : FeaturesCombat.Core.PureLogic.CombatStatModifiers.Default;
         float dmgMult = (buffManager != null ? buffManager.GetAttackDamageMultiplier() : 1f) * combatStateMachine.GetCurrentDamageMultiplier() * statMods.DamageMultiplier;
+        ApplyArmorCritIfTriggered(ref dmgMult);
         int finalDamage = Mathf.RoundToInt(baseDmg * dmgMult);
         float finalKnockback = knockback * combatStateMachine.GetCurrentKnockbackMultiplier() * statMods.KnockbackMultiplier;
 
@@ -1068,10 +1097,8 @@ public partial class PlayerEquipment : MonoBehaviour
             return true;
         }
 
-        float atkSpdMultiplier = buffManager != null ? buffManager.GetAttackSpeedMultiplier() : 1f;
         var upgradeState = FeaturesWorkbench.PlayerWeaponUpgradeState.Instance ?? GetComponent<FeaturesWorkbench.PlayerWeaponUpgradeState>();
-        if (upgradeState != null && upgradeState.sweetPotatoPathUnlocked) atkSpdMultiplier *= 1.20f;
-        atkSpdMultiplier *= attackAnimationSpeed;
+        float atkSpdMultiplier = ResolveAttackSpeedMultiplier(upgradeState);
 
         if (animator != null)
         {
@@ -1092,6 +1119,7 @@ public partial class PlayerEquipment : MonoBehaviour
         }
 
         float dmgMult = (buffManager != null ? buffManager.GetAttackDamageMultiplier() : 1f) * combatStateMachine.GetCurrentDamageMultiplier();
+        ApplyArmorCritIfTriggered(ref dmgMult);
         int finalDamage = Mathf.RoundToInt(baseDmg * dmgMult);
         float finalKnockback = knockback * combatStateMachine.GetCurrentKnockbackMultiplier();
 
@@ -1157,14 +1185,8 @@ public partial class PlayerEquipment : MonoBehaviour
 
         if (animator != null && !string.IsNullOrEmpty(skillTriggerName))
         {
-            float atkSpdMultiplier = buffManager != null ? buffManager.GetAttackSpeedMultiplier() : 1f;
             var upgradeState = FeaturesWorkbench.PlayerWeaponUpgradeState.Instance ?? GetComponent<FeaturesWorkbench.PlayerWeaponUpgradeState>();
-            if (upgradeState != null && upgradeState.sweetPotatoPathUnlocked)
-            {
-                atkSpdMultiplier *= 1.20f;
-            }
-
-            atkSpdMultiplier *= attackAnimationSpeed;
+            float atkSpdMultiplier = ResolveAttackSpeedMultiplier(upgradeState);
 
             animator.speed = atkSpdMultiplier;
             if (PlayerControl.HasAnimatorParameter(animator, skillTriggerName, AnimatorControllerParameterType.Trigger))
@@ -1191,6 +1213,7 @@ public partial class PlayerEquipment : MonoBehaviour
             }
 
             float dmgMultiplier = (buffManager != null ? buffManager.GetAttackDamageMultiplier() : 1f) * skillDamageMultiplier;
+            ApplyArmorCritIfTriggered(ref dmgMultiplier);
             int finalDamage = Mathf.RoundToInt(baseDmg * dmgMultiplier);
 
             if (currentSwingCoroutine != null)

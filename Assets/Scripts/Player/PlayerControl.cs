@@ -12,6 +12,15 @@ public partial class PlayerControl : MonoBehaviour, IPlayerContext
     public float runSpeed = 8f;
     public float turnSpeed = 18f;
 
+    public float GetArmorMoveSpeedMultiplier()
+    {
+        var armorState = GetComponent<FeaturesWorkbench.PlayerArmorUpgradeState>() ?? FeaturesWorkbench.PlayerArmorUpgradeState.Instance;
+        return armorState != null ? (1f + armorState.GetAggregatedArmorStats().BonusMoveSpeed) : 1f;
+    }
+
+    public float EffectiveWalkSpeed => walkSpeed * GetArmorMoveSpeedMultiplier();
+    public float EffectiveRunSpeed => runSpeed * GetArmorMoveSpeedMultiplier();
+
     [Header("Pengaturan Aksi")]
     public float jumpForce = 5f;
     [Tooltip("Durasi penguncian pergerakan saat menanam benih (detik).")]
@@ -580,6 +589,7 @@ public partial class PlayerControl : MonoBehaviour, IPlayerContext
         {
             Vector3 moveDirection = GetCameraRelativeDirection(inputVector);
             float speedMultiplier = buffManager != null ? buffManager.GetSpeedMultiplier() : 1f;
+            speedMultiplier *= GetArmorMoveSpeedMultiplier();
             var weaponUpgrade = FeaturesWorkbench.PlayerWeaponUpgradeState.Instance;
             if (weaponUpgrade != null && weaponUpgrade.sweetPotatoPathUnlocked)
             {

@@ -38,6 +38,9 @@ namespace FeaturesWorkbench
         }
 
         private readonly Dictionary<EquipmentSlotType, ItemData> _equippedMap = new Dictionary<EquipmentSlotType, ItemData>();
+        private ArmorStatSnapshot _cachedSnapshot;
+        private bool _snapshotInitialized = false;
+        private int _lastComputedArmorLevel = -1;
 
         public float DamageMitigationRatio => EquipmentUpgradeEvaluator.GetArmorMitigationRatio(armorLevel);
 
@@ -62,6 +65,87 @@ namespace FeaturesWorkbench
                     _equippedMap[entry.slotType] = entry.item;
                 }
             }
+            RecalculateSnapshot();
+        }
+
+        private void RecalculateSnapshot()
+        {
+            int armorPieceCount = 0;
+            int bonusHp = 0;
+            int bonusDef = 0;
+            float bonusMoveSpd = 0f;
+            float gearAtkSpd = 0f;
+            float bonusCrit = 0f;
+            int sweetPotatoPieces = 0;
+
+            foreach (var kvp in _equippedMap)
+            {
+                var item = kvp.Value;
+                if (item == null) continue;
+
+                if (item is EquipmentItemData eq)
+                {
+                    if (kvp.Key != EquipmentSlotType.MainWeapon)
+                    {
+                        armorPieceCount++;
+                        bonusHp += eq.bonusHealth;
+                        bonusDef += eq.bonusDefense;
+                        bonusMoveSpd += eq.bonusMoveSpeed;
+                        gearAtkSpd += eq.bonusAttackSpeed;
+                        bonusCrit += eq.bonusCriticalChance;
+                    }
+
+                    if (string.Equals(eq.setName, "Sweet Potato", StringComparison.OrdinalIgnoreCase))
+                    {
+                        sweetPotatoPieces++;
+                    }
+                }
+                else if (kvp.Key == EquipmentSlotType.MainWeapon)
+                {
+                    if (string.Equals(item.itemId, "tool_weapon_root_cleaver", StringComparison.OrdinalIgnoreCase) ||
+                        string.Equals(item.itemId, "dummysword", StringComparison.OrdinalIgnoreCase))
+                    {
+                        sweetPotatoPieces++;
+                    }
+                }
+            }
+
+            SetBonusState setBonus = EquipmentUpgradeEvaluator.EvaluateSweetPotatoSetBonus(sweetPotatoPieces);
+            bool hasEquippedArmor = armorPieceCount > 0;
+            float gearDr = EquipmentUpgradeEvaluator.EvaluateDefenseMitigationRatio(bonusDef);
+            float platingDr = hasEquippedArmor ? EquipmentUpgradeEvaluator.GetArmorMitigationRatio(armorLevel) : 0f;
+            float totalDr = EquipmentUpgradeEvaluator.EvaluateCombinedMitigationRatio(bonusDef, armorLevel, hasEquippedArmor);
+            float setAtkSpd = setBonus.AttackSpeedBonus;
+
+            _cachedSnapshot = new ArmorStatSnapshot(
+                equippedArmorPieceCount: armorPieceCount,
+                bonusHealth: bonusHp,
+                bonusDefense: bonusDef,
+                gearDefenseMitigationRatio: gearDr,
+                platingMitigationRatio: platingDr,
+                totalMitigationRatio: totalDr,
+                bonusMoveSpeed: bonusMoveSpd,
+                gearAttackSpeed: gearAtkSpd,
+                setAttackSpeed: setAtkSpd,
+                totalAttackSpeed: gearAtkSpd + setAtkSpd,
+                bonusCriticalChance: bonusCrit,
+                setBonus: setBonus);
+
+            _lastComputedArmorLevel = armorLevel;
+            _snapshotInitialized = true;
+        }
+
+        /// <summary>
+        /// Returns the cached immutable snapshot of aggregated armor gear stats, plating mitigation,
+        /// and Sweet Potato set bonuses with zero runtime heap allocations.
+        /// </summary>
+        public ArmorStatSnapshot GetAggregatedArmorStats()
+        {
+            if (!_snapshotInitialized || _lastComputedArmorLevel != armorLevel)
+            {
+                RecalculateSnapshot();
+            }
+            return _cachedSnapshot;
         }
 
         private void SyncEntriesList()
@@ -87,6 +171,7 @@ namespace FeaturesWorkbench
             _equippedMap.TryGetValue(slot, out previousItem);
             _equippedMap[slot] = item;
             SyncEntriesList();
+            RecalculateSnapshot();
 
             OnEquipmentChanged?.Invoke(slot, item);
             return true;
@@ -98,6 +183,7 @@ namespace FeaturesWorkbench
             {
                 _equippedMap.Remove(slot);
                 SyncEntriesList();
+                RecalculateSnapshot();
                 OnEquipmentChanged?.Invoke(slot, null);
                 return true;
             }
@@ -186,6 +272,7 @@ namespace FeaturesWorkbench
             }
 
             armorLevel++;
+            RecalculateSnapshot();
             OnArmorUpgraded?.Invoke();
             return true;
         }

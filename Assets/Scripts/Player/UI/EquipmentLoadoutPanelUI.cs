@@ -198,16 +198,16 @@ namespace PlayerUI
             badgeNecklaceText = CreateSlotCallout(paperdollPanel.transform, "Callout_Necklace", new Vector2(68f, 42f), "RELIC: Empty", font);
             badgeWeaponText = CreateSlotCallout(paperdollPanel.transform, "Callout_Weapon", new Vector2(68f, -42f), "WPN: Cleaver", font);
 
-            // 3. Aggregated Gear Bonus Bar (y: -228 to -264, height 34)
-            var bonusBar = CreatePanel(containerRt, "GearBonusBar", new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -228f), new Vector2(0f, 34f), new Color(0.13f, 0.18f, 0.16f, 0.95f));
-            gearStatsSummaryText = CreateText(bonusBar.transform, "GearStatsText", "GEAR BONUS: +0 HP • +0 DEF • +0% SPD • +0% CRIT", font, 9, FontStyle.Bold, TextAnchor.MiddleCenter, new Color(0.55f, 0.96f, 0.72f, 1f), new Vector2(0f, -2f), new Vector2(-6f, 30f));
+            // 3. Aggregated Gear Bonus Bar (y: -228 to -270, height 42)
+            var bonusBar = CreatePanel(containerRt, "GearBonusBar", new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -228f), new Vector2(0f, 42f), new Color(0.13f, 0.18f, 0.16f, 0.95f));
+            gearStatsSummaryText = CreateText(bonusBar.transform, "GearStatsText", "HP: 100 (+0) • DEF: +0 (0.0% DR)\nATK SPD: +0% • MOVE: +0% • CRIT: +0%", font, 9, FontStyle.Bold, TextAnchor.MiddleCenter, new Color(0.55f, 0.96f, 0.72f, 1f), new Vector2(0f, -2f), new Vector2(-6f, 38f));
 
-            // 4. Sweet Potato Set Bonus Tracker Card (y: -266 to -378, height 112)
-            var setCard = CreatePanel(containerRt, "SetBonusCard", new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -266f), new Vector2(0f, 112f), new Color(0.12f, 0.13f, 0.18f, 0.96f));
-            setHeaderCountText = CreateText(setCard.transform, "SetHeader", "SWEET POTATO COMBAT SET [0/5]", font, 10, FontStyle.Bold, TextAnchor.MiddleCenter, new Color(0.96f, 0.78f, 0.32f, 1f), new Vector2(0f, -5f), new Vector2(-8f, 18f));
-            setTier2Text = CreateText(setCard.transform, "SetTier2", "o [2-PC] +10% Attack Speed", font, 9, FontStyle.Normal, TextAnchor.MiddleLeft, TierInactiveColor, new Vector2(4f, -30f), new Vector2(-12f, 22f));
-            setTier4Text = CreateText(setCard.transform, "SetTier4", "o [4-PC] +15% Post-Dodge Dmg (3s)", font, 9, FontStyle.Normal, TextAnchor.MiddleLeft, TierInactiveColor, new Vector2(4f, -56f), new Vector2(-12f, 22f));
-            setTier5Text = CreateText(setCard.transform, "SetTier5", "o [5-PC] Shadow Dash Reset", font, 9, FontStyle.Normal, TextAnchor.MiddleLeft, TierInactiveColor, new Vector2(4f, -82f), new Vector2(-12f, 22f));
+            // 4. Sweet Potato Set Bonus Tracker Card (y: -274 to -378, height 104)
+            var setCard = CreatePanel(containerRt, "SetBonusCard", new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -274f), new Vector2(0f, 104f), new Color(0.12f, 0.13f, 0.18f, 0.96f));
+            setHeaderCountText = CreateText(setCard.transform, "SetHeader", "SWEET POTATO COMBAT SET [0/5]", font, 10, FontStyle.Bold, TextAnchor.MiddleCenter, new Color(0.96f, 0.78f, 0.32f, 1f), new Vector2(0f, -4f), new Vector2(-8f, 18f));
+            setTier2Text = CreateText(setCard.transform, "SetTier2", "o [2-PC] +10% Attack Speed", font, 9, FontStyle.Normal, TextAnchor.MiddleLeft, TierInactiveColor, new Vector2(4f, -26f), new Vector2(-12f, 20f));
+            setTier4Text = CreateText(setCard.transform, "SetTier4", "o [4-PC] +15% Post-Dodge Dmg (3s)", font, 9, FontStyle.Normal, TextAnchor.MiddleLeft, TierInactiveColor, new Vector2(4f, -50f), new Vector2(-12f, 20f));
+            setTier5Text = CreateText(setCard.transform, "SetTier5", "o [5-PC] Shadow Dash Reset", font, 9, FontStyle.Normal, TextAnchor.MiddleLeft, TierInactiveColor, new Vector2(4f, -74f), new Vector2(-12f, 20f));
 
             // 5. Bottom Slot Inspector & Action Hint Footer (y: -382 to -452, height 70)
             var footerCard = CreatePanel(containerRt, "InspectorFooter", new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -382f), new Vector2(0f, 70f), new Color(0.15f, 0.14f, 0.19f, 0.98f));
@@ -319,7 +319,6 @@ namespace PlayerUI
             }
 
             int armorLv = armorState != null ? armorState.armorLevel : 1;
-            int mitigationPct = armorState != null ? Mathf.RoundToInt(armorState.DamageMitigationRatio * 100f) : 0;
 
             ItemData helm = armorState != null ? armorState.GetEquippedItem(EquipmentSlotType.Helmet) : null;
             ItemData chest = armorState != null ? armorState.GetEquippedItem(EquipmentSlotType.Chest) : null;
@@ -352,44 +351,43 @@ namespace PlayerUI
             UpdateCalloutBadge(badgeNecklaceText, "RELIC", necklace);
             UpdateCalloutBadge(badgeWeaponText, "WEAPON", weapon, "Root Cleaver");
 
-            // Aggregate Gear Stats across all slots
-            int totalHp = 0;
-            int totalDef = 0;
-            float totalAtkSpd = 0f;
-            float totalMoveSpd = 0f;
-            float totalCrit = 0f;
+            var snap = armorState != null
+                ? armorState.GetAggregatedArmorStats()
+                : default;
 
-            if (armorState != null)
+            float totalDrPct = snap.TotalMitigationRatio * 100f;
+            float gearDrPct = snap.GearDefenseMitigationRatio * 100f;
+            float platDrPct = snap.PlatingMitigationRatio * 100f;
+
+            var playerStats = armorState != null ? armorState.GetComponent<PlayerStats>() : null;
+            if (playerStats == null)
             {
-                foreach (EquipmentSlotType st in Enum.GetValues(typeof(EquipmentSlotType)))
-                {
-                    if (armorState.GetEquippedItem(st) is EquipmentItemData eq)
-                    {
-                        totalHp += eq.bonusHealth;
-                        totalDef += eq.bonusDefense;
-                        totalAtkSpd += eq.bonusAttackSpeed;
-                        totalMoveSpd += eq.bonusMoveSpeed;
-                        totalCrit += eq.bonusCriticalChance;
-                    }
-                }
+                var pObj = GameObject.FindWithTag("Player") ?? GameObject.Find("Player");
+                if (pObj != null) playerStats = pObj.GetComponent<PlayerStats>();
             }
+            int baseHp = playerStats != null ? playerStats.BaseMaxHealth : 100;
+            int totalMaxHp = baseHp + snap.BonusHealth;
+            int effectiveHp = Mathf.RoundToInt(EquipmentUpgradeEvaluator.CalculateEffectiveHP(totalMaxHp, snap.TotalMitigationRatio));
 
             if (headerSubtitleText != null)
             {
-                headerSubtitleText.text = $"ARMOR LV.{armorLv} • {mitigationPct}% MITIGATION (+{totalDef} GEAR DEF)";
+                headerSubtitleText.text = snap.EquippedArmorPieceCount > 0
+                    ? $"LV.{armorLv} ({snap.EquippedArmorPieceCount}/5 PCS) • {totalDrPct:0.0}% DR ({gearDrPct:0.0}% Gear + {platDrPct:0}% Plate)"
+                    : $"NO ARMOR EQUIPPED • 0.0% DR (Plating Lv.{armorLv} Dormant)";
             }
 
             if (gearStatsSummaryText != null)
             {
-                int spdPct = Mathf.RoundToInt((totalAtkSpd + totalMoveSpd) * 100f);
-                int critPct = Mathf.RoundToInt(totalCrit * 100f);
-                gearStatsSummaryText.text = $"GEAR: +{totalHp} HP • +{totalDef} DEF • +{spdPct}% SPD • +{critPct}% CRIT";
+                int atkPct = Mathf.RoundToInt(snap.TotalAttackSpeed * 100f);
+                int movePct = Mathf.RoundToInt(snap.BonusMoveSpeed * 100f);
+                int critPct = Mathf.RoundToInt(snap.BonusCriticalChance * 100f);
+                gearStatsSummaryText.text =
+                    $"HP: {baseHp}->{totalMaxHp} (+{snap.BonusHealth}) • DEF: +{snap.BonusDefense} ({totalDrPct:0.0}% DR) • EHP: {effectiveHp}\n" +
+                    $"ATK SPD: +{atkPct}% • MOVE: +{movePct}% • CRIT: +{critPct}%";
             }
 
             // Update Sweet Potato Set Bonus Tracker
-            SetBonusState setBonus = armorState != null
-                ? armorState.GetCurrentSetBonus("Sweet Potato")
-                : new SetBonusState(0, 0f, 0f, false);
+            SetBonusState setBonus = snap.SetBonus;
 
             int count = setBonus.EquippedPieceCount;
             if (setHeaderCountText != null)
@@ -481,9 +479,10 @@ namespace PlayerUI
 
                     if (item is EquipmentItemData eq)
                     {
-                        string stats = $"Set: {eq.setName}  •  +{eq.bonusHealth} HP  •  +{eq.bonusDefense} DEF";
+                        float pieceDrPct = EquipmentUpgradeEvaluator.EvaluateDefenseMitigationRatio(eq.bonusDefense) * 100f;
+                        string stats = $"Set: {eq.setName}  •  +{eq.bonusHealth} HP  •  +{eq.bonusDefense} DEF (~{pieceDrPct:0.0}% DR)";
                         if (eq.bonusAttackSpeed > 0f) stats += $"  •  +{Mathf.RoundToInt(eq.bonusAttackSpeed * 100f)}% AtkSpd";
-                        if (eq.bonusMoveSpeed > 0f) stats += $"  •  +{Mathf.RoundToInt(eq.bonusMoveSpeed * 100f)}% MoveSpd";
+                        if (eq.bonusMoveSpeed > 0f) stats += $"  •  +{Mathf.RoundToInt(eq.bonusMoveSpeed * 100f)}% Move";
                         if (eq.bonusCriticalChance > 0f) stats += $"  •  +{Mathf.RoundToInt(eq.bonusCriticalChance * 100f)}% Crit";
                         inspectorDetailText.text = $"{stats}\n[Click Slot to Unequip to Inventory]";
                     }
@@ -499,17 +498,28 @@ namespace PlayerUI
                 }
                 else
                 {
-                    inspectorTitleText.text = $"[{tag} SLOT — EMPTY]";
+                    inspectorTitleText.text = $"[{tag} SLOT — UNARMORED]";
                     inspectorTitleText.color = new Color(0.75f, 0.80f, 0.90f, 1f);
-                    inspectorDetailText.text = "Drag matching gear here, or Double-Click / Right-Click gear in your Inventory to equip.";
+                    inspectorDetailText.text = $"{GetRecommendedPieceHint(currentlyHoveredSlot.slotType)}\nDrag or Double-Click from Bag to Equip.";
                 }
                 return;
             }
 
-            inspectorTitleText.text = "QUICK-EQUIP CONTROLS";
+            inspectorTitleText.text = "QUICK-EQUIP & ARMOR GUIDE";
             inspectorTitleText.color = new Color(0.95f, 0.82f, 0.38f, 1f);
-            inspectorDetailText.text = "• Double-Click or Right-Click Armor/Weapons in Bag to Equip\n• Drag & Drop onto Slots  |  Click Equipped Slot to Unequip";
+            inspectorDetailText.text = "• Hover any slot to inspect per-piece DR%, HP, Speed & Crit gains\n• Double-Click / Right-Click in Bag to Equip  |  Click Slot to Unequip";
         }
+
+        private static string GetRecommendedPieceHint(EquipmentSlotType slot) => slot switch
+        {
+            EquipmentSlotType.Helmet => "Sweet Potato Set: Burrow Hood (+15 HP, +3 DEF, +5% Crit)",
+            EquipmentSlotType.Chest => "Sweet Potato Set: Swift Root Armor (+35 HP, +6 DEF, +4% Move)",
+            EquipmentSlotType.Gloves => "Sweet Potato Set: Fang Grips (+10 HP, +2 DEF, +8% AtkSpd, +4% Crit)",
+            EquipmentSlotType.Boots => "Sweet Potato Set: Underground Striders (+15 HP, +3 DEF, +8% Move)",
+            EquipmentSlotType.Necklace => "Sweet Potato Set: Sweet Potato Heart (+25 HP, +2 DEF, +5% Move/AtkSpd, +3% Crit)",
+            EquipmentSlotType.MainWeapon => "Weapons: Root Cleaver (Melee) or Homestead Slingshot (Ranged)",
+            _ => "Equip matching gear to gain defensive mitigation and combat stats."
+        };
     }
 }
 

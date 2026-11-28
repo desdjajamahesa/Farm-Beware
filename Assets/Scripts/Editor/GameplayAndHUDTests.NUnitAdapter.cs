@@ -757,5 +757,11 @@ namespace FarmBeware.EditorTests
         {
             Assert.IsTrue(GameplayAndHUDTests.Test_MerchantShop_And_KitchenSink_WoodenBoard_SceneLayout_NoOverlap_Audit(), "Test_MerchantShop_And_KitchenSink_WoodenBoard_SceneLayout_NoOverlap_Audit failed. Check Unity Console logs for details.");
         }
+
+        [Test]
+        public void NUnit_122_Test_ArmorSystem_FullStatWiring_MitigationMath_And_InformativeUI_Audit()
+        {
+            Assert.IsTrue(GameplayAndHUDTests.Test_ArmorSystem_FullStatWiring_MitigationMath_And_InformativeUI_Audit(), "Test_ArmorSystem_FullStatWiring_MitigationMath_And_InformativeUI_Audit failed. Check Unity Console logs for details.");
+        }
     }
 }

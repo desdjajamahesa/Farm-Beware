@@ -161,22 +161,13 @@ namespace PlayerUI
         {
             if (playerStats == null) return;
 
-            int gearBonusHp = 0;
-            if (PlayerArmorUpgradeState.Instance != null)
-            {
-                foreach (FarmBeware.Core.Runtime.EquipmentSlotType st in System.Enum.GetValues(typeof(FarmBeware.Core.Runtime.EquipmentSlotType)))
-                {
-                    if (PlayerArmorUpgradeState.Instance.GetEquippedItem(st) is EquipmentItemData eq)
-                    {
-                        gearBonusHp += eq.bonusHealth;
-                    }
-                }
-            }
+            var armorState = PlayerArmorUpgradeState.Instance ?? playerStats.GetComponent<PlayerArmorUpgradeState>();
+            var snap = armorState != null ? armorState.GetAggregatedArmorStats() : default;
 
             if (txtHealth != null)
             {
-                txtHealth.text = gearBonusHp > 0
-                    ? $"{playerStats.currentHealth} / {playerStats.maxHealth} (+{gearBonusHp})"
+                txtHealth.text = snap.BonusHealth > 0
+                    ? $"{playerStats.currentHealth} / {playerStats.maxHealth} (Base {playerStats.BaseMaxHealth} + Gear +{snap.BonusHealth})"
                     : $"{playerStats.currentHealth} / {playerStats.maxHealth}";
             }
 
@@ -190,8 +181,44 @@ namespace PlayerUI
                 txtThirst.text = $"{Mathf.CeilToInt(playerStats.currentThirst)} / {Mathf.CeilToInt(playerStats.maxThirst)}";
         }
 
+        private Text txtArmorDefense;
+
+        private void EnsureArmorDefenseRow()
+        {
+            if (txtArmorDefense != null) return;
+            Transform statsContent = transform.Find("StatsContent");
+            if (statsContent == null) return;
+
+            Transform existing = statsContent.Find("Row_ArmorDefense");
+            if (existing != null)
+            {
+                txtArmorDefense = existing.Find("Value")?.GetComponent<Text>();
+                return;
+            }
+
+            Transform template = statsContent.Find("Row_Base Damage");
+            if (template == null) return;
+
+            var rowGo = Instantiate(template.gameObject, statsContent);
+            rowGo.name = "Row_ArmorDefense";
+            rowGo.transform.SetSiblingIndex(Mathf.Min(statsContent.childCount - 1, template.GetSiblingIndex() + 1));
+
+            var labelTmp = rowGo.transform.Find("Label")?.GetComponent<Text>();
+            if (labelTmp != null) labelTmp.text = "Armor & Defense";
+
+            txtArmorDefense = rowGo.transform.Find("Value")?.GetComponent<Text>();
+            if (txtArmorDefense != null)
+            {
+                txtArmorDefense.color = new Color(0.45f, 0.90f, 1f, 1f);
+            }
+        }
+
         private void UpdateCombatStats()
         {
+            var armorState = PlayerArmorUpgradeState.Instance ?? (playerStats != null ? playerStats.GetComponent<PlayerArmorUpgradeState>() : null);
+            var snap = armorState != null ? armorState.GetAggregatedArmorStats() : default;
+            int armorLv = armorState != null ? armorState.armorLevel : 1;
+
             // Active weapon & Level
             string weaponName = "Root Cleaver";
             int level = 1;
@@ -204,9 +231,9 @@ namespace PlayerUI
                 weaponName = $"Root Cleaver (Lv {level})";
             }
 
-            if (PlayerArmorUpgradeState.Instance != null)
+            if (armorState != null)
             {
-                var eqWeapon = PlayerArmorUpgradeState.Instance.GetEquippedItem(FarmBeware.Core.Runtime.EquipmentSlotType.MainWeapon);
+                var eqWeapon = armorState.GetEquippedItem(FarmBeware.Core.Runtime.EquipmentSlotType.MainWeapon);
                 if (eqWeapon != null)
                 {
                     if (eqWeapon is ToolItemData toolWeapon && toolWeapon.baseDamage > 0)
@@ -221,9 +248,27 @@ namespace PlayerUI
             if (txtWeaponLevel != null) txtWeaponLevel.text = $"Level {level}";
             if (txtBaseDamage != null) txtBaseDamage.text = $"{baseDmg}";
 
+            EnsureArmorDefenseRow();
+            if (txtArmorDefense != null)
+            {
+                int totalMaxHp = playerStats != null ? playerStats.maxHealth : 100;
+                float ehp = FeaturesWorkbench.Core.EquipmentUpgradeEvaluator.CalculateEffectiveHP(totalMaxHp, snap.TotalMitigationRatio);
+                int critPct = Mathf.RoundToInt(snap.BonusCriticalChance * 100f);
+                txtArmorDefense.text = snap.EquippedArmorPieceCount > 0
+                    ? $"Lv.{armorLv} ({snap.EquippedArmorPieceCount}/5) • +{snap.BonusDefense} DEF ({snap.TotalMitigationRatio * 100f:0.0}% DR) • +{critPct}% Crit • EHP {ehp:0}"
+                    : $"Unarmored (0/5) • 0.0% DR • EHP {totalMaxHp}";
+            }
+
             if (playerEquipment != null)
             {
-                if (txtAttackSpeed != null) txtAttackSpeed.text = $"{playerEquipment.AttackAnimationSpeed:0.0}x";
+                float effectiveAtkSpd = playerEquipment.AttackAnimationSpeed * playerEquipment.GetArmorAttackSpeedMultiplier();
+                int gearAtkPct = Mathf.RoundToInt(snap.TotalAttackSpeed * 100f);
+                if (txtAttackSpeed != null)
+                {
+                    txtAttackSpeed.text = gearAtkPct > 0
+                        ? $"{effectiveAtkSpd:0.00}x (+{gearAtkPct}% Gear)"
+                        : $"{effectiveAtkSpd:0.00}x";
+                }
                 if (txtKickDamage != null) txtKickDamage.gameObject.SetActive(false);
                 if (txtSkillDamage != null) txtSkillDamage.text = $"{baseDmg * 2} Dmg (2.0x)";
             }
@@ -236,12 +281,18 @@ namespace PlayerUI
 
             if (playerControl != null)
             {
-                speed = playerControl.walkSpeed;
-                sprint = playerControl.runSpeed;
+                speed = playerControl.EffectiveWalkSpeed;
+                sprint = playerControl.EffectiveRunSpeed;
             }
 
-            if (txtMoveSpeed != null) txtMoveSpeed.text = $"{speed:0.0} m/s";
-            if (txtSprintSpeed != null) txtSprintSpeed.text = $"{sprint:0.0} m/s";
+            var armorState = PlayerArmorUpgradeState.Instance ?? (playerStats != null ? playerStats.GetComponent<PlayerArmorUpgradeState>() : null);
+            var snap = armorState != null ? armorState.GetAggregatedArmorStats() : default;
+            int movePct = Mathf.RoundToInt(snap.BonusMoveSpeed * 100f);
+
+            if (txtMoveSpeed != null)
+                txtMoveSpeed.text = movePct > 0 ? $"{speed:0.00} m/s (+{movePct}%)" : $"{speed:0.0} m/s";
+            if (txtSprintSpeed != null)
+                txtSprintSpeed.text = movePct > 0 ? $"{sprint:0.00} m/s (+{movePct}%)" : $"{sprint:0.0} m/s";
 
             if (PlayerWallet.Instance != null && txtGold != null)
             {
