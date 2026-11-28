@@ -763,5 +763,11 @@ namespace FarmBeware.EditorTests
         {
             Assert.IsTrue(GameplayAndHUDTests.Test_ArmorSystem_FullStatWiring_MitigationMath_And_InformativeUI_Audit(), "Test_ArmorSystem_FullStatWiring_MitigationMath_And_InformativeUI_Audit failed. Check Unity Console logs for details.");
         }
+
+        [Test]
+        public void NUnit_123_Test_KitchenRecipe_MVPCookingDurations_Audit()
+        {
+            Assert.IsTrue(GameplayAndHUDTests.Test_KitchenRecipe_MVPCookingDurations_Audit(), "Test_KitchenRecipe_MVPCookingDurations_Audit failed. Check Unity Console logs for details.");
+        }
     }
 }

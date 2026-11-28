@@ -1237,5 +1237,115 @@ namespace FarmBeware.EditorTests
                     ServiceLocator.Unregister<IItemCatalog>();
             }
         }
+
+        // Test 123: Verify all 9 KitchenRecipe cooking assets match MVP Food Buff durations (90s/120s/180s/300s/420s),
+        // scene KitchenStove holds all 9 calibrated recipes, and StoveUIManager.FormatDuration renders exact m/s labels.
+        internal static bool Test_KitchenRecipe_MVPCookingDurations_Audit()
+        {
+            var expectedRecipes = new (string path, float expectedSeconds, string expectedLabel)[]
+            {
+                ("Assets/Data/Recipes/Cooking/Recipe_TaroChip.asset", 90f, "1m 30s"),
+                ("Assets/Data/Recipes/Cooking/Recipe_RoastedSweetPotato.asset", 90f, "1m 30s"),
+                ("Assets/Data/Recipes/Cooking/Recipe_CornPorridge.asset", 90f, "1m 30s"),
+                ("Assets/Data/Recipes/Cooking/Recipe_TaroDumpling.asset", 120f, "2m"),
+                ("Assets/Data/Recipes/Cooking/Recipe_PurpleYamCake.asset", 180f, "3m"),
+                ("Assets/Data/Recipes/Cooking/Recipe_SweetPotatoPorridge.asset", 180f, "3m"),
+                ("Assets/Data/Recipes/Cooking/Recipe_TaroCoconutStew.asset", 300f, "5m"),
+                ("Assets/Data/Recipes/Cooking/Recipe_TaroCornStew.asset", 300f, "5m"),
+                ("Assets/Data/Recipes/Cooking/Recipe_SweetPotatoFeast.asset", 420f, "7m")
+            };
+
+            var loadedPaths = new HashSet<string>(System.StringComparer.OrdinalIgnoreCase);
+            foreach (var entry in expectedRecipes)
+            {
+                var recipe = AssetDatabase.LoadAssetAtPath<KitchenRecipe>(entry.path);
+                if (recipe == null)
+                {
+                    Debug.LogError($"[Test 123] Missing KitchenRecipe asset at '{entry.path}'!");
+                    return false;
+                }
+
+                if (!Mathf.Approximately(recipe.processTime, entry.expectedSeconds))
+                {
+                    Debug.LogError($"[Test 123] '{recipe.name}' processTime mismatch: got {recipe.processTime}s, expected {entry.expectedSeconds}s!");
+                    return false;
+                }
+
+                loadedPaths.Add(entry.path);
+            }
+
+            // Ensure no extra uncalibrated cooking recipe asset exists outside the expected 9
+            string[] allGuids = AssetDatabase.FindAssets("t:KitchenRecipe", new[] { "Assets/Data/Recipes/Cooking" });
+            if (allGuids.Length != expectedRecipes.Length)
+            {
+                Debug.LogError($"[Test 123] Expected {expectedRecipes.Length} cooking recipe assets, found {allGuids.Length}!");
+                return false;
+            }
+
+            foreach (string guid in allGuids)
+            {
+                string assetPath = AssetDatabase.GUIDToAssetPath(guid);
+                if (!loadedPaths.Contains(assetPath))
+                {
+                    Debug.LogError($"[Test 123] Unexpected cooking recipe asset found at '{assetPath}'!");
+                    return false;
+                }
+            }
+
+            // Verify scene KitchenStove references all 9 calibrated recipes with no stale <=45s durations
+            var sceneStove = Object.FindFirstObjectByType<KitchenStove>(FindObjectsInactive.Include);
+            if (sceneStove != null)
+            {
+                var stoveRecipes = sceneStove.Recipes;
+                if (stoveRecipes == null || stoveRecipes.Length != expectedRecipes.Length)
+                {
+                    Debug.LogError($"[Test 123] Scene KitchenStove recipe count mismatch: {(stoveRecipes != null ? stoveRecipes.Length : 0)} (expected {expectedRecipes.Length})!");
+                    return false;
+                }
+
+                var uniqueStoveRecipes = new HashSet<KitchenRecipe>();
+                foreach (var r in stoveRecipes)
+                {
+                    if (r == null)
+                    {
+                        Debug.LogError("[Test 123] Scene KitchenStove contains a null recipe entry!");
+                        return false;
+                    }
+                    if (!uniqueStoveRecipes.Add(r))
+                    {
+                        Debug.LogError($"[Test 123] Scene KitchenStove contains duplicate recipe '{r.name}'!");
+                        return false;
+                    }
+                    if (r.processTime <= 45f)
+                    {
+                        Debug.LogError($"[Test 123] Scene KitchenStove recipe '{r.name}' retains stale duration {r.processTime}s!");
+                        return false;
+                    }
+                }
+            }
+
+            // Verify StoveUIManager.FormatDuration formatting for all MVP target durations
+            var formatMethod = typeof(StoveUIManager).GetMethod(
+                "FormatDuration",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            if (formatMethod == null)
+            {
+                Debug.LogError("[Test 123] StoveUIManager.FormatDuration method not found!");
+                return false;
+            }
+
+            foreach (var entry in expectedRecipes)
+            {
+                string formatted = formatMethod.Invoke(null, new object[] { entry.expectedSeconds }) as string;
+                if (formatted != entry.expectedLabel)
+                {
+                    Debug.LogError($"[Test 123] StoveUIManager.FormatDuration({entry.expectedSeconds}) returned '{formatted}', expected '{entry.expectedLabel}'!");
+                    return false;
+                }
+            }
+
+            Debug.Log("✅ Test 123: All 9 KitchenRecipe cooking durations (90s/120s/180s/300s/420s), scene KitchenStove catalog, and FormatDuration UI labels verified against MVP Food Buff spec.");
+            return true;
+        }
     }
 }
