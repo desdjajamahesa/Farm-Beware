@@ -733,5 +733,11 @@ namespace FarmBeware.EditorTests
         {
             Assert.IsTrue(GameplayAndHUDTests.Test_ArchitectureHardening_ZeroSendMessage_ZeroEmptyCatch_And_Contracts_Audit(), "Test_ArchitectureHardening_ZeroSendMessage_ZeroEmptyCatch_And_Contracts_Audit failed. Check Unity Console logs for details.");
         }
+
+        [Test]
+        public void NUnit_118_Test_CombatPolish_FrameData_CancelMatrix_TrackingLockOff_TokenFairness_And_ZeroGC_Audit()
+        {
+            Assert.IsTrue(GameplayAndHUDTests.Test_CombatPolish_FrameData_CancelMatrix_TrackingLockOff_TokenFairness_And_ZeroGC_Audit(), "Test_CombatPolish_FrameData_CancelMatrix_TrackingLockOff_TokenFairness_And_ZeroGC_Audit failed. Check Unity Console logs for details.");
+        }
     }
 }

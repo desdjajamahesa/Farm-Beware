@@ -8,9 +8,9 @@ using FeaturesTime.UI;
 namespace FeaturesCombat
 {
     /// <summary>
-    /// Nighttime combat wave controller manager (Night Brawl).
-    /// Orchestrates the 5-day wave cycle per MVP specification:
-    /// Day 1 (1 Wave) through Day 5 (5 Waves culminating in 2 simultaneous Bosses).
+    /// Manager pengontrol gelombang pertempuran malam hari (Night Brawl).
+    /// Mengatur siklus gelombang 5 hari sesuai spesifikasi dokumen MVP:
+    /// Day 1 (1 Wave) s.d. Day 5 (5 Waves dengan klimaks 2 Boss sekaligus).
     /// </summary>
     public class NightBrawlManager : MonoBehaviour
     {
@@ -38,7 +38,8 @@ namespace FeaturesCombat
             set => _instance = value;
         }
 
-        public FeaturesCombat.Core.PureLogic.AttackTokenDispatcher TokenDispatcher { get; private set; } = new FeaturesCombat.Core.PureLogic.AttackTokenDispatcher();
+        public FeaturesCombat.Core.PureLogic.AttackTokenDispatcher TokenDispatcher { get; private set; } =
+            new FeaturesCombat.Core.PureLogic.AttackTokenDispatcher() { MinCommitStaggerSec = 0.28f };
 
         [Header("Arena Center & Spawn Bounds")]
         [SerializeField] private Vector3 arenaCenter = new Vector3(21f, 0.5f, 36f);
@@ -113,7 +114,7 @@ namespace FeaturesCombat
                 }
             }
 
-            // 3. Default fallback if still empty
+            // 3. Fallback default jika masih kosong
             if (points.Count == 0)
             {
                 if (frontGateSpawnPoints != null && frontGateSpawnPoints.Length > 0)
@@ -812,8 +813,8 @@ namespace FeaturesCombat
         }
 
         /// <summary>
-        /// Registers a newly summoned boss minion into the current wave's active enemy list.
-        /// Minions do not increment waveEngine quota and are marked with isSummonedMinion = true.
+        /// Mendaftarkan musuh baru hasil pemanggilan (summon) bos ke dalam daftar musuh aktif wave saat ini.
+        /// Minion tidak menambah kuota waveEngine dan ditandai sebagai isSummonedMinion = true.
         /// </summary>
         public void RegisterDynamicEnemy(EnemyBase enemy)
         {
@@ -829,8 +830,8 @@ namespace FeaturesCombat
         }
 
         /// <summary>
-        /// Checks whether a world coordinate lies inside the house interior.
-        /// House bounds: X: [9.5, 31.5], Z: [4.5, 26.5].
+        /// Mengecek apakah sebuah koordinat dunia berada di dalam interior rumah.
+        /// Batas rumah: X: [9.5, 31.5], Z: [4.5, 26.5].
         /// </summary>
         public static bool IsInsideHouse(Vector3 pos)
         {
@@ -838,8 +839,8 @@ namespace FeaturesCombat
         }
 
         /// <summary>
-        /// Computes the nearest outdoor position outside the house perimeter with a safe margin.
-        /// Used to push monsters out or constrain skill movement so it cannot penetrate the house.
+        /// Menghasilkan titik outdoor terdekat di luar perimeter rumah dengan margin aman.
+        /// Digunakan untuk mengusir monster keluar atau membatasi pergerakan skill agar tidak menembus rumah.
         /// </summary>
         public static Vector3 GetNearestOutdoorPosition(Vector3 pos, float margin = 1.5f)
         {
@@ -866,8 +867,8 @@ namespace FeaturesCombat
         }
 
         /// <summary>
-        /// Checks whether a world coordinate lies inside the homestead compound perimeter.
-        /// New fence bounds (42m x 65m): X: [0.0, 42.0], Z: [-17.0, 48.0].
+        /// Mengecek apakah sebuah koordinat dunia berada di dalam batas kompleks pekarangan (Homestead Perimeter).
+        /// Batas pagar baru (42m x 65m): X: [0.0, 42.0], Z: [-17.0, 48.0].
         /// </summary>
         public static bool IsInsideCompound(Vector3 pos)
         {
@@ -875,8 +876,8 @@ namespace FeaturesCombat
         }
 
         /// <summary>
-        /// Generates a random spawn position from one of the configured spawn points (MonsterSpawnPoints and its children).
-        /// Applies a slight scatter radius and ensures ground/NavMesh alignment (ground raycast &amp; NavMesh).
+        /// Menghasilkan posisi spawn acak dari salah satu spawn point yang ditentukan (MonsterSpawnPoints dan children-nya).
+        /// Menerapkan scatter radius ringan dan memastikan posisi berada di atas permukaan tanah (ground raycast & NavMesh).
         /// </summary>
         public Vector3 CalculateRandomSpawnPoint()
         {
@@ -889,7 +890,7 @@ namespace FeaturesCombat
             int pointIndex = UnityEngine.Random.Range(0, points.Count);
             Vector3 basePoint = points[pointIndex];
 
-            // Slight scatter offset so simultaneously spawned monsters do not stack on the exact same point
+            // Sedikit scatter offset agar monster yang spawn serempak tidak menumpuk di titik yang sama persis
             Vector2 scatter = UnityEngine.Random.insideUnitCircle * spawnScatterRadius;
             Vector3 candidate = basePoint + new Vector3(scatter.x, 0f, scatter.y);
             candidate.y += 10f; // Elevate for ground raycast
@@ -904,13 +905,13 @@ namespace FeaturesCombat
                 finalPos.y = basePoint.y;
             }
 
-            // Snap to nearest walkable NavMesh around the spawn point
+            // Snap ke NavMesh walkable terdekat di sekitar titik spawn
             if (NavMesh.SamplePosition(finalPos, out NavMeshHit navHit, 3.5f, NavMesh.AllAreas))
             {
                 finalPos = navHit.position;
             }
 
-            // Ensure scatter/NavMesh does not shift monsters more than 2.5m from the user-defined spawn point
+            // Jaga agar scatter/navmesh tidak memindahkan monster lebih dari 2.5m dari titik spawn yang ditentukan user
             float distFromBase = Vector2.Distance(new Vector2(finalPos.x, finalPos.z), new Vector2(basePoint.x, basePoint.z));
             if (distFromBase > 2.5f)
             {
@@ -926,7 +927,7 @@ namespace FeaturesCombat
             activeEnemies.Remove(enemy);
             OnEnemyDied?.Invoke(enemy);
 
-            // Boss-summoned minions must not advance waveEngine quota or progress
+            // Minion hasil summon bos tidak boleh memajukan kuota atau progres waveEngine
             if (enemy == null || !enemy.isSummonedMinion)
             {
                 waveEngine.RecordEnemyDefeated();

@@ -2791,5 +2791,240 @@ namespace FarmBeware.EditorTests
                 }
             }
         }
+
+        // Test 118: Frame-data Single Source of Truth, 2D cancel & priority buffer, enemy lock-off profiles, staggered token cadence, hitstop deferred knockback, and Zero-GC hot path
+        internal static bool Test_CombatPolish_FrameData_CancelMatrix_TrackingLockOff_TokenFairness_And_ZeroGC_Audit()
+        {
+            var cleanup = new List<Object>();
+            try
+            {
+                // 1. Validate all 12 player moves in CombatFrameDataSheet
+                var moveIds = new[]
+                {
+                    FeaturesCombat.Core.PureLogic.CombatActionID.Light1,
+                    FeaturesCombat.Core.PureLogic.CombatActionID.Light2,
+                    FeaturesCombat.Core.PureLogic.CombatActionID.Light3,
+                    FeaturesCombat.Core.PureLogic.CombatActionID.Light4,
+                    FeaturesCombat.Core.PureLogic.CombatActionID.HeavyFinisher1,
+                    FeaturesCombat.Core.PureLogic.CombatActionID.HeavyFinisher2,
+                    FeaturesCombat.Core.PureLogic.CombatActionID.ChargedThrust,
+                    FeaturesCombat.Core.PureLogic.CombatActionID.DashSweep,
+                    FeaturesCombat.Core.PureLogic.CombatActionID.FrontKick,
+                    FeaturesCombat.Core.PureLogic.CombatActionID.HeavyChain2,
+                    FeaturesCombat.Core.PureLogic.CombatActionID.HeavyChain3,
+                    FeaturesCombat.Core.PureLogic.CombatActionID.HeavyChain4
+                };
+
+                for (int i = 0; i < moveIds.Length; i++)
+                {
+                    var m = FeaturesCombat.Core.PureLogic.CombatFrameDataSheet.GetMove(moveIds[i]);
+                    if (m.StartupSec + m.ActiveSec > m.ClipDurationSec + 0.02f)
+                    {
+                        Debug.LogError($"[Test 118] {m.ActionID} Startup+Active ({m.StartupSec}+{m.ActiveSec}) exceeds clip {m.ClipDurationSec}!");
+                        return false;
+                    }
+                    if (m.MoveCancelNormTime >= 0.94f)
+                    {
+                        Debug.LogError($"[Test 118] {m.ActionID} MoveCancelNormTime ({m.MoveCancelNormTime}) must be < 0.94f!");
+                        return false;
+                    }
+                }
+
+                var mL1 = FeaturesCombat.Core.PureLogic.CombatFrameDataSheet.GetMove(FeaturesCombat.Core.PureLogic.CombatActionID.Light1);
+                var mL2 = FeaturesCombat.Core.PureLogic.CombatFrameDataSheet.GetMove(FeaturesCombat.Core.PureLogic.CombatActionID.Light2);
+                var mH2 = FeaturesCombat.Core.PureLogic.CombatFrameDataSheet.GetMove(FeaturesCombat.Core.PureLogic.CombatActionID.HeavyChain2);
+                if (mL1.KnockbackForce > 2.5f || mL2.KnockbackForce > 2.5f)
+                {
+                    Debug.LogError($"[Test 118] Light 1-2 knockback too high (L1={mL1.KnockbackForce}, L2={mL2.KnockbackForce}), would break Light 3 combo spacing!");
+                    return false;
+                }
+                if (mH2.StartupSec + mH2.ActiveSec > 0.405f)
+                {
+                    Debug.LogError($"[Test 118] HeavyChain2 Startup+Active ({mH2.StartupSec}+{mH2.ActiveSec}) exceeds 0.405s clip ceiling!");
+                    return false;
+                }
+
+                // Phase transition checks
+                if (FeaturesCombat.Core.PureLogic.CombatFrameDataSheet.EvaluatePhase(mL1, 0.05f) != FeaturesCombat.Core.PureLogic.CombatPhase.Startup ||
+                    FeaturesCombat.Core.PureLogic.CombatFrameDataSheet.EvaluatePhase(mL1, 0.15f) != FeaturesCombat.Core.PureLogic.CombatPhase.Active ||
+                    FeaturesCombat.Core.PureLogic.CombatFrameDataSheet.EvaluatePhase(mL1, 0.30f) != FeaturesCombat.Core.PureLogic.CombatPhase.Recovery)
+                {
+                    Debug.LogError("[Test 118] EvaluatePhase failed to map Startup -> Active -> Recovery!");
+                    return false;
+                }
+
+                // 2. Priority Buffer + 2D Cancel Matrix + Heavy->Light1
+                var buffer = new FeaturesCombat.Core.PureLogic.CombatInputBuffer();
+                buffer.Buffer(FeaturesCombat.Core.PureLogic.PlayerCancelAction.LightAttack, 10.0f);
+                buffer.Buffer(FeaturesCombat.Core.PureLogic.PlayerCancelAction.HeavyAttack, 10.02f);
+                buffer.Buffer(FeaturesCombat.Core.PureLogic.PlayerCancelAction.Dodge, 10.04f);
+                buffer.Buffer(FeaturesCombat.Core.PureLogic.PlayerCancelAction.Parry, 10.05f);
+                var p1 = FeaturesCombat.Core.PureLogic.PlayerCancelAction.None;
+                var p2 = FeaturesCombat.Core.PureLogic.PlayerCancelAction.None;
+                if (!buffer.TryConsumeHighestPriority(10.10f, out p1) || p1 != FeaturesCombat.Core.PureLogic.PlayerCancelAction.Parry ||
+                    !buffer.TryConsumeHighestPriority(10.10f, out p2) || p2 != FeaturesCombat.Core.PureLogic.PlayerCancelAction.Dodge)
+                {
+                    Debug.LogError($"[Test 118] CombatInputBuffer priority mismatch: p1={p1}, p2={p2}!");
+                    return false;
+                }
+                if (buffer.HasBuffered(FeaturesCombat.Core.PureLogic.PlayerCancelAction.LightAttack, 10.50f))
+                {
+                    Debug.LogError("[Test 118] CombatInputBuffer failed to expire stale attack input!");
+                    return false;
+                }
+
+                if (FeaturesCombat.Core.PureLogic.CombatFrameDataSheet.CanCancel(FeaturesCombat.Core.PureLogic.CombatActionID.Light1, 0.10f, FeaturesCombat.Core.PureLogic.PlayerCancelAction.Dodge, false) ||
+                    !FeaturesCombat.Core.PureLogic.CombatFrameDataSheet.CanCancel(FeaturesCombat.Core.PureLogic.CombatActionID.Light1, 0.25f, FeaturesCombat.Core.PureLogic.PlayerCancelAction.Dodge, false) ||
+                    !FeaturesCombat.Core.PureLogic.CombatFrameDataSheet.CanCancel(FeaturesCombat.Core.PureLogic.CombatActionID.Light2, 0.70f, FeaturesCombat.Core.PureLogic.PlayerCancelAction.Move, false) ||
+                    FeaturesCombat.Core.PureLogic.CombatFrameDataSheet.CanCancel(FeaturesCombat.Core.PureLogic.CombatActionID.Idle, 0f, FeaturesCombat.Core.PureLogic.PlayerCancelAction.LightAttack, false, isDodging: true, dodgeProgress: 0.50f) ||
+                    !FeaturesCombat.Core.PureLogic.CombatFrameDataSheet.CanCancel(FeaturesCombat.Core.PureLogic.CombatActionID.Idle, 0f, FeaturesCombat.Core.PureLogic.PlayerCancelAction.LightAttack, false, isDodging: true, dodgeProgress: 0.80f))
+                {
+                    Debug.LogError("[Test 118] CanCancel 2D matrix assertion failed!");
+                    return false;
+                }
+
+                var hToLMachine = new FeaturesCombat.Melee.MeleeCombatStateMachine();
+                var hToLState = FeaturesCombat.Melee.MeleeCombatState.Idle;
+                if (!hToLMachine.TryTriggerHeavyChain(1.0f, 1.0f, out _, out _) ||
+                    !hToLMachine.TryTriggerLight(1.4f, 0.65f, out hToLState, out _) ||
+                    hToLState != FeaturesCombat.Melee.MeleeCombatState.Light1)
+                {
+                    Debug.LogError($"[Test 118] Heavy -> Light1 chain failed! Got {hToLState}");
+                    return false;
+                }
+
+                // 3. EnemyCombatProfile differentiation & Tracking Lock-Off across all 6 archetypes
+                foreach (FeaturesCombat.EnemyType et in System.Enum.GetValues(typeof(FeaturesCombat.EnemyType)))
+                {
+                    var ep = FeaturesCombat.Core.PureLogic.EnemyCombatProfile.GetProfile(et);
+                    if (ep.WindupDurationSec < 0.42f || ep.TrackingCutoffRatio < 0.50f || ep.TrackingCutoffRatio > 0.70f)
+                    {
+                        Debug.LogError($"[Test 118] Profile {et} out of readability bounds: windup={ep.WindupDurationSec}, cutoff={ep.TrackingCutoffRatio}!");
+                        return false;
+                    }
+                    bool preTrack = FeaturesCombat.Core.PureLogic.EnemyCombatProfile.EvaluateWindupTracking(ep, ep.WindupDurationSec * 0.25f, out bool lockBefore, out _);
+                    bool postTrack = FeaturesCombat.Core.PureLogic.EnemyCombatProfile.EvaluateWindupTracking(ep, ep.WindupDurationSec * 0.85f, out bool lockAfter, out _);
+                    if (!preTrack || lockBefore || postTrack || !lockAfter)
+                    {
+                        Debug.LogError($"[Test 118] Tracking lock-off failed for {et}!");
+                        return false;
+                    }
+                }
+
+                var pMaw = FeaturesCombat.Core.PureLogic.EnemyCombatProfile.GetProfile(FeaturesCombat.EnemyType.TuberMaw);
+                var pBrute = FeaturesCombat.Core.PureLogic.EnemyCombatProfile.GetProfile(FeaturesCombat.EnemyType.TaroBrute);
+                var pCol = FeaturesCombat.Core.PureLogic.EnemyCombatProfile.GetProfile(FeaturesCombat.EnemyType.TaroColossus);
+                if (!(pMaw.MaxPoise < pBrute.MaxPoise && pBrute.MaxPoise < pCol.MaxPoise) ||
+                    pMaw.InnateSuperArmor || !pBrute.InnateSuperArmor || !pCol.InnateSuperArmor)
+                {
+                    Debug.LogError("[Test 118] Enemy Poise / SuperArmor archetype hierarchy invalid!");
+                    return false;
+                }
+
+                // 4. Staggered melee commit cadence & immediate token eviction on stagger
+                var disp = new FeaturesCombat.Core.PureLogic.AttackTokenDispatcher(3, 2) { MinCommitStaggerSec = 0.28f };
+                if (!disp.TryAcquireToken(101, false, 10.0f, 2.5f, FeaturesCombat.Core.PureLogic.AttackTokenPriority.Minion, 1.5f, true) ||
+                    disp.TryAcquireToken(102, false, 10.0f, 2.5f, FeaturesCombat.Core.PureLogic.AttackTokenPriority.Minion, 1.5f, true) ||
+                    !disp.TryAcquireToken(102, false, 10.30f, 2.5f, FeaturesCombat.Core.PureLogic.AttackTokenPriority.Minion, 1.5f, true) ||
+                    !disp.TryAcquireToken(201, false, 10.32f, 2.5f, FeaturesCombat.Core.PureLogic.AttackTokenPriority.Boss, 2.0f, true))
+                {
+                    Debug.LogError("[Test 118] AttackTokenDispatcher commit stagger or Boss override failed!");
+                    return false;
+                }
+
+                if (FeaturesCombat.NightBrawlManager.Instance == null)
+                {
+                    var nbGo = new GameObject("Test118_NB");
+                    cleanup.Add(nbGo);
+                    nbGo.AddComponent<FeaturesCombat.NightBrawlManager>();
+                }
+                var liveDisp = FeaturesCombat.NightBrawlManager.Instance.TokenDispatcher;
+                liveDisp.ResetAll();
+
+                var mawGo = new GameObject("Test118_Maw");
+                cleanup.Add(mawGo);
+                mawGo.AddComponent<Rigidbody>();
+                mawGo.AddComponent<CapsuleCollider>();
+                var maw = mawGo.AddComponent<FeaturesCombat.EnemyBase>();
+                maw.enemyType = FeaturesCombat.EnemyType.TuberMaw;
+                maw.InitializeStatsByType();
+                maw.InitializePoise();
+                maw.maxHealth = 400;
+                maw.currentHealth = 400;
+
+                // Acquire anticipatory uncommitted token (isPerformingSkill == false)
+                liveDisp.TryAcquireToken(mawGo.GetInstanceID(), false, Time.time, 3.0f, FeaturesCombat.Core.PureLogic.AttackTokenPriority.Minion, 2.0f, false);
+                maw.TakeDamage(20, mawGo.transform.position, Vector3.forward, 60f, 3.0f, 1.5f);
+                if (liveDisp.HasToken(mawGo.GetInstanceID(), false, Time.time))
+                {
+                    Debug.LogError("[Test 118] EnemyBase failed to evict anticipatory melee token on stagger!");
+                    return false;
+                }
+
+                // 5. HitstopCoordinator IsEntityInHitstop & QueueKnockbackOrApply
+                if (FeaturesCombat.Adapters.HitstopCoordinator.Instance == null)
+                {
+                    var hsGo = new GameObject("Test118_Hitstop");
+                    cleanup.Add(hsGo);
+                    hsGo.AddComponent<FeaturesCombat.Adapters.HitstopCoordinator>();
+                }
+                var hs = FeaturesCombat.Adapters.HitstopCoordinator.Instance;
+                hs.RegisterHitstop(mawGo, 0.12f, 0f);
+                if (!hs.IsEntityInHitstop(mawGo) || !hs.QueueKnockbackOrApply(mawGo, Vector3.forward * 4f))
+                {
+                    Debug.LogError("[Test 118] HitstopCoordinator IsEntityInHitstop or QueueKnockbackOrApply failed!");
+                    return false;
+                }
+                hs.Unregister(mawGo, false);
+
+                // 6. Zero-GC Audit across 5,000 pure-logic combat evaluations
+                var zBuf = new FeaturesCombat.Core.PureLogic.CombatInputBuffer();
+                var zPoise = new FeaturesCombat.Core.PureLogic.PoiseTracker(50f, 15f, 2f, false);
+                var zDef = new FeaturesCombat.Core.PureLogic.DefenseEvaluator();
+                // Warmup pass
+                FeaturesCombat.Core.PureLogic.CombatFrameDataSheet.CanCancel(FeaturesCombat.Core.PureLogic.CombatActionID.Light1, 0.5f, FeaturesCombat.Core.PureLogic.PlayerCancelAction.Dodge, false);
+                FeaturesCombat.Core.PureLogic.EnemyCombatProfile.EvaluateWindupTracking(pMaw, 0.2f, out _, out _);
+                zBuf.Buffer(FeaturesCombat.Core.PureLogic.PlayerCancelAction.Parry, 1f);
+                zBuf.TryConsumeHighestPriority(1.05f, out _);
+
+                long memBefore = System.GC.GetAllocatedBytesForCurrentThread();
+                for (int k = 0; k < 5000; k++)
+                {
+                    var mv = FeaturesCombat.Core.PureLogic.CombatFrameDataSheet.GetMove(FeaturesCombat.Core.PureLogic.CombatActionID.Light2);
+                    FeaturesCombat.Core.PureLogic.CombatFrameDataSheet.EvaluatePhase(mv, 0.15f);
+                    FeaturesCombat.Core.PureLogic.CombatFrameDataSheet.CanCancel(mv.ActionID, 0.6f, FeaturesCombat.Core.PureLogic.PlayerCancelAction.Move, false);
+                    var prof = FeaturesCombat.Core.PureLogic.EnemyCombatProfile.GetProfile(FeaturesCombat.EnemyType.TaroBrute);
+                    FeaturesCombat.Core.PureLogic.EnemyCombatProfile.EvaluateWindupTracking(prof, 0.3f, out _, out _);
+                    zBuf.Buffer(FeaturesCombat.Core.PureLogic.PlayerCancelAction.LightAttack, k * 0.01f);
+                    zBuf.TryConsumeHighestPriority(k * 0.01f, out _);
+                    zPoise.ApplyPoiseDamage(5f, 0.5f, out _);
+                    zPoise.Tick(0.016f);
+                    zDef.Tick(0.016f);
+                    disp.CountActiveTokens(false, 10.5f);
+                }
+                long memAfter = System.GC.GetAllocatedBytesForCurrentThread();
+                if (memAfter - memBefore > 0)
+                {
+                    Debug.LogError($"[Test 118] Zero-GC violation in combat hot-path: allocated {memAfter - memBefore} bytes over 5,000 iterations!");
+                    return false;
+                }
+
+                Debug.Log("✅ Test 118: Combat FrameDataSheet, 2D Cancel/Buffer Priority, Archetype Tracking Lock-Off, Token Cadence, Deferred Knockback, and Zero-GC (0 B) verified.");
+                return true;
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogError($"[Test 118] Exception: {ex.Message}\n{ex.StackTrace}");
+                return false;
+            }
+            finally
+            {
+                FeaturesCombat.NightBrawlManager.Instance?.TokenDispatcher?.ResetAll();
+                for (int i = cleanup.Count - 1; i >= 0; i--)
+                {
+                    if (cleanup[i] != null) Object.DestroyImmediate(cleanup[i]);
+                }
+            }
+        }
     }
 }

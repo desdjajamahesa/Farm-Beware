@@ -46,6 +46,8 @@ namespace FeaturesCombat
         private GameObject attacker;
         private int currentDamage;
         private float currentKnockback;
+        private float currentPoiseDamage = -1f;
+        private float currentStaggerImpulse = -1f;
         private Vector3 attackDirection;
         private readonly HashSet<IDamageable> hitTargets = new HashSet<IDamageable>();
         private bool isActive = false;
@@ -97,11 +99,13 @@ namespace FeaturesCombat
         /// <summary>
         /// Activates the hitbox during the active swing window.
         /// </summary>
-        public void Activate(GameObject attackerOwner, int damage, float knockback, Vector3 direction)
+        public void Activate(GameObject attackerOwner, int damage, float knockback, Vector3 direction, float poiseDamage = -1f, float staggerImpulse = -1f)
         {
             attacker = attackerOwner;
             currentDamage = damage;
             currentKnockback = knockback;
+            currentPoiseDamage = poiseDamage;
+            currentStaggerImpulse = staggerImpulse;
             attackDirection = direction.normalized;
             hitTargets.Clear();
             isActive = true;
@@ -237,14 +241,22 @@ namespace FeaturesCombat
                 }
             }
 
-            target.TakeDamage(effectiveDamage, hitPoint, attackDirection);
-
-            // Apply knockback to enemy Rigidbody if present
-            Rigidbody targetRb = targetObj.GetComponent<Rigidbody>() ?? targetObj.GetComponentInParent<Rigidbody>();
-            if (targetRb != null && !targetRb.isKinematic)
+            if (target is EnemyBase enemyTarget && currentPoiseDamage >= 0f)
             {
-                Vector3 knockbackDir = (attackDirection + Vector3.up * 0.25f).normalized;
-                targetRb.AddForce(knockbackDir * currentKnockback, ForceMode.Impulse);
+                // Single-source poise and knockback ownership inside EnemyBase (avoids double AddForce)
+                enemyTarget.TakeDamage(effectiveDamage, hitPoint, attackDirection, currentPoiseDamage, currentKnockback, currentStaggerImpulse);
+            }
+            else
+            {
+                target.TakeDamage(effectiveDamage, hitPoint, attackDirection);
+
+                // Apply knockback to non-EnemyBase IDamageable Rigidbody if present
+                Rigidbody targetRb = targetObj.GetComponent<Rigidbody>() ?? targetObj.GetComponentInParent<Rigidbody>();
+                if (targetRb != null && !targetRb.isKinematic)
+                {
+                    Vector3 knockbackDir = (attackDirection + Vector3.up * 0.25f).normalized;
+                    targetRb.AddForce(knockbackDir * currentKnockback, ForceMode.Impulse);
+                }
             }
 
             // Spawn floating combat text for player-to-monster hit (bright gold, no minus sign)

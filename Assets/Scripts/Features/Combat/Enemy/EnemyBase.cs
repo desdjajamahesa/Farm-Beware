@@ -87,6 +87,11 @@ namespace FeaturesCombat
         public Transform PlayerTarget => playerTarget;
         public bool IsUnstaggerable { get; set; } = false;
         public bool IsRootGuarded => isRootGuarded;
+        public bool IsTrackingLocked { get; private set; }
+        public Vector3 LockedStrikeDirection { get; private set; } = Vector3.forward;
+        public float CurrentWindupProgress { get; private set; }
+        public bool IsInRecoveryPunishWindow { get; private set; }
+        private bool _wasStaggerTinted = false;
         private Transform playerTarget;
         private Rigidbody rb;
         private Renderer meshRenderer;
@@ -137,16 +142,18 @@ namespace FeaturesCombat
 
         public void InitializePoise()
         {
-            float maxP = enemyData != null ? enemyData.maxPoise : 100f;
-            float regenR = enemyData != null ? enemyData.poiseRegenRate : 25f;
-            float regenD = enemyData != null ? enemyData.poiseRegenDelay : 2.5f;
+            var profile = FeaturesCombat.Core.PureLogic.EnemyCombatProfile.GetProfile(enemyType);
+            float maxP = enemyData != null ? enemyData.maxPoise : profile.MaxPoise;
+            float regenR = enemyData != null ? enemyData.poiseRegenRate : profile.PoiseRegenRate;
+            float regenD = enemyData != null ? enemyData.poiseRegenDelay : profile.PoiseRegenDelay;
+            bool hasSA = enemyData != null ? enemyData.hasSuperArmor : profile.InnateSuperArmor;
+
             if (poiseTracker == null)
             {
-                poiseTracker = new FeaturesCombat.Core.PureLogic.PoiseTracker(maxP, regenR, regenD);
+                poiseTracker = new FeaturesCombat.Core.PureLogic.PoiseTracker(maxP, regenR, regenD, hasSA);
             }
             else
             {
-                bool hasSA = (enemyData != null) && enemyData.hasSuperArmor;
                 poiseTracker.Initialize(maxP, regenR, regenD, hasSA);
             }
         }
@@ -288,7 +295,7 @@ namespace FeaturesCombat
                 combatTelegraph.Initialize(Mathf.Max(1.2f, attackRange));
             }
 
-            if (enemyType == EnemyType.CornMusketeer && laserSightLine == null)
+            if ((enemyType == EnemyType.CornMusketeer || enemyType == EnemyType.TheRanger || enemyType == EnemyType.CyclopsTuberMaw) && laserSightLine == null)
             {
                 var laserObj = new GameObject("LaserSight");
                 laserObj.transform.SetParent(transform, false);
@@ -476,7 +483,23 @@ namespace FeaturesCombat
             if (poiseTracker != null)
             {
                 poiseTracker.Tick(Time.deltaTime);
-                if (poiseTracker.IsStaggered) return;
+                if (poiseTracker.IsStaggered)
+                {
+                    if (!_wasStaggerTinted && meshRenderer != null)
+                    {
+                        SetRendererColor(new Color(1f, 0.78f, 0.22f));
+                        _wasStaggerTinted = true;
+                    }
+                    return;
+                }
+                else if (_wasStaggerTinted)
+                {
+                    _wasStaggerTinted = false;
+                    if (!isPerformingSkill && !isRetreatingAndHealing && meshRenderer != null)
+                    {
+                        SetRendererColor(originalColor);
+                    }
+                }
             }
 
             if (isPerformingSkill) return;
@@ -791,12 +814,19 @@ namespace FeaturesCombat
                 lastUnstuckPosition = transform.position;
             }
 
-            SetLinearVelocity(new Vector3(finalMoveDir.x * effectiveSpeed, GetLinearVelocityY(), finalMoveDir.z * effectiveSpeed));
+            var profile = FeaturesCombat.Core.PureLogic.EnemyCombatProfile.GetProfile(enemyType);
+            Vector3 targetHorizVel = new Vector3(finalMoveDir.x * effectiveSpeed, 0f, finalMoveDir.z * effectiveSpeed);
+            Vector3 currentHorizVel = new Vector3(rb.linearVelocity.x, 0f, rb.linearVelocity.z);
+            float accel = profile.MoveAcceleration > 0.1f ? profile.MoveAcceleration : 16f;
+            Vector3 smoothedHorizVel = Vector3.MoveTowards(currentHorizVel, targetHorizVel, accel * Time.deltaTime);
+            SetLinearVelocity(new Vector3(smoothedHorizVel.x, GetLinearVelocityY(), smoothedHorizVel.z));
 
-            // Smoothly rotate monster to face its navigation movement direction
+            // Smoothly rotate monster to face its navigation movement direction at archetype turn rate
             if (finalMoveDir.sqrMagnitude > 0.01f)
             {
-                transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(finalMoveDir), Time.deltaTime * 10f);
+                Quaternion targetRot = Quaternion.LookRotation(finalMoveDir);
+                float maxStepDeg = (profile.TurnSpeedDegPerSec > 0f ? profile.TurnSpeedDegPerSec : 240f) * Time.deltaTime;
+                transform.rotation = Quaternion.RotateTowards(transform.rotation, targetRot, maxStepDeg);
             }
         }
 
@@ -846,7 +876,8 @@ namespace FeaturesCombat
             }
             else if (!leftBlocked && !rightBlocked)
             {
-                steerDir = (UnityEngine.Random.value > 0.5f) ? leftWhisker : rightWhisker;
+                // Deterministic tie-breaker per instance eliminates frame-to-frame whisker zig-zagging
+                steerDir = ((gameObject.GetInstanceID() & 1) == 0) ? leftWhisker : rightWhisker;
             }
             else
             {
@@ -875,6 +906,28 @@ namespace FeaturesCombat
 
         public void TakeDamage(int damage, Vector3 hitPoint, Vector3 hitDirection)
         {
+            TakeDamageInternal(damage, hitPoint, hitDirection, -1f, -1f, -1f);
+        }
+
+        public void TakeDamage(
+            int damage,
+            Vector3 hitPoint,
+            Vector3 hitDirection,
+            float explicitPoiseDamage,
+            float explicitKnockbackForce,
+            float explicitImpulse)
+        {
+            TakeDamageInternal(damage, hitPoint, hitDirection, explicitPoiseDamage, explicitKnockbackForce, explicitImpulse);
+        }
+
+        private void TakeDamageInternal(
+            int damage,
+            Vector3 hitPoint,
+            Vector3 hitDirection,
+            float explicitPoiseDamage,
+            float explicitKnockbackForce,
+            float explicitImpulse)
+        {
             if (IsDead) return;
 
             // GodMode one-hit kill bypass
@@ -895,22 +948,35 @@ namespace FeaturesCombat
             if (hitFeedback != null) hitFeedback.TriggerFlash();
 
             Vector3 pushDir = hitDirection.sqrMagnitude > 0.001f ? hitDirection.normalized : -transform.forward;
+            var profile = FeaturesCombat.Core.PureLogic.EnemyCombatProfile.GetProfile(enemyType);
+            float kbRes = Mathf.Max(knockbackResistance, profile.KnockbackResistance * 0.5f);
+            if (knockbackResistance >= 0.99f) kbRes = 1.0f;
 
-            // Apply tiered knockback & stagger (ignored if un-staggerable)
+            // Apply tiered poise, stagger interruption, token eviction, and single-source knockback
             if (poiseTracker != null)
             {
-                float poiseDmg = Mathf.Max(10f, damage * 0.75f);
+                float poiseDmg = explicitPoiseDamage >= 0f ? explicitPoiseDamage : Mathf.Max(10f, damage * 0.75f);
                 float derivedImpulse = effectiveDmg >= 45 ? 2.1f : (effectiveDmg >= 30 ? 1.4f : 1.0f);
-                float impulse = Mathf.Max(hitDirection.magnitude, derivedImpulse);
+                float impulse = explicitImpulse >= 0f
+                    ? Mathf.Max(explicitImpulse, derivedImpulse)
+                    : Mathf.Max(hitDirection.magnitude, derivedImpulse);
                 var staggerTier = poiseTracker.ApplyPoiseDamage(poiseDmg, impulse, out bool poiseBroken);
 
-                if (poiseBroken && staggerTier >= FeaturesCombat.Core.PureLogic.StaggerTier.HeavyStagger && !IsUnstaggerable)
+                if ((poiseBroken || staggerTier != FeaturesCombat.Core.PureLogic.StaggerTier.None) && !IsUnstaggerable)
                 {
-                    if (isPerformingSkill && !isBurrowed)
+                    if (profile.EvictTokenOnStagger)
+                    {
+                        NightBrawlManager.Instance?.TokenDispatcher?.ReleaseAllForEntity(gameObject.GetInstanceID());
+                    }
+
+                    if (staggerTier >= FeaturesCombat.Core.PureLogic.StaggerTier.HeavyStagger && isPerformingSkill && !isBurrowed)
                     {
                         StopAllCoroutines();
                         isPerformingSkill = false;
                         isRetreatingAndHealing = false;
+                        IsTrackingLocked = false;
+                        CurrentWindupProgress = 0f;
+                        IsInRecoveryPunishWindow = false;
                         if (isRootGuarded)
                         {
                             armor = originalArmor;
@@ -919,38 +985,64 @@ namespace FeaturesCombat
                         if (meshRenderer != null) SetRendererColor(originalColor);
                         if (combatTelegraph != null) combatTelegraph.Hide();
                         if (laserSightLine != null) laserSightLine.enabled = false;
-                        NightBrawlManager.Instance?.TokenDispatcher?.ReleaseAllForEntity(gameObject.GetInstanceID());
                         OnActionInterrupted?.Invoke();
                     }
                 }
 
-                if (rb != null && !IsUnstaggerable)
+                if (rb != null && !IsUnstaggerable && kbRes < 1f)
                 {
                     if (staggerTier == FeaturesCombat.Core.PureLogic.StaggerTier.Knockdown)
                     {
-                        if (airborneHazard != null)
+                        float launchMag = (explicitKnockbackForce > 0f ? Mathf.Clamp(explicitKnockbackForce * 1.8f, 6f, 12f) : 10f) * (1f - kbRes);
+                        if (launchMag > 0.25f)
                         {
-                            airborneHazard.LaunchAsHazard(pushDir * 12f + Vector3.up * 4f);
-                        }
-                        else
-                        {
-                            rb.AddForce(pushDir * 10f + Vector3.up * 3f, ForceMode.Impulse);
+                            if (airborneHazard != null)
+                            {
+                                airborneHazard.LaunchAsHazard(pushDir * launchMag + Vector3.up * 3.5f);
+                            }
+                            else
+                            {
+                                rb.AddForce(pushDir * launchMag + Vector3.up * 3f, ForceMode.Impulse);
+                            }
                         }
                     }
-                    else if (staggerTier == FeaturesCombat.Core.PureLogic.StaggerTier.HeavyStagger)
+                    else
                     {
-                        rb.AddForce(pushDir * 6f, ForceMode.Impulse);
-                    }
-                    else if (staggerTier == FeaturesCombat.Core.PureLogic.StaggerTier.MicroStagger)
-                    {
-                        rb.AddForce(pushDir * 2.5f, ForceMode.Impulse);
+                        float baseKb = explicitKnockbackForce >= 0f
+                            ? explicitKnockbackForce
+                            : (staggerTier == FeaturesCombat.Core.PureLogic.StaggerTier.HeavyStagger ? 6f :
+                               (staggerTier == FeaturesCombat.Core.PureLogic.StaggerTier.MicroStagger ? 2.5f : 0f));
+                        float finalKb = baseKb * (1f - kbRes);
+                        if (finalKb > 0.05f)
+                        {
+                            Vector3 kbImpulse = (pushDir + Vector3.up * 0.15f).normalized * finalKb;
+                            if (FeaturesCombat.Adapters.HitstopCoordinator.Instance != null)
+                            {
+                                FeaturesCombat.Adapters.HitstopCoordinator.Instance.QueueKnockbackOrApply(gameObject, kbImpulse);
+                            }
+                            else if (!rb.isKinematic)
+                            {
+                                rb.AddForce(kbImpulse, ForceMode.Impulse);
+                            }
+                        }
                     }
                 }
             }
-            else if (rb != null && knockbackResistance < 1f && !IsUnstaggerable)
+            else if (rb != null && kbRes < 1f && !IsUnstaggerable)
             {
-                float actualKb = 6f * (1f - knockbackResistance);
-                rb.AddForce(pushDir * actualKb, ForceMode.Impulse);
+                float actualKb = (explicitKnockbackForce >= 0f ? explicitKnockbackForce : 6f) * (1f - kbRes);
+                if (actualKb > 0.05f)
+                {
+                    Vector3 kbImpulse = (pushDir + Vector3.up * 0.15f).normalized * actualKb;
+                    if (FeaturesCombat.Adapters.HitstopCoordinator.Instance != null)
+                    {
+                        FeaturesCombat.Adapters.HitstopCoordinator.Instance.QueueKnockbackOrApply(gameObject, kbImpulse);
+                    }
+                    else if (!rb.isKinematic)
+                    {
+                        rb.AddForce(kbImpulse, ForceMode.Impulse);
+                    }
+                }
             }
 
             if (currentHealth <= 0)
@@ -1048,6 +1140,11 @@ namespace FeaturesCombat
             lastAttackTime = 0f;
             isRetreatingAndHealing = false;
             lastRetreatHealTime = -99f;
+            IsTrackingLocked = false;
+            LockedStrikeDirection = transform.forward;
+            CurrentWindupProgress = 0f;
+            IsInRecoveryPunishWindow = false;
+            _wasStaggerTinted = false;
             currentPathIndex = 1;
             hasValidNavPath = false;
             nextRepathTime = 0f;

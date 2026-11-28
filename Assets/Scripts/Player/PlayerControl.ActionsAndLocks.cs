@@ -310,58 +310,107 @@ public partial class PlayerControl
         return (Quaternion.Euler(0f, 45f, 0f) * rawDir).normalized * inputMag;
     }
 
-    private void HandleDefensiveInput()
+    private void CancelDodgeForCombatTransition()
     {
-        if (isInputLocked || isPlanting || isDodging) return;
-
-        Keyboard kb = Keyboard.current;
-        if (kb == null) return;
-
-        // 1. Dodge Roll: Left Alt, C key
-        bool dodgeTriggered = kb.leftAltKey.wasPressedThisFrame || kb.cKey.wasPressedThisFrame;
-        if (dodgeTriggered)
+        if (dodgeCoroutine != null)
         {
-            PerformDodgeRoll();
-            return;
+            StopCoroutine(dodgeCoroutine);
+            dodgeCoroutine = null;
         }
-
-        // 2. Precision Deflect / Parry: V key or Left Ctrl key
-        bool parryTriggered = kb.vKey.wasPressedThisFrame || kb.leftCtrlKey.wasPressedThisFrame;
-        if (parryTriggered)
+        isDodging = false;
+        dodgeElapsed = 0f;
+        if (animator != null)
         {
-            PerformParry();
-            return;
+            animator.SetBool("Sliding", false);
         }
     }
 
-    public void PerformDodgeRoll()
+    private void HandleDefensiveInput()
     {
-        if (isDodging || isPlanting || isInputLocked) return;
+        if (isInputLocked || isPlanting) return;
 
-        // Allow dodge-canceling if attacking and reached cancelable window or in end-frame recovery hold
+        Keyboard kb = Keyboard.current;
+        if (kb != null)
+        {
+            // 1. Dodge Roll: Left Alt, C key
+            if (kb.leftAltKey.wasPressedThisFrame || kb.cKey.wasPressedThisFrame)
+            {
+                _combatInputBuffer.Buffer(FeaturesCombat.Core.PureLogic.PlayerCancelAction.Dodge, Time.time);
+            }
+
+            // 2. Precision Deflect / Parry: V key or Left Ctrl key
+            if (kb.vKey.wasPressedThisFrame || kb.leftCtrlKey.wasPressedThisFrame)
+            {
+                _combatInputBuffer.Buffer(FeaturesCombat.Core.PureLogic.PlayerCancelAction.Parry, Time.time);
+            }
+        }
+
+        // Priority resolution: Parry > Dodge
+        if (_combatInputBuffer.HasBuffered(FeaturesCombat.Core.PureLogic.PlayerCancelAction.Parry, Time.time))
+        {
+            if (isDodging)
+            {
+                if (DodgeProgress >= FeaturesCombat.Core.PureLogic.CombatFrameDataSheet.DODGE_END_CANCEL_PROGRESS)
+                {
+                    _combatInputBuffer.TryConsume(FeaturesCombat.Core.PureLogic.PlayerCancelAction.Parry, Time.time);
+                    CancelDodgeForCombatTransition();
+                    PerformParry();
+                }
+                return;
+            }
+
+            if (PerformParry())
+            {
+                _combatInputBuffer.TryConsume(FeaturesCombat.Core.PureLogic.PlayerCancelAction.Parry, Time.time);
+                return;
+            }
+        }
+
+        if (!isDodging && _combatInputBuffer.HasBuffered(FeaturesCombat.Core.PureLogic.PlayerCancelAction.Dodge, Time.time))
+        {
+            if (PerformDodgeRoll())
+            {
+                _combatInputBuffer.TryConsume(FeaturesCombat.Core.PureLogic.PlayerCancelAction.Dodge, Time.time);
+                return;
+            }
+        }
+    }
+
+    public bool PerformDodgeRoll()
+    {
+        if (isDodging || isPlanting || isInputLocked) return false;
+
+        // Allow dodge-canceling evaluated against the 2D Cancel Priority Matrix
         if (isAttacking)
         {
             if (animator != null)
             {
                 var state = animator.GetCurrentAnimatorStateInfo(0);
-                if (isInAttackRecovery || state.normalizedTime >= 0.25f)
+                var currentAction = playerEquipment != null
+                    ? playerEquipment.CurrentCombatActionID
+                    : FeaturesCombat.Core.PureLogic.CombatActionID.Light1;
+                if (FeaturesCombat.Core.PureLogic.CombatFrameDataSheet.CanCancel(
+                        currentAction,
+                        state.normalizedTime,
+                        FeaturesCombat.Core.PureLogic.PlayerCancelAction.Dodge,
+                        isInAttackRecovery))
                 {
                     CancelActiveCombatAction();
                 }
                 else
                 {
-                    return;
+                    return false;
                 }
             }
             else
             {
-                return;
+                return false;
             }
         }
 
         if (playerStats != null && !playerStats.UseStamina(dodgeStaminaCost))
         {
-            return;
+            return false;
         }
 
         // Read live movement input
@@ -395,6 +444,7 @@ public partial class PlayerControl
             dodgeCoroutine = null;
         }
         dodgeCoroutine = StartCoroutine(RoutineDodgeRoll(rollDir));
+        return true;
     }
 
     private IEnumerator RoutineDodgeRoll(Vector3 rollDir)
@@ -443,35 +493,42 @@ public partial class PlayerControl
         dodgeCoroutine = null;
     }
 
-    public void PerformParry()
+    public bool PerformParry()
     {
-        if (isDodging || isPlanting || isInputLocked) return;
+        if (isDodging || isPlanting || isInputLocked) return false;
 
-        // Allow parry-canceling if attacking and reached cancelable window or in end-frame recovery hold
+        // Allow parry-canceling evaluated against the 2D Cancel Priority Matrix
         if (isAttacking)
         {
             if (animator != null)
             {
                 var state = animator.GetCurrentAnimatorStateInfo(0);
-                if (isInAttackRecovery || state.normalizedTime >= 0.20f)
+                var currentAction = playerEquipment != null
+                    ? playerEquipment.CurrentCombatActionID
+                    : FeaturesCombat.Core.PureLogic.CombatActionID.Light1;
+                if (FeaturesCombat.Core.PureLogic.CombatFrameDataSheet.CanCancel(
+                        currentAction,
+                        state.normalizedTime,
+                        FeaturesCombat.Core.PureLogic.PlayerCancelAction.Parry,
+                        isInAttackRecovery))
                 {
                     CancelActiveCombatAction();
                 }
                 else
                 {
-                    return;
+                    return false;
                 }
             }
             else
             {
-                return;
+                return false;
             }
         }
 
         // Reject parry if already parrying or currently in whiff lockout
         if (playerStats != null && !playerStats.DefenseEvaluator.CanInitiateParry)
         {
-            return;
+            return false;
         }
 
         float effectiveStaminaCost = parryStaminaCost;
@@ -483,7 +540,7 @@ public partial class PlayerControl
 
         if (playerStats != null && !playerStats.UseStamina(effectiveStaminaCost))
         {
-            return;
+            return false;
         }
 
         var mods = playerStats != null ? playerStats.GetCombatStatModifiers() : FeaturesCombat.Core.PureLogic.CombatStatModifiers.Default;
@@ -506,6 +563,8 @@ public partial class PlayerControl
                 "GUARD",
                 new Color(0.8f, 0.8f, 1f));
         }
+
+        return true;
     }
 
     private int lastInteractFrame = -1;
@@ -535,7 +594,7 @@ public partial class PlayerControl
 
         if (isInputLocked)
         {
-            Debug.LogWarning("[PlayerControl] Tombol E ditekan tetapi isInputLocked = true!");
+            Debug.LogWarning("[PlayerControl] Interact key pressed while isInputLocked = true!");
             return;
         }
 
@@ -552,7 +611,7 @@ public partial class PlayerControl
         }
         else
         {
-            Debug.LogError("[PlayerControl] PlayerInteractor tidak ditemukan pada Player!");
+            Debug.LogError("[PlayerControl] PlayerInteractor component missing on Player!");
         }
     }
 
@@ -742,6 +801,8 @@ public partial class PlayerControl
         _isInputLocked = locked;
         if (locked)
         {
+            _lungeTimer = 0f;
+            _combatInputBuffer.Clear();
             StopMovement();
             CancelActiveCombatAction();
             if (dodgeCoroutine != null)

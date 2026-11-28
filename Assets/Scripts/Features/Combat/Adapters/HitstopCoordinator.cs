@@ -44,6 +44,8 @@ namespace FeaturesCombat.Adapters
             public float OriginalAnimatorSpeed;
             public float OriginalLinearDamping;
             public bool OriginalAgentStoppedState;
+            public Vector3 PendingKnockbackImpulse;
+            public bool HasPendingKnockback;
             public bool InUse;
         }
 
@@ -148,6 +150,53 @@ namespace FeaturesCombat.Adapters
             }
         }
 
+        /// <summary>
+        /// Returns true while the target entity is currently frozen in hitstop. Zero-GC.
+        /// </summary>
+        public bool IsEntityInHitstop(GameObject target)
+        {
+            if (target == null || _activeCount == 0) return false;
+            int targetId = target.GetInstanceID();
+            for (int i = 0; i < MAX_CONCURRENT_HITSTOPS; i++)
+            {
+                if (_registry[i].InUse && _registry[i].InstanceId == targetId)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// Queues knockback impulse to fire immediately after hitstop ends (avoiding linearDamping = 12f absorption),
+        /// or applies immediately if the target is not currently frozen. Returns true if deferred. Zero-GC.
+        /// </summary>
+        public bool QueueKnockbackOrApply(GameObject target, Vector3 impulse)
+        {
+            if (target == null || impulse.sqrMagnitude <= 0.0001f) return false;
+            int targetId = target.GetInstanceID();
+
+            if (_activeCount > 0)
+            {
+                for (int i = 0; i < MAX_CONCURRENT_HITSTOPS; i++)
+                {
+                    if (_registry[i].InUse && _registry[i].InstanceId == targetId)
+                    {
+                        _registry[i].PendingKnockbackImpulse += impulse;
+                        _registry[i].HasPendingKnockback = true;
+                        return true;
+                    }
+                }
+            }
+
+            var rb = target.GetComponent<Rigidbody>() ?? target.GetComponentInParent<Rigidbody>();
+            if (rb != null && !rb.isKinematic)
+            {
+                rb.AddForce(impulse, ForceMode.Impulse);
+            }
+            return false;
+        }
+
         private void Update()
         {
             if (_activeCount == 0) return;
@@ -179,10 +228,14 @@ namespace FeaturesCombat.Adapters
                     entry.TargetAnimator.speed = entry.OriginalAnimatorSpeed > 0.01f ? entry.OriginalAnimatorSpeed : 1.0f;
                 }
 
-                // Restore Rigidbody damping
+                // Restore Rigidbody damping and release any deferred knockback impulse
                 if (entry.TargetRigidbody != null)
                 {
                     entry.TargetRigidbody.linearDamping = entry.OriginalLinearDamping;
+                    if (entry.HasPendingKnockback && !entry.TargetRigidbody.isKinematic)
+                    {
+                        entry.TargetRigidbody.AddForce(entry.PendingKnockbackImpulse, ForceMode.Impulse);
+                    }
                 }
 
                 // Safe Warp & Restore NavMeshAgent
@@ -205,6 +258,8 @@ namespace FeaturesCombat.Adapters
             entry.TargetAgent = null;
             entry.TargetRigidbody = null;
             entry.RemainingTime = 0f;
+            entry.PendingKnockbackImpulse = Vector3.zero;
+            entry.HasPendingKnockback = false;
 
             _activeCount--;
             if (_activeCount < 0) _activeCount = 0;

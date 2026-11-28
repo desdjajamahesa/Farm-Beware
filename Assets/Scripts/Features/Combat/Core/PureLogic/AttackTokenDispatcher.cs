@@ -37,6 +37,8 @@ namespace FeaturesCombat.Core.PureLogic
 
         public int MaxMeleeTokens => _meleeOwners.Length;
         public int MaxRangedTokens => _rangedOwners.Length;
+        public float MinCommitStaggerSec { get; set; } = 0f;
+        private float _lastMeleeCommitTime = -999f;
 
         public AttackTokenDispatcher(
             int maxMeleeTokens = DEFAULT_MAX_MELEE_TOKENS,
@@ -76,18 +78,32 @@ namespace FeaturesCombat.Core.PureLogic
             AttackTokenPriority[] priorities = isRanged ? _rangedPriorities : _meleePriorities;
             float[] distances = isRanged ? _rangedDistances : _meleeDistances;
             bool[] committed = isRanged ? _rangedCommitted : _meleeCommitted;
+            bool staggerReady = isRanged || !isCommitted || MinCommitStaggerSec <= 0f || priority >= AttackTokenPriority.Boss || (currentTime - _lastMeleeCommitTime >= MinCommitStaggerSec);
 
             // 1. If entity already holds a token, refresh duration, update priority, distance, and commitment
             for (int i = 0; i < owners.Length; i++)
             {
                 if (owners[i] == entityId)
                 {
+                    if (isCommitted && !committed[i] && !staggerReady)
+                    {
+                        return false;
+                    }
                     expirations[i] = currentTime + durationSec;
                     if (priority > priorities[i]) priorities[i] = priority;
                     distances[i] = distanceToTarget;
-                    if (isCommitted) committed[i] = true;
+                    if (isCommitted && !committed[i])
+                    {
+                        committed[i] = true;
+                        if (!isRanged) _lastMeleeCommitTime = currentTime;
+                    }
                     return true;
                 }
+            }
+
+            if (!isRanged && isCommitted && !staggerReady)
+            {
+                return false;
             }
 
             // 2. Find an empty or expired slot
@@ -100,6 +116,7 @@ namespace FeaturesCombat.Core.PureLogic
                     priorities[i] = priority;
                     distances[i] = distanceToTarget;
                     committed[i] = isCommitted;
+                    if (!isRanged && isCommitted) _lastMeleeCommitTime = currentTime;
                     return true;
                 }
             }
@@ -139,6 +156,7 @@ namespace FeaturesCombat.Core.PureLogic
                     priorities[evictIndex] = priority;
                     distances[evictIndex] = distanceToTarget;
                     committed[evictIndex] = isCommitted;
+                    if (!isRanged && isCommitted) _lastMeleeCommitTime = currentTime;
                     return true;
                 }
             }
@@ -171,6 +189,7 @@ namespace FeaturesCombat.Core.PureLogic
                     priorities[distantCandidate] = priority;
                     distances[distantCandidate] = distanceToTarget;
                     committed[distantCandidate] = isCommitted;
+                    if (!isRanged && isCommitted) _lastMeleeCommitTime = currentTime;
                     return true;
                 }
             }
@@ -249,10 +268,40 @@ namespace FeaturesCombat.Core.PureLogic
         }
 
         /// <summary>
+        /// Counts active unexpired tokens in the specified pool. Zero-GC.
+        /// </summary>
+        public int CountActiveTokens(bool isRanged, float currentTime)
+        {
+            int[] owners = isRanged ? _rangedOwners : _meleeOwners;
+            float[] expirations = isRanged ? _rangedExpirations : _meleeExpirations;
+            int count = 0;
+            for (int i = 0; i < owners.Length; i++)
+            {
+                if (owners[i] != 0 && currentTime < expirations[i])
+                {
+                    count++;
+                }
+            }
+            return count;
+        }
+
+        /// <summary>
+        /// Gets the active entity ID holding slot index, or 0 if empty/expired. Zero-GC.
+        /// </summary>
+        public int GetSlotOwner(bool isRanged, int index, float currentTime)
+        {
+            int[] owners = isRanged ? _rangedOwners : _meleeOwners;
+            float[] expirations = isRanged ? _rangedExpirations : _meleeExpirations;
+            if (index < 0 || index >= owners.Length) return 0;
+            return (owners[index] != 0 && currentTime < expirations[index]) ? owners[index] : 0;
+        }
+
+        /// <summary>
         /// Resets all tokens back to available.
         /// </summary>
         public void ResetAll()
         {
+            _lastMeleeCommitTime = -999f;
             for (int i = 0; i < _meleeOwners.Length; i++)
             {
                 _meleeOwners[i] = 0;

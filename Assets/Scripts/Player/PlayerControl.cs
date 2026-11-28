@@ -7,10 +7,10 @@ using FarmBeware.Core.Runtime;
 [RequireComponent(typeof(Rigidbody))]
 public partial class PlayerControl : MonoBehaviour, IPlayerContext
 {
-    [Header("Pengaturan Pergerakan")]
+    [Header("Movement Settings")]
     public float walkSpeed = 5f;
     public float runSpeed = 8f;
-    public float turnSpeed = 15f;
+    public float turnSpeed = 18f;
 
     [Header("Pengaturan Aksi")]
     public float jumpForce = 5f;
@@ -67,39 +67,60 @@ public partial class PlayerControl : MonoBehaviour, IPlayerContext
         }
     }
 
-    [Header("Pengaturan Pergerakan Saat Menyerang")]
-    [Tooltip("Pengali kecepatan jalan saat menyerang (misal: 0.4 = 40% dari walkSpeed). Karakter tetap bisa bergerak pelan.")]
+    [Header("Attack Movement Settings")]
+    [Tooltip("Movement speed multiplier while swinging (e.g. 0.4 = 40% of walkSpeed).")]
     [Range(0.1f, 1.0f)]
     public float attackMoveSpeedMultiplier = 0.4f;
 
-    [Tooltip("Kecepatan rotasi karakter saat menyerang sehingga bisa berputar/membalik arah (bulak-balik).")]
+    [Tooltip("Character rotation speed during non-active attack startup/recovery.")]
     [Range(5f, 30f)]
-    public float attackTurnSpeed = 18f;
+    public float attackTurnSpeed = 14f;
 
-    [Header("Pengaturan Jurus Spesial (Leap Momentum)")]
-    [Tooltip("Dorongan momentum maju saat melompat menerjang.")]
+    [Header("Special Skill Momentum (Leap)")]
+    [Tooltip("Forward impulse speed during leap strike.")]
     public float leapForwardImpulse = 6.5f;
 
-    [Tooltip("Dorongan momentum ke atas saat melompat menerjang.")]
+    [Tooltip("Upward impulse speed during leap strike.")]
     public float leapUpwardImpulse = 2.5f;
 
-    [Header("Pengaturan Menghindar & Tangkisan (Dodge & Deflect)")]
-    [Tooltip("Kecepatan meluncur saat melakukan dodge roll.")]
-    public float dodgeSpeed = 6.0f;
-    [Tooltip("Durasi gerakan dodge roll (detik).")]
-    public float dodgeDuration = 0.85f;
-    [Tooltip("Durasi frame kekebalan (i-frames) selama dodge roll (detik).")]
-    public float dodgeIFrameDuration = 0.45f;
-    [Tooltip("Durasi window tangkisan parry (detik). Standar 0.35s = 350ms agar timing terasa pas dan adil.")]
+    [Header("Dodge & Deflect Settings")]
+    [Tooltip("Dash velocity during dodge roll.")]
+    public float dodgeSpeed = 6.5f;
+    [Tooltip("Total physical duration of dodge roll (seconds).")]
+    public float dodgeDuration = 0.62f;
+    [Tooltip("Invulnerability frames (i-frames) duration during dodge roll (seconds).")]
+    public float dodgeIFrameDuration = 0.32f;
+    [Tooltip("Precision parry active window (seconds).")]
     public float parryWindow = 0.35f;
-    [Tooltip("Konsumsi stamina saat dodge roll.")]
+    [Tooltip("Stamina cost per dodge roll.")]
     public float dodgeStaminaCost = 15f;
-    [Tooltip("Konsumsi stamina saat melakukan precision parry.")]
+    [Tooltip("Stamina cost per precision parry.")]
     public float parryStaminaCost = 10f;
     private bool isDodging = false;
     private Vector3 dodgeRollDirection = Vector3.forward;
     private float dodgeElapsed = 0f;
     public bool IsDodging => isDodging;
+    public float DodgeProgress => (isDodging && dodgeDuration > 0.01f) ? Mathf.Clamp01(dodgeElapsed / dodgeDuration) : 0f;
+
+    // Attack micro-lunge kinematics state driven deterministically in FixedUpdate
+    private Vector3 _lungeDirection = Vector3.forward;
+    private float _lungeSpeed = 0f;
+    private float _lungeTimer = 0f;
+    private float _lungeDuration = 0f;
+    public float ActiveLungeSpeed => (_lungeTimer > 0f) ? _lungeSpeed : 0f;
+
+    /// <summary>
+    /// Applies a short directional micro-lunge synced with attack active frames (Zero-GC, resolved in FixedUpdate).
+    /// </summary>
+    public void ApplyAttackMicroLunge(Vector3 direction, float speed, float duration)
+    {
+        if (speed <= 0.01f || duration <= 0.005f) return;
+        direction.y = 0f;
+        _lungeDirection = direction.sqrMagnitude > 0.001f ? direction.normalized : transform.forward;
+        _lungeSpeed = speed;
+        _lungeDuration = duration;
+        _lungeTimer = duration;
+    }
 
     [Header("Pengaturan Tangga (Step-Up)")]
     [Tooltip("Tinggi maksimum anak tangga yang bisa dinaiki otomatis (meter).")]
@@ -121,9 +142,9 @@ public partial class PlayerControl : MonoBehaviour, IPlayerContext
     private PlayerBuffManager buffManager;
 
     [Header("Physics Movement")]
-    [SerializeField] private float acceleration = 35f;
-    [SerializeField] private float deceleration = 25f;
-    [SerializeField] private float airControl = 12f;
+    [SerializeField] private float acceleration = 42f;
+    [SerializeField] private float deceleration = 40f;
+    [SerializeField] private float airControl = 14f;
 
     // Internal state
     private bool isGrounded;
@@ -539,6 +560,18 @@ public partial class PlayerControl : MonoBehaviour, IPlayerContext
             return;
         }
 
+        // During attack micro-lunge, drive smooth tapering forward momentum
+        if (_lungeTimer > 0f && rb != null)
+        {
+            _lungeTimer = Mathf.Max(0f, _lungeTimer - Time.fixedDeltaTime);
+            float ratio = (_lungeDuration > 0.005f) ? (_lungeTimer / _lungeDuration) : 0f;
+            float speedScale = Mathf.Lerp(0.25f, 1.0f, ratio);
+            Vector3 lungeVel = _lungeDirection * (_lungeSpeed * speedScale);
+            rb.linearVelocity = new Vector3(lungeVel.x, rb.linearVelocity.y, lungeVel.z);
+            rb.angularVelocity = Vector3.zero;
+            return;
+        }
+
         // Preserve vertical velocity component (gravity/jump)
         Vector3 currentHorizontalVel = new Vector3(rb.linearVelocity.x, 0f, rb.linearVelocity.z);
         Vector3 targetHorizontalVel = Vector3.zero;
@@ -645,12 +678,13 @@ public partial class PlayerControl : MonoBehaviour, IPlayerContext
             // Step-Up: automatically climb low steps without invisible walls
             HandleStepUp(desiredMove);
 
-            // Rotate character toward movement or wall-slide direction
+            // Rotate character toward movement or wall-slide direction (restrict turning during active swing frames for commitment)
             if (desiredMove.sqrMagnitude > 0.001f)
             {
                 Vector3 lookEuler = Quaternion.LookRotation(desiredMove).eulerAngles;
                 Quaternion targetRotation = Quaternion.Euler(0f, lookEuler.y, 0f);
-                float activeTurnSpeed = isAttacking ? attackTurnSpeed : turnSpeed;
+                bool inActiveSwing = isAttacking && playerEquipment != null && playerEquipment.IsInActiveSwingWindow;
+                float activeTurnSpeed = inActiveSwing ? 3f : (isAttacking ? attackTurnSpeed : turnSpeed);
                 rb.MoveRotation(Quaternion.Slerp(rb.rotation, targetRotation, activeTurnSpeed * Time.fixedDeltaTime));
             }
         }

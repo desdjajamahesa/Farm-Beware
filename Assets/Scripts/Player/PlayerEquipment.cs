@@ -43,25 +43,25 @@ public partial class PlayerEquipment : MonoBehaviour
     [Tooltip("Biaya stamina per pukulan kombo: Hit 1, Hit 2, Hit 3.")]
     [SerializeField] private float[] comboStaminaCosts = new float[] { 10f, 10f, 15f };
 
-    [Header("Pengaturan Timing Ayunan & Trail Kombo")]
-    [Tooltip("Delay windup (detik) untuk ayunan Hit 1 (attack1, 0.30s) pada base speed.")]
-    [SerializeField] private float combo1SwingDelay = 0.14f;
-    [Tooltip("Durasi aktif ayunan (detik) untuk Hit 1.")]
+    [Header("Swing & Trail Timing Configuration")]
+    [Tooltip("Windup delay (seconds) for Hit 1 (attack1, 0.333s) at base speed.")]
+    [SerializeField] private float combo1SwingDelay = 0.12f;
+    [Tooltip("Active swing sweep duration (seconds) for Hit 1.")]
     [SerializeField] private float combo1SwingDuration = 0.16f;
 
-    [Tooltip("Delay windup (detik) untuk ayunan Hit 2 (attack3, 0.70s) pada base speed.")]
-    [SerializeField] private float combo2SwingDelay = 0.24f;
-    [Tooltip("Durasi aktif ayunan (detik) untuk Hit 2.")]
-    [SerializeField] private float combo2SwingDuration = 0.26f;
+    [Tooltip("Windup delay (seconds) for Hit 2 (attack3, 0.700s) at base speed.")]
+    [SerializeField] private float combo2SwingDelay = 0.20f;
+    [Tooltip("Active swing sweep duration (seconds) for Hit 2.")]
+    [SerializeField] private float combo2SwingDuration = 0.22f;
 
-    [Tooltip("Delay windup (detik) untuk putaran Hit 3 (attack4, 1.00s) pada base speed.")]
+    [Tooltip("Windup delay (seconds) for Hit 3 (attack4, 1.033s) at base speed.")]
     [SerializeField] private float combo3SwingDelay = 0.18f;
-    [Tooltip("Durasi aktif putaran (detik) untuk Hit 3.")]
-    [SerializeField] private float combo3SwingDuration = 0.55f;
+    [Tooltip("Active swing sweep duration (seconds) for Hit 3.")]
+    [SerializeField] private float combo3SwingDuration = 0.48f;
 
-    [Tooltip("Delay windup (detik) untuk ayunan Hit 4 (4-Hit Finisher) pada base speed.")]
-    [SerializeField] private float combo4SwingDelay = 0.22f;
-    [Tooltip("Durasi aktif ayunan (detik) untuk Hit 4.")]
+    [Tooltip("Windup delay (seconds) for Hit 4 (4-Hit Finisher) at base speed.")]
+    [SerializeField] private float combo4SwingDelay = 0.20f;
+    [Tooltip("Active swing sweep duration (seconds) for Hit 4.")]
     [SerializeField] private float combo4SwingDuration = 0.45f;
 
     [Tooltip("Windup delay (seconds) for Heavy Attack baseline at base speed.")]
@@ -70,9 +70,9 @@ public partial class PlayerEquipment : MonoBehaviour
     [SerializeField] private float heavySwingDuration = 0.70f;
 
     [Tooltip("Per-step windup delays (seconds) matching Heavy_Attack1..4 kinematic peaks.")]
-    [SerializeField] private float[] heavyStepSwingDelays = new float[] { 0.28f, 0.12f, 0.42f, 0.42f };
+    [SerializeField] private float[] heavyStepSwingDelays = new float[] { 0.28f, 0.12f, 0.38f, 0.40f };
     [Tooltip("Per-step active strike durations (seconds) matching Heavy_Attack1..4 clips.")]
-    [SerializeField] private float[] heavyStepSwingDurations = new float[] { 0.30f, 0.26f, 0.28f, 0.28f };
+    [SerializeField] private float[] heavyStepSwingDurations = new float[] { 0.28f, 0.24f, 0.26f, 0.28f };
 
     /// <summary>
     /// Resolves windup delay and active swing duration for the given heavy combo step (0..3),
@@ -151,6 +151,35 @@ public partial class PlayerEquipment : MonoBehaviour
     public int CurrentHeavyComboIndex => currentHeavyComboIndex;
     public bool IsExecutingSkill => isExecutingSkill;
     public bool IsHoldingWeapon => currentWeaponModel != null;
+    public FeaturesCombat.Core.PureLogic.CombatPhase CurrentSwingPhase { get; private set; } = FeaturesCombat.Core.PureLogic.CombatPhase.Idle;
+    public bool IsInActiveSwingWindow => CurrentSwingPhase == FeaturesCombat.Core.PureLogic.CombatPhase.Active;
+    public float CurrentSwingElapsedSec { get; private set; }
+
+    public FeaturesCombat.Core.PureLogic.CombatActionID CurrentCombatActionID
+    {
+        get
+        {
+            if (isExecutingSkill) return FeaturesCombat.Core.PureLogic.CombatActionID.ChargedThrust;
+            if (combatStateMachine == null) return FeaturesCombat.Core.PureLogic.CombatActionID.Idle;
+            switch (combatStateMachine.CurrentState)
+            {
+                case FeaturesCombat.Melee.MeleeCombatState.Light1: return FeaturesCombat.Core.PureLogic.CombatActionID.Light1;
+                case FeaturesCombat.Melee.MeleeCombatState.Light2: return FeaturesCombat.Core.PureLogic.CombatActionID.Light2;
+                case FeaturesCombat.Melee.MeleeCombatState.Light3_Finisher: return FeaturesCombat.Core.PureLogic.CombatActionID.Light3;
+                case FeaturesCombat.Melee.MeleeCombatState.Light4_Finisher: return FeaturesCombat.Core.PureLogic.CombatActionID.Light4;
+                case FeaturesCombat.Melee.MeleeCombatState.HeavyFinisher1: return FeaturesCombat.Core.PureLogic.CombatActionID.HeavyFinisher1;
+                case FeaturesCombat.Melee.MeleeCombatState.HeavyFinisher2: return FeaturesCombat.Core.PureLogic.CombatActionID.HeavyFinisher2;
+                case FeaturesCombat.Melee.MeleeCombatState.HeavyChain2: return FeaturesCombat.Core.PureLogic.CombatActionID.HeavyChain2;
+                case FeaturesCombat.Melee.MeleeCombatState.HeavyChain3: return FeaturesCombat.Core.PureLogic.CombatActionID.HeavyChain3;
+                case FeaturesCombat.Melee.MeleeCombatState.HeavyChain4: return FeaturesCombat.Core.PureLogic.CombatActionID.HeavyChain4;
+                case FeaturesCombat.Melee.MeleeCombatState.HeavyRelease:
+                case FeaturesCombat.Melee.MeleeCombatState.HeavyCharging: return FeaturesCombat.Core.PureLogic.CombatActionID.ChargedThrust;
+                case FeaturesCombat.Melee.MeleeCombatState.DashAttack: return FeaturesCombat.Core.PureLogic.CombatActionID.DashSweep;
+                case FeaturesCombat.Melee.MeleeCombatState.FrontKick: return FeaturesCombat.Core.PureLogic.CombatActionID.FrontKick;
+                default: return FeaturesCombat.Core.PureLogic.CombatActionID.Idle;
+            }
+        }
+    }
 
     [Header("Combat Occlusion / Line-of-Sight")]
     [Tooltip("LayerMask for solid obstacles (walls, fences, structures) that block melee attacks.")]
@@ -474,7 +503,7 @@ public partial class PlayerEquipment : MonoBehaviour
 
         if (!isRiposte && playerStats != null && (playerStats.currentStamina < staminaCost || playerStats.IsExhausted))
         {
-            Debug.Log("[PlayerEquipment] Stamina tidak cukup untuk menyerang!");
+            Debug.Log("[PlayerEquipment] Insufficient stamina to attack!");
             combatStateMachine.ResetToIdle();
             currentComboIndex = 0;
             return false;
@@ -487,7 +516,7 @@ public partial class PlayerEquipment : MonoBehaviour
         {
             if (!allowBareHandsAttack)
             {
-                Debug.Log("[PlayerEquipment] Tidak bisa menyerang: Tangan kosong.");
+                Debug.Log("[PlayerEquipment] Cannot attack: empty hands.");
                 combatStateMachine.ResetToIdle();
                 return false;
             }
@@ -497,7 +526,7 @@ public partial class PlayerEquipment : MonoBehaviour
             bool isWeapon = (item is ToolItemData tool && tool.isWeapon);
             if (!isWeapon && !allowBareHandsAttack)
             {
-                Debug.Log($"[PlayerEquipment] Item '{item.itemName}' bukan senjata, tidak bisa menyerang.");
+                Debug.Log($"[PlayerEquipment] Item '{item.itemName}' is not a weapon; attack denied.");
                 combatStateMachine.ResetToIdle();
                 return false;
             }
@@ -603,6 +632,8 @@ public partial class PlayerEquipment : MonoBehaviour
         }
 
         isExecutingSkill = false;
+        CurrentSwingPhase = FeaturesCombat.Core.PureLogic.CombatPhase.Idle;
+        CurrentSwingElapsedSec = 0f;
 
         if (bareHandsTrail != null)
         {
@@ -1092,7 +1123,7 @@ public partial class PlayerEquipment : MonoBehaviour
         if (playerStats == null) playerStats = GetComponent<PlayerStats>();
         if (playerStats != null && (playerStats.currentStamina < skillStaminaCost || playerStats.IsExhausted))
         {
-            Debug.Log("[PlayerEquipment] Stamina tidak cukup untuk jurus spesial!");
+            Debug.Log("[PlayerEquipment] Insufficient stamina for skill strike!");
             return false;
         }
 
@@ -1101,7 +1132,7 @@ public partial class PlayerEquipment : MonoBehaviour
         {
             if (!allowBareHandsAttack)
             {
-                Debug.Log("[PlayerEquipment] Tidak bisa melancarkan jurus: Tangan kosong.");
+                Debug.Log("[PlayerEquipment] Cannot execute skill: empty hands.");
                 return false;
             }
         }
@@ -1110,7 +1141,7 @@ public partial class PlayerEquipment : MonoBehaviour
             bool isWeapon = (item is ToolItemData tool && tool.isWeapon);
             if (!isWeapon && !allowBareHandsAttack)
             {
-                Debug.Log($"[PlayerEquipment] Item '{item.itemName}' bukan senjata, tidak bisa melancarkan jurus.");
+                Debug.Log($"[PlayerEquipment] Item '{item.itemName}' is not a weapon; skill strike denied.");
                 return false;
             }
         }
@@ -1214,6 +1245,9 @@ public partial class PlayerEquipment : MonoBehaviour
             duration = combo1SwingDuration / speedRatio;
         }
 
+        CurrentSwingPhase = FeaturesCombat.Core.PureLogic.CombatPhase.Startup;
+        CurrentSwingElapsedSec = 0f;
+
         TriggerRangeIndicatorPulse(delay + duration + 0.1f);
 
         // Wait until direct state-to-state combo transition enters the expected state so hitbox/trail align with the clip
@@ -1233,7 +1267,23 @@ public partial class PlayerEquipment : MonoBehaviour
             }
         }
 
-        yield return new WaitForSeconds(delay);
+        // Hitstop-synchronized startup wait
+        float startupElapsed = 0f;
+        while (startupElapsed < delay)
+        {
+            bool inHitstop = FeaturesCombat.Adapters.HitstopCoordinator.Instance != null &&
+                             FeaturesCombat.Adapters.HitstopCoordinator.Instance.IsEntityInHitstop(gameObject);
+            if (!inHitstop)
+            {
+                float dt = Time.deltaTime;
+                startupElapsed += dt;
+                CurrentSwingElapsedSec += dt;
+            }
+            yield return null;
+        }
+
+        CurrentSwingPhase = FeaturesCombat.Core.PureLogic.CombatPhase.Active;
+        _damagedTargetsCount = 0;
 
         float activeRange = rangeOverride > 0f ? rangeOverride : attackHitRange;
         FeaturesCombat.WeaponHitbox hitbox = null;
@@ -1256,18 +1306,40 @@ public partial class PlayerEquipment : MonoBehaviour
 
         PlayAttackSwingSound(is360, isFinisher, isHeavy, isDash);
 
-        if (hitbox != null && !is360 && !isHeavy && !isDash && !isRiposte)
+        var moveData = FeaturesCombat.Core.PureLogic.CombatFrameDataSheet.GetMove(CurrentCombatActionID);
+        float poiseDmg = (moveData.PoiseDamage > 0f ? moveData.PoiseDamage : 18f) * (isRiposte ? 2.0f : 1.0f);
+        float staggerImpulse = moveData.KnockbackForce > 0f ? (moveData.KnockbackForce * 0.45f) : 1.0f;
+
+        bool useColliderHitbox = (hitbox != null && !is360 && !isHeavy && !isDash && !isRiposte);
+        if (useColliderHitbox)
         {
             hitbox.ConfigureHitRange(activeRange);
-            hitbox.Activate(gameObject, damage, knockback, transform.forward);
-        }
-        else
-        {
-            // Direct zero-GC non-alloc sweep for 360, heavy strikes, ripostes, dash attacks, or bare hands
-            PerformDirectMeleeSweep(damage, knockback, is360, activeRange, isFinisher, isHeavy, isDash, isRiposte);
+            hitbox.Activate(gameObject, damage, knockback, transform.forward, poiseDmg, staggerImpulse);
         }
 
-        yield return new WaitForSeconds(duration);
+        // Hitstop-synchronized multi-frame active sweep window (prevents single-frame whiff & premature freeze decay)
+        float activeElapsed = 0f;
+        do
+        {
+            if (!useColliderHitbox)
+            {
+                PerformDirectMeleeSweep(damage, knockback, is360, activeRange, isFinisher, isHeavy, isDash, isRiposte, resetHitList: false);
+            }
+
+            yield return null;
+
+            bool inHitstop = FeaturesCombat.Adapters.HitstopCoordinator.Instance != null &&
+                             FeaturesCombat.Adapters.HitstopCoordinator.Instance.IsEntityInHitstop(gameObject);
+            if (!inHitstop)
+            {
+                float dt = Time.deltaTime;
+                activeElapsed += dt;
+                CurrentSwingElapsedSec += dt;
+            }
+        }
+        while (activeElapsed < duration);
+
+        CurrentSwingPhase = FeaturesCombat.Core.PureLogic.CombatPhase.Recovery;
 
         if (activeTrail != null)
         {
@@ -1283,7 +1355,14 @@ public partial class PlayerEquipment : MonoBehaviour
         float elapsed = 0f;
         while (elapsed < maxWait && animator != null)
         {
-            elapsed += Time.deltaTime;
+            bool inHitstop = FeaturesCombat.Adapters.HitstopCoordinator.Instance != null &&
+                             FeaturesCombat.Adapters.HitstopCoordinator.Instance.IsEntityInHitstop(gameObject);
+            if (!inHitstop)
+            {
+                float dt = Time.deltaTime;
+                elapsed += dt;
+                CurrentSwingElapsedSec += dt;
+            }
             var curr = animator.GetCurrentAnimatorStateInfo(0);
             var next = animator.GetNextAnimatorStateInfo(0);
             if (!IsAttackState(curr) && !IsAttackState(next))
@@ -1298,6 +1377,8 @@ public partial class PlayerEquipment : MonoBehaviour
             animator.speed = 1f;
         }
 
+        CurrentSwingPhase = FeaturesCombat.Core.PureLogic.CombatPhase.Idle;
+        CurrentSwingElapsedSec = 0f;
         currentSwingCoroutine = null;
     }
 
@@ -1357,13 +1438,15 @@ public partial class PlayerEquipment : MonoBehaviour
         }
 
         isExecutingSkill = false;
+        CurrentSwingPhase = FeaturesCombat.Core.PureLogic.CombatPhase.Idle;
+        CurrentSwingElapsedSec = 0f;
         currentSwingCoroutine = null;
     }
 
     /// <summary>
     /// Direct melee sweep query (zero-GC, non-alloc, supporting frontal cone or 360 spins with visual impulse juice).
     /// </summary>
-    public void PerformDirectMeleeSweep(int damage, float knockback, bool is360 = false, float rangeOverride = -1f, bool isFinisher = false, bool isHeavy = false, bool isDash = false, bool isRiposte = false)
+    public void PerformDirectMeleeSweep(int damage, float knockback, bool is360 = false, float rangeOverride = -1f, bool isFinisher = false, bool isHeavy = false, bool isDash = false, bool isRiposte = false, bool resetHitList = true)
     {
         float activeRange = rangeOverride > 0f ? rangeOverride : attackHitRange;
         Vector3 origin = transform.position + Vector3.up * 0.8f;
@@ -1371,10 +1454,20 @@ public partial class PlayerEquipment : MonoBehaviour
         Vector3 sweepCenter = is360 ? origin : origin + forwardDir * (activeRange * 0.5f);
         float sweepRadius = is360 ? activeRange : (activeRange * 0.65f);
 
-        _damagedTargetsCount = 0;
+        if (resetHitList)
+        {
+            _damagedTargetsCount = 0;
+        }
         int hitCount = Physics.OverlapSphereNonAlloc(sweepCenter, sweepRadius, _hitBuffer, ~0, QueryTriggerInteraction.Collide);
 
         bool landedHit = false;
+        var moveData = FeaturesCombat.Core.PureLogic.CombatFrameDataSheet.GetMove(CurrentCombatActionID);
+        var statMods = playerStats != null ? playerStats.GetCombatStatModifiers() : FeaturesCombat.Core.PureLogic.CombatStatModifiers.Default;
+        float poiseDmg = (isExecutingSkill ? 65f : (moveData.PoiseDamage > 0f ? moveData.PoiseDamage : 20f)) * (isRiposte ? 2.0f : 1.0f);
+        float calibratedKb = isExecutingSkill
+            ? knockback
+            : (moveData.KnockbackForce > 0f ? moveData.KnockbackForce * statMods.KnockbackMultiplier * (isRiposte ? 1.8f : 1.0f) : knockback);
+        float staggerImpulse = isExecutingSkill ? 2.4f : (moveData.KnockbackForce > 0f ? moveData.KnockbackForce * 0.45f : 1.2f);
 
         for (int i = 0; i < hitCount; i++)
         {
@@ -1412,8 +1505,6 @@ public partial class PlayerEquipment : MonoBehaviour
                 bool isGodMode = (playerStats != null && playerStats.isGodMode);
                 int effectiveDamage = isGodMode ? 99999 : damage;
 
-                target.TakeDamage(effectiveDamage, hitPoint, hitDir);
-
                 if (FeaturesCombat.Adapters.CombatHitVfxEngine.Instance != null)
                 {
                     FeaturesCombat.Core.PureLogic.AttackImpactTier impactTier;
@@ -1423,7 +1514,9 @@ public partial class PlayerEquipment : MonoBehaviour
                     }
                     else if (isHeavy)
                     {
-                        impactTier = FeaturesCombat.Core.PureLogic.AttackImpactTier.HeavyCleave;
+                        impactTier = moveData.ImpactTier >= FeaturesCombat.Core.PureLogic.AttackImpactTier.HeavyCleave
+                            ? moveData.ImpactTier
+                            : FeaturesCombat.Core.PureLogic.AttackImpactTier.HeavyCleave;
                     }
                     else if (isFinisher || is360 || isDash)
                     {
@@ -1443,10 +1536,19 @@ public partial class PlayerEquipment : MonoBehaviour
                         impactTier: impactTier);
                 }
 
-                Rigidbody targetRb = c.GetComponent<Rigidbody>() ?? c.GetComponentInParent<Rigidbody>();
-                if (targetRb != null && !targetRb.isKinematic)
+                if (target is FeaturesCombat.EnemyBase enemyTarget)
                 {
-                    targetRb.AddForce((hitDir + Vector3.up * 0.35f).normalized * knockback, ForceMode.Impulse);
+                    // TriggerHit registers hitstop first so EnemyBase queues knockback cleanly for post-hitstop release
+                    enemyTarget.TakeDamage(effectiveDamage, hitPoint, hitDir, poiseDmg, calibratedKb, staggerImpulse);
+                }
+                else
+                {
+                    target.TakeDamage(effectiveDamage, hitPoint, hitDir);
+                    Rigidbody targetRb = c.GetComponent<Rigidbody>() ?? c.GetComponentInParent<Rigidbody>();
+                    if (targetRb != null && !targetRb.isKinematic)
+                    {
+                        targetRb.AddForce((hitDir + Vector3.up * 0.35f).normalized * knockback, ForceMode.Impulse);
+                    }
                 }
 
                 if (PlayerUI.FloatingCombatTextManager.Instance != null)

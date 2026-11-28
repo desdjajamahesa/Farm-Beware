@@ -48,9 +48,9 @@ namespace FeaturesCombat
         }
 
         /// <summary>
-        /// Telegraphed melee attack.
-        /// The monster pauses briefly and displays a red ground telegraph ring (0.35s wind-up).
-        /// If the player dodges outside the ring, the attack misses ("Miss!").
+        /// Telegraphed melee attack driven by EnemyCombatProfile.
+        /// Rotates only during the tracking window; locks strike heading cleanly at TrackingCutoffRatio
+        /// so player sidesteps evade fairly instead of being undone by impact snap rotation.
         /// </summary>
         private IEnumerator RoutineMeleeTelegraphedAttack()
         {
@@ -58,44 +58,76 @@ namespace FeaturesCombat
             currentTacticalState = FeaturesCombat.Core.PureLogic.MonsterTacticalState.TelegraphAttack;
             EnsureTelegraphElements();
 
-            // 1. Wind-up Phase (0.35s): Pause briefly, enable ground telegraph indicator, flash orange
+            var profile = FeaturesCombat.Core.PureLogic.EnemyCombatProfile.GetProfile(enemyType);
+            IsTrackingLocked = false;
+            IsInRecoveryPunishWindow = false;
+            CurrentWindupProgress = 0f;
+            Vector3 lockedDir = transform.forward;
+            lockedDir.y = 0f;
+            LockedStrikeDirection = lockedDir.sqrMagnitude > 0.001f ? lockedDir.normalized : Vector3.forward;
+
             if (rb != null)
             {
                 SetLinearVelocity(Vector3.zero);
             }
 
-            float windupDuration = 0.35f;
+            if (profile.WindupSuperArmor && poiseTracker != null)
+            {
+                poiseTracker.IsSuperArmorActive = true;
+            }
+
+            // 1. Wind-up Phase (Archetype Duration): Tracking Phase -> Cutoff Lock-Off Phase
+            float windupDuration = profile.WindupDurationSec;
             float telegraphHitRange = attackRange + 0.55f;
             if (combatTelegraph != null)
             {
+                combatTelegraph.SetColors(new Color(1.8f, 0.35f, 0.1f, 0.95f), new Color(1.0f, 0.25f, 0.05f, 0.35f));
                 combatTelegraph.StartCharge(windupDuration, telegraphHitRange);
             }
 
             if (meshRenderer != null)
             {
-                SetRendererColor(new Color(1f, 0.45f, 0.15f)); // Wind-up warning color
+                SetRendererColor(new Color(1f, 0.50f, 0.18f));
             }
 
             float windupTimer = 0f;
             while (windupTimer < windupDuration)
             {
                 windupTimer += Time.deltaTime;
-                if (playerTarget != null)
+                bool stillTracking = FeaturesCombat.Core.PureLogic.EnemyCombatProfile.EvaluateWindupTracking(
+                    profile, windupTimer, out bool lockedNow, out float normProg);
+                CurrentWindupProgress = normProg;
+
+                if (stillTracking)
                 {
-                    LookAtTarget(playerTarget.position);
+                    if (playerTarget != null)
+                    {
+                        LookAtTarget(playerTarget.position);
+                    }
+                    Vector3 flatFwd = transform.forward;
+                    flatFwd.y = 0f;
+                    if (flatFwd.sqrMagnitude > 0.001f)
+                    {
+                        LockedStrikeDirection = flatFwd.normalized;
+                    }
                 }
+                else if (!IsTrackingLocked && lockedNow)
+                {
+                    IsTrackingLocked = true;
+                    combatTelegraph?.SetColors(new Color(2.2f, 0.12f, 0.08f, 1.0f), new Color(1.3f, 0.15f, 0.05f, 0.55f));
+                    if (meshRenderer != null)
+                    {
+                        SetRendererColor(new Color(1.3f, 0.22f, 0.08f));
+                    }
+                }
+
                 yield return null;
             }
 
-            // Climax Snap Rotation: firmly align to target vector before triggering hit calculation
-            if (playerTarget != null)
+            // Lock rotation strictly to LockedStrikeDirection (no climax snap rotation!)
+            if (LockedStrikeDirection.sqrMagnitude > 0.001f)
             {
-                Vector3 snapDir = playerTarget.position - transform.position;
-                snapDir.y = 0f;
-                if (snapDir.sqrMagnitude > 0.001f)
-                {
-                    transform.rotation = Quaternion.LookRotation(snapDir.normalized);
-                }
+                transform.rotation = Quaternion.LookRotation(LockedStrikeDirection, Vector3.up);
             }
 
             if (meshRenderer != null)
@@ -108,19 +140,15 @@ namespace FeaturesCombat
                 combatTelegraph.Hide();
             }
 
-            // 2. Active Strike Phase: Check if player is still inside the attack area (horizontal XZ plane)
+            // 2. Active Strike Phase: Evaluate against committed strike cone & reach
             if (playerTarget != null && !NightBrawlManager.IsInsideHouse(playerTarget.position))
             {
                 Vector3 toPlayer = playerTarget.position - transform.position;
                 toPlayer.y = 0f;
                 float currentDist = toPlayer.magnitude;
-                Vector3 forwardFlat = transform.forward;
-                forwardFlat.y = 0f;
-                forwardFlat.Normalize();
-                float dot = (currentDist > 0.01f) ? Vector3.Dot(forwardFlat, toPlayer.normalized) : 1f;
+                float dot = (currentDist > 0.01f) ? Vector3.Dot(LockedStrikeDirection, toPlayer.normalized) : 1f;
 
-                // Hit player if within melee range and in front of or closely adjacent to the monster
-                if (currentDist <= telegraphHitRange && (dot >= 0.10f || currentDist <= 1.2f))
+                if (currentDist <= telegraphHitRange && (dot >= profile.HitboxConeDot || currentDist <= 0.75f))
                 {
                     Vector3 enemyChest = transform.position + Vector3.up * 1f;
                     Vector3 playerChest = playerTarget.position + Vector3.up * 1f;
@@ -131,7 +159,6 @@ namespace FeaturesCombat
 
                     if (isBlockedByWall)
                     {
-                        // Attack blocked by a solid wall! Prevents damage through walls
                         if (FloatingCombatTextManager.Instance != null)
                         {
                             FloatingCombatTextManager.Instance.SpawnText(
@@ -145,13 +172,12 @@ namespace FeaturesCombat
                         IDamageable playerDamageable = playerTarget.GetComponent<IDamageable>() ?? playerTarget.GetComponentInParent<IDamageable>();
                         if (playerDamageable != null && !playerDamageable.IsDead)
                         {
-                            playerDamageable.TakeDamage(contactDamage, playerTarget.position + Vector3.up * 1f, transform.forward);
+                            playerDamageable.TakeDamage(contactDamage, playerTarget.position + Vector3.up * 1f, LockedStrikeDirection);
                         }
                     }
                 }
                 else
                 {
-                    // Player dodged in time!
                     if (FloatingCombatTextManager.Instance != null)
                     {
                         FloatingCombatTextManager.Instance.SpawnText(
@@ -162,8 +188,17 @@ namespace FeaturesCombat
                 }
             }
 
-            // 3. Recovery Phase (0.18s)
-            yield return new WaitForSeconds(0.18f);
+            // 3. Archetype Recovery Punish Window
+            IsInRecoveryPunishWindow = true;
+            if (poiseTracker != null)
+            {
+                poiseTracker.IsSuperArmorActive = poiseTracker.HasInnateSuperArmor;
+            }
+            yield return new WaitForSeconds(profile.RecoveryPunishSec);
+
+            IsInRecoveryPunishWindow = false;
+            IsTrackingLocked = false;
+            CurrentWindupProgress = 0f;
             isPerformingSkill = false;
             lastAttackTime = Time.time;
             skillCooldownTimer = Mathf.Min(skillCooldownTimer, Mathf.Max(0f, GetSkillCooldown() - 1.2f));
@@ -301,16 +336,21 @@ namespace FeaturesCombat
             currentTacticalState = FeaturesCombat.Core.PureLogic.MonsterTacticalState.TelegraphAttack;
             EnsureTelegraphElements();
 
+            var profile = FeaturesCombat.Core.PureLogic.EnemyCombatProfile.GetProfile(EnemyType.TheRanger);
+            IsTrackingLocked = false;
+            IsInRecoveryPunishWindow = false;
+            CurrentWindupProgress = 0f;
+
             if (rb != null)
             {
                 SetLinearVelocity(Vector3.zero);
             }
 
-            // 1. Aiming Telegraph (0.45s)
+            // 1. Aiming Telegraph (Tracking -> Lock-Off at TrackingCutoffRatio)
             if (laserSightLine != null)
             {
                 laserSightLine.enabled = true;
-                Color aimColor = new Color(1f, 0.2f, 0.1f, 0.85f);
+                Color aimColor = new Color(1f, 0.85f, 0.1f, 0.8f);
                 if (laserSightLine.material != null)
                 {
                     laserSightLine.material.color = aimColor;
@@ -326,25 +366,52 @@ namespace FeaturesCombat
 
             Vector3 aimDir = transform.forward;
             float aimTimer = 0f;
-            while (aimTimer < 0.45f)
+            while (aimTimer < profile.WindupDurationSec)
             {
                 aimTimer += Time.deltaTime;
-                if (playerTarget != null)
+                bool stillTracking = FeaturesCombat.Core.PureLogic.EnemyCombatProfile.EvaluateWindupTracking(
+                    profile, aimTimer, out bool lockedNow, out float normProg);
+                CurrentWindupProgress = normProg;
+
+                if (stillTracking)
                 {
-                    LookAtTarget(playerTarget.position);
-
-                    Collider playerCol = playerTarget.GetComponent<Collider>();
-                    Vector3 targetPos = playerCol != null ? playerCol.bounds.center : (playerTarget.position + Vector3.up * 1.0f);
-                    Vector3 toTarget = targetPos - muzzlePos;
-                    if (toTarget.sqrMagnitude > 0.001f)
+                    if (playerTarget != null)
                     {
-                        aimDir = toTarget.normalized;
-                    }
+                        LookAtTarget(playerTarget.position);
+                        feetY = myCol != null ? myCol.bounds.min.y : (transform.position.y - 1.4f);
+                        muzzlePos = transform.position + transform.forward * 0.8f;
+                        muzzlePos.y = feetY + 1.2f;
 
+                        Collider playerCol = playerTarget.GetComponent<Collider>();
+                        Vector3 targetPos = playerCol != null ? playerCol.bounds.center : (playerTarget.position + Vector3.up * 1.0f);
+                        Vector3 toTarget = targetPos - muzzlePos;
+                        if (toTarget.sqrMagnitude > 0.001f)
+                        {
+                            aimDir = toTarget.normalized;
+                            LockedStrikeDirection = aimDir;
+                        }
+
+                        if (laserSightLine != null)
+                        {
+                            laserSightLine.SetPosition(0, muzzlePos);
+                            laserSightLine.SetPosition(1, targetPos);
+                        }
+                    }
+                }
+                else if (!IsTrackingLocked && lockedNow)
+                {
+                    IsTrackingLocked = true;
                     if (laserSightLine != null)
                     {
+                        Color lockColor = new Color(1f, 0.18f, 0.08f, 0.98f);
+                        if (laserSightLine.material != null)
+                        {
+                            laserSightLine.material.color = lockColor;
+                            if (laserSightLine.material.HasProperty("_BaseColor"))
+                                laserSightLine.material.SetColor("_BaseColor", lockColor);
+                        }
                         laserSightLine.SetPosition(0, muzzlePos);
-                        laserSightLine.SetPosition(1, targetPos);
+                        laserSightLine.SetPosition(1, muzzlePos + aimDir * attackRange);
                     }
                 }
                 yield return null;
@@ -355,7 +422,7 @@ namespace FeaturesCombat
                 laserSightLine.enabled = false;
             }
 
-            // 2. Firing: Launch high-velocity corn mortar shell
+            // 2. Firing: Launch high-velocity corn mortar shell along committed aimDir
             FeaturesCombat.Projectiles.CombatProjectile.Spawn(
                 gameObject,
                 muzzlePos,
@@ -364,8 +431,12 @@ namespace FeaturesCombat
                 projSpeed: 16.0f,
                 projectileColor: new Color(1f, 0.35f, 0.1f));
 
-            // 3. Recovery Phase (0.25s)
-            yield return new WaitForSeconds(0.25f);
+            // 3. Recovery Punish Phase
+            IsInRecoveryPunishWindow = true;
+            yield return new WaitForSeconds(profile.RecoveryPunishSec);
+            IsInRecoveryPunishWindow = false;
+            IsTrackingLocked = false;
+            CurrentWindupProgress = 0f;
             isPerformingSkill = false;
             lastAttackTime = Time.time;
             skillCooldownTimer = Mathf.Min(skillCooldownTimer, Mathf.Max(0f, GetSkillCooldown() - 1.2f));
@@ -654,20 +725,70 @@ namespace FeaturesCombat
         private IEnumerator RoutineTrackingBeam()
         {
             isPerformingSkill = true;
+            EnsureTelegraphElements();
+            IsTrackingLocked = false;
+            CurrentWindupProgress = 0f;
 
-            // Charge beam for 1 second
+            Vector3 eyeOrigin = transform.position + Vector3.up * 0.5f;
+            Vector3 shootDir = transform.forward;
+            if (laserSightLine != null)
+            {
+                laserSightLine.enabled = true;
+                Color trackColor = new Color(1f, 0.85f, 0.1f, 0.8f);
+                if (laserSightLine.material != null)
+                {
+                    laserSightLine.material.color = trackColor;
+                    if (laserSightLine.material.HasProperty("_BaseColor"))
+                        laserSightLine.material.SetColor("_BaseColor", trackColor);
+                }
+            }
+
+            // Charge beam for 1.0s: Track for 0.65s, Lock direction for final 0.35s so sidestepping dodges cleanly
             float charge = 0f;
-            while (charge < 1.0f)
+            const float totalCharge = 1.0f;
+            const float lockTime = 0.65f;
+            while (charge < totalCharge)
             {
                 charge += Time.deltaTime;
-                if (playerTarget != null) LookAtTarget(playerTarget.position);
+                CurrentWindupProgress = Mathf.Clamp01(charge / totalCharge);
+                eyeOrigin = transform.position + Vector3.up * 0.5f;
+
+                if (charge <= lockTime)
+                {
+                    if (playerTarget != null)
+                    {
+                        LookAtTarget(playerTarget.position);
+                        Vector3 targetChest = playerTarget.position + Vector3.up * 1.0f;
+                        Vector3 toTarget = targetChest - eyeOrigin;
+                        if (toTarget.sqrMagnitude > 0.001f) shootDir = toTarget.normalized;
+                        LockedStrikeDirection = shootDir;
+                        if (laserSightLine != null)
+                        {
+                            laserSightLine.SetPosition(0, eyeOrigin);
+                            laserSightLine.SetPosition(1, targetChest);
+                        }
+                    }
+                }
+                else if (!IsTrackingLocked)
+                {
+                    IsTrackingLocked = true;
+                    if (laserSightLine != null)
+                    {
+                        Color lockColor = new Color(1f, 0.18f, 0.08f, 0.98f);
+                        if (laserSightLine.material != null)
+                        {
+                            laserSightLine.material.color = lockColor;
+                            if (laserSightLine.material.HasProperty("_BaseColor"))
+                                laserSightLine.material.SetColor("_BaseColor", lockColor);
+                        }
+                        laserSightLine.SetPosition(0, eyeOrigin);
+                        laserSightLine.SetPosition(1, eyeOrigin + shootDir * 16f);
+                    }
+                }
                 yield return null;
             }
 
-            // Fire laser aimed at player's chest/center of mass
-            Vector3 eyeOrigin = transform.position + Vector3.up * 0.5f;
-            Vector3 targetChest = (playerTarget != null) ? playerTarget.position + Vector3.up * 1.0f : (eyeOrigin + transform.forward * 10f);
-            Vector3 shootDir = (targetChest - eyeOrigin).normalized;
+            if (laserSightLine != null) laserSightLine.enabled = false;
 
             int hitCount = Physics.RaycastNonAlloc(eyeOrigin, shootDir, _beamHitsBuffer, 20f, ~0, QueryTriggerInteraction.Ignore);
             int closestIdx = -1;
@@ -693,7 +814,11 @@ namespace FeaturesCombat
                 }
             }
 
+            IsInRecoveryPunishWindow = true;
             yield return new WaitForSeconds(0.5f);
+            IsInRecoveryPunishWindow = false;
+            IsTrackingLocked = false;
+            CurrentWindupProgress = 0f;
             isPerformingSkill = false;
             lastAttackTime = Time.time + 0.6f;
             NightBrawlManager.Instance?.TokenDispatcher?.ReleaseToken(gameObject.GetInstanceID(), false);
@@ -724,19 +849,37 @@ namespace FeaturesCombat
         private IEnumerator RoutineAirborneSlam()
         {
             isPerformingSkill = true;
+            EnsureTelegraphElements();
+            IsTrackingLocked = false;
 
             // Leap high into the air
             Vector3 groundPos = transform.position;
             transform.position = groundPos + Vector3.up * 12f;
 
-            yield return new WaitForSeconds(1.5f);
+            // Hover & track for 0.90s, then lock slam target and project ground telegraph for final 0.60s
+            yield return new WaitForSeconds(0.90f);
 
-            // Slam down near the player (or at the outdoor perimeter if player is indoors)
             Vector3 slamTarget = playerTarget != null ? playerTarget.position : groundPos;
             if (NightBrawlManager.IsInsideHouse(slamTarget))
             {
                 slamTarget = NightBrawlManager.GetNearestOutdoorPosition(slamTarget, 2.5f);
             }
+            IsTrackingLocked = true;
+            if (combatTelegraph != null)
+            {
+                combatTelegraph.transform.position = slamTarget + Vector3.up * 0.05f;
+                combatTelegraph.SetColors(new Color(2.2f, 0.12f, 0.08f, 1.0f), new Color(1.3f, 0.15f, 0.05f, 0.50f));
+                combatTelegraph.StartCharge(0.60f, 4.0f);
+            }
+
+            yield return new WaitForSeconds(0.60f);
+
+            if (combatTelegraph != null)
+            {
+                combatTelegraph.Hide();
+                combatTelegraph.transform.localPosition = new Vector3(0f, 0.04f, 0f);
+            }
+
             transform.position = slamTarget;
             if (rb != null)
             {
@@ -757,7 +900,10 @@ namespace FeaturesCombat
                 }
             }
 
+            IsInRecoveryPunishWindow = true;
             yield return new WaitForSeconds(0.6f);
+            IsInRecoveryPunishWindow = false;
+            IsTrackingLocked = false;
             isPerformingSkill = false;
             lastAttackTime = Time.time + 0.8f;
             NightBrawlManager.Instance?.TokenDispatcher?.ReleaseToken(gameObject.GetInstanceID(), false);
@@ -824,6 +970,8 @@ namespace FeaturesCombat
         private IEnumerator RoutineCornHeavensFall()
         {
             isPerformingSkill = true;
+            EnsureTelegraphElements();
+            IsTrackingLocked = false;
 
             if (FloatingCombatTextManager.Instance != null)
             {
@@ -833,16 +981,43 @@ namespace FeaturesCombat
                     new Color(1f, 0.6f, 0.2f));
             }
 
-            yield return new WaitForSeconds(1.2f);
+            // Track for 0.65s, then lock impact zone and project danger perimeter for final 0.55s
+            yield return new WaitForSeconds(0.65f);
 
-            // If the player is inside the house, the roof provides full protection (0 damage)
-            if (playerTarget != null && !NightBrawlManager.IsInsideHouse(playerTarget.position))
+            Vector3 impactPos = playerTarget != null ? playerTarget.position : transform.position;
+            const float blastRadius = 3.0f;
+            IsTrackingLocked = true;
+            if (combatTelegraph != null)
             {
-                var target = playerTarget.GetComponent<IDamageable>();
-                target?.TakeDamage(30, playerTarget.position, Vector3.down);
+                combatTelegraph.transform.position = impactPos + Vector3.up * 0.05f;
+                combatTelegraph.SetColors(new Color(2.2f, 0.12f, 0.08f, 1.0f), new Color(1.3f, 0.15f, 0.05f, 0.50f));
+                combatTelegraph.StartCharge(0.55f, blastRadius);
             }
 
+            yield return new WaitForSeconds(0.55f);
+
+            if (combatTelegraph != null)
+            {
+                combatTelegraph.Hide();
+                combatTelegraph.transform.localPosition = new Vector3(0f, 0.04f, 0f);
+            }
+
+            // If the player is inside the house (roof protection) or rolled out of blastRadius, 0 damage
+            if (playerTarget != null && !NightBrawlManager.IsInsideHouse(playerTarget.position))
+            {
+                Vector3 toPlayer = playerTarget.position - impactPos;
+                toPlayer.y = 0f;
+                if (toPlayer.magnitude <= blastRadius)
+                {
+                    var target = playerTarget.GetComponent<IDamageable>();
+                    target?.TakeDamage(30, impactPos, Vector3.down);
+                }
+            }
+
+            IsInRecoveryPunishWindow = true;
             yield return new WaitForSeconds(0.5f);
+            IsInRecoveryPunishWindow = false;
+            IsTrackingLocked = false;
             isPerformingSkill = false;
             lastAttackTime = Time.time + 0.8f;
             NightBrawlManager.Instance?.TokenDispatcher?.ReleaseToken(gameObject.GetInstanceID(), true);
